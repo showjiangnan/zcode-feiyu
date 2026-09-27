@@ -9,6 +9,22 @@ ZCode Feiyu 是基于 [zai-org/ZCode](https://github.com/zai-org/ZCode) 的社�
 
 本仓库由飞鱼同学维护，与官方发行版独立。界面和交互复用 ZCode 现有组件；应用内部名称及本地包名称仍为 ZCode / ZCode Preview。上游基线为 **v3.14.3，提交 `29628c9acdb81b703bbd4080c207a0e7ce5e276e`**。以下对比以该公开源码为准，不代表上游未来版本。
 
+## 下载安装包
+
+在 [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases) 下载飞鱼版。首个版本为 [v3.14.3-feiyu.1（预发布）](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.3-feiyu.1)，应用内版本仍为 **3.14.3**，安装后名称为 **ZCode Preview**。
+
+| 平台                         | 下载                                                                                                                                                                                                                                                        | 本次验证范围                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| macOS Apple Silicon（arm64） | [DMG 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/ZCode-Feiyu-3.14.3-mac-arm64.dmg) · [ZIP 压缩包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/ZCode-Feiyu-3.14.3-mac-arm64.zip) | 在 Apple Silicon Mac 构建；最终归档内容、ad-hoc 签名、内置 Agent 启动及终端原生模块冒烟通过                      |
+| Windows x64                  | [EXE 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/ZCode-Feiyu-3.14.3-win-x64.exe)                                                                                                                                  | 在同一 Mac 交叉构建；NSIS 安装器、运行时依赖、x64 主程序/PTY 及归档内容检查通过；**尚未在 Windows 实机安装运行** |
+
+[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/SHA256SUMS.txt) 提供三个安装包的 SHA-256 摘要。macOS 可用 `shasum -a 256 <文件>`，Windows PowerShell 可用 `Get-FileHash <文件> -Algorithm SHA256`，与校验文件比对。
+
+- **Mac 安装**：打开 DMG，将 ZCode Preview 拖入“应用程序”，再从“应用程序”启动；ZIP 用户先解压再复制。此包为 ad-hoc 签名，未使用 Apple Developer ID，也未经 Apple 公证；若系统拦截，确认下载来源及摘要后按“系统设置 → 隐私与安全性”的提示处理。
+- **Windows 安装**：运行 EXE，按向导选择安装目录。安装器没有 Authenticode 发布者签名，系统可能显示未知发布者或 SmartScreen 提示。
+- **平台差异**：共用生产源码不代表已证明所有功能跨平台一致。Windows 的终端、任务协作、fal 出图、文件权限及升级仍需实机验收；SSH 的可选原生加速模块不适用于 Windows，本包使用库内置的 JS/Node 加密回退，该路径已在本机完成握手与命令收发验证。此次没有发布 Intel Mac、Windows arm64 或 Linux 安装包。
+- **更新**：从飞鱼版 Releases 下载新包，退出应用后覆盖安装并保留数据目录。本仓库尚未提供飞鱼版自动更新服务；源码 `git pull` 不会更新已安装应用，官方版安装包也不应覆盖飞鱼版。
+
 ## 新增能力与官方版对比
 
 | 能力                             | 官方基线 v3.14.3                                 | ZCode Feiyu                                                      |
@@ -118,33 +134,42 @@ SSH/WSL 开发资源按需运行 `pnpm bootstrap:with-remote`，然后启动桌�
 
 ### macOS Apple Silicon 本地版
 
-使用 Preview 安装身份、生产服务配置：
+使用 Preview 安装身份、生产服务配置，在打包阶段完成 ad-hoc 签名，使最终 DMG/ZIP 包含已签名的应用：
 
 ```bash
 ZCODE_ENV=production \
 ZCODE_PREVIEW_IDENTITY=1 \
 ZCODE_SKIP_REMOTE_ASSETS=1 \
 ZCODE_BOOTSTRAP_WITH_REMOTE=1 \
+ZCODE_ENABLE_MAC_SIGN=1 \
+CSC_NAME=- \
 pnpm bundle:desktop -- --os mac --arch arm64
 ```
 
 输出在 `packages/desktop/dist/`，包含 `mac-arm64/ZCode Preview.app` 和 DMG/ZIP。`ZCODE_SKIP_REMOTE_ASSETS=1` 跳过本次本地桌面构建无需准备的远端部署资产；需要远端发行资源时去掉该项并准备相应资产。
 
-没有 Developer ID 的本机调试构建，可给生成的 `.app` 做 ad-hoc 签名并验证，退出旧应用后复制新 `.app` 到“应用程序”覆盖同名应用：
+打包结束后验证签名，退出旧应用后复制新 `.app` 到“应用程序”覆盖同名应用：
 
 ```bash
-codesign --force --deep --sign - \
-  --entitlements packages/desktop/build/entitlements.mac.plist \
-  "packages/desktop/dist/mac-arm64/ZCode Preview.app"
 codesign --verify --deep --strict \
   "packages/desktop/dist/mac-arm64/ZCode Preview.app"
 ```
 
-ad-hoc 签名不等于 Apple Developer ID 签名或公证；对外分发安装包应配置相应签名流程。上述命令只修改 `.app`，不会回写已生成的 DMG/ZIP。Preview 身份用于独立安装，**不保证用户数据隔离**；需要隔离时设置 `ZCODE_DATA_BASE_DIR`。
+ad-hoc 签名不等于 Apple Developer ID 签名或公证。正式可信分发应配置自己的 Developer ID 和公证流程；只在构建后单独签名 `.app` 不会更新已生成的 DMG/ZIP。Preview 身份用于独立安装，**不保证用户数据隔离**；需要隔离时设置 `ZCODE_DATA_BASE_DIR`。
 
 后续更新：保存本地修改，执行 `git pull --ff-only`，刷新依赖并重新构建，退出应用后覆盖同一 `.app`。源码变化不会自动进入已安装应用；更新时保留数据目录。本仓库没有提供飞鱼版自动更新下载服务，不应使用官方安装包覆盖自定义版本。确认新应用可运行后，可删除 `packages/desktop/dist/` 中的安装包和打包副本。
 
-其他目标：`pnpm bundle:desktop -- --os win --arch x64`；参数见 `pnpm bundle:desktop -- --help`。原生依赖和签名需要相应平台工具，本版未完成所有系统的安装验收。
+本轮在 Apple Silicon Mac 上实际完成的 Windows x64 交叉打包命令为：
+
+```bash
+ZCODE_ENV=production \
+ZCODE_PREVIEW_IDENTITY=1 \
+ZCODE_SKIP_REMOTE_ASSETS=1 \
+ZCODE_BOOTSTRAP_WITH_REMOTE=1 \
+pnpm bundle:desktop -- --os win --arch x64
+```
+
+工具链按需下载 Windows Electron、Wine 和 NSIS 资源，使用已有 Windows 预编译依赖。切换目标时必须完整准备对应运行时，不能复用另一平台的 native 资产。构建成功不等同于 Windows 实机验收；[electron-builder 跨平台构建说明](https://www.electron.build/docs/features/multi-platform-build/)也明确区分了预编译依赖和必须在目标平台编译的依赖。其他参数见 `pnpm bundle:desktop -- --help`。
 
 ### CLI 发行包
 

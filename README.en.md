@@ -9,6 +9,22 @@ ZCode Feiyu is a community fork of [zai-org/ZCode](https://github.com/zai-org/ZC
 
 Maintained independently by Feiyu, this repository is separate from official releases. Existing ZCode UI components and interactions are reused; application names remain ZCode / ZCode Preview. The upstream baseline is **v3.14.3, commit `29628c9acdb81b703bbd4080c207a0e7ce5e276e`**. Comparisons refer to that public source revision, not future upstream versions.
 
+## Download installers
+
+Get Feiyu builds from [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases). The first release is [v3.14.3-feiyu.1 (prerelease)](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.3-feiyu.1). The in-app version remains **3.14.3**, and the installed application is named **ZCode Preview**.
+
+| Platform                    | Download                                                                                                                                                                                                                                                        | Verification in this release                                                                                                                                                         |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| macOS Apple Silicon (arm64) | [DMG installer](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/ZCode-Feiyu-3.14.3-mac-arm64.dmg) · [ZIP archive](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/ZCode-Feiyu-3.14.3-mac-arm64.zip) | Built on Apple Silicon; final archive contents, ad-hoc signatures, bundled Agent startup, and terminal native-module smoke checks passed                                             |
+| Windows x64                 | [EXE installer](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/ZCode-Feiyu-3.14.3-win-x64.exe)                                                                                                                                   | Cross-built on the same Mac; NSIS packaging, runtime dependencies, x64 application/PTY binaries, and archive contents checked; **not yet installed or run on a real Windows system** |
+
+[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/SHA256SUMS.txt) contains SHA-256 digests for all three packages. Compare them with `shasum -a 256 <file>` on macOS or `Get-FileHash <file> -Algorithm SHA256` in Windows PowerShell.
+
+- **Install on Mac**: open the DMG, drag ZCode Preview to Applications, and launch it from Applications. ZIP users should extract and copy the app first. This build uses an ad-hoc signature, without an Apple Developer ID certificate or Apple notarization. If macOS blocks it, verify the source and digest, then follow the prompts under System Settings → Privacy & Security.
+- **Install on Windows**: run the EXE and choose an installation directory in the wizard. The installer has no Authenticode publisher signature, so Windows may show an unknown-publisher or SmartScreen prompt.
+- **Platform differences**: shared production sources do not establish complete feature parity. Windows terminal behavior, task collaboration, fal generation, file permissions, and upgrades still need real-device validation. The optional SSH native accelerator is not usable on Windows in this cross-build; the library's JS/Node crypto fallback passed a local handshake and command-exchange check. No Intel Mac, Windows arm64, or Linux installer is included in this release.
+- **Updates**: download a newer package from Feiyu Releases, quit the app, and install over the previous version while retaining its data directory. This repository has no Feiyu automatic-update service. Pulling source changes does not update an installed app, and official installers should not replace the fork.
+
 ## Additions and comparison
 
 | Capability                               | Official v3.14.3 baseline                                                    | ZCode Feiyu                                                                                    |
@@ -118,33 +134,42 @@ Use [.env.example](.env.example) for service endpoints, and untracked `.env` / `
 
 ### Local macOS Apple Silicon build
 
-Use the Preview application identity with production service configuration:
+Use the Preview application identity with production service configuration, and sign during packaging so that the final DMG/ZIP contains the signed application:
 
 ```bash
 ZCODE_ENV=production \
 ZCODE_PREVIEW_IDENTITY=1 \
 ZCODE_SKIP_REMOTE_ASSETS=1 \
 ZCODE_BOOTSTRAP_WITH_REMOTE=1 \
+ZCODE_ENABLE_MAC_SIGN=1 \
+CSC_NAME=- \
 pnpm bundle:desktop -- --os mac --arch arm64
 ```
 
 Outputs in `packages/desktop/dist/` include `mac-arm64/ZCode Preview.app`, DMG, and ZIP files. `ZCODE_SKIP_REMOTE_ASSETS=1` skips remote deployment asset preparation for this local desktop build. Remove it and prepare matching assets when producing remote distributions.
 
-For local development without a Developer ID, apply and verify an ad-hoc signature on the generated `.app`. Quit the old application, then copy the new `.app` into Applications, replacing the same application:
+Verify the signature after packaging. Quit the old application, then copy the new `.app` into Applications, replacing the same application:
 
 ```bash
-codesign --force --deep --sign - \
-  --entitlements packages/desktop/build/entitlements.mac.plist \
-  "packages/desktop/dist/mac-arm64/ZCode Preview.app"
 codesign --verify --deep --strict \
   "packages/desktop/dist/mac-arm64/ZCode Preview.app"
 ```
 
-Ad-hoc signing is not Apple Developer ID signing or notarization; public installers require your own signing process. These commands modify only the `.app`, not the already generated DMG/ZIP files. Preview supports a separate application installation but **does not guarantee isolated user data**; set `ZCODE_DATA_BASE_DIR` for isolation.
+An ad-hoc signature is not an Apple Developer ID signature or notarization. Trusted public distribution requires your own Developer ID and notarization setup. Signing an unpacked `.app` after building does not update existing DMG/ZIP files. Preview supports a separate application installation but **does not guarantee isolated user data**; set `ZCODE_DATA_BASE_DIR` for isolation.
 
 To update, preserve local edits, run `git pull --ff-only`, refresh dependencies/build, quit the application, and replace the same `.app`. Source edits do not automatically update an installed application. Preserve its data directory. This repository does not provide a Feiyu automatic-update download service; official installers should not replace a customized fork. Once the new application works, installers and packaging copies in `packages/desktop/dist/` can be deleted.
 
-Other targets: `pnpm bundle:desktop -- --os win --arch x64`; see `pnpm bundle:desktop -- --help`. Native dependencies and signing require appropriate platform tools. Installation has not been validated on every operating system.
+The Windows x64 cross-build was also completed on this Apple Silicon Mac with:
+
+```bash
+ZCODE_ENV=production \
+ZCODE_PREVIEW_IDENTITY=1 \
+ZCODE_SKIP_REMOTE_ASSETS=1 \
+ZCODE_BOOTSTRAP_WITH_REMOTE=1 \
+pnpm bundle:desktop -- --os win --arch x64
+```
+
+The toolchain downloads Windows Electron, Wine, and NSIS resources as needed and uses the existing Windows prebuilt dependencies. Always prepare the target runtime when switching platforms; do not reuse another platform's native assets. Successful packaging is not a Windows acceptance test. The [electron-builder cross-platform guide](https://www.electron.build/docs/features/multi-platform-build/) also distinguishes prebuilt dependencies from modules requiring compilation on the target platform. See `pnpm bundle:desktop -- --help` for other options.
 
 ### CLI distribution
 
