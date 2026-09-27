@@ -1,0 +1,2 @@
+/* Bra.h -- Branch converters for executables
+2024-01-20 : Igor Pavlov : Public domain */

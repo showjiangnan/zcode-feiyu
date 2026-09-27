@@ -1,0 +1,48 @@
+diff --git a/dist/index.js b/dist/index.js
+index f01709ca8909a5724fab4e74a82286af262fbf76..84a19080d0326421e39e2f40df11e69c9fc043ef 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -2265,6 +2265,19 @@ async function convertToAnthropicMessagesPrompt({
+                         },
+                         cache_control: cacheControl
+                       });
++                    } else if (part.mediaType.startsWith("video/")) {
++                      // zcode patch: video/* file part -> video content block (image-block-isomorphic
++                      // shape used by Anthropic-style compatible gateways; official Anthropic API has
++                      // no video block yet). Video bytes are serialized as base64.
++                      anthropicContent.push({
++                        type: "video",
++                        source: {
++                          type: "base64",
++                          media_type: part.mediaType,
++                          data: (0, import_provider_utils14.convertToBase64)(part.data)
++                        },
++                        cache_control: cacheControl
++                      });
+                     } else if (part.mediaType === "application/pdf") {
+                       betas.add("pdfs-2024-09-25");
+                       const enableCitations = await shouldEnableCitations(
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 06a5c9546bc32c59b5aaa4222e7a756a6d22f6d1..fe575cd4100a1b7c2f9ed0769a707633b4a88f10 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -2314,6 +2314,19 @@ async function convertToAnthropicMessagesPrompt({
+                         },
+                         cache_control: cacheControl
+                       });
++                    } else if (part.mediaType.startsWith("video/")) {
++                      // zcode patch: video/* file part -> video content block (image-block-isomorphic
++                      // shape used by Anthropic-style compatible gateways; official Anthropic API has
++                      // no video block yet). Video bytes are serialized as base64.
++                      anthropicContent.push({
++                        type: "video",
++                        source: {
++                          type: "base64",
++                          media_type: part.mediaType,
++                          data: convertToBase64(part.data)
++                        },
++                        cache_control: cacheControl
++                      });
+                     } else if (part.mediaType === "application/pdf") {
+                       betas.add("pdfs-2024-09-25");
+                       const enableCitations = await shouldEnableCitations(

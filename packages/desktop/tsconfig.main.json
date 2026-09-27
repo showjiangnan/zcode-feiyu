@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "out/main",
+    "rootDir": "src/main",
+    "lib": ["es2025"]
+  },
+  "include": ["src/main"],
+  // main 直接依赖 shared 和 services；把引用补齐后，desktop 子工程也能稳定复用上游声明产物。
+  "references": [{ "path": "../shared" }, { "path": "../services" }]
+}

@@ -1,0 +1,3 @@
+# Keep vendored archives byte-for-byte identical on every checkout.
+*.tar.gz binary
+*.zip binary

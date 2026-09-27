@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "lib": ["es2025"],
+    "types": ["node"]
+  },
+  "include": ["src"],
+  // 之前没声明对 rpc 的工程引用，tsc 会把 rpc 当普通源码依赖重复检查，导致错误在多个消费者里反复出现。
+  // 这里补上 references，让 services 直接消费 rpc 的声明产物。
+  "references": [{ "path": "../shared" }, { "path": "../rpc" }]
+}

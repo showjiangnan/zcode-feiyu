@@ -1,0 +1,31 @@
+packages:
+  - packages/*
+  - apps/zcode-cli
+  - apps/zcode-cli/packages/*
+  - apps/zcode-cli/tools/*
+supportedArchitectures:
+  os:
+    - current
+    - darwin
+    - linux
+    - win32
+  cpu:
+    - current
+    - x64
+    - arm64
+  libc:
+    - current
+    - glibc
+allowBuilds:
+  cpu-features: true
+  edgedriver: true
+  electron: true
+  electron-winstaller: true
+  esbuild: true
+  geckodriver: true
+  koffi: true
+  msw: true
+  node-pty: true
+  protobufjs: true
+  ssh2: true
+  unsafe-pointer: true

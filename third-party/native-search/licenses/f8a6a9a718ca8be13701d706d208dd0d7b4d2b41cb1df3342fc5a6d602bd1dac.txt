@@ -1,0 +1,2 @@
+/* 7zWindows.h -- Windows.h and related code
+Igor Pavlov : Public domain */

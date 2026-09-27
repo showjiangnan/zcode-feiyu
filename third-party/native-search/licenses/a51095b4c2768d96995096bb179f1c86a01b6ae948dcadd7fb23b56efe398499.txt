@@ -1,0 +1,2 @@
+/* LzmaDec.h -- LZMA Decoder
+2023-04-02 : Igor Pavlov : Public domain */

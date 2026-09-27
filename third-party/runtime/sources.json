@@ -1,0 +1,16 @@
+{
+  "node": [
+    {
+      "version": "22.16.0",
+      "source": "https://raw.githubusercontent.com/nodejs/node/v22.16.0/LICENSE",
+      "file": "third-party/runtime/node-22.16.0-LICENSE.txt",
+      "sha256": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d"
+    },
+    {
+      "version": "24.14.0",
+      "source": "https://raw.githubusercontent.com/nodejs/node/v24.14.0/LICENSE",
+      "file": "third-party/runtime/node-24.14.0-LICENSE.txt",
+      "sha256": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@zcode/provider-node",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint"
+  },
+  "dependencies": {
+    "@zcode/provider": "workspace:*",
+    "@zcode/shared": "workspace:*",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@zcode/model-option-map": "workspace:*",
+    "typescript": "^6.0.2"
+  }
+}

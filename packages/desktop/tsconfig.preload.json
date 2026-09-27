@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "out/preload",
+    "rootDir": "src",
+    "lib": ["es2025", "dom"]
+  },
+  "include": ["src/preload", "src/shared/armsRumBridgeForward.ts"],
+  "references": [{ "path": "../shared" }]
+}

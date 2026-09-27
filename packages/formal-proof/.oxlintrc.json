@@ -1,0 +1,15 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    "max-lines": ["error", { "max": 420, "skipBlankLines": true, "skipComments": true }]
+  },
+  "overrides": [
+    {
+      "files": ["src/model.ts", "src/main.ts"],
+      "rules": {
+        "max-lines": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["dist"]
+}

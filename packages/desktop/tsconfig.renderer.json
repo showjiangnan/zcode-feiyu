@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "out/renderer",
+    "rootDir": "src/renderer",
+    "lib": ["es2025", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
+    "noEmit": true
+  },
+  "include": ["src/renderer"],
+  // renderer 直接 import 了 shared；把它补进 references，避免 renderer 单独检查时再走源码回退路径。
+  "references": [{ "path": "../shared" }, { "path": "../ui" }, { "path": "../client" }]
+}

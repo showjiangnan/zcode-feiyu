@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ZCode Computer Use</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        font:
+          13px -apple-system,
+          system-ui,
+          sans-serif;
+        -webkit-user-select: none;
+        user-select: none;
+        cursor: default;
+      }
+      .panel {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        height: 100%;
+        box-sizing: border-box;
+        padding: 0 22px;
+        border-radius: 16px;
+        background: rgba(250, 250, 250, 0.98);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22);
+      }
+      /* 拖拽源：用户按住它拖进系统设置的权限列表 */
+      .tile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 14px;
+        background: #fff;
+        border: 1px solid #dcdcdc;
+        border-radius: 12px;
+        cursor: grab;
+        flex-shrink: 0;
+      }
+      .tile:active {
+        cursor: grabbing;
+      }
+      .icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        /* 占位：main 推送真实 ZCode 图标后被 background-image 覆盖 */
+        background: linear-gradient(135deg, #1fa9fd, #f0bcee);
+        background-size: cover;
+        background-position: center;
+        flex-shrink: 0;
+      }
+      .name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #434343;
+        white-space: nowrap;
+      }
+      .arrow {
+        flex-shrink: 0;
+        color: #0a84ff;
+        animation: nudge-up 1.5s ease-in-out infinite;
+      }
+      @keyframes nudge-up {
+        0%,
+        100% {
+          transform: translateY(4px);
+          opacity: 0.45;
+        }
+        50% {
+          transform: translateY(-4px);
+          opacity: 1;
+        }
+      }
+      /* 尊重系统的减弱动效设置：停掉动画但保留箭头本身的指示作用 */
+      @media (prefers-reduced-motion: reduce) {
+        .arrow {
+          animation: none;
+          opacity: 1;
+        }
+      }
+      .hint {
+        color: #6a6a6a;
+        line-height: 1.5;
+      }
+      .hint strong {
+        color: #1d1d1f;
+        font-weight: 600;
+      }
+      @media (prefers-color-scheme: dark) {
+        .panel {
+          background: rgba(40, 40, 42, 0.98);
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+        .arrow {
+          color: #409cff;
+        }
+        .tile {
+          background: #3a3a3c;
+          border-color: #4a4a4c;
+        }
+        .name {
+          color: #e8e8ea;
+        }
+        .hint {
+          color: #a1a1a6;
+        }
+        .hint strong {
+          color: #f5f5f7;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel">
+      <div class="tile" id="tile" draggable="true">
+        <div class="icon"></div>
+        <div class="name" id="appName">ZCode Computer Use</div>
+      </div>
+      <svg
+        class="arrow"
+        width="26"
+        height="26"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 20V5" />
+        <path d="M5.5 11.5 12 5l6.5 6.5" />
+      </svg>
+      <div class="hint" id="hint">
+        <span id="hintPrefix"></span><strong id="permissionLabel"></strong
+        ><span id="hintSuffix"></span><br />
+        <span id="completion"></span>
+      </div>
+    </div>
+    <script type="module" src="./cuaPermissionPanel.ts"></script>
+  </body>
+</html>

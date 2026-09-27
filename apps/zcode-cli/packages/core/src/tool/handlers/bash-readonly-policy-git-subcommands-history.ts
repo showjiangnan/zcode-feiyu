@@ -1,0 +1,227 @@
+import type { BashReadonlyCommandPolicy } from "./bash-readonly-policy-types.js";
+import {
+  gitLsRemoteCommandIsDangerous,
+  gitReflogCommandIsDangerous,
+  gitRemoteShowCommandIsDangerous,
+  gitRevisionFormatCommandIsDangerous,
+  gitTagCommandIsDangerous,
+} from "./bash-readonly-policy-callbacks.js";
+import {
+  COMMON_GIT_COLOR_FLAGS,
+  COMMON_GIT_COUNT_FLAGS,
+  COMMON_GIT_DATE_FLAGS,
+  COMMON_GIT_LOG_STYLE_FLAGS,
+  COMMON_GIT_PATCH_FLAGS,
+  COMMON_GIT_REF_FLAGS,
+  COMMON_GIT_STAT_FLAGS,
+  GIT_SHOW_SAFE_FLAGS,
+  GIT_STATUS_SAFE_FLAGS,
+} from "./bash-readonly-policy-flags.js";
+
+export const GIT_READONLY_SUBCOMMAND_POLICY_ENTRIES_HISTORY = [
+  [
+    "git ls-remote",
+    {
+      safeFlags: {
+        "-b": "none",
+        "-h": "none",
+        "-q": "none",
+        "-t": "none",
+        "--branches": "none",
+        "--exit-code": "none",
+        "--get-url": "none",
+        "--heads": "none",
+        "--quiet": "none",
+        "--refs": "none",
+        "--sort": "string",
+        "--symref": "none",
+        "--tags": "none",
+      },
+      additionalCommandIsDangerousCallback: gitLsRemoteCommandIsDangerous,
+    },
+  ],
+  [
+    "git merge-base",
+    {
+      safeFlags: {
+        "--all": "none",
+        "--fork-point": "none",
+        "--independent": "none",
+        "--is-ancestor": "none",
+        "--octopus": "none",
+      },
+    },
+  ],
+  [
+    "git reflog",
+    {
+      safeFlags: {
+        ...COMMON_GIT_LOG_STYLE_FLAGS,
+        ...COMMON_GIT_REF_FLAGS,
+        ...COMMON_GIT_DATE_FLAGS,
+        ...COMMON_GIT_COUNT_FLAGS,
+        ...COMMON_GIT_STAT_FLAGS,
+        "--grep": "string",
+      },
+      additionalCommandIsDangerousCallback: gitReflogCommandIsDangerous,
+    },
+  ],
+  [
+    "git remote show",
+    {
+      safeFlags: { "-n": "none" },
+      additionalCommandIsDangerousCallback: gitRemoteShowCommandIsDangerous,
+    },
+  ],
+  [
+    "git remote",
+    {
+      safeFlags: { "-v": "none", "--verbose": "none" },
+      additionalCommandIsDangerousCallback: (commandText, args) =>
+        args.some((arg) => arg !== "-v" && arg !== "--verbose"),
+    },
+  ],
+  [
+    "git rev-list",
+    {
+      safeFlags: {
+        ...COMMON_GIT_REF_FLAGS,
+        ...COMMON_GIT_DATE_FLAGS,
+        ...COMMON_GIT_COUNT_FLAGS,
+        "--abbrev": "number",
+        "--abbrev-commit": "none",
+        "--ancestry-path": "none",
+        "--count": "none",
+        "--dense": "none",
+        "--first-parent": "none",
+        "--format": "string",
+        "--full-history": "none",
+        "--graph": "none",
+        "--grep": "string",
+        "--max-age": "number",
+        "--max-parents": "number",
+        "--merges": "none",
+        "--min-age": "number",
+        "--min-parents": "number",
+        "--no-max-parents": "none",
+        "--no-merges": "none",
+        "--no-min-parents": "none",
+        "--oneline": "none",
+        "--pretty": "string",
+        "--reverse": "none",
+        "--skip": "number",
+        "--source": "none",
+        "--sparse": "none",
+        "--walk-reflogs": "none",
+      },
+      additionalCommandIsDangerousCallback: gitRevisionFormatCommandIsDangerous,
+    },
+  ],
+  [
+    "git rev-parse",
+    {
+      safeFlags: {
+        "--abbrev-ref": "none",
+        "--absolute-git-dir": "none",
+        "--git-common-dir": "none",
+        "--git-dir": "none",
+        "--is-bare-repository": "none",
+        "--is-inside-git-dir": "none",
+        "--is-inside-work-tree": "none",
+        "--is-shallow-repository": "none",
+        "--is-shallow-update": "none",
+        "--path-prefix": "none",
+        "--short": "string",
+        "--show-cdup": "none",
+        "--show-prefix": "none",
+        "--show-superproject-working-tree": "none",
+        "--show-toplevel": "none",
+        "--symbolic": "none",
+        "--symbolic-full-name": "none",
+        "--verify": "none",
+      },
+    },
+  ],
+  [
+    "git shortlog",
+    {
+      safeFlags: {
+        ...COMMON_GIT_REF_FLAGS,
+        ...COMMON_GIT_DATE_FLAGS,
+        "-c": "none",
+        "-e": "none",
+        "-n": "none",
+        "-s": "none",
+        "--author": "string",
+        "--committer": "none",
+        "--email": "none",
+        "--format": "string",
+        "--group": "string",
+        "--no-merges": "none",
+        "--numbered": "none",
+        "--summary": "none",
+      },
+      additionalCommandIsDangerousCallback: gitRevisionFormatCommandIsDangerous,
+    },
+  ],
+  [
+    "git show",
+    {
+      safeFlags: GIT_SHOW_SAFE_FLAGS,
+      additionalCommandIsDangerousCallback: gitRevisionFormatCommandIsDangerous,
+    },
+  ],
+  [
+    "git stash list",
+    {
+      safeFlags: {
+        ...COMMON_GIT_LOG_STYLE_FLAGS,
+        ...COMMON_GIT_REF_FLAGS,
+        ...COMMON_GIT_COUNT_FLAGS,
+      },
+    },
+  ],
+  [
+    "git stash show",
+    {
+      safeFlags: {
+        ...COMMON_GIT_STAT_FLAGS,
+        ...COMMON_GIT_COLOR_FLAGS,
+        ...COMMON_GIT_PATCH_FLAGS,
+        "--abbrev": "number",
+        "--diff-filter": "string",
+        "--word-diff": "none",
+        "--word-diff-regex": "string",
+      },
+    },
+  ],
+  ["git status", { safeFlags: GIT_STATUS_SAFE_FLAGS }],
+  [
+    "git tag",
+    {
+      safeFlags: {
+        "-i": "none",
+        "-l": "none",
+        "-n": "number",
+        "--column": "none",
+        "--contains": "string",
+        "--format": "string",
+        "--ignore-case": "none",
+        "--list": "none",
+        "--merged": "string",
+        "--no-column": "none",
+        "--no-contains": "string",
+        "--no-merged": "string",
+        "--points-at": "string",
+        "--sort": "string",
+      },
+      additionalCommandIsDangerousCallback: gitTagCommandIsDangerous,
+    },
+  ],
+  [
+    "git worktree list",
+    {
+      safeFlags: { "-v": "none", "--expire": "string", "--porcelain": "none", "--verbose": "none" },
+    },
+  ],
+] as const satisfies readonly (readonly [string, BashReadonlyCommandPolicy])[];

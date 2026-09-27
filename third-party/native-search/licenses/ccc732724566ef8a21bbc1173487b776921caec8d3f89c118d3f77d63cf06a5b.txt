@@ -1,0 +1,2 @@
+/* 7z.h -- 7z interface
+2023-04-02 : Igor Pavlov : Public domain */

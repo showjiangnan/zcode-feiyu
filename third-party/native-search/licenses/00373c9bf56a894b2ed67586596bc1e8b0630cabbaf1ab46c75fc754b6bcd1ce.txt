@@ -1,0 +1,2 @@
+/* 7zArcIn.c -- 7z Input functions
+: Igor Pavlov : Public domain */

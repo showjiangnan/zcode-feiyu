@@ -1,0 +1,26 @@
+{
+  "name": "@zcode/rpc",
+  "version": "1.0.0",
+  "description": "VS Code style IPC communication abstraction framework",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "demo:basic": "node --loader ts-node/esm examples/01-basic-ipc.ts",
+    "demo:proxy": "node --loader ts-node/esm examples/02-proxy-channel.ts",
+    "demo:messageport": "node --loader ts-node/esm examples/03-ipc-server-client.ts",
+    "demo:remote": "node --loader ts-node/esm examples/04-remote-connection.ts",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.0",
+    "typescript": "^5.9.3"
+  }
+}

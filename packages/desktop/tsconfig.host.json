@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "out/host",
+    "rootDir": "src/host",
+    "lib": ["es2025"]
+  },
+  "include": ["src/host"],
+  // host 既直接依赖 services/shared，也直接 import 了 rpc；补 references 是为了避免它再次把 rpc 源码拉进来检查。
+  "references": [{ "path": "../shared" }, { "path": "../services" }, { "path": "../rpc" }]
+}

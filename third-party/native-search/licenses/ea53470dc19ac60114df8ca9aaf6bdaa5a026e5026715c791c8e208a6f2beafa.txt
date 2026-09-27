@@ -1,0 +1,2 @@
+/* 7zCrcOpt.c -- CRC32 calculation (optimized functions)
+2023-12-07 : Igor Pavlov : Public domain */

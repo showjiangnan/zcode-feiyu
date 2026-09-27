@@ -1,0 +1,22 @@
+dist/
+node_modules/
+.DS_Store
+*.log
+coverage/
+.env.turbo/
+.turbo
+.tmp/
+
+# Compiled TypeScript output in src directories
+src/**/*.js
+src/**/*.d.ts
+src/**/*.js.map
+src/**/*.d.ts.map
+
+# Compiled TypeScript output in test directories
+packages/**/tests/**/*.js
+packages/**/tests/**/*.d.ts
+packages/**/tests/**/*.js.map
+packages/**/tests/**/*.d.ts.map
+.VSCodeCounter
+vendor

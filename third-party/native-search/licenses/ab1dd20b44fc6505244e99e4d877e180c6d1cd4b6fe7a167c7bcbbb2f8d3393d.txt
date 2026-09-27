@@ -1,0 +1,2 @@
+/* 7zAlloc.h -- Allocation functions
+2023-03-04 : Igor Pavlov : Public domain */

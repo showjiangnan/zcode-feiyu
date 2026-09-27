@@ -1,0 +1,42 @@
+{
+  "name": "@zcode/services",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#src/*": "./src/*"
+  },
+  "exports": {
+    "./storage-startup": "./src/storage-startup.ts",
+    ".": "./src/index.ts",
+    "./cua-permission-broker": "./src/cua-permission-broker/index.ts",
+    "./process/processTreeTerminator": "./src/process/processTreeTerminator.ts",
+    "./node": "./src/node.ts"
+  },
+  "scripts": {
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix"
+  },
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "1.64.0",
+    "@zcode/provider": "workspace:*",
+    "@zcode/provider-node": "workspace:*",
+    "@zcode/rpc": "workspace:*",
+    "@zcode/shared": "workspace:*",
+    "@zcode/zcode-cua": "workspace:*",
+    "croner": "^10.0.1",
+    "ignore": "^5.3.2",
+    "node-forge": "^1.4.0",
+    "node-pty": "^1.0.0",
+    "smol-toml": "^1.6.1",
+    "undici": "^6.23.0",
+    "yaml": "^2.9.0",
+    "yazl": "^3.3.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@pierre/diffs": "^1.1.22",
+    "@types/node": "^25.5.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^6.0.2"
+  }
+}

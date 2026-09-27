@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+  "git": false,
+  "npm": {
+    "publish": false
+  },
+  "github": {
+    "release": false
+  },
+  "gitlab": {
+    "release": false
+  }
+}
