@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { ModelId, ModelProviderId } from "../model/index.js";
 import type {
   AgentExecutionTelemetryPort,
@@ -17,6 +18,7 @@ export const ModelApiOperation = {
   GoalVerification: "goal_completion_verification",
   GitCommitMessage: "workspace_git_commit_message",
   ProjectMemoryExtract: "project_memory_extract",
+  ProjectMemoryReview: "project_memory_review",
   ReadSessionContextExtract: "read_session_context_extract",
   ReadSessionContextSynthesize: "read_session_context_synthesize",
   SessionTitle: "session_title_generation",
@@ -195,6 +197,11 @@ function mapQuerySourceToModelApiOperation(querySource: string | undefined): {
     case "project_memory_extract":
       return {
         operation: ModelApiOperation.ProjectMemoryExtract,
+        actorKind: ModelApiActorKind.System,
+      };
+    case "project_memory_review":
+      return {
+        operation: ModelApiOperation.ProjectMemoryReview,
         actorKind: ModelApiActorKind.System,
       };
     default:

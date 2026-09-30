@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /** SDK 对象仅作弱引用：代际元数据不能混入遥测正文。 */
 export function createArmsTelemetryConsent(now: () => number = Date.now) {
   let allowed = false;

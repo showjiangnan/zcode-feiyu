@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { rm } from "node:fs/promises";
 import process from "node:process";
 import { spawn } from "node:child_process";
@@ -17,6 +18,9 @@ export function resolveDesktopProductionCleanPaths(cwd) {
     resolve(cwd, "out/host"),
     resolve(cwd, "out/preload"),
     resolve(cwd, "out/renderer"),
+    // Scheduler 与其他入口一样会生成 chunk；旧产物不能混入下一次安装包。
+    resolve(cwd, "out/scheduler"),
+    resolve(cwd, "out/.scheduler-build-ready"),
     resolve(cwd, "out/.main-build-ready"),
     resolve(cwd, "out/.host-build-ready"),
     resolve(cwd, "out/.preload-build-ready"),

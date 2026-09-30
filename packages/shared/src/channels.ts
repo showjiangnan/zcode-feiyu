@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 通信频道和请求响应映射必须集中定义，避免跨进程 channel 字符串散落。 */
 import type {
   ResourceUsageSnapshot,
@@ -213,6 +213,8 @@ export const PlatformChannels = {
   SyncAppSettings: "zcode:sync-app-settings",
   /** Renderer → Main：持久化后等待桌面遥测门禁和活动 Agent 全部确认 */
   ApplyTelemetryConsent: "zcode:apply-telemetry-consent",
+  ReadBackgroundContinuity: "zcode:read-background-continuity",
+  StopBackgroundContinuity: "zcode:stop-background-continuity",
   /** Renderer → Main：快捷键设置页录制态开关；true = main 暂时摘除可配置菜单 accelerator */
   SetShortcutRecordingActive: "zcode:set-shortcut-recording-active",
   /** Main → Renderer：聚焦到指定 workspace 路径的 tab */
@@ -531,6 +533,8 @@ export const HostMessageTypes = {
   Dispose: "dispose",
   /** 广播消息中转 */
   Broadcast: "broadcast",
+  BroadcastDelivery: "broadcast-delivery",
+  BroadcastDeliveryFinal: "broadcast-delivery-final",
   /** main → host：跨窗口原子 claim 结果 */
   BroadcastClaimResult: "broadcast-claim-result",
   /** main → host：task realtime invalidation delivery */
@@ -615,6 +619,10 @@ export const HostResponseTypes = {
   RemoteWorkspaceAcquired: "remote-workspace-acquired",
   /** 广播消息 */
   Broadcast: "broadcast",
+  /** host → main：需要接收端 Host 确认的广播 */
+  BroadcastDeliveryRequest: "broadcast-delivery-request",
+  /** host → main：接收端 Host 的投递结算 */
+  BroadcastDeliveryResult: "broadcast-delivery-result",
   /** host → main：申请跨窗口原子 claim */
   BroadcastClaimRequest: "broadcast-claim-request",
   /** host → main：把临时 claim reservation 提交为永久 claim */
@@ -785,6 +793,14 @@ export interface PlatformChannelMap {
   [PlatformChannels.ApplyTelemetryConsent]: {
     request: boolean;
     response: void;
+  };
+  [PlatformChannels.ReadBackgroundContinuity]: {
+    request: void;
+    response: import("./continuity-policy.js").BackgroundContinuityStatus;
+  };
+  [PlatformChannels.StopBackgroundContinuity]: {
+    request: void;
+    response: import("./continuity-policy.js").BackgroundContinuityStatus;
   };
   [PlatformChannels.GetResourceUsageSnapshot]: {
     request: void;

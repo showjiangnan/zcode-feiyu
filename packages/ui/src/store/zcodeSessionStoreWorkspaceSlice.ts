@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { SessionCreateSource } from "@zcode/shared";
 /* eslint-disable max-lines -- workspace 级状态动作集中在同一 slice，先保持收口便于维护。 */
 import {

@@ -1,3 +1,5 @@
+// Modified by ZCode Feiyu contributors (2026).
+import { commandRequestFingerprint } from "./command-fingerprint.js";
 // Command inbox：统一命令 admission 与查询入口。
 // 三类事实严格分离：in-flight / live input 永远 pinned；只有 settled 进入 512/session LRU。
 import type {
@@ -32,6 +34,7 @@ interface CommandInboxHost {
   /** 业务 guard（product-protocol guard id）。缺省一律放行。 */
   guard?(envelope: CommandEnvelope): GuardDecision;
   /** 以下回调顺序就是持久化事实优先级；实现必须精确匹配 sourceCommandId。 */
+  lookupRequestFingerprint?(key: CommandKey): Promise<string | null>;
   lookupTranscriptCommand?: PersistentLookup;
   lookupTimelineCommand?: PersistentLookup;
   lookupChildCommand?: PersistentLookup;
@@ -132,9 +135,9 @@ export class CommandInbox {
 
     try {
       const pinned = this.inFlight.get(bucketKey)?.get(envelope.commandId);
-      if (pinned) return this.ackOnly(this.retryAck(await pinned.final));
+      if (pinned) return this.ackOnly(await this.checkedRetry(envelope, await pinned.final));
       const existing = await this.lookupExact(key);
-      if (existing) return this.ackOnly(this.retryAck(existing));
+      if (existing) return this.ackOnly(await this.checkedRetry(envelope, existing));
 
       // 固定锁序：key gate → per-session admission gate。session gate 持有到 settle，
       // 因而同 session 不同 commandId 以 CLI 实际执行 admission 的顺序串行。
@@ -144,12 +147,12 @@ export class CommandInbox {
         const afterWaitPinned = this.inFlight.get(bucketKey)?.get(envelope.commandId);
         if (afterWaitPinned) {
           releaseSession();
-          return this.ackOnly(this.retryAck(await afterWaitPinned.final));
+          return this.ackOnly(await this.checkedRetry(envelope, await afterWaitPinned.final));
         }
         const afterWait = await this.lookupExact(key);
         if (afterWait) {
           releaseSession();
-          return this.ackOnly(this.retryAck(afterWait));
+          return this.ackOnly(await this.checkedRetry(envelope, afterWait));
         }
 
         const decision = this.decide(envelope);
@@ -159,6 +162,7 @@ export class CommandInbox {
           return this.ackOnly(decision.ack);
         }
 
+        decision.ack.requestFingerprint = commandRequestFingerprint(envelope);
         const nextAdmissionSeq = (this.admissionSeq.get(bucketKey) ?? 0) + 1;
         const admittedAt = this.host.now?.() ?? Date.now();
         this.admissionSeq.set(bucketKey, nextAdmissionSeq);
@@ -211,6 +215,37 @@ export class CommandInbox {
       // execute 路径已在 pin 后提前 release；release 幂等，其他路径在这里释放。
       releaseKey();
     }
+  }
+
+  private async checkedRetry(envelope: CommandEnvelope, ack: CommandAck): Promise<CommandAck> {
+    const prior =
+      ack.requestFingerprint ??
+      (await this.host.lookupRequestFingerprint?.({
+        sessionId: envelope.sessionId,
+        commandId: envelope.commandId,
+      }));
+    if (prior && prior !== commandRequestFingerprint(envelope))
+      return {
+        commandId: envelope.commandId,
+        status: "rejected",
+        reasonCode: "proto.invalidPayload",
+        message: "The command ID was already used with a different payload.",
+        revisionAtDecision: ack.revisionAtDecision,
+      };
+    if (
+      !prior &&
+      envelope.type === "sendText" &&
+      Boolean((envelope.payload as Record<string, unknown>).interTaskSourceTaskId)
+    )
+      return {
+        commandId: envelope.commandId,
+        status: "rejected",
+        reasonCode: "proto.payloadFingerprintUnavailable",
+        message:
+          "The original payload cannot be verified; inspect the original command before submitting a new ID.",
+        revisionAtDecision: ack.revisionAtDecision,
+      };
+    return this.retryAck(ack);
   }
 
   /** 1..64 的上层 schema 由 gateway 校验；这里并行查询并保持 Promise.all 输入顺序。 */

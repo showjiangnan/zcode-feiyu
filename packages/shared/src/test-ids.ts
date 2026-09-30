@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /**
  * 统一管理所有 data-testid，UI 组件和 E2E 测试共用此单一来源。
  * 新增 testid 时请在此文件添加，不要在组件中硬编码字符串。
@@ -478,6 +479,10 @@ export const TID_CHAT_THOUGHT_LEVEL_SELECT_ITEM = "chat-thought-level-select-ite
 export const TID_CHAT_MODE_SELECT_TRIGGER = "chat-mode-select-trigger";
 /** 聊天工具栏模式选择条目（动态后缀为 mode value） */
 export const TID_CHAT_MODE_SELECT_ITEM = "chat-mode-select-item";
+/** 会话编排模式选择按钮 */
+export const TID_CHAT_ORCHESTRATION_SELECT_TRIGGER = "chat-orchestration-select-trigger";
+/** 会话编排模式条目（动态后缀为 mode value） */
+export const TID_CHAT_ORCHESTRATION_SELECT_ITEM = "chat-orchestration-select-item";
 /** 聊天工具栏 context 消耗按钮 */
 export const TID_CHAT_CONTEXT_USAGE_TRIGGER = "chat-context-usage-trigger";
 /** 思考块折叠触发按钮 */

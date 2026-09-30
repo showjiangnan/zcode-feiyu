@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Context Builder - System prompt assembly
 // ============================================================
@@ -17,7 +18,10 @@ import { buildIdentitySection } from "./sections/identity.js";
 import { buildWorkflowActorIdentitySection } from "./sections/workflow-actor.js";
 import { buildEnvInfoSection, buildGitSystemContextSection } from "./sections/env-info.js";
 import { buildSkillsSection } from "./sections/skills.js";
-import { buildRequestUserContextSection } from "./sections/request-user-context.js";
+import {
+  buildProjectMemoryContextSection,
+  buildRequestUserContextSection,
+} from "./sections/request-user-context.js";
 import { buildCurrentDateSection } from "./sections/current-date.js";
 import { buildMemorySection } from "./sections/memory.js";
 import { buildDesktopContextSection } from "./sections/desktop.js";
@@ -186,14 +190,20 @@ export class ContextBuilder {
       }
     }
 
-    // 5. Meta user context: workspace instructions/project memory first, date second.
+    // 5. 指令与项目记忆分段，避免记忆内容继承用户指令的权威说明。
     const requestUserContextSection = buildRequestUserContextSection({
       userInstructions: this.config.userInstructions,
-      memoryIndexContent: this.config.memoryIndexContent,
-      memoryRoot: this.config.memoryRoot,
     });
     if (requestUserContextSection) {
       sections.push(requestUserContextSection);
+    }
+    const projectMemoryContextSection = buildProjectMemoryContextSection({
+      memoryIndexContent: this.config.memoryIndexContent,
+      memoryRelevantContent: this.config.memoryRelevantContent,
+      memoryRoot: this.config.memoryRoot,
+    });
+    if (projectMemoryContextSection) {
+      sections.push(projectMemoryContextSection);
     }
 
     const currentDateSection = buildCurrentDateSection(this.config.currentDate);

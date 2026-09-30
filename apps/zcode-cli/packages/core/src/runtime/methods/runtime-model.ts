@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   CoreErrorType,
   createCoreError,
@@ -10,6 +11,7 @@ import {
 import type { AgentRuntimeInternal } from "../internal.js";
 import type { RuntimeModelFactoryInput } from "../types.js";
 import { resolveModelRetryBudgetFromTaskType } from "./model-request-session-type.js";
+import { runtimeRequestAdmission } from "../helpers/runtime-request-admission.js";
 
 export function createRuntimeModel(
   runtime: AgentRuntimeInternal,
@@ -46,12 +48,22 @@ function withRuntimeInvocationLayer(runtime: AgentRuntimeInternal, model: Model)
       ? {}
       : { modelRequestAdmission: runtime.modelRequestAdmission }),
   };
-  return withModelInvocationContext(model, () => layer);
+  return withModelInvocationContext(
+    model,
+    (request) => ({
+      ...layer,
+      modelRequestAdmission: runtimeRequestAdmission(runtime, model, request),
+    }),
+    // bind 后重新组合当前端口，保留绑定选项与请求级输出上限的优先级。
+    (bound) => withRuntimeInvocationLayer(runtime, bound),
+  );
 }
 
 export function withModelInvocationContext(
   model: Model,
   createContext: (request: ModelRequest) => ModelInvocationContext,
+  /** 提供时，bind 之后的模型由它重新包装；缺省沿用同一个 createContext。 */
+  rebind?: (bound: Model) => Model,
 ): Model {
   const wrapped: Model = {
     providerId: model.providerId,
@@ -61,15 +73,18 @@ export function withModelInvocationContext(
     optionSpecs: model.optionSpecs,
     options: model.options,
     bind(options) {
-      return withModelInvocationContext(model.bind(options), createContext);
+      const bound = model.bind(options);
+      return rebind ? rebind(bound) : withModelInvocationContext(bound, createContext);
     },
     generateText(request) {
+      request = { ...request, options: { ...request.options } };
       return runWithModelInvocationContext(
         { ...getCurrentModelInvocationContext(), ...createContext(request) },
         () => model.generateText(request),
       );
     },
     streamText(request) {
+      request = { ...request, options: { ...request.options } };
       return runWithModelInvocationContext(
         { ...getCurrentModelInvocationContext(), ...createContext(request) },
         () => model.streamText(request),

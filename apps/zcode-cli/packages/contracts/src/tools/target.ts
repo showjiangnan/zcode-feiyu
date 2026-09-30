@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Goal Tools - session-local long-running goal
 // ============================================================
@@ -16,17 +17,11 @@ export const GoalStatus = {
 export type GoalStatus = (typeof GoalStatus)[keyof typeof GoalStatus];
 
 export const MAX_GOAL_OBJECTIVE_CHARS = 4_000;
-export const GOAL_COMPLETION_VERIFICATION_QUERY_SOURCE =
-  "target_completion_verification";
+export const GOAL_COMPLETION_VERIFICATION_QUERY_SOURCE = "target_completion_verification";
 export const GOAL_COMPLETION_VERIFICATION_FALLBACK_REASON =
   "The completion verifier could not confirm that every goal requirement is complete.";
 
-export const GoalStatusSchema = z.enum([
-  "active",
-  "paused",
-  "budget_limited",
-  "complete",
-]);
+export const GoalStatusSchema = z.enum(["active", "paused", "budget_limited", "complete"]);
 
 export const GoalTokenBudgetSchema = z
   .number()
@@ -119,13 +114,10 @@ export function normalizeGoalObjective(value: string): string {
 export function formatGoalStateForModel(goal: SessionGoal | null): string {
   if (!goal) return "";
 
-  const budget =
-    goal.tokenBudget === null ? "none" : goal.tokenBudget.toString();
   return [
     "Current session goal state (authoritative):",
     `Status: ${goal.status}`,
     `Tokens used: ${goal.tokensUsed}`,
-    `Token budget: ${budget}`,
     `Time used: ${goal.timeUsedSeconds} seconds`,
     "Objective (user-provided):",
     "<untrusted_objective>",
@@ -136,17 +128,8 @@ export function formatGoalStateForModel(goal: SessionGoal | null): string {
 
 export function formatGoalContinuationPrompt(
   goal: SessionGoal,
-  verification?: Pick<
-    GoalCompletionVerificationOutput,
-    "nextAction" | "reason"
-  > | null,
+  verification?: Pick<GoalCompletionVerificationOutput, "nextAction" | "reason"> | null,
 ): string {
-  const tokenBudget =
-    goal.tokenBudget === null ? "none" : goal.tokenBudget.toString();
-  const remainingTokens =
-    goal.tokenBudget === null
-      ? "unbounded"
-      : Math.max(0, goal.tokenBudget - goal.tokensUsed).toString();
   const nextAction = verification?.nextAction?.trim();
   const verificationReason = verification?.reason;
   const verificationLines = nextAction
@@ -170,11 +153,9 @@ export function formatGoalContinuationPrompt(
     escapeGoalPromptText(goal.objective),
     "</untrusted_objective>",
     "",
-    "Budget:",
+    "Observed usage (not an execution limit):",
     `- Time spent pursuing goal: ${goal.timeUsedSeconds} seconds`,
     `- Tokens used: ${goal.tokensUsed}`,
-    `- Token budget: ${tokenBudget}`,
-    `- Tokens remaining: ${remainingTokens}`,
     "",
     "Avoid repeating work that is already done. Choose the next concrete action toward the objective.",
     "",
@@ -193,12 +174,7 @@ export function formatGoalContinuationPrompt(
   ].join("\n");
 }
 
-export function formatGoalCompletionVerificationPrompt(
-  goal: SessionGoal,
-): string {
-  const tokenBudget =
-    goal.tokenBudget === null ? "none" : goal.tokenBudget.toString();
-
+export function formatGoalCompletionVerificationPrompt(goal: SessionGoal): string {
   return [
     "Verify whether the active session goal is actually complete.",
     "",
@@ -232,7 +208,6 @@ export function formatGoalCompletionVerificationPrompt(
     "Goal state:",
     `- Status before verification: ${goal.status}`,
     `- Tokens used: ${goal.tokensUsed}`,
-    `- Token budget: ${tokenBudget}`,
     `- Time used: ${goal.timeUsedSeconds} seconds`,
     "",
     "Use the conversation context before this verification request as the evidence source.",
@@ -280,10 +255,7 @@ export function formatGoalCompletionVerificationPassedContent(input: {
 }
 
 export function escapeGoalPromptText(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+  return input.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 export function parseGoalCompletionVerificationText(
@@ -293,14 +265,11 @@ export function parseGoalCompletionVerificationText(
   if (!parsed) {
     // verifier 是 goal 完成闸门，但 provider 偶发坏 JSON 属于裁判链路故障；
     // 按产品语义 fail-open，避免已经交付的 goal 被格式错误卡在继续迭代。
-    return failOpenGoalCompletionVerification(
-      "The completion verifier did not return valid JSON.",
-    );
+    return failOpenGoalCompletionVerification("The completion verifier did not return valid JSON.");
   }
 
   const passed = parsed.passed === true;
-  const reason =
-    readString(parsed.reason) ?? GOAL_COMPLETION_VERIFICATION_FALLBACK_REASON;
+  const reason = readString(parsed.reason) ?? GOAL_COMPLETION_VERIFICATION_FALLBACK_REASON;
   const nextAction = readString(parsed.nextAction);
 
   return {
@@ -310,9 +279,7 @@ export function parseGoalCompletionVerificationText(
   };
 }
 
-export function failedGoalCompletionVerification(
-  reason: string,
-): GoalCompletionVerificationOutput {
+export function failedGoalCompletionVerification(reason: string): GoalCompletionVerificationOutput {
   // 这个兜底表示 verifier 自身失败，不是模型给出的下一步。
   // 若写入 nextAction，UI 会把内部控制文案当成下一轮迭代标题展示。
   return {
@@ -356,9 +323,7 @@ function collectJsonObjectCandidates(text: string): string[] {
   return candidates;
 }
 
-function parseJsonObjectCandidate(
-  text: string,
-): Record<string, unknown> | undefined {
+function parseJsonObjectCandidate(text: string): Record<string, unknown> | undefined {
   const trimmed = text.trim();
   const start = trimmed.indexOf("{");
   const end = trimmed.lastIndexOf("}");
@@ -376,9 +341,7 @@ function parseJsonObjectCandidate(
 function parseJsonString(text: string): string | undefined {
   try {
     const parsed = JSON.parse(text) as unknown;
-    return typeof parsed === "string" && parsed.trim().length > 0
-      ? parsed.trim()
-      : undefined;
+    return typeof parsed === "string" && parsed.trim().length > 0 ? parsed.trim() : undefined;
   } catch {
     return undefined;
   }
@@ -387,16 +350,12 @@ function parseJsonString(text: string): string | undefined {
 function extractFencedJsonCandidate(text: string): string | undefined {
   // goal verifier 偶尔会把结构化 JSON 包进 Markdown code fence，
   // 甚至被外层编码成字符串；这里统一剥出 fenced 内容后再走同一个 JSON object 解析。
-  const match = text
-    .trim()
-    .match(/^```[ \t]*(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n?```$/i);
+  const match = text.trim().match(/^```[ \t]*(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n?```$/i);
   return match?.[1]?.trim();
 }
 
 function readString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : undefined;
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 export const TargetStatus = GoalStatus;
@@ -415,23 +374,17 @@ export const TargetReadInputJsonSchema = GoalReadInputJsonSchema;
 export const TargetReadOutputSchema = GoalReadOutputSchema;
 export type TargetReadOutput = GoalReadOutput;
 export const TargetReadOutputJsonSchema = GoalReadOutputJsonSchema;
-export const TargetCompletionVerificationOutputSchema =
-  GoalCompletionVerificationOutputSchema;
-export type TargetCompletionVerificationOutput =
-  GoalCompletionVerificationOutput;
+export const TargetCompletionVerificationOutputSchema = GoalCompletionVerificationOutputSchema;
+export type TargetCompletionVerificationOutput = GoalCompletionVerificationOutput;
 export const normalizeTargetObjective = normalizeGoalObjective;
 export const formatTargetStateForModel = formatGoalStateForModel;
 export const formatTargetContinuationPrompt = formatGoalContinuationPrompt;
-export const formatTargetCompletionVerificationPrompt =
-  formatGoalCompletionVerificationPrompt;
+export const formatTargetCompletionVerificationPrompt = formatGoalCompletionVerificationPrompt;
 export const formatTargetCompletionVerificationFailurePrompt =
   formatGoalCompletionVerificationFailurePrompt;
 export const formatTargetCompletionVerificationPassedContent =
   formatGoalCompletionVerificationPassedContent;
-export const parseTargetCompletionVerificationText =
-  parseGoalCompletionVerificationText;
-export const failedTargetCompletionVerification =
-  failedGoalCompletionVerification;
-export const failOpenTargetCompletionVerification =
-  failOpenGoalCompletionVerification;
+export const parseTargetCompletionVerificationText = parseGoalCompletionVerificationText;
+export const failedTargetCompletionVerification = failedGoalCompletionVerification;
+export const failOpenTargetCompletionVerification = failOpenGoalCompletionVerification;
 export const escapeTargetPromptText = escapeGoalPromptText;

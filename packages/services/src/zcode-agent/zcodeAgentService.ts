@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { requestPluginReferenceCatalog } from "#src/zcode-agent/pluginReferenceCatalogRequest.js";
 import {
   imageGenerationRequestSchema,
@@ -89,6 +89,10 @@ import {
   zcodeProcessResourceSampleSchema,
   zcodeSessionCloseResultSchema,
   zcodeSessionCompactResultSchema,
+  zcodeSessionReviewProjectMemoryResultSchema,
+  zcodeWorkspaceMemoryResultSchema,
+  zcodeSessionReadProjectMemoryReviewResultSchema,
+  zcodeSessionCancelProjectMemoryReviewResultSchema,
   zcodeSessionEventsResultSchema,
   zcodeSessionGoalResultSchema,
   zcodeSessionListResultSchema,
@@ -107,6 +111,7 @@ import {
   zcodeWorkspaceGenerateTextResultSchema,
   zcodeWorkspaceHookTrustGrantResultSchema,
   zcodeWorkspaceUpdateInteractionPreferencesResultSchema,
+  zcodeWorkspaceUpdateMemoryPreferencesResultSchema,
   zcodeWorkspaceUpdateModelIoPreferencesResultSchema,
   zcodeProviderUpdateAccountConfigResultSchema,
   type ZCodeSessionStateSnapshot,
@@ -628,6 +633,8 @@ function buildSessionCreateParams(
 ) {
   return {
     sessionId: params.sessionId,
+    // 创建幂等键不能按旧端兼容字段剥离；否则失联重试会创建第二个空任务。
+    ...(params.originCommandId !== undefined ? { originCommandId: params.originCommandId } : {}),
     workspace: buildWorkspaceRef(params),
     parentSessionId: params.parentSessionId,
     mode: params.mode,
@@ -1216,6 +1223,7 @@ export function createZCodeAgentService(
   const activeClientsByWorkspaceKey = new Map<string, ActiveWorkspaceClient>();
   const interactionPreferenceSyncByWorkspaceKey = new Map<string, Promise<void>>();
   let latestAppRuntimePreferences: ZCodeAgentAppRuntimePreferences | undefined;
+  let appliedRuntimePolicyRevision: number | undefined;
   /** 动态工作流灰度门的进程内单次判定；见 resolveDynamicWorkflowGate 的注释。 */
   let dynamicWorkflowGate: Promise<boolean> | undefined;
   const waitingWorkspaceStartups = new Map<string, WaitingWorkspaceStartup>();
@@ -1503,6 +1511,47 @@ export function createZCodeAgentService(
         // 前一次失败不能打乱之后开关提交的顺序；当前快照仍需继续尝试。
       })
       .then(async () => {
+        // 已排队的旧允许版本不能在较新的限制门禁后恢复任何工作区偏好。
+        if (
+          (params.preferences.policyRevision ?? 0) <
+          (latestAppRuntimePreferences?.policyRevision ?? 0)
+        )
+          return;
+        if (
+          typeof params.preferences.memoryEnabled === "boolean" &&
+          typeof params.preferences.memoryExtractionEnabled === "boolean"
+        ) {
+          const applied = await params.client.request(
+            zcodeProtocolMethods.workspaceUpdateMemoryPreferences,
+            {
+              workspace: buildWorkspaceRef(params.workspace),
+              preferences: {
+                enabled: params.preferences.memoryEnabled,
+                policyRevision: params.preferences.policyRevision ?? 0,
+                continuityPolicy: params.preferences.continuityPolicy,
+                extractionEnabled: params.preferences.memoryExtractionEnabled,
+                reviewEnabled: params.preferences.memoryReviewEnabled === true,
+              },
+            },
+            zcodeWorkspaceUpdateMemoryPreferencesResultSchema,
+          );
+          // CLI 返回的是实际应用版本，旧 CLI 的默认 0 不能充当新版提交的成功证明。
+          if (
+            applied.policyRevision !== (params.preferences.policyRevision ?? 0) ||
+            applied.enabled !== params.preferences.memoryEnabled ||
+            applied.extractionEnabled !==
+              (params.preferences.memoryEnabled && params.preferences.memoryExtractionEnabled) ||
+            applied.reviewEnabled !==
+              (params.preferences.memoryEnabled &&
+                params.preferences.memoryReviewEnabled === true) ||
+            JSON.stringify(applied.continuityPolicy) !==
+              JSON.stringify(params.preferences.continuityPolicy)
+          ) {
+            throw new Error(
+              `Runtime policy acknowledgement mismatch: requested ${params.preferences.policyRevision ?? 0}, actual ${applied.policyRevision}`,
+            );
+          }
+        }
         await params.client.request(
           zcodeProtocolMethods.workspaceUpdateInteractionPreferences,
           {
@@ -3112,12 +3161,18 @@ export function createZCodeAgentService(
       if (initial) {
         // 读取设置期间可能已有新切换；较新的 Host 投影必须覆盖旧读取，不能短暂重开出口。
         const latest = latestAppRuntimePreferences;
+        // 新进程读到的持久门禁可能比内存广播更新；不能无条件用旧缓存覆盖它。
+        const snapshot =
+          !latest || (initial.policyRevision ?? 0) > (latest.policyRevision ?? 0)
+            ? { ...latest, ...initial }
+            : { ...initial, ...latest };
+        latestAppRuntimePreferences = snapshot;
         await enqueueInteractionPreferenceSync({
           client,
-          preferences: { ...initial, ...latest },
+          preferences: snapshot,
           workspace: params,
         });
-        appliedSnapshot = latest;
+        appliedSnapshot = snapshot;
       }
       while (latestAppRuntimePreferences && latestAppRuntimePreferences !== appliedSnapshot) {
         const snapshot = latestAppRuntimePreferences;
@@ -3560,15 +3615,45 @@ export function createZCodeAgentService(
       }
     },
 
-    async syncAppRuntimePreferences(preferences: ZCodeAgentAppRuntimePreferences): Promise<void> {
+    async syncAppRuntimePreferences(
+      preferences: ZCodeAgentAppRuntimePreferences,
+    ): Promise<import("@zcode/shared").RuntimePolicyAcknowledgement> {
+      // 原因：跨 Host 慢回执或广播重排不能恢复旧许可；版本来自持久设置提交。
+      if (
+        (preferences.policyRevision !== undefined || preferences.memoryEnabled !== undefined) &&
+        (preferences.policyRevision ?? 0) < (latestAppRuntimePreferences?.policyRevision ?? 0)
+      )
+        return {
+          policyRevision: appliedRuntimePolicyRevision,
+          status: "superseded",
+          error: "Policy was superseded before application",
+        };
       const normalizedPreferences: ZCodeAgentAppRuntimePreferences = {
         ...latestAppRuntimePreferences,
         ...preferences,
         modelIoFullRetentionEnabled: preferences.modelIoFullRetentionEnabled === true,
       };
+      if (
+        preferences.policyRevision !== undefined &&
+        preferences.policyRevision === latestAppRuntimePreferences?.policyRevision &&
+        Object.entries(preferences).some(
+          ([key, value]) =>
+            value !== undefined &&
+            JSON.stringify(value) !==
+              JSON.stringify(Reflect.get(latestAppRuntimePreferences!, key)),
+        )
+      ) {
+        return {
+          policyRevision: appliedRuntimePolicyRevision,
+          status: "failed",
+          error: "Conflicting policy at the same revision",
+        };
+      }
       latestAppRuntimePreferences = normalizedPreferences;
       const activeClients = [...activeClientsByWorkspaceKey.values()];
-      await Promise.all(
+      // 原因：一个工作区同步失败时，Promise.all 会提前返回；其他工作区仍在更新，
+      // 设置页却已经收到失败回执。等待全部结算后再报告部分失败，避免在途结果失真。
+      const results = await Promise.allSettled(
         activeClients.map((entry) =>
           enqueueInteractionPreferenceSync({
             client: entry.client,
@@ -3577,6 +3662,23 @@ export function createZCodeAgentService(
           }),
         ),
       );
+      const failures = results.filter((result) => result.status === "rejected");
+      if (failures.length > 0) {
+        throw new AggregateError(
+          failures.map((result) => result.reason),
+          `Runtime preferences failed for ${failures.length} of ${activeClients.length} active workspaces: ${failures.map((result) => (result.reason instanceof Error ? result.reason.message : String(result.reason))).join("; ")}`,
+        );
+      }
+      if (latestAppRuntimePreferences !== normalizedPreferences) {
+        return {
+          policyRevision: appliedRuntimePolicyRevision,
+          status: "superseded",
+          error: "Policy changed during application",
+        };
+      }
+      appliedRuntimePolicyRevision =
+        normalizedPreferences.policyRevision ?? appliedRuntimePolicyRevision;
+      return { policyRevision: appliedRuntimePolicyRevision, status: "applied" };
     },
 
     async getWorkspaceRuntimeIdentity(params: ZCodeAgentWorkspaceTarget) {
@@ -4708,6 +4810,61 @@ export function createZCodeAgentService(
         });
         throw error;
       }
+    },
+
+    async workspaceMemory(params) {
+      const client =
+        params.operation.type === "review"
+          ? await getClient(params)
+          : await getReadOnlyClient(params);
+      const operation = params.operation;
+      const selection =
+        operation.type === "review" && !operation.selection
+          ? (await modelSelectionReadinessSource?.getView())?.preferredSelection
+          : undefined;
+      return client.request(
+        zcodeProtocolMethods.workspaceMemory,
+        {
+          workspace: {
+            workspaceKey: resolveWorkspaceKey(params),
+            workspacePath: params.workspacePath,
+            ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+            ...(params.remoteSessionId ? { remoteSessionId: params.remoteSessionId } : {}),
+          },
+          operation:
+            operation.type === "review" && selection ? { ...operation, selection } : operation,
+        },
+        zcodeWorkspaceMemoryResultSchema,
+        { timeoutMs: operation.type === "review" ? 15 * 60_000 : 30_000 },
+      );
+    },
+
+    async reviewProjectMemory(params) {
+      const client = await getClient(params);
+      return client.request(
+        zcodeProtocolMethods.sessionReviewProjectMemory,
+        { sessionId: params.sessionId },
+        zcodeSessionReviewProjectMemoryResultSchema,
+        { timeoutMs: 15 * 60_000 },
+      );
+    },
+
+    async readProjectMemoryReview(params) {
+      const client = await getClient(params);
+      return client.request(
+        zcodeProtocolMethods.sessionReadProjectMemoryReview,
+        { sessionId: params.sessionId },
+        zcodeSessionReadProjectMemoryReviewResultSchema,
+      );
+    },
+
+    async cancelProjectMemoryReview(params) {
+      const client = await getClient(params);
+      return client.request(
+        zcodeProtocolMethods.sessionCancelProjectMemoryReview,
+        { sessionId: params.sessionId, reviewId: params.reviewId },
+        zcodeSessionCancelProjectMemoryReviewResultSchema,
+      );
     },
 
     async goalSession(params: ZCodeAgentGoalParams) {

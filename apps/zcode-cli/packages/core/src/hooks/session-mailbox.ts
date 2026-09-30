@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   HookEventName,
   type SessionId,
@@ -9,7 +10,14 @@ import type { HookRegistration } from "./types.js";
 const MAILBOX_DRAIN_LIMIT = 20;
 
 export function createSessionMailboxHookRegistrations(options: {
-  enqueuePendingInput?: (input: string, traceContext: TraceContext) => Promise<void>;
+  enqueuePendingInput?: (
+    input: string,
+    traceContext: TraceContext,
+    message: Awaited<ReturnType<SessionMailboxPort["drainUnread"]>>[number],
+  ) => Promise<void>;
+  onMessagesConsumed?: (
+    messages: Awaited<ReturnType<SessionMailboxPort["drainUnread"]>>,
+  ) => Promise<void>;
   mailbox: SessionMailboxPort;
   sessionId: SessionId;
 }): HookRegistration[] {
@@ -22,15 +30,20 @@ export function createSessionMailboxHookRegistrations(options: {
 
     if (input.hookEventName === HookEventName.PostToolUse && options.enqueuePendingInput) {
       for (const message of messages) {
-        await options.enqueuePendingInput(formatMailboxMessages([message]), {
-          sessionId: options.sessionId,
-          traceId: input.traceId,
-          turnId: input.turnId,
-        });
+        await options.enqueuePendingInput(
+          formatMailboxMessages([message]),
+          {
+            sessionId: options.sessionId,
+            traceId: input.traceId,
+            turnId: input.turnId,
+          },
+          message,
+        );
       }
       return undefined;
     }
 
+    await options.onMessagesConsumed?.(messages);
     const additionalContext = formatMailboxMessages(messages);
     return {
       ...(input.hookEventName === HookEventName.Stop ? { continue: true } : {}),

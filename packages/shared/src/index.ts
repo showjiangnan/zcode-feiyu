@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 export * from "./taskAppServer.js";
 export type {
   FileBinaryPreview,
@@ -198,6 +198,9 @@ export type {
   SaveFileResult,
   PrintPageToPdfResult,
   DesktopCommandId,
+  DesktopZoomState,
+  WindowControlsOverlayMetrics,
+  WindowControlsOverlayReadyPayload,
   CuaOsSupport,
   DesktopWindowChromeState,
   DesktopTitleBarTheme,
@@ -309,3 +312,4 @@ export * from "./pluginStoreOrdering.js";
 export * from "./session-debug.js";
 export { redactFeedbackText } from "./feedbackPrivacy.js";
 export * from "./imageGeneration.js";
+export * from "./continuity-policy.js";

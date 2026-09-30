@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // 原生 prompt turn 运行器。
 //
 // Core admission 只负责接受输入并建立 session-scoped reservation；本文件不再拥有

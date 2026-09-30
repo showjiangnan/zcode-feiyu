@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import {
   databaseStartupControlSchema,
   databaseStartupStateSchema,
@@ -350,6 +350,10 @@ contextBridge.exposeInMainWorld("zcode", {
     ipcRenderer.send(PlatformChannels.SyncAppSettings, patch),
   applyTelemetryConsent: (enabled: boolean): Promise<void> =>
     ipcRenderer.invoke(PlatformChannels.ApplyTelemetryConsent, enabled),
+  readBackgroundContinuity: (): Promise<import("@zcode/shared").BackgroundContinuityStatus> =>
+    ipcRenderer.invoke(PlatformChannels.ReadBackgroundContinuity),
+  stopBackgroundContinuity: (): Promise<import("@zcode/shared").BackgroundContinuityStatus> =>
+    ipcRenderer.invoke(PlatformChannels.StopBackgroundContinuity),
   /** 快捷键设置页录制态开关：main 暂时摘除可配置菜单 accelerator，防止录制按键触发原命令 */
   setShortcutRecordingActive: (active: boolean) =>
     ipcRenderer.send(PlatformChannels.SetShortcutRecordingActive, active),

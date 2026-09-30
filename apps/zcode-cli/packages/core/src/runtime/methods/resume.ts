@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { restorePermissionGrantMarker } from "../helpers/permission-grant-resume.js";
 import { executionStateSchema, resolveExecutionState } from "@zcode/shared";
 import { SESSION_ENTRY_EXECUTION_STATE } from "@zcode/contracts";
@@ -40,6 +41,8 @@ import {
   restoreWorkspaceFileRewindEntries,
 } from "./workspace-checkpoint-persistence.js";
 import { mainTurnCacheHitAggregateFromMessages } from "./turn-model-step-usage.js";
+import { restoreRuntimeOrchestrationMode } from "../orchestration.js";
+import { persistTeamMemberEvent, restorePersistedLocalAgents } from "../team-member-state.js";
 
 export function toScheduleState(
   this: AgentRuntimeInternal,
@@ -214,6 +217,7 @@ export async function resumeFromStore(
   if (savedExecution.success && options?.modeOverride === undefined) {
     Object.assign(this.config, savedExecution.data);
   }
+  await restoreRuntimeOrchestrationMode(this);
 
   await restorePermissionGrantMarker(this, traceContext);
 
@@ -225,6 +229,53 @@ export async function resumeFromStore(
     (message) => message.info.role === "user" && !message.info.summary,
   ).length;
   this.sessionPersisted = true;
+  if (this.teamBoardPort) {
+    await this.teamBoardPort.execute({ action: "list" }, "coordinator");
+  }
+  const interruptedAgents = await restorePersistedLocalAgents(this, restoredEvents);
+  for (const agent of interruptedAgents) {
+    if (agent.isBackgrounded) {
+      await this.appendEvent(
+        this.createEvent(
+          SessionEventType.BackgroundTaskCompleted,
+          {
+            taskId: agent.agentId,
+            // 冷恢复终态沿用出生分支与真实运行身份，避免下次恢复被错归初始分支。
+            branchGeneration: agent.branchGeneration ?? this.branchGeneration,
+            ...(agent.traceContext?.spanId ? { runId: agent.traceContext.spanId } : {}),
+            toolCallId: String(agent.parentToolCallId ?? ""),
+            toolName: "Agent",
+            taskKind: "subagent",
+            childSessionId: agent.childSessionId,
+            cancellable: false,
+            description: agent.description,
+            status: "lost",
+            startedAt: agent.startedAt,
+            completedAt: agent.completedAt,
+          },
+          traceContext,
+        ),
+        traceContext,
+      );
+    }
+    const lostEvent = this.createEvent(
+      SessionEventType.SubagentStopped,
+      {
+        agentId: agent.agentId,
+        agentType: agent.agentType,
+        branchGeneration: agent.branchGeneration ?? this.branchGeneration,
+        ...(agent.traceContext?.spanId ? { runId: agent.traceContext.spanId } : {}),
+        background: agent.isBackgrounded === true,
+        childSessionId: agent.childSessionId,
+        parentToolCallId: agent.parentToolCallId,
+        status: "lost",
+        error: agent.error,
+      },
+      traceContext,
+    );
+    if (await persistTeamMemberEvent(this, lostEvent))
+      await this.appendEvent(lostEvent, traceContext);
+  }
   await syncPersistedSessionTitleForResume.call(this, {
     restoredEvents,
     session,
@@ -260,6 +311,30 @@ export async function resumeFromStore(
     HookEventName.SessionStart,
     sessionStartHookResult.additionalContexts,
   );
+  if (this.teamMessageLedger && this.subagentPort?.sendMessage) {
+    try {
+      await this.teamMessageLedger.replay({
+        branchGeneration: this.branchGeneration,
+        canDeliver: true,
+        resolveMember: (agentId) => {
+          const task = this.runtimeTaskRegistry.get(agentId);
+          return task?.teamMemberName && task.parentSessionId === this.sessionId
+            ? { childSessionId: task.childSessionId, status: task.status }
+            : undefined;
+        },
+        send: (request) => this.subagentPort!.sendMessage!(request),
+        trace: traceContext,
+        workingDirectory: this.workingDirectory,
+        workspaceRoot: this.workspaceRoot,
+      });
+    } catch (error) {
+      this.logger?.warn("Team message recovery remains pending", {
+        event: "team_message.replay_failed",
+        errorMessage: error instanceof Error ? error.message : String(error),
+        sessionId: this.sessionId,
+      });
+    }
+  }
 
   if (messages.length > 0 && activeMessages.length === 0) {
     this.logger?.warn("Session resume produced zero active messages", {

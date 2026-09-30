@@ -1,5 +1,13 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { createLocalTtftExporter } from "./localTtftExporter.js";
+import {
+  canDispatchToBackgroundWindow,
+  createBackgroundContinuityController,
+} from "./desktopDarwinCloseBehavior.js";
+import {
+  APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
+  appRuntimePreferencesChangedBroadcastPayloadSchema,
+} from "@zcode/shared";
 /* eslint-disable max-lines */
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
@@ -8,6 +16,8 @@ import { crashCapturePaths } from "./appCrashCaptureBootstrap.js";
 import { setArmsTelemetryAllowed } from "./appARMSBootstrap.js";
 import {
   onLocalDatabaseStartupReady,
+  onHostDatabaseReady,
+  isHostDatabaseReady,
   configureDatabaseStartupQuit,
 } from "./databaseStartupRelay.js";
 import armsRum from "@arms/rum-electron";
@@ -197,6 +207,7 @@ import {
 import { resolveCanonicalWslTarget } from "./desktopWslTargetResolver.js";
 import {
   listRegisteredHostAgentProcessIds,
+  isMainApplicationWindowWebContents,
   setBrowserUseGuestWebContentsIdsProvider,
 } from "./resourceManagerWindow.js";
 import { createDesktopHelpConfigReader } from "./desktopHelpConfig.js";
@@ -295,6 +306,7 @@ const linuxDesktopIntegrationIconPath =
     : iconPath;
 let currentApplicationLocale: Locale = DEFAULT_LOCALE;
 let closeToTrayOnWindows = true;
+let continueAfterCloseOnMac = false;
 // keep-awake：全局开关 keepAwakeWhileRunning。打开后主进程持有
 // powerSaveBlocker("prevent-app-suspension")，阻止系统闲置休眠（防不了合盖/手动睡眠）。
 // 不再绑定闲时任务活跃计数——设置页「常规」与 Automations 入口镜像同一配置。
@@ -536,7 +548,79 @@ let activeAppShutdownPolicy = resolveAppShutdownPolicy("normal", process.platfor
 let activeAppShutdownKind: AppShutdownKind | null = null;
 const WINDOWS_AGENT_FORCE_KILL_TIMEOUT_MS = 2_000;
 
-const broadcastHub = new BroadcastHub();
+let appliedNativePolicyRevision = 0;
+let admittedNativePolicyRevision = 0;
+let admittedNativePolicy:
+  | import("@zcode/shared").AppRuntimePreferencesChangedBroadcastPayload
+  | undefined;
+let nativePolicyTail = Promise.resolve();
+const broadcastHub = new BroadcastHub(async (message, sourceWindowId) => {
+  if (message.channel !== APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL) return;
+  const policy = appRuntimePreferencesChangedBroadcastPayloadSchema.parse(message.payload);
+  const apply = nativePolicyTail.then(
+    async (): Promise<import("@zcode/shared").RuntimePolicyAcknowledgement> => {
+      if (
+        policy.policyRevision < Math.max(admittedNativePolicyRevision, appliedNativePolicyRevision)
+      )
+        return { policyRevision: appliedNativePolicyRevision, status: "superseded" };
+      if (
+        admittedNativePolicy &&
+        policy.policyRevision === admittedNativePolicy.policyRevision &&
+        JSON.stringify(policy) !== JSON.stringify(admittedNativePolicy)
+      )
+        return {
+          policyRevision: appliedNativePolicyRevision,
+          status: "failed",
+          error: "Conflicting native policy at the same revision",
+        };
+      admittedNativePolicyRevision = policy.policyRevision;
+      admittedNativePolicy = policy;
+      try {
+        if (process.platform === "darwin" && policy.continueAfterCloseOnMac !== undefined) {
+          const wasEnabled = continueAfterCloseOnMac;
+          continueAfterCloseOnMac = policy.continueAfterCloseOnMac;
+          if (
+            !continueAfterCloseOnMac &&
+            (wasEnabled ||
+              readBackgroundContinuity().error !== null ||
+              getMainApplicationWindows().some((window) => !window.isVisible()))
+          ) {
+            // 隐藏窗口的远控设置提交仍由原 Host 持有；转回前台后再停其他后台 Host，避免杀死自己的提交者。
+            const sourceWindow = getMainApplicationWindows().find(
+              (window) => window.webContents.id === sourceWindowId,
+            );
+            if (
+              process.platform === "darwin" &&
+              sourceWindow &&
+              !sourceWindow.isDestroyed() &&
+              !sourceWindow.isVisible()
+            )
+              sourceWindow.show();
+            const result = await backgroundContinuity.stop("permission_revoked", sourceWindowId);
+            if (result.error) throw new Error(result.error);
+          }
+        }
+        if (policy.telemetryReportingEnabled !== undefined)
+          await applyPersistedTelemetryConsent(policy.telemetryReportingEnabled, {
+            hostsAlreadyApplied: true,
+          });
+        appliedNativePolicyRevision = policy.policyRevision;
+        return { policyRevision: appliedNativePolicyRevision, status: "applied" };
+      } catch (error) {
+        return {
+          policyRevision: appliedNativePolicyRevision,
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
+  );
+  nativePolicyTail = apply.then(
+    () => {},
+    () => {},
+  );
+  return apply;
+});
 const taskRealtimeBus = new TaskRealtimeBus({ logger });
 // 内存诊断计数器：desktopResourceTelemetry 每 60s collect
 // 一次写主日志。will-download 监听数用于观察关窗后 defaultSession 是否残留监听。
@@ -629,6 +713,39 @@ const cuaPipFocusRouter = createCuaPipFocusRouter({
   },
 });
 const hostRunningTaskCountMap = new Map<ElectronUtilityProcess, number>();
+const backgroundContinuity = createBackgroundContinuityController({
+  platform: process.platform,
+  enabled: () => continueAfterCloseOnMac,
+  hosts: () =>
+    getMainApplicationWindows().map((win) => {
+      const host = windowHostProcessMap.get(win.webContents.id);
+      return {
+        windowId: win.webContents.id,
+        visible: win.isVisible(),
+        ready: Boolean(
+          host && isHostDatabaseReady(host) && !listDisposingHostProcesses().includes(host),
+        ),
+        runningTasks: host ? (hostRunningTaskCountMap.get(host) ?? 0) : 0,
+      };
+    }),
+  stopHost: async (windowId) => {
+    const win = getMainApplicationWindows().find((window) => window.webContents.id === windowId);
+    if (!win) return;
+    const host = windowHostProcessMap.get(windowId);
+    if (host)
+      await disposeHostProcessAndWait(host, "background-stop", disposingHostProcessTimers, logger, {
+        forceKillDelayMs: 10_000,
+        waitTimeoutMs: 25_000,
+        rejectOnTimeout: true,
+        rejectOnFailure: true,
+      });
+    if (!win.isDestroyed()) win.destroy();
+  },
+});
+const readBackgroundContinuity = backgroundContinuity.read;
+function stopBackgroundContinuity(): Promise<import("@zcode/shared").BackgroundContinuityStatus> {
+  return backgroundContinuity.stop();
+}
 const windowsCuaOperationIndicator = createWindowsCuaOperationIndicator({
   platform: process.platform,
   getLocale: () => currentApplicationLocale,
@@ -657,8 +774,16 @@ function wakeOffPeakScheduler(offPeakTaskId?: string): void {
 }
 // 选一个本地 host 执行派发：本期本地 workspace 由任一本地窗口 host 的 createTask 按 path 拉起/复用 agent。
 function resolveCronDispatchHost(): ElectronUtilityProcess | null {
-  const first = windowHostProcessMap.values().next();
-  return first.done ? null : first.value;
+  for (const win of getMainApplicationWindows()) {
+    if (backgroundContinuity.isStoppingWindow(win.webContents.id)) continue;
+    if (!canDispatchToBackgroundWindow(process.platform, win.isVisible(), continueAfterCloseOnMac))
+      continue;
+    const host = windowHostProcessMap.get(win.webContents.id);
+    // 只把任务交给数据库已就绪的 Host；进程存在但仍在启动的 Host 视同暂无可用 Host。
+    if (host && isHostDatabaseReady(host) && !listDisposingHostProcesses().includes(host))
+      return host;
+  }
+  return null;
 }
 const disposingHostProcessTimers = new WeakMap<
   ElectronUtilityProcess,
@@ -918,7 +1043,15 @@ function focusForceUpdateGateWindow() {
 }
 
 const primaryWindowCoordinator = createPrimaryWindowCoordinator({
-  listWindows: getApplicationWindowsExcludingCuaIndicator,
+  // Dock/activate 不能唤起更新/资源辅助窗，也不能复用已进入停止屏障的旧 Host 窗口。
+  listWindows: () =>
+    getMainApplicationWindows().filter((win) => {
+      const host = windowHostProcessMap.get(win.webContents.id);
+      return (
+        !backgroundContinuity.isStoppingWindow(win.webContents.id) &&
+        (!host || !listDisposingHostProcesses().includes(host))
+      );
+    }),
   resolveStartupWindowBootstrap: () => {
     if (startupOpenWorkspaceRequest) {
       const request = startupOpenWorkspaceRequest;
@@ -982,6 +1115,8 @@ function syncCloseToTrayOnWindows(value: unknown) {
 function syncImmediateAppSettings(patch: Partial<AppSettings>) {
   syncCloseToTrayOnWindows(patch.closeToTrayOnWindows);
 
+  // 后台许可由带版本和 ACK 的策略提交拥有；旧 Renderer 的即时同步不能覆盖新许可。
+
   if (typeof patch.keepAwakeWhileRunning === "boolean") {
     keepAwakeWhileRunning = patch.keepAwakeWhileRunning;
     reconcileKeepAwakeBlocker();
@@ -1012,7 +1147,10 @@ function syncImmediateAppSettings(patch: Partial<AppSettings>) {
 
 let telemetryConsentApplyTail: Promise<void> = Promise.resolve();
 let telemetryConsentApplyRevision = 0;
-function applyPersistedTelemetryConsent(enabled: boolean): Promise<void> {
+function applyPersistedTelemetryConsent(
+  enabled: boolean,
+  options: { hostsAlreadyApplied?: boolean } = {},
+): Promise<void> {
   const revision = ++telemetryConsentApplyRevision;
   // 关闭不能排在旧的远程 ACK 后面；本地出口立即撤销，Host 继续按序收口。
   if (!enabled) {
@@ -1022,10 +1160,11 @@ function applyPersistedTelemetryConsent(enabled: boolean): Promise<void> {
   const apply = telemetryConsentApplyTail
     .catch(() => {})
     .then(async () => {
-      const settings = await mainSettingService.get();
+      // Versioned broadcast 已等全部 Host 收口；再读提交者的 Setting/发第二轮 ACK 会形成持锁等待环。
+      const settings = options.hostsAlreadyApplied ? undefined : await mainSettingService.get();
       if (
         revision !== telemetryConsentApplyRevision ||
-        settings.telemetryReportingEnabled !== enabled
+        (settings && settings.telemetryReportingEnabled !== enabled)
       ) {
         throw new Error("Telemetry consent no longer matches the persisted setting.");
       }
@@ -1041,7 +1180,7 @@ function applyPersistedTelemetryConsent(enabled: boolean): Promise<void> {
       if (revision !== telemetryConsentApplyRevision) {
         throw new Error("Telemetry consent was superseded by a newer request.");
       }
-      await taskRealtimeBus.applyTelemetryConsent(enabled);
+      if (!options.hostsAlreadyApplied) await taskRealtimeBus.applyTelemetryConsent(enabled);
       if (revision !== telemetryConsentApplyRevision) {
         throw new Error("Telemetry consent was superseded by a newer request.");
       }
@@ -1130,11 +1269,15 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
   const hostProcesses = [
     ...new Set([...windowHostProcessMap.values(), ...listDisposingHostProcesses()]),
   ];
+  const quitStartedAt = Date.now();
+  const quitWindowIds = new Map([...windowHostProcessMap].map(([id, host]) => [host, id]));
+  const quitStopTargets: import("@zcode/shared").BackgroundContinuityStopRecord["targets"] = [];
   logger.info(
     `[app-quit] waiting for host process cleanup (${reason}), kind=${activeAppShutdownKind}, hosts=${hostProcesses.length}, forceKillDelayMs=${activeAppShutdownPolicy.forceKillDelayMs}, waitTimeoutMs=${activeAppShutdownPolicy.waitTimeoutMs}`,
   );
 
-  appQuitPreparationInFlight = Promise.all([
+  // 旁路清理失败也必须等全部 Host 退出结果，不能提前释放应用退出屏障。
+  appQuitPreparationInFlight = Promise.allSettled([
     // 退出屏障结束后再启动窗口尺寸写入，可能在 app.exit 前留下 setting.json.lock。
     // 尺寸已在 resize 防抖或最大化状态变化时保存，退出屏障不再创建新的尺寸写入。
     // 修复原因：Main 过去不会等待仍在发送的 /event/report，正常退出也会直接丢事件。
@@ -1165,12 +1308,33 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
         {
           forceKillDelayMs: activeAppShutdownPolicy.forceKillDelayMs,
           waitTimeoutMs: activeAppShutdownPolicy.waitTimeoutMs,
+          rejectOnTimeout: true,
+          rejectOnFailure: true,
+        },
+      ).then(
+        () => {
+          const windowId = quitWindowIds.get(child);
+          if (windowId !== undefined) quitStopTargets.push({ windowId, status: "stopped" });
+        },
+        (error: unknown) => {
+          const windowId = quitWindowIds.get(child);
+          if (windowId !== undefined)
+            quitStopTargets.push({
+              windowId,
+              status: "failed",
+              error: error instanceof Error ? error.message : String(error),
+            });
+          logger.warn(`[app-quit] host cleanup was not confirmed (${reason})`, error);
         },
       ),
     ),
   ])
-    .then(() => {
-      logger.info(`[app-quit] host process cleanup completed (${reason})`);
+    .then((results) => {
+      backgroundContinuity.recordAppQuit(quitStartedAt, quitStopTargets);
+      for (const result of results)
+        if (result.status === "rejected")
+          logger.warn(`[app-quit] cleanup phase failed (${reason})`, result.reason);
+      logger.info(`[app-quit] host process cleanup settled (${reason})`);
     })
     .catch((error) => {
       logger.error(`[app-quit] host process cleanup failed (${reason}):`, error);
@@ -1548,7 +1712,10 @@ function getApplicationWindowsExcludingCuaIndicator(): BrowserWindow[] {
 }
 
 function getMainApplicationWindows(): BrowserWindow[] {
-  return getApplicationWindowsExcludingCuaIndicator().filter((win) => win !== updateStatusWindow);
+  // 复用窗口创建点已有的唯一角色注册表；辅助窗口不能成为 Dock、Cron 或后台停止目标。
+  return getApplicationWindowsExcludingCuaIndicator().filter((win) =>
+    isMainApplicationWindowWebContents(win.webContents.id),
+  );
 }
 
 function isUpdateStatusWindowCloseLocked(state: UpdateStatePayload) {
@@ -1768,6 +1935,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     preloadPath,
     logger,
     forceQuitRef,
+    shouldContinueAfterCloseOnMac: () => continueAfterCloseOnMac,
     handleBeforeClose: (win, label) =>
       handleDesktopWindowCloseRequest({
         platform: process.platform,
@@ -2040,6 +2208,8 @@ app.whenReady().then(async () => {
       currentApplicationLocale = bootstrapSettings.locale;
     }
     closeToTrayOnWindows = bootstrapSettings.closeToTrayOnWindows ?? true;
+    continueAfterCloseOnMac = bootstrapSettings.continueAfterCloseOnMac ?? false;
+    appliedNativePolicyRevision = bootstrapSettings.policyRevision ?? 0;
     keepAwakeWhileRunning = bootstrapSettings.keepAwakeWhileRunning ?? false;
     currentDesktopZoomLevel = clampDesktopZoomLevel(bootstrapSettings.desktopZoomLevel ?? 0);
     currentDesktopWindowSize = bootstrapSettings.desktopWindowSize;
@@ -2066,6 +2236,10 @@ app.whenReady().then(async () => {
     } catch (error) {
       logger.error("[cron-scheduler] failed to spawn scheduler process:", error);
     }
+  });
+  // 重新开窗或 Host 重建后就绪：立即唤醒等待 Host 的原运行记录，不等退避到期。
+  onHostDatabaseReady(() => {
+    cronScheduler?.wakeForHostReady();
   });
 
   if (process.platform === "win32") {
@@ -2249,6 +2423,8 @@ app.whenReady().then(async () => {
     }),
     syncAppSettings: syncImmediateAppSettings,
     applyTelemetryConsent: applyPersistedTelemetryConsent,
+    readBackgroundContinuity,
+    stopBackgroundContinuity,
     setShortcutRecordingActive,
     deviceMid,
   });

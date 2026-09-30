@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   type IMemoryService,
   type ProjectMemoryFileSummary,
@@ -109,7 +110,8 @@ function compareProjectMemoryFiles(
   return left.name.localeCompare(right.name, "en");
 }
 
-export function createMemoryService(): IMemoryService {
+export function createMemoryService(controlled?: IMemoryService): IMemoryService {
+  if (controlled) return controlled;
   async function listProjectMemories(): Promise<ProjectMemoryWorkspaceSummary[]> {
     let projectsRoot: string;
     let projectEntries;

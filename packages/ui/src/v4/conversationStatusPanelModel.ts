@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { GitRepositorySummary } from "@zcode/shared";
 import type {
   BackgroundWorkSummary,
@@ -113,6 +114,8 @@ export interface ConversationStatusPanelModel {
   sessionPlans: ConversationStatusPanelSessionPlansModel | null;
   plan: ConversationStatusPanelPlanModel | null;
   runningBashWorks: BackgroundWorkSummary[];
+  /** 记忆提取、整理与主动执行（复审 GAP-03）；与终端并列展示，复用同一行组件与停止入口。 */
+  runningContinuityWorks: BackgroundWorkSummary[];
   runningSubagentWorks: ConversationStatusPanelRunningSubagent[];
   runningWorkflowRuns: ConversationStatusPanelWorkflowRun[];
 }
@@ -303,6 +306,8 @@ export function buildConversationStatusPanelModel(
   const sessionPlans = buildSessionPlansModel(input.sessionPlans, input.workspacePath);
   const plan = buildPlanModel(input.plan);
   const runningBashWorks: BackgroundWorkSummary[] = [];
+  // 记忆提取、整理与主动执行接进后台抽屉（复审 GAP-03）：与终端并列展示，复用既有行组件与停止入口。
+  const runningContinuityWorks: BackgroundWorkSummary[] = [];
   const workflowWorkByWorkId = new Map<string, BackgroundWorkSummary>();
   const subagentControlByChildSessionId = new Map<string, BackgroundWorkSummary | null>();
   for (const work of input.backgroundWorks ?? []) {
@@ -320,6 +325,12 @@ export function buildConversationStatusPanelModel(
     if (work.status !== "running") continue;
     if (work.kind === "bash") {
       runningBashWorks.push(work);
+    } else if (
+      work.kind === "memory_extraction" ||
+      work.kind === "memory_review" ||
+      work.kind === "proactive"
+    ) {
+      runningContinuityWorks.push(work);
     } else if (work.kind === "subagent" && work.childSessionId) {
       // 目录投影接管 Agent 展示后，旧 backgroundWorks 的 workId/cancellable
       // 没有再关联回来，导致 Stop 入口消失。只接受唯一 childSessionId 精确匹配；重复或
@@ -370,6 +381,7 @@ export function buildConversationStatusPanelModel(
     sessionPlans,
     plan,
     runningBashWorks,
+    runningContinuityWorks,
     runningSubagentWorks,
     runningWorkflowRuns,
     hasContent: Boolean(
@@ -378,6 +390,7 @@ export function buildConversationStatusPanelModel(
       sessionPlans ||
       plan ||
       runningBashWorks.length > 0 ||
+      runningContinuityWorks.length > 0 ||
       runningSubagentWorks.length > 0 ||
       runningWorkflowRuns.length > 0,
     ),

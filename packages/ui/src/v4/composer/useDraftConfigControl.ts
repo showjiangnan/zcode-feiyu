@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { applyComposerPermissionGrant } from "@/v4/composer/composerPermissionGrant.js";
 /* eslint-disable max-lines -- Composer 草稿 owner 同时收口选择、正文与提交生命周期，保持单一状态边界。 */
 // Composer 的模式/模型选择与正文使用同一 scope 草稿；Session 只提供一次初始化种子。
@@ -14,7 +15,7 @@ import type {
   ZCodeProvider,
   ZCodeSlashCommand,
 } from "@zcode/shared";
-import type { SessionConfigState } from "@zcode/shared/zcode-protocol-v4";
+import type { OrchestrationMode, SessionConfigState } from "@zcode/shared/zcode-protocol-v4";
 import type { IModelSelectionService } from "@zcode/services";
 import { completeNewModelSelection } from "@zcode/provider";
 import {
@@ -97,6 +98,7 @@ interface DraftConfigControl {
   handleDraftSelectModel: (modelProvider: string, model: string) => void;
   handleDraftSelectThought: (thought: string) => void;
   handleDraftSwitchMode: (mode: string) => void;
+  handleDraftSetOrchestrationMode: (mode: OrchestrationMode) => void;
 }
 
 export function useDraftConfigControl(params: {
@@ -187,8 +189,13 @@ export function useDraftConfigControl(params: {
       provider: effectiveSelection?.providerId ?? "",
       model: effectiveSelection?.modelId ?? "",
       thought: effectiveSelection?.options?.reasoningLevel ?? "",
+      orchestration: {
+        requested: draft.orchestrationMode ?? "standard",
+        effective: draft.orchestrationMode ?? "standard",
+        revision: 0,
+      },
     }),
-    [draft.mode, draft.planEnabled, effectiveSelection],
+    [draft.mode, draft.planEnabled, draft.orchestrationMode, effectiveSelection],
   );
   const draftConfigRef = useRef(draftConfig);
   draftConfigRef.current = draftConfig;
@@ -223,6 +230,11 @@ export function useDraftConfigControl(params: {
         provider: selection?.providerId ?? "",
         model: selection?.modelId ?? "",
         thought: selection?.options?.reasoningLevel ?? "",
+        orchestration: {
+          requested: next.orchestrationMode ?? "standard",
+          effective: next.orchestrationMode ?? "standard",
+          revision: 0,
+        },
       };
       setStoredState(nextState);
       persistV4ComposerDraft(workspacePath, workspaceIdentity, scopeId, next);
@@ -271,11 +283,7 @@ export function useDraftConfigControl(params: {
   );
   const resolveInitialDraftConfig = useCallback((): Partial<SessionConfigState> | undefined => {
     if (!draftConfigRef.current.mode) return undefined;
-    const config = { ...draftConfigRef.current };
-    if (appFollowupMode) {
-      config.followupMode = appFollowupMode;
-    }
-    return config;
+    return buildDraftCreateConfigPayload(draftConfigRef.current, appFollowupMode).config;
   }, [appFollowupMode]);
 
   const updateComposerContent = useCallback(
@@ -480,6 +488,13 @@ export function useDraftConfigControl(params: {
     [updateComposerDraft],
   );
 
+  const handleDraftSetOrchestrationMode = useCallback(
+    (mode: OrchestrationMode) => {
+      updateComposerDraft((current) => ({ ...current, orchestrationMode: mode }));
+    },
+    [updateComposerDraft],
+  );
+
   return {
     modelSelectionRead,
     draftConfig,
@@ -493,6 +508,7 @@ export function useDraftConfigControl(params: {
     handleDraftSelectModel,
     handleDraftSelectThought,
     handleDraftSwitchMode,
+    handleDraftSetOrchestrationMode,
   };
 }
 
@@ -500,8 +516,14 @@ export function useDraftConfigControl(params: {
 export function buildDraftCreateConfigPayload(
   draftConfig: Partial<SessionConfigState>,
   appFollowupMode?: SessionConfigState["followupMode"] | null,
-): { config?: Partial<SessionConfigState> } {
-  const config: Partial<SessionConfigState> = { ...draftConfig };
+): { config?: Partial<SessionConfigState> & { orchestrationMode?: OrchestrationMode } } {
+  const { orchestration, ...rest } = draftConfig;
+  const config: Partial<SessionConfigState> & { orchestrationMode?: OrchestrationMode } = {
+    ...rest,
+    ...(orchestration?.requested && orchestration.requested !== "standard"
+      ? { orchestrationMode: orchestration.requested }
+      : {}),
+  };
   if (appFollowupMode) {
     config.followupMode = appFollowupMode;
   }

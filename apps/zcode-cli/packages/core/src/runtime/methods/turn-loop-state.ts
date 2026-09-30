@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type {
   CompactPhase,
   CompactReason,
@@ -99,6 +100,10 @@ export interface RegularTurnLoopState {
   /** Core Server 的前台 child Selection override；优先于 profile 与父模型继承。 */
   subagentModelOverride?: SubagentRunOptions["modelOverride"];
   modelStepCount: number;
+  /** 回合起点已注入的相关记忆主题；回合内后续请求据此去重（复审 GAP-01）。 */
+  recalledMemoryTopics?: string[];
+  /** 本回合已遍历到的记忆候选路径；回合内各步骤复用，避免重复目录遍历。 */
+  memoryCandidatePaths?: readonly string[];
   /** 当前 query 已成功写入 provider 可见持久历史的 assistant/compact 产物数量。 */
   historyRoundCount: number;
   reactiveCompactAttemptedInCurrentModelStep: boolean;

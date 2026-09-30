@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   RewindScope,
   SessionEventType,
@@ -33,6 +34,7 @@ import type {
   ExecuteToolsResult,
 } from "../types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
+import { isOrchestrationParentToolAllowed } from "../orchestration-tools.js";
 import { createMcpToolDisplay } from "../../tool/executor/result-display.js";
 
 export async function scheduleTools(
@@ -66,6 +68,17 @@ export async function executeTools(
   schedule: ToolSchedule,
   options?: ExecuteToolsOptions,
 ): Promise<ExecuteToolsResult> {
+  for (const toolCall of toolCalls) {
+    if (
+      !isOrchestrationParentToolAllowed(
+        toolCall.name,
+        this.orchestration.effective,
+        Boolean(this.config.parentSessionId && this.teamBoardPort),
+      )
+    ) {
+      throw new Error(`Tool ${toolCall.name} is unavailable to the coordinator parent`);
+    }
+  }
   const executableCalls: ExecutableToolCall[] = toolCalls.map((tc) => ({
     id: tc.id,
     name: tc.name,

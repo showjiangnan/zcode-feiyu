@@ -1,6 +1,6 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- subagent runtime wiring 集中衔接 child runtime、tool pool、权限、MCP 与 activity watchdog，拆分需单独迁移。 */
-import { RESPOND_TO_COORDINATOR_TOOL_NAME } from "@zcode/contracts";
+import { RESPOND_TO_COORDINATOR_TOOL_NAME, SessionEventType } from "@zcode/contracts";
 import type { SubagentRunOptions } from "@zcode/contracts";
 import {
   defaultScheduler,
@@ -27,7 +27,12 @@ import type {
 import { AgentRuntime } from "../agent-runtime.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { cloneModelSelection } from "../model-selection.js";
-import { resolveSubagentSelection } from "../helpers/subagent-selection.js";
+import { resolveContinuityPolicy } from "../helpers/continuity-policy.js";
+import {
+  resolveResumedChildSelection,
+  resolveSubagentSelection,
+} from "../helpers/subagent-selection.js";
+import { sameModelSelection } from "./turn-model.js";
 import type { AgentRuntimeDeps } from "../types.js";
 import { toMcpToolName } from "../../mcp/index.js";
 import { createBorrowedSubagentMcpAccess } from "../../subagent/borrowed-mcp-port.js";
@@ -56,6 +61,8 @@ import {
   type OfficialCuaPolicy,
 } from "../../subagent/computer-use-policy.js";
 import { computeOfficialCuaServerNames } from "./mcp.js";
+import { createTeamMemberPorts } from "../team-member.js";
+import { persistTeamMemberEvent } from "../team-member-state.js";
 
 export function createDefaultSubagentPort(
   this: AgentRuntimeInternal,
@@ -73,8 +80,13 @@ export function createDefaultSubagentPort(
     profiles: this.config.subagents?.profiles,
     builtInModelSelectionOverrides: this.config.subagents?.builtInModelSelectionOverrides,
     runtimeTaskRegistry: this.runtimeTaskRegistry,
+    teamMessageLedger: this.teamMessageLedger,
+    getBranchGeneration: () => this.branchGeneration,
+    allowNamedMembers: () => this.orchestration.effective === "swarm",
     emitParentEvent: async (event, traceContext) => {
       if (isStaleBranchRuntimeTaskEvent(this, event)) return;
+      // 默认 eventStore 仅在内存；必须先保存成员事实，否则进程重启丢失可恢复目录。
+      if (!(await persistTeamMemberEvent(this, event))) return;
       await this.appendEvent(event, traceContext);
     },
     enqueueParentTaskNotification: (notification) => {
@@ -98,14 +110,27 @@ export function createDefaultSubagentPort(
         request.profile.injectAgentsMd !== false
           ? this.contextSourceSnapshot?.userInstructions
           : undefined;
+      const parentSelection = this.getSessionModelSelection();
+      // 续跑已有 child 时沿用它自己已持久化的模型选择（复审 DEF-16）；显式覆盖或 profile 固定模型始终优先。
+      const resumedSelection = await resolveResumedChildSelection({
+        store: deps.sessionStore,
+        childSessionId: request.sessionId,
+        hasExplicitModel: Boolean(options?.modelOverride) || request.profile.modelSelection != null,
+        validate: deps.resolveEffectiveModelSelection,
+      });
       const { selection: profileChildSelection, hasConcreteModel } = resolveSubagentSelection({
         profileSelection: request.profile.modelSelection,
-        parentSelection: this.getSessionModelSelection(),
+        parentSelection: resumedSelection ?? parentSelection,
         overrideSelection: options?.modelOverride?.selection,
         resolveSelection: deps.resolveEffectiveModelSelection,
       });
       const modelOverride = options?.modelOverride;
-      const inheritedModel = !modelOverride && !hasConcreteModel ? options?.model : undefined;
+      // 父的模型句柄对应父的当前选择：续跑选择与之不同就必须按持久化选择另建模型，不能复用父句柄。
+      const parentHandleMatches =
+        !resumedSelection ||
+        (parentSelection !== undefined && sameModelSelection(resumedSelection, parentSelection));
+      const inheritedModel =
+        !modelOverride && !hasConcreteModel && parentHandleMatches ? options?.model : undefined;
       // Core Server override 优先于持久化 profile 与父模型继承，但仍只是标准 Selection。
       const childSelection = inheritedModel
         ? modelSelectionFromActiveModel(inheritedModel)
@@ -267,7 +292,7 @@ export function createDefaultSubagentPort(
             ...(agentsMdInstructions ? { userInstructions: agentsMdInstructions } : {}),
           },
           agentName: `zcode-${request.agentType}`,
-          maxTurns: request.maxTurns ?? this.config.subagents?.maxTurns ?? 4,
+          maxTurns: request.maxTurns ?? this.config.subagents?.maxTurns,
           parentSessionId: this.sessionId,
           taskType: "subagent_child",
           // 动态工作流灰度门必须结构性继承：
@@ -296,9 +321,14 @@ export function createDefaultSubagentPort(
           agentTelemetryCausationMode: request.background ? "linked_root" : "child",
           eventStore: this.eventStore,
           sessionStore: deps.sessionStore,
+          ...(this.orchestration.effective === "swarm" && request.teamMemberName
+            ? createTeamMemberPorts(this, { ...request, teamMemberName: request.teamMemberName })
+            : {}),
           // 子 runtime 继承父的模型请求准入端口：subagent 的请求 provider 同样看得见，
           // 它们该与父一样喂治理器信号（父是 observer 则子也是 observer）。
           modelRequestAdmission: this.modelRequestAdmission,
+          // 子 runtime 不持有策略副本：读取根的当前策略与修订，收紧/放宽确认后对其下一次准入即时生效。
+          continuityPolicySource: () => resolveContinuityPolicy(this),
           modelFactory: childModelFactory,
           resolveEffectiveModelSelection: deps.resolveEffectiveModelSelection,
           // 子 runtime 自己仍使用 request.sessionId 做事件持久化和 trace 归档；对外阻塞交互
@@ -334,6 +364,37 @@ export function createDefaultSubagentPort(
           eventSink: {
             onSessionEvent: async (event) => {
               request.reportActivity?.();
+              if (event.type === SessionEventType.TurnSteerDrained && this.teamMessageLedger) {
+                const payload = event.payload as { pendingInputIds?: string[] };
+                for (const messageId of payload.pendingInputIds ?? []) {
+                  try {
+                    await this.teamMessageLedger.reconcile(messageId, request.sessionId);
+                  } catch (error) {
+                    this.logger?.warn("Team message promotion reconciliation failed", {
+                      event: "team_message.reconcile_failed",
+                      messageId,
+                      errorMessage: error instanceof Error ? error.message : String(error),
+                    });
+                  }
+                }
+              }
+              if (event.type === SessionEventType.SessionInputPromoted && this.teamMessageLedger) {
+                const payload = event.payload as { pendingInputId?: string };
+                if (payload.pendingInputId) {
+                  try {
+                    await this.teamMessageLedger.reconcile(
+                      payload.pendingInputId,
+                      request.sessionId,
+                    );
+                  } catch (error) {
+                    this.logger?.warn("Team message promotion reconciliation failed", {
+                      event: "team_message.reconcile_failed",
+                      messageId: payload.pendingInputId,
+                      errorMessage: error instanceof Error ? error.message : String(error),
+                    });
+                  }
+                }
+              }
               // child runtime 的事件已经按 childSessionId 落库，但旧链路只把
               // 少量工具事件镜像给 parent sink，导致 UI 订阅 child topic 后只能拿到打开时
               // 的 hydration，后续流式内容不会更新。raw child event 只通知父 runtime 的
@@ -398,8 +459,18 @@ export function createDefaultSubagentPort(
       }
       request.registerMessageSink?.(createSubagentMessageSink(childRuntime, request));
       try {
+        if (request.resumeMessageId) {
+          await this.sessionStore?.saveSessionInput?.({
+            id: request.resumeMessageId,
+            sessionID: request.sessionId,
+            kind: "team_message",
+            delivery: "guide",
+            payload: { text: request.prompt },
+          });
+        }
         return await childRuntime.executeTurn(request.prompt, undefined, {
           abortSignal: options?.signal,
+          sessionInputId: request.resumeMessageId,
           // 子 Runtime 的首轮输入来自父 Agent，而不是真实用户直接输入；保留源事实，避免
           // Subagent Turn 在 Trace 和成功率报表里被误归类为 user。
           inputSource: "subagent",

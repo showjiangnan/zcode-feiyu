@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- host process 服务注册和启动装配需要集中维护，拆散后会更难追踪依赖注入顺序 */
 // Node.js service implementations — NOT safe to import in browser code
 import { randomBytes } from "node:crypto";
@@ -12,8 +12,10 @@ import {
   NodeModelSelectionConfigRepository,
   PERSONAL_PROVIDER_CONFIG_FILE_NAME,
 } from "@zcode/provider-node";
-import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
+import { getAppConfigDir as resolveAppConfigDir, getZCodeDataRootDir } from "./paths.js";
 import {
+  APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
+  appRuntimePreferencesChangedBroadcastPayloadSchema,
   buildLocalMediaPreviewUrl,
   isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningTrigger,
@@ -86,6 +88,7 @@ export {
   createSettingServiceWithMigrations,
 } from "./setting/settingService.js";
 export { createCredentialService } from "./credential/credentialService.js";
+export { runtimePolicyFromSettings } from "./setting/runtimePolicyCommit.js";
 export { createBroadcastService } from "./broadcast/broadcastService.js";
 export { createZCodeAgentService } from "./zcode-agent/zcodeAgentService.js";
 export { createZCodeTaskServiceAdapter } from "./zcode-agent/zcodeTaskServiceAdapter.js";
@@ -341,6 +344,10 @@ import { createGitCheckpointService } from "./git/gitCheckpointService.js";
 import { createSystemService } from "./system/systemService.js";
 import { createTerminalService } from "./terminal/terminalService.js";
 import { createSettingServiceWithMigrations } from "./setting/settingService.js";
+import {
+  bindSettingRuntimePolicy,
+  createRuntimePolicyApplier,
+} from "./setting/runtimePolicyCommit.js";
 import { createOnboardingRecordService } from "./onboarding/onboardingRecordService.js";
 import { createLegacyTeamOrganizationResolver } from "./model-provider/legacyTeamOrganizationResolver.js";
 import { createObservableSettingService } from "./setting/observableSettingService.js";
@@ -1295,6 +1302,10 @@ export function createLocalServices(options: {
   parentPort?: Parameters<typeof createBroadcastService>[0];
   /** Host 装配层注入的设置权威；与网络 transport 必须来自同一 Window Host 生命周期。 */
   settingService?: ISettingService;
+  /** 已由窗口 Host 持有的远端连接；仅同步，不建立新连接或读取持锁的 Setting。 */
+  applyRemoteRuntimePolicy?: (
+    policy: import("@zcode/shared").AppRuntimePreferencesChangedBroadcastPayload,
+  ) => Promise<void>;
   /** 与注入的本地 Setting 共用写队列；外部远端 Setting 不传，由其权威 Host 完成迁移。 */
   prepareLegacyAccountConnections?: ReturnType<
     typeof createSettingServiceWithMigrations
@@ -1404,9 +1415,23 @@ export function createLocalServices(options: {
   }
 
   const localSettings = options?.settingService ? null : createSettingServiceWithMigrations();
-  const settingService = createObservableSettingService(
-    options?.settingService ?? localSettings!.service,
-  );
+  const baseSettingService = options?.settingService ?? localSettings!.service;
+  const settingService = createObservableSettingService(baseSettingService);
+  const resolveCurrentAppRuntimePreferences = async () => {
+    const settings = await settingService.get();
+    return {
+      policyRevision: settings.policyRevision ?? 0,
+      continuityPolicy: settings.continuityPolicy,
+      continueAfterCloseOnMac: settings.continueAfterCloseOnMac === true,
+      askUserQuestionAutoResolutionEnabled: settings.askUserQuestionAutoResolutionEnabled !== false,
+      modelIoFullRetentionEnabled: settings.modelIoFullRetentionEnabled === true,
+      telemetryReportingEnabled: settings.telemetryReportingEnabled === true,
+      memoryEnabled: settings.memoryEnabled === true,
+      memoryExtractionEnabled:
+        settings.memoryEnabled === true && settings.memoryExtractionEnabled === true,
+      memoryReviewEnabled: settings.memoryEnabled === true && settings.memoryReviewEnabled === true,
+    };
+  };
   const resolveCurrentZCodeEndpointOrigin = async () =>
     resolveRuntimeZCodeEndpointOrigin(process.env, {
       overrideOrigin: (await settingService.get()).zcodeEndpointOrigin,
@@ -1679,7 +1704,24 @@ export function createLocalServices(options: {
   const hooksService = createHooksService({
     grantWorkspaceHookTrust: (params) => zcodeAgentService.grantWorkspaceHookTrust(params),
   });
-  const memoryService = createMemoryService();
+  const memoryService = createMemoryService({
+    async listProjectMemories() {
+      const result = await zcodeAgentService.workspaceMemory({
+        workspacePath: getZCodeDataRootDir(),
+        operation: { type: "catalog" },
+      });
+      if (result.type !== "catalog") throw new Error("Unexpected memory catalog response");
+      return result.workspaces;
+    },
+    async readProjectMemoryFile(params) {
+      const result = await zcodeAgentService.workspaceMemory({
+        workspacePath: getZCodeDataRootDir(),
+        operation: { type: "readCatalogFile", ...params },
+      });
+      if (result.type !== "file") throw new Error("Unexpected memory file response");
+      return { content: result.content, updatedAt: result.updatedAt };
+    },
+  });
   // 只要当前进程已经装配 Provider Runtime，就由该 Environment 自己的 Selection View
   // 决定执行就绪状态。Desktop-attached remote 也读取远端自己的 Config/Account Facts。
   const modelSelectionReadinessSource = providerRuntime.modelSelection;
@@ -2112,15 +2154,7 @@ export function createLocalServices(options: {
       options?.serviceAuthorityMode === "desktop-local" || isDesktopAttachedRemote,
     ...(options?.serviceAuthorityMode === "desktop-local"
       ? {
-          resolveInitialAppRuntimePreferences: async () => {
-            const settings = await settingService.get();
-            return {
-              askUserQuestionAutoResolutionEnabled:
-                settings.askUserQuestionAutoResolutionEnabled !== false,
-              modelIoFullRetentionEnabled: settings.modelIoFullRetentionEnabled === true,
-              telemetryReportingEnabled: settings.telemetryReportingEnabled === true,
-            };
-          },
+          resolveInitialAppRuntimePreferences: resolveCurrentAppRuntimePreferences,
         }
       : {}),
     ...(agentAccountProviderConfigSource
@@ -2388,6 +2422,10 @@ export function createLocalServices(options: {
                 settings.askUserQuestionAutoResolutionEnabled !== false,
               nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
               memoryEnabled: settings.memoryEnabled === true,
+              memoryExtractionEnabled:
+                settings.memoryEnabled === true && settings.memoryExtractionEnabled === true,
+              memoryReviewEnabled:
+                settings.memoryEnabled === true && settings.memoryReviewEnabled === true,
               modelContextBudgetStrategy,
               // user-execution 只消费 Shell；共享默认策略是统一 result schema 的兼容占位，
               // 不会覆盖 runtime-materialization 阶段已经固定的 strategy。
@@ -2716,7 +2754,7 @@ export function createLocalServices(options: {
         grantWorkspaceHookTrust: (params) => zcodeAgentService.grantWorkspaceHookTrust(params),
       }),
     )
-    .register(IMemoryService, createMemoryService())
+    .register(IMemoryService, memoryService)
     .register(ISettingsSyncService, createSettingsSyncService({ settingService }))
     .register(
       IFeedbackService,
@@ -2785,6 +2823,76 @@ export function createLocalServices(options: {
   sqliteReposToClose.push(taskIndexRepo);
   sharedSqliteRepos.set(services, sqliteReposToClose);
   taskMessageBrokers.set(services, taskMessageBroker);
+  const applyRuntimePolicy = createRuntimePolicyApplier(async (preferences) => {
+    const results = await Promise.allSettled([
+      zcodeAgentService.syncAppRuntimePreferences(preferences).then((ack) => {
+        if (!ack || ack.status !== "applied" || ack.policyRevision !== preferences.policyRevision)
+          throw new Error(
+            ack?.error ?? "Local Agent did not confirm the requested policy revision",
+          );
+      }),
+      services.get(IBotsService).syncAppRuntimePreferences(preferences),
+      options.applyRemoteRuntimePolicy?.(preferences),
+    ]);
+    const failures = results.filter((result) => result.status === "rejected");
+    if (failures.length)
+      throw new AggregateError(
+        failures.map((result) => result.reason),
+        `Runtime policy was not applied to every service: ${failures.map((result) => (result.reason instanceof Error ? result.reason.message : String(result.reason))).join("; ")}`,
+      );
+  });
+  bindSettingRuntimePolicy(baseSettingService, async (preferences) => {
+    const results = await Promise.allSettled([
+      applyRuntimePolicy(preferences),
+      broadcastService.sendWithAcknowledgements({
+        channel: APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
+        payload: preferences,
+      }),
+    ]);
+    const failures = results.filter((result) => result.status === "rejected");
+    const local = results[0];
+    const delivery = results[1];
+    const localFailure =
+      local?.status === "fulfilled" && local.value.status !== "applied"
+        ? (local.value.error ?? local.value.status)
+        : undefined;
+    const receipts = delivery?.status === "fulfilled" ? delivery.value.receipts : undefined;
+    const targetFailures = receipts?.filter((receipt) => receipt.status !== "applied");
+    if (
+      failures.length ||
+      localFailure ||
+      (delivery?.status === "fulfilled" &&
+        (delivery.value.failedCount > 0 ||
+          (delivery.value.targetCount > 0 && receipts?.length !== delivery.value.targetCount)))
+    ) {
+      throw new AggregateError(
+        failures.map((result) => result.reason),
+        `Runtime policy ${preferences.policyRevision} was not confirmed by every Host: ${[
+          localFailure,
+          ...failures.map((result) => String(result.reason)),
+          ...(targetFailures?.map(
+            (receipt) =>
+              `window=${receipt.windowId} actual=${receipt.policyRevision ?? "unknown"} ${receipt.status}: ${receipt.error ?? ""}`,
+          ) ?? []),
+        ]
+          .filter(Boolean)
+          .join("; ")}`,
+      );
+    }
+  });
+  if (options?.serviceAuthorityMode === "desktop-local") {
+    broadcastService.registerAcknowledgedHandler(
+      APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
+      async (message) => {
+        const preferences = appRuntimePreferencesChangedBroadcastPayloadSchema.parse(
+          message.payload,
+        );
+        // 以单调版本拒绝迟到策略。此处不能等待本 Host 的设置写队列：
+        // 对方持有 profile 提交锁等待本回执时，重读会形成跨 Host 等待环。
+        return applyRuntimePolicy(preferences);
+      },
+    );
+  }
   return services;
 }
 

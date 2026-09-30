@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { randomUUID } from "node:crypto";
 import { ipcMain, type BrowserWindow, type UtilityProcess } from "electron";
 import {
@@ -20,6 +21,19 @@ export function onLocalDatabaseStartupReady(listener: () => void): void {
   else readyListeners.add(listener);
 }
 
+// 直接读取当前进程的 startup snapshot，不再用第二份 WeakSet 缓存 ready；
+// fork/realtime 注册早于服务初始化，不能作为派发就绪证明。
+const hostStartupSnapshots = new WeakMap<UtilityProcess, () => DatabaseStartupState | undefined>();
+const hostReadyListeners = new Set<() => void>();
+export function isHostDatabaseReady(child: UtilityProcess): boolean {
+  return hostStartupSnapshots.get(child)?.()?.phase === "ready";
+}
+/** 每个 Host 进入 ready 时通知（含重建的 Host），用于唤醒等待 Host 的派发。 */
+export function onHostDatabaseReady(listener: () => void): () => void {
+  hostReadyListeners.add(listener);
+  return () => hostReadyListeners.delete(listener);
+}
+
 const windowBindings = new WeakMap<BrowserWindow, () => void>();
 const hostStartupIds = new WeakMap<UtilityProcess, string>();
 export function getDatabaseStartupPortPayload(
@@ -40,12 +54,14 @@ export function bindDatabaseStartupRelay(
   let disposed = false;
   let latest: DatabaseStartupState | undefined;
   let exited = false;
+  hostStartupSnapshots.set(child, () => (disposed || exited ? undefined : latest));
   const forward = (state: DatabaseStartupState) => {
     if (!disposed && !win.isDestroyed() && !win.webContents.isDestroyed())
       win.webContents.send(InternalChannels.DatabaseStartupState, state);
   };
   const applyState = (state: DatabaseStartupState) => {
     if (latest && state.startupId === latest.startupId && state.sequence <= latest.sequence) return;
+    const wasReady = latest?.phase === "ready";
     latest = state;
     forward(state);
     try {
@@ -57,6 +73,9 @@ export function bindDatabaseStartupRelay(
       localStorageReady = true;
       for (const listener of readyListeners) listener();
       readyListeners.clear();
+    }
+    if (state.phase === "ready" && !exited && !wasReady) {
+      for (const listener of hostReadyListeners) listener();
     }
   };
   const receive = (state: DatabaseStartupState) => {
@@ -105,6 +124,7 @@ export function bindDatabaseStartupRelay(
   const dispose = () => {
     if (disposed) return;
     disposed = true;
+    hostStartupSnapshots.delete(child);
     ipcMain.removeListener(InternalChannels.DatabaseStartupControl, control);
     win.removeListener("closed", dispose);
     child.removeListener("exit", onExit);

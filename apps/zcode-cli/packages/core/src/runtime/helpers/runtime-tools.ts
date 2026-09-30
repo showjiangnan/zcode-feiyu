@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import {
   createConfiguredHookRunner,
   createInMemoryHookRunner,
@@ -23,6 +23,7 @@ import {
 import { isStaleBranchRuntimeTaskEvent } from "../methods/runtime-command-generation.js";
 import { resolveEnabledProjectMemoryRoot } from "./project-memory.js";
 import { sessionHasLoadedSkill } from "../../agent/loaded-skills.js";
+import { consumeProactiveMailboxCauses, proactiveMailboxCause } from "../proactive-causality.js";
 
 const DEFAULT_SUBAGENT_BACKGROUND_BASH_MAX_MS = 3_600_000;
 const EMPTY_RUNTIME_HOOK_CONFIG = {
@@ -53,8 +54,9 @@ function registerRuntimeBuiltInTools(runtime: AgentRuntimeInternal, deps: AgentR
   registerBuiltInTools(runtime.registry, {
     bashTimeoutPolicy: runtime.config.bashTimeoutPolicy,
     includeSkill: Boolean(runtime.skillPort),
-    includeAgent: Boolean(runtime.subagentPort),
+    includeAgent: runtime.config.subagents?.enabled !== false && Boolean(runtime.subagentPort),
     includeSendMessage: runtime.subagentPort?.sendMessage !== undefined,
+    includeTeamTask: Boolean(runtime.teamBoardPort),
     includeTaskMessaging:
       Boolean(deps.taskMessagePort) &&
       runtime.config.taskType !== "subagent_child" &&
@@ -132,11 +134,26 @@ function createRuntimeHookRunner(
     logger: runtime.logger,
   });
   for (const hook of createSessionMailboxHookRegistrations({
-    enqueuePendingInput: async (input, traceContext) => {
+    enqueuePendingInput: async (input, traceContext, message) => {
+      const causalContext = await proactiveMailboxCause(runtime, message);
+      const sourceCommandId = `mailbox:${sessionId}:${message.messageId}`;
       const result = await runtime.steerTurn({
         delivery: "guide",
         expectedTurnId: traceContext.turnId,
         input,
+        inputId: sourceCommandId,
+        intent: {
+          sourceCommandId,
+          queueItemId: sourceCommandId,
+          clientId: "runtime-mailbox",
+          kind: "sendText",
+          text: input,
+          admissionSeq: 0,
+          admittedAt: Date.now(),
+          requestedDelivery: "guide",
+          admittedDelivery: "guide",
+          ...(causalContext ? { causalContext } : {}),
+        },
         traceContext,
       });
       if (result.kind === "rejected") {
@@ -149,6 +166,7 @@ function createRuntimeHookRunner(
         });
       }
     },
+    onMessagesConsumed: (messages) => consumeProactiveMailboxCauses(runtime, messages),
     mailbox: deps.sessionMailboxPort,
     sessionId,
   })) {
@@ -197,6 +215,8 @@ function createRuntimeToolExecutor(
     nativeSearchEnhancementsEnabled: runtime.config.nativeSearchEnhancementsEnabled,
     skillPort: deps.skillPort,
     subagentPort: runtime.subagentPort,
+    teamBoardPort: runtime.teamBoardPort,
+    teamActorId: deps.teamActorId ?? "coordinator",
     coordinatorResponsePort: deps.coordinatorResponsePort,
     workflowSubmitPort: deps.workflowSubmitPort,
     workflowEscalatePort: deps.workflowEscalatePort,
@@ -204,6 +224,7 @@ function createRuntimeToolExecutor(
     automationPort: deps.automationPort,
     offPeakPort: deps.offPeakPort,
     taskMessagePort: deps.taskMessagePort,
+    getPaidImageInputId: () => runtime.activeTurn ? runtime.paidImageInputId : undefined,
     imageGenerationPort: deps.imageGenerationPort
       ? {
           ...deps.imageGenerationPort,
@@ -247,6 +268,27 @@ function createRuntimeToolExecutor(
     deliveryKind: runtime.config.deliveryKind,
     getMemoryRoot: () =>
       deps.memoryRoot ?? resolveEnabledProjectMemoryRoot(runtime.config, runtime.workspaceRoot),
+    getMemoryOwnershipFence: () => {
+      const root =
+        deps.memoryRoot ?? resolveEnabledProjectMemoryRoot(runtime.config, runtime.workspaceRoot);
+      if (!root) return undefined;
+      const memory = runtime.config.memory;
+      return {
+        workspaceKey: root,
+        ownerId: runtime.sessionId,
+        epoch: runtime.config.continuityPolicyRevision ?? 0,
+        assertHeld: () => {
+          // 主线程工具也可能停在写入准备期；许可切换后旧调用不能靠已捕获的 memoryRoot 继续写。
+          if (
+            runtime.shuttingDown ||
+            runtime.config.memory !== memory ||
+            runtime.config.memory?.enabled === false
+          ) {
+            throw new Error("Memory editing permission changed before commit");
+          }
+        },
+      };
+    },
     runtimeScope: runtime.config.taskType === "subagent_child" ? "subagent" : "main",
     permissionTimeoutMs: runtime.config.permissionTimeoutMs,
     sessionId: runtime.sessionId,

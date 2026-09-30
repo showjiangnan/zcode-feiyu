@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // scheduler(utilityProcess) ↔ main 的控制消息协议。两端都在 Electron 侧，走 parentPort.postMessage。
 // 与 host↔main 的 CronRun/CronRunResult(见 @zcode/shared channels + validation)不同：
 // 这层是 main 与「常驻 cron scheduler 进程」之间的私有通道；main 收到派发请求后再翻译成 CronRun 转发给 host。
@@ -57,7 +58,7 @@ export type MainToSchedulerMessage =
       taskId?: string;
       sessionId?: string;
       error?: string;
-      failureKind?: "transient" | "permanent";
+      failureKind?: "transient" | "permanent" | "waiting_for_host";
     }
   | {
       // 闲时任务派发结果；迟到结果仅凭 offPeakTaskId 结算（无 inFlight 上下文也可，幂等）。
@@ -75,6 +76,8 @@ export type MainToSchedulerMessage =
     }
   | {
       // manual run 已提交，立即触发一次 tick；automationId 仅用于日志关联。
+      // reason=host_ready：某个 Host 刚就绪，等待 Host 的原运行记录应立即可认领。
       type: "scheduler-wake";
       automationId: string;
+      reason?: "host_ready";
     };

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { Model, ModelInputMessage, ModelToolContract, TraceContext } from "../deps.js";
 import type { AgentTelemetryCausation, ModelApiOperation } from "@zcode/contracts";
 import {
@@ -18,6 +19,11 @@ import { createRuntimeModel, withModelInvocationContext } from "../methods/runti
 export interface ProjectMemoryAgentContext {
   causation?: AgentTelemetryCausation;
   memoryRoot: string;
+  /**
+   * 调用方长期所有权栅栏；整理任务在最终文件替换前复核自身租约 epoch，
+   * 提取不设长期租约，故缺省。
+   */
+  ownershipFence?: import("@zcode/contracts").MemoryCommitFence;
   providerEntries: readonly RuntimeMessageEntry[];
   midConversationSystem: AgentRuntimeInternal["config"]["midConversationSystem"];
   model: Model;
@@ -36,6 +42,8 @@ export function captureProjectMemoryAgentContext(
     /** Extraction 继承产生该工作的 Turn Model。 */
     model?: Model;
     operation: ModelApiOperation;
+    /** 见 ProjectMemoryAgentContext.ownershipFence。 */
+    ownershipFence?: ProjectMemoryAgentContext["ownershipFence"];
     traceContext: TraceContext;
   },
 ): ProjectMemoryAgentContext {
@@ -64,6 +72,7 @@ export function captureProjectMemoryAgentContext(
   return {
     causation: runtime.agentTelemetry.captureCausation(),
     memoryRoot: input.memoryRoot,
+    ownershipFence: input.ownershipFence,
     // Extraction 会跨异步边界消费这份成员浅快照；它依赖 RuntimeMessageEntry
     // 进入 MessageHistory 后保持不可变。后续只能 append、整体 replace 或 copy-on-write，
     // 禁止原地修改共享的 entry/message/content，否则会污染已调度的 Memory 上下文。
@@ -108,6 +117,7 @@ export function createProjectMemoryAgentToolExecutor(
     getBashShellSelection: () => getSessionShellSelectionFromConfig(runtime.config),
     getMode: () => "yolo",
     getMemoryRoot: () => context.memoryRoot,
+    getMemoryOwnershipFence: () => context.ownershipFence,
     getWorkingDirectory: () => context.workingDirectory,
     getWorkspaceRoot: () => context.workspaceRoot,
     imageProcessorPort: runtime.imageProcessorPort,

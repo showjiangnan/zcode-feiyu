@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { RuntimeInputPresentation } from "@zcode/contracts";
 import { createModelId, createModelProviderId } from "@zcode/contracts";
 import { SessionEventType, createPartId, traceContextToLogContext } from "../deps.js";
@@ -59,6 +60,11 @@ export async function persistUserPrompt(
   if (!this.sessionStore) return;
 
   const created = Date.now();
+  // UserPromptSubmit 的 Mailbox 上下文可能已提高本轮深度，原 intent 在 promotion 前必须冻结实际消费结果。
+  const active = this.activeTurn;
+  const cause = active && active.turnId === traceContext.turnId ? active.causalContext : undefined;
+  if (options?.intent && cause)
+    options = { ...options, intent: { ...options.intent, causalContext: cause } };
   const tools = Object.fromEntries(this.getTools().map((tool) => [tool.name, true]));
   const conversationInputIntent = buildPersistedConversationInputIntent(
     input,

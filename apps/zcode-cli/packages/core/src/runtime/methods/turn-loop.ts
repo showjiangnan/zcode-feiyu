@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { beginLocalTurnPreparation } from "@zcode/contracts";
 import {
   CompactPhase,
@@ -20,8 +21,20 @@ import {
   systemReminderAttachmentEntry,
   todoReminderRuntimeMetadata,
 } from "../../agent/message-history.js";
+import {
+  MID_TURN_RECALL_MAX_SELECTED,
+  MID_TURN_RECALL_MAX_TOPIC_CHARS,
+  MID_TURN_RECALL_MAX_TOTAL_CHARS,
+  recallProjectMemoryTopicSet,
+} from "../../memory/recall/relevant.js";
 import type { AgentRuntimeInternal } from "../internal.js";
+import { dropRevokedMemoryFromTurnPrefix } from "./context-refresh.js";
 import { runModelBackedTurnStep } from "./turn-model-step.js";
+import { activateRuntimeOrchestrationMode } from "../orchestration.js";
+import {
+  orchestrationReminderBody,
+  selectOrchestrationParentTools,
+} from "../orchestration-tools.js";
 import {
   AUTOMATION_MUTATION_TOOL_NAMES,
   evaluateRapidRefill,
@@ -62,8 +75,22 @@ export async function runRegularTurnLoop(
         state.repeatedToolCallSignature = undefined;
         state.repeatedToolCallStreakCount = 0;
       }
+      // 回合起点的召回只覆盖当时的任务陈述；工具往返之后出现的相关主题要在这里补上（复审 GAP-01）。
+      // 单个请求只注入一个尚未展示过的主题，正文直接并进请求条目而不重建前缀，保持提示缓存命中。
+      const recalled = await recallMemoryForModelStep.call(this, state);
+      if (recalled)
+        appendTurnRequestEntries(state.turnRequestState, [
+          systemReminderAttachmentEntry("memory_recall", recalled),
+        ]);
     }
 
+    // 压缩也会调用模型，必须在进入压缩前清除已撤销的受控记忆，避免把旧附件带入摘要请求。
+    const beforeCompact = dropRevokedMemoryFromTurnPrefix(
+      this,
+      state.turnRequestState.entries,
+      state.model,
+    );
+    if (beforeCompact) state.turnRequestState.entries = beforeCompact;
     const compactPhase =
       state.modelStepCount === 0 ? CompactPhase.PreRequest : CompactPhase.MidTurn;
     await this.microcompactIfNeeded(state.turnTraceContext, state.events, state.turnAbortSignal, {
@@ -101,6 +128,9 @@ export async function runRegularTurnLoop(
       recordCompactHistoryRound(state);
     }
     throwIfTurnAborted(state.turnAbortSignal);
+    const orchestration = outputTokenRecoveryActive
+      ? this.orchestration
+      : await activateRuntimeOrchestrationMode(this, state.turnTraceContext);
 
     const finishMcp = beginLocalTurnPreparation(state.turnTraceContext, "mcp");
     await this.initializeMcp(state.turnTraceContext);
@@ -111,11 +141,16 @@ export async function runRegularTurnLoop(
     // automation 派发到已 active 会话或重试恢复时，入口 metadata 可能没有带到
     // loop state；但 queryId 仍是 automation-*。provider 请求边界必须按 queryId 再硬过滤
     // automation 写工具，否则模型会先看到并创建、修改或删除任务定义。
-    const tools = state.automationCreateLimitReached
+    const availableTools = state.automationCreateLimitReached
       ? []
       : turnDisallowedTools
         ? this.getTools(state.model).filter((tool) => !turnDisallowedTools.has(tool.name))
         : this.getTools(state.model);
+    const tools = selectOrchestrationParentTools(
+      availableTools,
+      orchestration.effective,
+      Boolean(this.config.parentSessionId && this.teamBoardPort),
+    );
     finishTools();
     if (!outputTokenRecoveryActive && this.needsPlanModeExitReminder) {
       this.needsPlanModeExitReminder = false;
@@ -133,6 +168,14 @@ export async function runRegularTurnLoop(
     if (runtimeModeReminderBody) {
       commitTurnRequestEntries(this, state.turnRequestState, [
         systemReminderAttachmentEntry("runtime_mode", runtimeModeReminderBody),
+      ]);
+    }
+    const orchestrationReminder = outputTokenRecoveryActive
+      ? null
+      : orchestrationReminderBody(orchestration.effective);
+    if (orchestrationReminder) {
+      commitTurnRequestEntries(this, state.turnRequestState, [
+        systemReminderAttachmentEntry("orchestration_mode", orchestrationReminder),
       ]);
     }
     if (
@@ -165,6 +208,13 @@ export async function runRegularTurnLoop(
         systemReminderAttachmentEntry("output_style", outputStyleReminderBody),
       ]);
     }
+    // 记忆许可可能在回合进行中被关闭并已确认；确认之后的新请求不得继续携带旧记忆（复审 DEF-04）。
+    const memoryFreeEntries = dropRevokedMemoryFromTurnPrefix(
+      this,
+      state.turnRequestState.entries,
+      state.model,
+    );
+    if (memoryFreeEntries) state.turnRequestState.entries = memoryFreeEntries;
     const providerEntries = [...state.turnRequestState.entries];
     const requestEntries = providerEntries;
     // provider-visible user ordering projection 会改变最终 latest user 落点，
@@ -215,6 +265,75 @@ export async function runRegularTurnLoop(
     if (result === "break") {
       break;
     }
+  }
+}
+
+/**
+ * 回合内每个新模型请求的召回：以原始需求加最近的工具活动为查询，检索尚未展示过的主题。
+ *
+ * 修复原因（复审 GAP-01）：召回只在回合起点做过一次，后续请求直接复用那次结果，
+ * 模型在工具往返后看不到新出现的相关主题。依据：CONT-FR-04 要求相关记忆随工作推进保持可用；
+ * 这里把新主题作为追加条目注入，不重建上下文前缀，因此提示缓存前缀不受影响。
+ * 上限比回合起点更克制（1 条、1,200 字符），避免每次模型往返都灌入大段记忆。
+ */
+async function recallMemoryForModelStep(
+  this: AgentRuntimeInternal,
+  state: RegularTurnLoopState,
+): Promise<string | undefined> {
+  const memoryRoot = this.memoryRoot;
+  const fileSystem = this.fileSystemPort;
+  if (!memoryRoot || !fileSystem) return undefined;
+  let query: string;
+  try {
+    query = memoryStepRecallQuery(state);
+  } catch {
+    return undefined;
+  }
+  if (!query) return undefined;
+  try {
+    const recalled = await recallProjectMemoryTopicSet({
+      fileSystem,
+      query,
+      rootDir: memoryRoot,
+      signal: state.turnAbortSignal,
+      discoveredPaths: state.memoryCandidatePaths,
+      exclude: new Set(state.recalledMemoryTopics ?? []),
+      maxSelected: MID_TURN_RECALL_MAX_SELECTED,
+      maxTopicChars: MID_TURN_RECALL_MAX_TOPIC_CHARS,
+      maxTotalChars: MID_TURN_RECALL_MAX_TOTAL_CHARS,
+    });
+    state.memoryCandidatePaths = recalled.discoveredPaths;
+    if (!recalled.content) return undefined;
+    state.recalledMemoryTopics = [...(state.recalledMemoryTopics ?? []), ...recalled.topics];
+    return recalled.content;
+  } catch {
+    // 记忆检索失败不得阻断当前用户轮次；下一次模型步骤会再试。
+    return undefined;
+  }
+}
+
+/** 查询词取「原始需求 + 最近 8 条工具调用的名称与入参」，只用于打分，不进入请求。 */
+function memoryStepRecallQuery(state: RegularTurnLoopState): string {
+  const recent: string[] = [];
+  for (let index = state.turnRequestState.entries.length - 1; index >= 0; index -= 1) {
+    const entry = state.turnRequestState.entries[index];
+    if (!entry || entry.kind === "attachment") continue;
+    const toolCalls = entry.message.toolCalls;
+    if (!toolCalls) continue;
+    for (const toolCall of toolCalls) {
+      recent.push(`${toolCall.name} ${safeStringify(toolCall.input)}`);
+      if (recent.length >= 8) break;
+    }
+    if (recent.length >= 8) break;
+  }
+  return [state.input, ...recent].filter(Boolean).join("\n").slice(0, 8_000);
+}
+
+function safeStringify(value: unknown): string {
+  try {
+    return typeof value === "string" ? value : (JSON.stringify(value) ?? "");
+  } catch {
+    return "";
   }
 }
 

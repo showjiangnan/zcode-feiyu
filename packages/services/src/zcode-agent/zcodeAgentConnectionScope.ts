@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 三类 V4 topic 的同构 connection ownership 生命周期集中在单一 facade。 */
 // V4 connection-scoped service facade：每个 RPC attachment 独立持有 subscription
 // ownership；base service 仍只转发 CLI 事实，不在 host/main/relay 复制业务状态。
@@ -716,8 +716,11 @@ export function createZCodeAgentConnectionScope(
       const trustedParams = withTrustedConnection(params, forwardedConnection(params));
       if (role === "terminal-client" && trustedParams.envelope.type === "sendText") {
         // 来源只能由 Host 内部投递生成；Renderer/远控即使构造相同 wire 字段也不能冒充任务 A。
-        const { interTaskSourceTaskId: _ignored, ...payload } = trustedParams.envelope
-          .payload as Record<string, unknown>;
+        const {
+          interTaskSourceTaskId: _ignored,
+          causalContext: _untrustedCause,
+          ...payload
+        } = trustedParams.envelope.payload as Record<string, unknown>;
         return base.sendConversationCommandV4({
           ...trustedParams,
           envelope: { ...trustedParams.envelope, payload },

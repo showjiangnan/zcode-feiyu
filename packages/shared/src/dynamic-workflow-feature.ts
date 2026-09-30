@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Dynamic Workflow 灰度：服务端 feature key 的取值域与客户端快照
 // ============================================================

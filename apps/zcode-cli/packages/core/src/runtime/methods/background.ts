@@ -1,4 +1,7 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { SessionEventType, traceContextToLogContext } from "../deps.js";
+import { isContinuityBackgroundWorkKind } from "@zcode/shared/zcode-protocol-v4";
+import { stopContinuityBackgroundWork } from "./background-stop-continuity.js";
 import type {
   BackgroundExecutionSnapshot,
   BackgroundTaskCancelResult,
@@ -84,6 +87,13 @@ export async function stopBackgroundTask(
       reason: "background_task_not_found",
       taskId,
     };
+  }
+  // 连续工作（记忆提取 / 整理 / 主动执行）不登记 runtime task registry，因此没有 registry taskType。
+  // 分派按投影条目上的 taskKind 走**已存在**的授权路径（复审 GAP-03）：整理复用整理自己的取消、
+  // 主动执行复用 orchestration 的 stop、提取只中止当前这一轮。不新增取消能力，
+  // 也不改写 bash / subagent / workflow 的任何分支语义。
+  if (isContinuityBackgroundWorkKind(target.existing?.taskKind)) {
+    return stopContinuityBackgroundWork.call(this, target, target.existing!.taskKind!, options);
   }
   if (!isTypedBackgroundStopTarget(target)) {
     return unsupportedBackgroundStopResult(target);

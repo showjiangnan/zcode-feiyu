@@ -1,10 +1,11 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { RuntimeInputPresentation } from "./runtime-input-presentation.js";
 // ============================================================
 // Session Ports - Core interfaces for session management
 // ============================================================
 
 import type { ErrorAttribution, SessionEvent } from "../events/session.events.js";
+import type { BackgroundWorkKind } from "@zcode/shared/zcode-protocol-v4";
 import type {
   InteractionRequestOrigin,
   MessageId,
@@ -174,7 +175,8 @@ export interface BackgroundTaskInfo {
   taskId: string;
   toolCallId?: string;
   toolName?: string;
-  taskKind?: "bash" | "subagent" | "workflow";
+  // 与 V4 快照的 backgroundWorkSummary.kind 同源；连续工作的取值只在 CLI 与桌面同批发布时发出。
+  taskKind?: BackgroundWorkKind;
   childSessionId?: string;
   blocked?: boolean;
   blockedReason?: string;
@@ -283,6 +285,8 @@ export interface TurnInputIntentMetadata {
   planEnabled?: boolean;
   /** 仅 Host 可信任务间入口写入；普通 sendText 不接受模型自报来源。 */
   interTaskSourceTaskId?: string;
+  /** 发送 runtime 的已消费输入因果上下文；不承载权限。 */
+  causalContext?: import("@zcode/shared/zcode-protocol-v4").ProactiveCausalContext;
   sourceCommandId: string;
   queueItemId: string;
   clientId: string;

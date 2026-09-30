@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { resolveSelectionSideInheritedModel } from "@/lib/selectionSideInheritedModel.js";
 import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
 import type { SessionCreateSource } from "@zcode/shared";
@@ -38,6 +39,8 @@ import type {
   CommandType,
   ConversationSnapshot,
   ConversationRowTarget,
+  OrchestrationMode,
+  CommandPayloadMap,
   SessionErrorInfo,
   SessionModelTransition,
   V4ConversationFileChangesResult,
@@ -1245,6 +1248,7 @@ export function SessionPane({
     handleDraftSelectModel,
     handleDraftSelectThought,
     handleDraftSwitchMode,
+    handleDraftSetOrchestrationMode,
     promoteComposerDraft,
     captureAcceptedModelSelection,
     replaceComposerDraft,
@@ -3375,8 +3379,17 @@ export function SessionPane({
         );
         requireAcceptedConfigAck("setFollowupMode", ack);
       }
+      const desiredMode = desiredConfig.orchestrationMode ?? "standard";
+      if (desiredMode !== (projectedConfig?.orchestration.requested ?? "standard")) {
+        const ack = await dispatchCommand(
+          "setOrchestrationMode",
+          { mode: desiredMode },
+          targetSessionId,
+        );
+        requireAcceptedConfigAck("setOrchestrationMode", ack);
+      }
     },
-    [appFollowupMode, dispatchConfigCas, draftConfigRef],
+    [appFollowupMode, dispatchCommand, dispatchConfigCas, draftConfigRef],
   );
   ensureDraftPrewarmConfigBeforeSendRef.current = ensureDraftPrewarmConfigBeforeSend;
 
@@ -3532,6 +3545,40 @@ export function SessionPane({
       handleDraftSwitchMode(mode);
     },
     [handleDraftSwitchMode],
+  );
+  const handleSetOrchestrationMode = useCallback(
+    async (mode: OrchestrationMode) => {
+      if (!sessionId) {
+        handleDraftSetOrchestrationMode(mode);
+        return;
+      }
+      try {
+        const ack = await dispatchCommand("setOrchestrationMode", { mode }, sessionId);
+        if (ack.status === "accepted" || ack.status === "noop" || ack.status === "duplicate") {
+          return;
+        }
+        throw new Error(ack.reasonCode ?? ack.status);
+      } catch (error) {
+        logger.warn(`[v4-pane] 编排模式切换失败: ${String(error)}`);
+        toast(
+          intl.formatMessage(
+            { id: "chat.orchestration.changeFailed" },
+            { reason: error instanceof Error ? error.message : String(error) },
+          ),
+        );
+      }
+    },
+    [dispatchCommand, handleDraftSetOrchestrationMode, intl, sessionId],
+  );
+
+  const handleControlProactiveWork = useCallback(
+    async (input: CommandPayloadMap["controlProactiveWork"]) => {
+      if (!sessionId) throw new Error("Create a session before starting proactive work");
+      const ack = await dispatchCommand("controlProactiveWork", input, sessionId);
+      if (!["accepted", "noop", "duplicate"].includes(ack.status))
+        throw new Error(ack.message ?? ack.reasonCode ?? ack.status);
+    },
+    [dispatchCommand, sessionId],
   );
 
   // context usage 面板的压缩入口（命令文本 = "/compact"，复用 slash 解析路径）。
@@ -4414,6 +4461,12 @@ export function SessionPane({
       onSelectModel={handleSelectModel}
       onSelectThought={handleSelectThought}
       onSwitchMode={handleSwitchMode}
+      onSetOrchestrationMode={handleSetOrchestrationMode}
+      onControlProactiveWork={
+        (!rootSessionId || rootSessionId === sessionId) && !selectionSideChat
+          ? handleControlProactiveWork
+          : undefined
+      }
       onOpenRunningBackgroundWorks={
         sessionId && runningBackgroundWorkCount > 0 ? handleOpenRunningBackgroundWorks : undefined
       }
@@ -4648,6 +4701,7 @@ export function SessionPane({
             gitWorktreeChangeSummary={gitWorktreeChangeSummary}
             activeTaskChangeSummary={activeTaskChangeSummary}
             goal={selectionSideChat ? null : (snapshot?.goal ?? null)}
+            teamBoard={selectionSideChat ? undefined : snapshot?.teamBoard}
             sessionPlans={state.sessionPlans}
             plan={snapshot?.plan ?? null}
             backgroundWorks={snapshot?.backgroundWorks ?? []}

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- Electron Builder config keeps related packaging hooks together so build order stays explicit. */
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { readdir, writeFile } from "node:fs/promises";
@@ -21,6 +22,7 @@ import {
   resolveDesktopProductIdentity,
 } from "./scripts/desktop-product-identity.mjs";
 import { verifyStagedKoffi } from "./scripts/koffi-package-assets.mjs";
+import { bundledAgentExtraResources } from "./scripts/bundled-agent-resources.mjs";
 const ELECTRON_BUILDER_ARCH = {
   1: "x64",
   3: "arm64",
@@ -542,6 +544,21 @@ export default {
     await stageElectronNotices(context.appOutDir, resources, framework.version);
   },
   afterPack: async (context) => {
+    const memoryResources =
+      context.electronPlatformName === "darwin"
+        ? resolve(
+            context.appOutDir,
+            `${desktopProductIdentity.productName}.app`,
+            "Contents",
+            "Resources",
+          )
+        : resolve(context.appOutDir, "resources");
+    const memoryNativeErrors = verifyStagedKoffi({
+      resourcesDir: memoryResources,
+      targetPlatform,
+      pluginRelativePath: "",
+    });
+    if (memoryNativeErrors.length) throw new Error(memoryNativeErrors.join("\n"));
     const actualWindowsTarget =
       context.electronPlatformName === "win32"
         ? resolveElectronBuilderWindowsTarget({
@@ -622,15 +639,7 @@ export default {
           },
         ]
       : []),
-    {
-      // agent 运行时资产，打包到 resources/glm。
-      // 桌面端内置的是 agent 的 JS bundle（glm/zcode.cjs，由 prepare:agent-bundle 生成），
-      // Host 进程用 app 自带的 Electron Node runtime（ELECTRON_RUN_AS_NODE）执行 `zcode.cjs app-server --stdio`，
-      // 不再随包内置独立 Node 二进制。远端 SSH/WSL 仍走原生二进制（无 Electron）。
-      from: `bundled-agents/${targetPlatform.key}/glm`,
-      to: "glm",
-      filter: ["**/*", "!**/*.map"],
-    },
+    ...bundledAgentExtraResources(targetPlatform.key),
     {
       // agent shell 之前完全依赖宿主系统 PATH，GUI 启动时经常拿不到用户自己装的 rg。
       // 这里把 ripgrep 作为桌面端内置 runtime tool 打进 resources/tools，

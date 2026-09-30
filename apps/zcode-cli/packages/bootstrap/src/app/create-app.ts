@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { isAbsolute, join, resolve } from "node:path";
 import {
   createInMemorySessionEventStore,
@@ -384,7 +384,12 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
     const pdfDocumentPort =
       options.pdfDocumentPort ?? createPopplerPdfDocumentAdapter({ executionPort });
     // browser-use 控制端口：仅当宿主（desktop）注入时可用，无本地 fallback（纯 CLI 无浏览器底座）。
-    const fileSystemPort = options.fileSystemPort ?? createNodeFileSystemAdapter();
+    const fileSystemPort =
+      options.fileSystemPort ??
+      createNodeFileSystemAdapter({
+        memoryRootsDirectory: join(cliStorageRoot, "memories", "projects"),
+        memoryHistoryDirectory: join(cliStorageRoot, "memory-history"),
+      });
     const httpClientPort =
       options.httpClientPort ??
       createNodeWebFetchHttpClientAdapter({
@@ -761,6 +766,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       appVersion,
       traceContext,
     });
+    await runtime.recoverProjectMemory();
     markRuntimeConstructed({
       hasInjectedModelAdapter: options.modelAdapter !== undefined,
       sessionId,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Agent Tool - Subagent orchestration tool
 // ============================================================
@@ -18,6 +19,14 @@ export type AgentType = string;
 export const AgentInputSchema = z.object({
   description: z.string().describe("A short (3-5 word) description of the task"),
   prompt: z.string().describe("The task for the agent to perform"),
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(32)
+    .regex(/^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u)
+    .optional()
+    .describe("Stable member name when swarm mode is active"),
   subagent_type: z
     .string()
     .optional()

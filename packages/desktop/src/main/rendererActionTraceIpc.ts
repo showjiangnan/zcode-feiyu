@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { BrowserWindow, ipcMain } from "electron";
 import {
   DISABLED_RENDERER_ACTION_TRACE_CONFIG,

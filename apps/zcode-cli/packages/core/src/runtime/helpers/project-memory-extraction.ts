@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { selectActiveConversationBranch, type TraceContext } from "../deps.js";
 import {
   buildMemoryExtractionPrompt,
@@ -6,6 +7,7 @@ import {
   type MemoryExtractionSnapshot,
 } from "../../memory/extraction.js";
 import { runMemoryAgentLoop } from "../../memory/memory-agent-loop.js";
+import { assertMemoryToolPathSafe } from "../../memory/tool-path-guard.js";
 import { scanMemoryManifest } from "../../memory/recall/index.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import {
@@ -15,8 +17,13 @@ import {
   type ProjectMemoryAgentContext,
 } from "./project-memory-agent.js";
 import { resolveEnabledProjectMemoryRoot } from "./project-memory.js";
+import { memoryBatchInput, memoryBatchSettlement } from "./project-memory-batch.js";
+import {
+  continuityBackgroundWorkTitle,
+  settleContinuityBackgroundWork,
+  startContinuityBackgroundWork,
+} from "./continuity-background-work.js";
 
-const EXTRACTION_MAX_TURNS = 5;
 const EXTRACTION_DRAIN_TIMEOUT_MS = 60_000;
 
 interface ProjectMemoryExtractionSnapshot
@@ -74,8 +81,73 @@ export function scheduleProjectMemoryExtraction(
     },
   );
 
-  runtime.memoryExtractionScheduler ??= createMemoryExtractionScheduler((extraction) =>
-    executeProjectMemoryExtraction(runtime, extraction),
+  const store = runtime.sessionStore;
+  runtime.memoryExtractionScheduler ??= createMemoryExtractionScheduler(
+    async (extraction) => {
+      const fileSystem = runtime.fileSystemPort!;
+      if (!fileSystem.runMemoryBatch) throw new Error("Durable memory extraction is unavailable");
+      // 抽屉条目由**这个所有者**发出（复审 GAP-03）：workId 绑定边界消息，同一轮重复调度是幂等的；
+      // 条目只在运行期间存在，终态由投影移除（见 continuity-background-work.ts 的说明）。
+      const workId = `${runtime.sessionId}:memory-extraction:${extraction.snapshot.boundaryMessageId}`;
+      const title = continuityBackgroundWorkTitle({
+        kind: "memory_extraction",
+        language: runtime.config.language,
+      });
+      const workTraceContext = extraction.snapshot.traceContext;
+      await startContinuityBackgroundWork(
+        runtime,
+        { kind: "memory_extraction", title, workId },
+        workTraceContext,
+      );
+      try {
+        const result = await fileSystem.runMemoryBatch(
+          memoryBatchInput(runtime, memoryRoot, extraction.snapshot.boundaryMessageId),
+          async () => {
+            const status = await executeProjectMemoryExtraction(runtime, extraction);
+            if (status !== "success") throw new Error(`Memory extraction ${status}`);
+            return status;
+          },
+          memoryBatchSettlement(runtime, memoryRoot, extraction.abortSignal),
+        );
+        await settleContinuityBackgroundWork(
+          runtime,
+          { kind: "memory_extraction", status: "completed", title, workId },
+          workTraceContext,
+        );
+        return result ?? "success";
+      } catch (error) {
+        // 取消与失败分开报告：中止信号来自抽屉的停止入口或会话关闭，那是一次取消而不是故障。
+        await settleContinuityBackgroundWork(
+          runtime,
+          {
+            kind: "memory_extraction",
+            status: extraction.abortSignal.aborted ? "cancelled" : "failed",
+            title,
+            workId,
+          },
+          workTraceContext,
+        );
+        throw error;
+      }
+    },
+    store.readProjectMemoryExtractionCursor && store.advanceProjectMemoryExtractionCursor
+      ? {
+          loadCursor: async () => {
+            await runtime.fileSystemPort!.recoverMemoryBatches?.(
+              runtime.sessionId,
+              memoryBatchSettlement(runtime, memoryRoot),
+            );
+            return store.readProjectMemoryExtractionCursor!(runtime.sessionId);
+          },
+          advanceCursor: (expectedCursor, nextCursor) =>
+            store.advanceProjectMemoryExtractionCursor!({
+              sessionId: runtime.sessionId,
+              expectedCursor,
+              nextCursor,
+              now: Date.now(),
+            }),
+        }
+      : undefined,
   );
   runtime.memoryExtractionScheduler.schedule(snapshot);
 }
@@ -145,14 +217,24 @@ async function executeProjectMemoryExtraction(
       );
       const executor = createProjectMemoryAgentToolExecutor(runtime, input.snapshot);
 
-      await runMemoryAgentLoop({
+      const result = await runMemoryAgentLoop({
         abortSignal: input.abortSignal,
-        executeTool: (toolCall, options) =>
-          executor.execute(toolCall, {
-            signal: options.abortSignal,
-            traceContext: input.snapshot.traceContext,
-          }),
-        maxTurns: EXTRACTION_MAX_TURNS,
+        executeTool: async (toolCall, options) => {
+          const execute = async (signal?: AbortSignal) => {
+            await assertMemoryToolPathSafe({
+              fileSystem: runtime.fileSystemPort,
+              rootDir: input.snapshot.memoryRoot,
+              toolCall,
+              workingDirectory: input.snapshot.workingDirectory,
+              workspaceRoot: input.snapshot.workspaceRoot,
+            });
+            return executor.execute(toolCall, {
+              signal,
+              traceContext: input.snapshot.traceContext,
+            });
+          };
+          return execute(options.abortSignal);
+        },
         messages: providerMessages,
         model: input.snapshot.model,
         rootDir: input.snapshot.memoryRoot,
@@ -160,6 +242,9 @@ async function executeProjectMemoryExtraction(
         workingDirectory: input.snapshot.workingDirectory,
         workspaceRoot: input.snapshot.workspaceRoot,
       });
+      if (!result.completed || result.toolErrors > 0) {
+        throw new Error("Memory extraction did not complete cleanly");
+      }
       telemetry.finishCompleted();
       return "success" as const;
     } catch (error) {

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { ImageGenerationInput } from "@zcode/shared";
 
 type Schema = Record<string, unknown>;

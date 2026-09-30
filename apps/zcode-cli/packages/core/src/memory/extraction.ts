@@ -1,9 +1,12 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { MessageId, MessageWithParts, ToolPart } from "@zcode/contracts";
 import { resolveContainedMemoryFilePath } from "./memory-file-path.js";
 import { formatMemoryManifest } from "./recall/manifest.js";
 import type { MemoryManifestEntry } from "./recall/types.js";
 
 const MINIMUM_USER_WORDS = 3;
+const MINIMUM_UNSPACED_SCRIPT_CHARS = 6;
+const wordSegmenter = new Intl.Segmenter(undefined, { granularity: "word" });
 
 type MemoryExtractionExecutionStatus = "success" | "no-op" | "error" | "aborted";
 
@@ -32,6 +35,14 @@ interface MemoryExtractionExecutionInput {
 export interface MemoryExtractionScheduler<
   TSnapshot extends MemoryExtractionSnapshot = MemoryExtractionSnapshot,
 > {
+  /**
+   * 取消**当前这一轮**运行（复审 GAP-03 的抽屉停止入口）。
+   *
+   * 与 `shutdown()` 的边界差别：shutdown 关闭整个调度器（不再接受新快照），这里只中止在跑的那一轮，
+   * 它的结算路径与 shutdown 相同——执行端看到 aborted、游标不推进、后续提取照常进行。
+   * 没有在跑的运行返回 false，调用方据此如实回「没有取消任何东西」，不假装成功。
+   */
+  cancelCurrent(reason?: unknown): boolean;
   drain(): Promise<void>;
   getCursor(): MessageId | undefined;
   hasPendingWork(): boolean;
@@ -51,9 +62,9 @@ export function buildMemoryExtractionPrompt(input: {
   return [
     `You are now acting as the memory extraction subagent. Analyze the most recent ~${input.messageCount} messages above and use them to update your persistent memory systems.`,
     "",
-    "Available tools: Read, Grep, Glob, read-only Bash (ls/find/cat/stat/wc/head/tail and similar), and Edit/Write for paths inside the memory directory only, and Bash rm with paths inside the memory directory only. All other tools \u2014 MCP, Agent, write-capable Bash, etc \u2014 will be denied.",
+    "Available tools: Read and Edit/Write for Markdown paths inside the memory directory, plus Grep/Glob only when their path explicitly points inside that directory. All other tools, including Bash, MCP, Agent and network tools, will be denied. To forget an entry, edit the existing Markdown file instead of deleting it with a shell command.",
     "",
-    "You have a limited turn budget. Edit requires a prior Read of the same file, so the efficient strategy is: turn 1 \u2014 issue all Read calls in parallel for every file you might update; turn 2 \u2014 issue all Write/Edit calls in parallel. Do not interleave reads and writes across multiple turns.",
+    "Finish the extraction when the durable facts have been checked and saved. Edit requires a prior Read of the same file, so first read the files you may update, then issue Write/Edit calls. Memory writes are serialized by the runtime; re-read a file after a revision conflict before retrying.",
     "",
     `You MUST only use content from the last ~${input.messageCount} messages to update your persistent memories. Do not waste any turns attempting to investigate or verify that content further \u2014 no grepping source files, no reading code to confirm a pattern exists, no git commands.${existingMemories}`,
     "",
@@ -88,35 +99,78 @@ export function createMemoryExtractionScheduler<
   execute: (
     input: Omit<MemoryExtractionExecutionInput, "snapshot"> & { snapshot: TSnapshot },
   ) => Promise<MemoryExtractionExecutionStatus>,
+  persistence?: {
+    loadCursor: () => Promise<MessageId | undefined>;
+    advanceCursor: (
+      expectedCursor: MessageId | undefined,
+      nextCursor: MessageId,
+    ) => Promise<boolean>;
+  },
 ): MemoryExtractionScheduler<TSnapshot> {
   let cursor: MessageId | undefined;
+  let cursorLoad: Promise<void> | undefined;
   let latestPending: Promise<SnapshotAcquisition<TSnapshot>> | undefined;
   let running: Promise<void> | undefined;
   let shuttingDown = false;
+  // 当前这一轮运行的中止目标（见 cancelCurrent）；同一时刻至多一轮在跑。
+  let currentRunAbort: AbortController | undefined;
   const shutdownController = new AbortController();
 
+  const ensureCursorLoaded = async (): Promise<void> => {
+    if (!persistence) return;
+    // 原因：原实现把 loadCursor 的 Promise 永久缓存在 cursorLoad，加载失败后该 rejected
+    // Promise 会被后续每次提取复用，游标再也读不出来，提取从此永久失败。失败必须清空缓存，
+    // 让下一次提取重新加载（该次失败仍向上抛出，不推进游标）。
+    cursorLoad ??= persistence.loadCursor().then(
+      (stored) => {
+        cursor = stored;
+      },
+      (error: unknown) => {
+        cursorLoad = undefined;
+        throw error;
+      },
+    );
+    await cursorLoad;
+  };
+  const advanceCursor = async (nextCursor: MessageId): Promise<void> => {
+    if (persistence && !(await persistence.advanceCursor(cursor, nextCursor))) {
+      shuttingDown = true;
+      latestPending = undefined;
+      shutdownController.abort();
+      return;
+    }
+    cursor = nextCursor;
+  };
+
   const processSnapshot = async (snapshot: TSnapshot): Promise<void> => {
+    await ensureCursorLoaded();
     const decision = evaluateMemoryExtraction(snapshot, cursor);
     const snapshotEnd = snapshot.boundaryMessageId;
 
     if (decision.decision === "skip") {
-      if (snapshotEnd) cursor = snapshotEnd;
+      if (snapshotEnd) await advanceCursor(snapshotEnd);
       return;
     }
 
     let status: MemoryExtractionExecutionStatus;
+    // 运行作用域的中止目标：抽屉的停止入口只取消这一轮，不关闭调度器（见 cancelCurrent）。
+    // 与 shutdownController 组合而非替换——会话关闭的中止语义完全不变。
+    const runController = new AbortController();
+    currentRunAbort = runController;
     try {
       status = await execute({
-        abortSignal: shutdownController.signal,
+        abortSignal: AbortSignal.any([shutdownController.signal, runController.signal]),
         messageCount: decision.messageCount,
         snapshot,
       });
     } catch {
       return;
+    } finally {
+      if (currentRunAbort === runController) currentRunAbort = undefined;
     }
 
     if (!shuttingDown && (status === "success" || status === "no-op") && snapshotEnd) {
-      cursor = snapshotEnd;
+      await advanceCursor(snapshotEnd);
     }
   };
 
@@ -150,6 +204,12 @@ export function createMemoryExtractionScheduler<
       while (running) {
         await running;
       }
+    },
+    cancelCurrent(reason) {
+      const controller = currentRunAbort;
+      if (!controller || controller.signal.aborted) return false;
+      controller.abort(reason);
+      return true;
     },
     getCursor() {
       return cursor;
@@ -266,7 +326,7 @@ function containsEligibleUserProse(
         part.type === "text" &&
         part.ignored !== true &&
         part.synthetic !== true &&
-        countWords(part.text) >= MINIMUM_USER_WORDS
+        hasMeaningfulUserProse(part.text)
       ) {
         return true;
       }
@@ -293,9 +353,23 @@ function isNonMetaUserMessage(message: MessageWithParts): boolean {
 }
 
 function isMemoryMutationToolPart(part: MessageWithParts["parts"][number]): part is ToolPart {
-  return part.type === "tool" && (part.tool === "Write" || part.tool === "Edit");
+  // 修复原因：失败的 Write/Edit 也被当作“主线程已保存记忆”，提取被跳过且游标被推进，这段内容永远不会再被提取（复审 DEF-24）。
+  // 依据：CONT-FR-03 要求失败不丢内容；只有已成功完成的写入才说明记忆已经保存。
+  return (
+    part.type === "tool" &&
+    (part.tool === "Write" || part.tool === "Edit") &&
+    part.state.status === "completed"
+  );
 }
 
-function countWords(text: string): number {
-  return text.split(/\s+/u).filter(Boolean).length;
+function hasMeaningfulUserProse(text: string): boolean {
+  let wordCount = 0;
+  for (const segment of wordSegmenter.segment(text)) {
+    if (segment.isWordLike && ++wordCount >= MINIMUM_USER_WORDS) return true;
+  }
+  // 原先仅按空白拆词，连续中文会被当成一个词而丢弃；字形数兜住无空格文字。
+  const unspacedChars = text.match(
+    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu,
+  );
+  return (unspacedChars?.length ?? 0) >= MINIMUM_UNSPACED_SCRIPT_CHARS;
 }

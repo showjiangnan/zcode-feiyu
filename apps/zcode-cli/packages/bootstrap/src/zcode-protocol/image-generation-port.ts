@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { open, realpath } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { relative, resolve, isAbsolute, sep } from "node:path";

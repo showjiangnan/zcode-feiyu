@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { randomUUID } from "node:crypto";
 import {
   HostResponseTypes,
@@ -10,6 +10,7 @@ import {
 import { type IZCodeTaskService as IZCodeTaskServiceShape } from "../session/zcodeTaskService.js";
 import type { ICredentialService } from "../credential/credential.js";
 import type { ISettingService } from "../setting/setting.js";
+import { runtimePolicyFromSettings } from "../setting/runtimePolicyCommit.js";
 import { type ZCodeAgentAppRuntimePreferences } from "../zcode-agent/zcodeAgent.js";
 import {
   createRemoteRuntimeServicesFromPort,
@@ -249,15 +250,31 @@ export function createBotRemoteWorkspaceService(params: {
       return (await getRuntimeServices(target))?.modelSelectionService ?? null;
     },
     async syncAppRuntimePreferences(preferences: ZCodeAgentAppRuntimePreferences): Promise<void> {
+      if ((preferences.policyRevision ?? 0) < (latestAppRuntimePreferences?.policyRevision ?? 0)) {
+        throw new Error("Bot runtime policy was superseded");
+      }
       latestAppRuntimePreferences = { ...latestAppRuntimePreferences, ...preferences };
       appRuntimePreferencesRevision += 1;
       // 修复原因：远端 Bot runtime 不属于任何 renderer 窗口，Root 的 Agent 同步无法触达它。
       // 这里只更新已经缓存的 runtime，避免切换设置时为了闲置 Bot 新建远端 Host/Agent。
-      await Promise.all(
-        Array.from(runtimeServicesByWorkspaceKey.values()).map((services) =>
-          services.zcodeAgentService.syncAppRuntimePreferences(preferences),
-        ),
+      const results = await Promise.allSettled(
+        Array.from(runtimeServicesByWorkspaceKey.values()).map(async (services) => {
+          const ack = await services.zcodeAgentService.syncAppRuntimePreferences(preferences);
+          if (
+            preferences.policyRevision !== undefined &&
+            (!ack || ack.status !== "applied" || ack.policyRevision !== preferences.policyRevision)
+          )
+            throw new Error(
+              ack?.error ?? "Remote Bot did not confirm the requested policy revision",
+            );
+        }),
       );
+      const failures = results.filter((result) => result.status === "rejected");
+      if (failures.length)
+        throw new AggregateError(
+          failures.map((result) => result.reason),
+          "Remote Bot policy update failed",
+        );
     },
     dispose(): void {
       // Bugfix: host dispose 时移除 parentPort 监听，避免窗口 reload 后旧 bot 重连 promise 继续接收结果。
@@ -318,13 +335,16 @@ export function createBotRemoteWorkspaceService(params: {
       const cachedPreferences = latestAppRuntimePreferences;
       const preferences: ZCodeAgentAppRuntimePreferences = cachedPreferences
         ? cachedPreferences
-        : await params.settingService.get().then((settings) => ({
-            askUserQuestionAutoResolutionEnabled:
-              settings.askUserQuestionAutoResolutionEnabled !== false,
-            modelIoFullRetentionEnabled: settings.modelIoFullRetentionEnabled === true,
-            telemetryReportingEnabled: settings.telemetryReportingEnabled === true,
-          }));
-      await services.zcodeAgentService.syncAppRuntimePreferences(preferences);
+        : await params.settingService.get().then(runtimePolicyFromSettings);
+      const ack = await services.zcodeAgentService.syncAppRuntimePreferences(preferences);
+      if (
+        !ack ||
+        ack.status !== "applied" ||
+        ack.policyRevision !== (preferences.policyRevision ?? 0)
+      )
+        throw new Error(
+          ack?.error ?? "Remote Bot startup did not confirm the runtime policy revision",
+        );
       if (revision === appRuntimePreferencesRevision) {
         break;
       }

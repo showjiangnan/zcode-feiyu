@@ -1,3 +1,5 @@
+// Modified by ZCode Feiyu contributors (2026).
+import { commitMemoryAwareFile } from "../../memory/commit-file.js";
 // ============================================================
 // Write Tool Handler
 // ============================================================
@@ -20,6 +22,7 @@ import { createStructuredPatch } from "../diff.js";
 import { stampMemoryOriginSessionId } from "../../memory/origin-session.js";
 import { resolveWorkspacePath } from "../path-policy.js";
 import {
+  completeReadContentDiffers,
   createReadFileStateKey,
   findLatestReadFileState,
   normalizeReadFileStateMtimeMs,
@@ -92,6 +95,7 @@ const writeHandler: ToolHandler = async (input, context) => {
   let originalEncoding: FileSystemTextEncoding | undefined;
   let originalLineEndings: "LF" | "CRLF" | undefined;
   let originalRevision: FileSystemReadTextResult["revision"] | undefined;
+  let targetWasAbsent = false;
   const readStartedAt = Date.now();
   let fsReadMs = 0;
   try {
@@ -113,6 +117,7 @@ const writeHandler: ToolHandler = async (input, context) => {
     if (!isFileSystemPortError(error) || error.code !== "not_found") {
       throw error;
     }
+    targetWasAbsent = true;
   }
 
   const contentToWrite = stampMemoryOriginSessionId({
@@ -122,19 +127,17 @@ const writeHandler: ToolHandler = async (input, context) => {
     sessionId: context.sessionId,
   });
   const writeStartedAt = Date.now();
-  const writeResult = await fileSystemPort.writeTextFile(
-    {
-      path: filePath,
-      content: contentToWrite,
-      encoding: originalEncoding,
-      lineEndings: originalLineEndings,
-      createParents: true,
-      atomic: true,
-      expectedRevision: originalRevision,
-      trace: createWriteTrace(context),
-    },
-    { signal: context.abortSignal },
-  );
+  const writeResult = await commitMemoryAwareFile(context, {
+    path: filePath,
+    content: contentToWrite,
+    encoding: originalEncoding,
+    lineEndings: originalLineEndings,
+    createParents: true,
+    atomic: true,
+    expectedRevision: originalRevision,
+    expectedAbsent: targetWasAbsent,
+    trace: createWriteTrace(context),
+  });
   const fsWriteMs = elapsedMsSince(writeStartedAt);
 
   const readFileStateEntry = updateReadFileStateAfterWrite(
@@ -321,7 +324,11 @@ function hasReadStateChanged(
       normalizedCurrentMtimeMs !== undefined &&
       normalizedLastReadMtimeMs !== undefined &&
       normalizedCurrentMtimeMs > normalizedLastReadMtimeMs;
-    return mtimeAdvanced || lastRead.sizeBytes !== currentRead.sizeBytes;
+    return (
+      mtimeAdvanced ||
+      lastRead.sizeBytes !== currentRead.sizeBytes ||
+      completeReadContentDiffers(lastRead, currentRead.content)
+    );
   }
 
   if (lastRead.sizeBytes !== undefined && lastRead.sizeBytes !== currentRead.sizeBytes) {
@@ -354,6 +361,7 @@ function updateReadFileStateAfterWrite(
     revisionId: revision?.id,
     mtimeMs: normalizeReadFileStateMtimeMs(revision?.mtimeMs),
     sizeBytes: revision?.sizeBytes ?? Buffer.byteLength(content, "utf8"),
+    complete: true,
   };
   readFileState.set(createReadFileStateKey(filePath, 1, undefined), entry);
   return entry;

@@ -1,5 +1,4 @@
-import { isAbsolute } from "node:path";
-
+// Modified by ZCode Feiyu contributors (2026).
 import type {
   ModelInputMessage,
   ModelMessageContent,
@@ -9,20 +8,21 @@ import type {
   ModelToolCall,
   ModelToolContract,
 } from "@zcode/contracts";
-
 import { modelContentForToolResult, isErrorForToolResult } from "../runtime/helpers/tool-result.js";
 import { projectMessagesForModelMediaPolicy } from "../runtime/helpers/media-budget.js";
-import {
-  analyzeBashCommand,
-  isBashCommandPermissionSafe,
-} from "../tool/handlers/bash-command-parser.js";
-import { isRuntimeReadOnlyBashCommand } from "../tool/handlers/bash-semantics.js";
 import type { ExecutableToolCall, ToolExecutionResult } from "../tool/types.js";
-import { resolveContainedMemoryFilePath, resolveSafeMemoryFilePath } from "./memory-file-path.js";
+import { resolveSafeMemoryFilePath } from "./memory-file-path.js";
 import { auxiliaryModelOptions } from "../model/auxiliary-model-options.js";
+import { compactMemoryAgentContext } from "./agent-context.js";
+import { createMemoryRequestAccounting } from "./request-accounting.js";
 
 interface MemoryAgentLoopResult {
+  completed: boolean;
+  finalText: string;
   messages: ModelInputMessage[];
+  toolErrors: number;
+  totalTokens: number;
+  tokenUsageEstimated: boolean;
   turns: number;
 }
 
@@ -32,11 +32,25 @@ interface MemoryAgentToolPolicyInput {
   tools: readonly ModelToolContract[];
   workingDirectory: string;
   workspaceRoot: string;
+  scope: "extraction" | "review";
 }
 
 type MemoryAgentToolPolicyDecision = { allowed: true } | { allowed: false; reason: string };
 
 const MEMORY_AGENT_READ_ONLY_TOOLS = new Set(["Read", "Grep", "Glob"]);
+const MEMORY_AGENT_VISIBLE_TOOLS = new Set(["Read", "Grep", "Glob", "Write", "Edit"]);
+
+export function selectMemoryAgentTools(
+  tools: readonly ModelToolContract[],
+  scope: "extraction" | "review" = "extraction",
+): ModelToolContract[] {
+  return tools.filter(
+    (tool) =>
+      MEMORY_AGENT_VISIBLE_TOOLS.has(tool.name) &&
+      (scope !== "review" || !["Grep", "Glob"].includes(tool.name)) &&
+      tool.sideEffectScope !== "network",
+  );
+}
 
 export async function runMemoryAgentLoop(input: {
   abortSignal?: AbortSignal;
@@ -44,78 +58,127 @@ export async function runMemoryAgentLoop(input: {
     toolCall: ExecutableToolCall,
     options: { abortSignal?: AbortSignal },
   ) => Promise<ToolExecutionResult>;
-  maxTurns: number;
   messages: readonly ModelInputMessage[];
   model: Model;
+  onUsage?: (totalTokens: number, estimated: boolean) => void | Promise<void>;
+  onRequest?: () => void | Promise<void>;
   rootDir: string;
+  scope?: "extraction" | "review";
   tools: readonly ModelToolContract[];
   workingDirectory: string;
   workspaceRoot: string;
 }): Promise<MemoryAgentLoopResult> {
   const messages = input.messages.map(cloneModelMessage);
   let turns = 0;
+  let totalTokens = 0;
+  let tokenUsageEstimated = false;
+  let toolErrors = 0;
+  let completed = false;
+  let finalText = "";
 
-  for (; turns < input.maxTurns; turns += 1) {
+  const generate = async (request: ModelRequest) => {
+    const accounting = createMemoryRequestAccounting({
+      request,
+      model: input.model,
+      onRequest: input.onRequest,
+      onUsage: async (tokens, estimated) => {
+        totalTokens += tokens;
+        tokenUsageEstimated ||= estimated;
+        await input.onUsage?.(tokens, estimated);
+      },
+    });
+    request.modelRequestAdmission = accounting.admission;
+    try {
+      const response = await input.model.generateText(request);
+      await accounting.finish(response.usage);
+      input.abortSignal?.throwIfAborted();
+      return response;
+    } catch (error) {
+      await accounting.finish();
+      throw error;
+    }
+  };
+  for (; ; turns += 1) {
     input.abortSignal?.throwIfAborted();
-    // 只在 Memory 初始快照投影会漏掉 Read 等工具后续产生的媒体；每一次
-    // provider 请求都必须在 request-local 副本上执行同一套 capability + budget 策略。
+    const tools = selectMemoryAgentTools(input.tools, input.scope);
+    await compactMemoryAgentContext({
+      messages,
+      model: input.model,
+      tools,
+      generate,
+      abortSignal: input.abortSignal,
+    });
+    // 每次请求都处理新增工具媒体；原上下文及单次能力边界不随消费额度移除而放宽。
     const mediaProjection = projectMessagesForModelMediaPolicy(
       messages.map(cloneModelMessage),
       input.model.properties.inputFormat,
     );
-    const request: ModelRequest = {
+    const response = await generate({
       abortSignal: input.abortSignal,
       messages: mediaProjection.messages,
       options: auxiliaryModelOptions(input.model),
-      // Memory agent 的 provider request 必须保留 Main 的真实工具目录；执行权限只在 tool-use 边界收窄。
-      tools: input.tools as ModelToolContract[],
-    };
-    const response = await input.model.generateText(request);
-    input.abortSignal?.throwIfAborted();
+      tools,
+    });
 
     const toolCalls = response.toolCalls ?? [];
     messages.push(createAssistantMessage(response.text, response.reasoning, toolCalls));
     if (toolCalls.length === 0) {
+      completed = true;
+      finalText = response.text;
       turns += 1;
       break;
     }
 
-    const toolMessages = await Promise.all(
-      toolCalls.map(async (toolCall): Promise<ModelInputMessage> => {
-        const decision = evaluateMemoryAgentToolPolicy({
-          rootDir: input.rootDir,
-          toolCall,
-          tools: input.tools,
-          workingDirectory: input.workingDirectory,
-          workspaceRoot: input.workspaceRoot,
-        });
-        if (!decision.allowed) {
-          return {
-            content: decision.reason,
-            isError: true,
-            role: "tool",
-            toolCallId: toolCall.id,
-            toolName: toolCall.name,
-          };
-        }
-
-        const result = await input.executeTool(
-          { id: toolCall.id, input: toolCall.input, name: toolCall.name },
-          { abortSignal: input.abortSignal },
-        );
+    const executeCall = async (toolCall: ModelToolCall): Promise<ModelInputMessage> => {
+      const decision = evaluateMemoryAgentToolPolicy({
+        rootDir: input.rootDir,
+        toolCall,
+        tools: input.tools,
+        workingDirectory: input.workingDirectory,
+        workspaceRoot: input.workspaceRoot,
+        scope: input.scope ?? "extraction",
+      });
+      if (!decision.allowed) {
+        toolErrors += 1;
         return {
-          content: modelContentForToolResult(result),
-          isError: isErrorForToolResult(result),
+          content: decision.reason,
+          isError: true,
           role: "tool",
           toolCallId: toolCall.id,
           toolName: toolCall.name,
         };
-      }),
-    );
+      }
+
+      const result = await input.executeTool(
+        { id: toolCall.id, input: toolCall.input, name: toolCall.name },
+        { abortSignal: input.abortSignal },
+      );
+      const isError = isErrorForToolResult(result);
+      if (isError) toolErrors += 1;
+      return {
+        content: modelContentForToolResult(result),
+        isError,
+        role: "tool",
+        toolCallId: toolCall.id,
+        toolName: toolCall.name,
+      };
+    };
+    const toolMessages = toolCalls.some((call) => call.name === "Write" || call.name === "Edit")
+      ? await executeMemoryToolsSequentially(toolCalls, executeCall)
+      : await Promise.all(toolCalls.map(executeCall));
     messages.push(...toolMessages);
   }
 
-  return { messages, turns };
+  return { completed, finalText, messages, toolErrors, totalTokens, tokenUsageEstimated, turns };
+}
+
+async function executeMemoryToolsSequentially(
+  toolCalls: readonly ModelToolCall[],
+  executeCall: (toolCall: ModelToolCall) => Promise<ModelInputMessage>,
+): Promise<ModelInputMessage[]> {
+  const messages: ModelInputMessage[] = [];
+  for (const toolCall of toolCalls) messages.push(await executeCall(toolCall));
+  return messages;
 }
 
 function evaluateMemoryAgentToolPolicy(
@@ -139,27 +202,53 @@ function evaluateMemoryAgentToolPolicy(
       : denyMemoryAgentTool(input.rootDir);
   }
 
-  if (input.toolCall.name === "Bash") {
-    const command = stringProperty(input.toolCall.input, "command");
-    // Memory Agent 直接复用既有只读分类器，避免在此处二次收窄安全 env、redirect 和后台执行。
-    if (
-      command &&
-      (isRuntimeReadOnlyBashCommand(command, {
-        workingDirectory: input.workingDirectory,
-        workspaceRoot: input.workspaceRoot,
-      }) ||
-        isContainedMarkdownBashRemoval(command, input))
-    ) {
-      return { allowed: true };
-    }
-    return denyMemoryAgentBash(input.rootDir);
-  }
-
   if (MEMORY_AGENT_READ_ONLY_TOOLS.has(input.toolCall.name)) {
+    if (input.toolCall.name === "Read") {
+      const filePath = stringProperty(input.toolCall.input, "file_path");
+      if (!filePath?.endsWith(".md")) return denyMemoryAgentTool(input.rootDir);
+      try {
+        if (
+          !resolveSafeMemoryFilePath({
+            filePath,
+            rootDir: input.rootDir,
+            workingDirectory: input.workingDirectory,
+            workspaceRoot: input.workspaceRoot,
+          })
+        )
+          return denyMemoryAgentTool(input.rootDir);
+      } catch {
+        return denyMemoryAgentTool(input.rootDir);
+      }
+    } else {
+      if (input.scope === "review") return denyMemoryAgentTool(input.rootDir);
+      const searchPath = stringProperty(input.toolCall.input, "path");
+      if (!searchPath || !isContainedMemorySearchPath(searchPath, input)) {
+        return denyMemoryAgentTool(input.rootDir);
+      }
+    }
     return { allowed: true };
   }
 
   return denyMemoryAgentTool(input.rootDir);
+}
+
+function isContainedMemorySearchPath(
+  path: string,
+  input: Pick<MemoryAgentToolPolicyInput, "rootDir" | "workingDirectory" | "workspaceRoot">,
+): boolean {
+  if (path === input.rootDir) return true;
+  try {
+    return (
+      resolveSafeMemoryFilePath({
+        filePath: path,
+        rootDir: input.rootDir,
+        workingDirectory: input.workingDirectory,
+        workspaceRoot: input.workspaceRoot,
+      }) !== undefined
+    );
+  } catch {
+    return false;
+  }
 }
 
 function isContainedMarkdownMutation(input: MemoryAgentToolPolicyInput): boolean {
@@ -176,53 +265,6 @@ function isContainedMarkdownMutation(input: MemoryAgentToolPolicyInput): boolean
     );
   } catch {
     return false;
-  }
-}
-
-function isContainedMarkdownBashRemoval(
-  command: string,
-  input: MemoryAgentToolPolicyInput,
-): boolean {
-  const analysis = analyzeBashCommand(command);
-  if (!isBashCommandPermissionSafe(analysis) || analysis.commands.length !== 1) return false;
-  const invocation = analysis.commands[0];
-  if (!invocation || invocation.argv[0] !== "rm") return false;
-  if (invocation.redirects.length > 0 || invocation.envAssignments.length > 0) return false;
-
-  let afterOptions = false;
-  let pathCount = 0;
-  for (const argument of invocation.argv.slice(1)) {
-    if (!afterOptions) {
-      if (argument === "--") {
-        afterOptions = true;
-        continue;
-      }
-      if (argument.startsWith("-")) {
-        if (argument === "--recursive" || /^-[a-zA-Z]*[rR]/u.test(argument)) return false;
-        continue;
-      }
-    }
-    if (/[*?[]/u.test(argument)) return false;
-    if (!isAbsolute(argument) || !argument.endsWith(".md")) return false;
-    if (resolveContainedPath(argument, input) === undefined) return false;
-    pathCount += 1;
-  }
-  return pathCount > 0;
-}
-
-function resolveContainedPath(
-  filePath: string,
-  input: Pick<MemoryAgentToolPolicyInput, "rootDir" | "workingDirectory" | "workspaceRoot">,
-): string | undefined {
-  try {
-    return resolveContainedMemoryFilePath({
-      filePath,
-      rootDir: input.rootDir,
-      workingDirectory: input.workingDirectory,
-      workspaceRoot: input.workspaceRoot,
-    });
-  } catch {
-    return undefined;
   }
 }
 
@@ -269,18 +311,10 @@ function stringProperty(value: unknown, property: string): string | undefined {
   return typeof propertyValue === "string" ? propertyValue : undefined;
 }
 
-// 拒绝结果会进入下一轮 provider request，需按基线区分 Bash 与其他工具的固定文案。
-function denyMemoryAgentBash(rootDir: string): MemoryAgentToolPolicyDecision {
-  return {
-    allowed: false,
-    reason: `Only read-only shell commands and rm with all paths inside ${rootDir} are permitted in this context (ls, find, grep, cat, stat, wc, head, tail, and similar)`,
-  };
-}
-
 function denyMemoryAgentTool(rootDir: string): MemoryAgentToolPolicyDecision {
   return {
     allowed: false,
-    reason: `only Read, Grep, Glob, read-only Bash, and Edit/Write within ${rootDir} are allowed`,
+    reason: `only Read, Grep, Glob, and Edit/Write within ${rootDir} are allowed`,
   };
 }
 

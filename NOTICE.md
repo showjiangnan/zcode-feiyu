@@ -1,8 +1,8 @@
 # ZCode Feiyu fork notice / 二次开发说明
 
-This distribution is maintained by the ZCode Feiyu contributors and is derived from zai-org/ZCode v3.14.3, upstream commit 29628c9acdb81b703bbd4080c207a0e7ce5e276e. Fork changes add local top-level task services, automatic task-message provenance, telemetry controls, feature activation, and fal image generation. See README.md / README.en.md for the current behavior and usage. Original copyright and license notices are retained below; no official endorsement is implied.
+This distribution is maintained by the ZCode Feiyu contributors and is derived from zai-org/ZCode v3.14.3, upstream commit 29628c9acdb81b703bbd4080c207a0e7ce5e276e. Fork changes add local top-level task services, automatic task-message provenance, persistent memory, orchestration, proactive work, execution-policy changes, telemetry controls, feature activation, and fal image generation. See README.md / README.en.md for the current behavior and usage. Original copyright and license notices are retained below; no official endorsement is implied.
 
-本发行版由 ZCode Feiyu 维护，具体二开行为及使用方法见中英文 README。保留下方原始声明，遥测开关和新增图片服务的行为以本版 README 与源码为准。
+本发行版由 ZCode Feiyu 维护，具体二开行为及使用方法见中英文 README。保留下方原始声明；新增能力的行为以本版 README 与源码为准。
 
 ---
 

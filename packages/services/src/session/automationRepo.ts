@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   isTasksStorageMigrated,
   isTasksStoragePrepared,
@@ -840,12 +841,16 @@ export class AutomationRepo {
           FROM automation_runs r
           JOIN automations a ON a.automation_id = r.automation_id
           WHERE r.trigger = 'manual'
-            AND r.dispatch_status = 'claimed'
+            AND r.dispatch_status IN ('claimed', 'waiting_for_host')
             AND a.running = 0
-            AND (r.attempts = 0 OR r.updated_at <= @stale)
+            AND ((r.dispatch_status = 'claimed' AND (r.attempts = 0 OR r.updated_at <= @stale))
+              OR (r.dispatch_status = 'waiting_for_host' AND r.updated_at <= @waiting))
           ORDER BY r.created_at ASC`,
         )
-        .all({ stale: now - CLAIM_STALE_MS }) as unknown as Array<Record<string, unknown>>;
+        .all({
+          stale: now - CLAIM_STALE_MS,
+          waiting: now - DISPATCH_RETRY_BASE_MS,
+        }) as unknown as Array<Record<string, unknown>>;
 
       const claimed: ClaimedManualAutomationRun[] = [];
       const claimAutomation = db.prepare(
@@ -855,8 +860,8 @@ export class AutomationRepo {
       );
       const claimRun = db.prepare(
         `UPDATE automation_runs
-        SET attempts = attempts + 1, updated_at = @now
-        WHERE run_id = @run_id AND trigger = 'manual' AND dispatch_status = 'claimed'`,
+        SET attempts = attempts + 1, updated_at = @now, dispatch_status = 'claimed'
+        WHERE run_id = @run_id AND trigger = 'manual' AND dispatch_status IN ('claimed', 'waiting_for_host')`,
       );
 
       for (const row of rows) {
@@ -934,21 +939,50 @@ export class AutomationRepo {
    */
   async markDispatched(
     automationId: string,
-    options: { dispatchedAt: number; nextRunAt: number | null },
+    options: {
+      dispatchedAt: number;
+      nextRunAt: number | null;
+      runId?: string;
+      sessionId?: string | null;
+    },
   ): Promise<void> {
     await this.ensureReady();
-    const row = this.getRow(automationId);
-    if (!row) return; // 已删除，丢弃回写，避免复活
-    const runCount = row.run_count + 1;
-    const scheduledRunCount = row.scheduled_run_count + 1;
-    // 有限次任务（recurring=0）达上限即 completed。未显式设 max_runs 时按一次性任务处理（默认上限 1），
-    // 否则一次性 cron 会一直停在 active 并被 cron 反复触发，永不结束。这里必须使用独立的
-    // scheduled_run_count；run_count 还包含 manual run，只能用于 Card 累计展示。
-    const reachedMax = row.recurring === 0 && scheduledRunCount >= (row.max_runs ?? 1);
-    const reachedEnd = row.end_at !== null && (options.nextRunAt ?? Infinity) > row.end_at;
-    this.getDatabase()
-      .prepare(
-        `UPDATE automations
+    const db = this.getDatabase();
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const row = this.getRow(automationId);
+      if (!row) {
+        db.exec("COMMIT");
+        return;
+      } // 已删除，丢弃回写，避免复活
+      if (options.runId) {
+        // run 与累计次数同事务结算；迟到 ACK / 重派不能把一个 run 记两次。
+        const changed = db
+          .prepare(`UPDATE automation_runs SET dispatch_status = 'dispatched',
+        session_id = COALESCE(session_id, @session_id), error = NULL, updated_at = @now
+        WHERE run_id = @run_id AND automation_id = @automation_id AND trigger = 'schedule'
+          AND dispatch_status <> 'dispatched'`)
+          .run({
+            run_id: options.runId,
+            automation_id: automationId,
+            session_id: options.sessionId ?? null,
+            now: options.dispatchedAt,
+          });
+        if (changed.changes === 0) {
+          db.exec("COMMIT");
+          return;
+        }
+      }
+      const runCount = row.run_count + 1;
+      const scheduledRunCount = row.scheduled_run_count + 1;
+      // 有限次任务（recurring=0）达上限即 completed。未显式设 max_runs 时按一次性任务处理（默认上限 1），
+      // 否则一次性 cron 会一直停在 active 并被 cron 反复触发，永不结束。这里必须使用独立的
+      // scheduled_run_count；run_count 还包含 manual run，只能用于 Card 累计展示。
+      const reachedMax = row.recurring === 0 && scheduledRunCount >= (row.max_runs ?? 1);
+      const reachedEnd = row.end_at !== null && (options.nextRunAt ?? Infinity) > row.end_at;
+      this.getDatabase()
+        .prepare(
+          `UPDATE automations
         SET run_count = @run_count,
             scheduled_run_count = @scheduled_run_count,
             last_run_at = @dispatched_at,
@@ -958,22 +992,29 @@ export class AutomationRepo {
             last_error = NULL,
             running = 0,
             claimed_at = NULL,
-            lifecycle_status = @lifecycle_status,
-            enabled = @enabled,
-            next_run_at = @next_run_at,
+            -- 修复原因：派发成功回执可能晚于用户在 claim 之后的暂停（DEL-08 让 waiting_for_host 的窗口变长），
+            -- 此前无条件写 active/enabled=1 会把已暂停的计划重新启用（复审 DEF-12）。
+            -- 依据：结算回执只更新运行记账；仅在达到上限/结束时改写终态，其余保持用户的启停与终态。
+            lifecycle_status = CASE WHEN @reached = 1 THEN 'completed' ELSE lifecycle_status END,
+            enabled = CASE WHEN @reached = 1 THEN 0 ELSE enabled END,
+            next_run_at = CASE WHEN @reached = 1 THEN NULL ELSE @next_run_at END,
             updated_at = @now
         WHERE automation_id = @id`,
-      )
-      .run({
-        id: automationId,
-        run_count: runCount,
-        scheduled_run_count: scheduledRunCount,
-        dispatched_at: options.dispatchedAt,
-        lifecycle_status: reachedMax || reachedEnd ? "completed" : "active",
-        enabled: reachedMax || reachedEnd ? 0 : 1,
-        next_run_at: reachedMax || reachedEnd ? null : options.nextRunAt,
-        now: options.dispatchedAt,
-      });
+        )
+        .run({
+          id: automationId,
+          run_count: runCount,
+          scheduled_run_count: scheduledRunCount,
+          dispatched_at: options.dispatchedAt,
+          reached: reachedMax || reachedEnd ? 1 : 0,
+          next_run_at: options.nextRunAt,
+          now: options.dispatchedAt,
+        });
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   /**
@@ -1046,6 +1087,68 @@ export class AutomationRepo {
       error: options.error,
       now,
     });
+  }
+
+  /**
+   * Host 就绪后让等待 Host 的定时计划立即可认领；只提前 retry_at，不改 next_run_at，
+   * 因此重新认领仍复用原 runId。手动等待单独提前等待时钟，不能用 attempts=0 绕过退避。
+   */
+  async releaseWaitingForHost(now: number): Promise<number> {
+    await this.ensureReady();
+    const db = this.getDatabase();
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const scheduled = db
+        .prepare(`UPDATE automations SET retry_at = @now, updated_at = @now
+        WHERE enabled = 1 AND running = 0 AND dispatch_status = 'waiting_for_host'
+          AND retry_at IS NOT NULL AND retry_at > @now`)
+        .run({ now });
+      const manual = db
+        .prepare(`UPDATE automation_runs SET updated_at = @ready_at
+        WHERE trigger = 'manual' AND dispatch_status = 'waiting_for_host' AND updated_at > @ready_at`)
+        .run({ ready_at: now - DISPATCH_RETRY_BASE_MS });
+      db.exec("COMMIT");
+      return Number(scheduled.changes) + Number(manual.changes);
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  /** 无 Host 是等待状态；同时释放认领并保留原计划及运行 ID，不消耗失败额度。 */
+  async markWaitingForHost(input: {
+    automationId: string;
+    runId: string;
+    now: number;
+    trigger: ZCodeAutomationTrigger;
+  }): Promise<void> {
+    await this.ensureReady();
+    const db = this.getDatabase();
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const changed = db
+        .prepare(`UPDATE automation_runs SET dispatch_status = 'waiting_for_host',
+        attempts = max(0, attempts - 1), error = NULL, updated_at = @now
+        WHERE run_id = @run_id AND automation_id = @automation_id AND dispatch_status = 'claimed'`)
+        .run({ run_id: input.runId, automation_id: input.automationId, now: input.now });
+      if (changed.changes === 0) {
+        db.exec("COMMIT");
+        return;
+      }
+      db.prepare(`UPDATE automations SET running = 0, claimed_at = NULL,
+        dispatch_status = CASE WHEN @scheduled THEN 'waiting_for_host' ELSE dispatch_status END,
+        retry_at = CASE WHEN @scheduled THEN @retry_at ELSE retry_at END,
+        last_error = NULL, updated_at = @now WHERE automation_id = @id`).run({
+        id: input.automationId,
+        scheduled: input.trigger === "schedule" ? 1 : 0,
+        retry_at: input.now + DISPATCH_RETRY_BASE_MS,
+        now: input.now,
+      });
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   /** 关机/退出时释放认领：清 running、保留 next_run_at，不记失败不推进。 */
@@ -1201,7 +1304,8 @@ export class AutomationRepo {
           outcome = NULL,
           error = NULL,
           attempts = attempts + 1,
-          updated_at = excluded.updated_at`,
+          updated_at = excluded.updated_at
+          WHERE automation_runs.dispatch_status <> 'dispatched'`,
       )
       .run({
         run_id: params.runId,
@@ -1236,6 +1340,19 @@ export class AutomationRepo {
     const fixed = row ? readSerializedModelSelection(row.model_selection) : undefined;
     if (!fixed) throw new Error(`Automation run 不存在或无法固定模型选择: ${runId}`);
     return fixed;
+  }
+
+  /** 发送输入前固定 run 的目标 session；失联重派只复用同一 session 和 commandId。 */
+  async fixRunSessionId(runId: string, sessionId: string): Promise<string> {
+    await this.ensureReady();
+    const db = this.getDatabase();
+    db.prepare(`UPDATE automation_runs SET session_id = COALESCE(session_id, @session_id)
+      WHERE run_id = @run_id`).run({ run_id: runId, session_id: sessionId });
+    const row = db
+      .prepare(`SELECT session_id FROM automation_runs WHERE run_id = @run_id`)
+      .get({ run_id: runId }) as Pick<AutomationRunRow, "session_id"> | undefined;
+    if (!row?.session_id) throw new Error(`Automation run not found: ${runId}`);
+    return row.session_id;
   }
 
   /** 派发结果回写 run（dispatched 回填 session_id / failed_to_dispatch 记 error）。 */

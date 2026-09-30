@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type {
   ModelRequestAdmission,
   ModelRequestAdmissionTicket,
@@ -18,10 +19,10 @@ export interface AttemptAdmission {
   /** 准入票据；请求没有准入端口时缺席（此时 publish 不转投）。 */
   readonly ticket?: ModelRequestAdmissionTicket;
   /** 归还槽位；幂等（finally 与「退避 sleep 之前」两处都会调）。 */
-  release(): void;
+  release(): Promise<void>;
 }
 
-const NO_ADMISSION: AttemptAdmission = { release() {} };
+const NO_ADMISSION: AttemptAdmission = { async release() {} };
 
 /**
  * 等待准入。先试同步快路径 `tryAcquire`；未命中才排队 `acquire`，并在两端回调 `onQueued` / `onAdmitted`
@@ -32,29 +33,44 @@ const NO_ADMISSION: AttemptAdmission = { release() {} };
 export async function admitAttempt(input: {
   admission?: ModelRequestAdmission;
   model: ModelRequestTarget;
+  requestId?: string;
+  attempt?: number;
   signal?: AbortSignal;
   onQueued?: () => Promise<void>;
   onAdmitted?: (queuedMs: number) => Promise<void>;
 }): Promise<AttemptAdmission> {
   if (input.admission === undefined) return NO_ADMISSION;
   const hasFastPath = typeof input.admission.tryAcquire === "function";
-  let ticket = hasFastPath ? input.admission.tryAcquire!({ model: input.model }) : undefined;
+  const attempt = { model: input.model, requestId: input.requestId, attempt: input.attempt };
+  let ticket = hasFastPath ? input.admission.tryAcquire!(attempt) : undefined;
   if (ticket === undefined) {
     const queuedAt = Date.now();
     if (hasFastPath) await input.onQueued?.();
     ticket = await input.admission.acquire({
-      model: input.model,
+      ...attempt,
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     });
-    if (hasFastPath) await input.onAdmitted?.(Date.now() - queuedAt);
+    try {
+      input.signal?.throwIfAborted();
+      if (hasFastPath) await input.onAdmitted?.(Date.now() - queuedAt);
+    } catch (error) {
+      await ticket.release();
+      throw error;
+    }
+  } else {
+    try {
+      input.signal?.throwIfAborted();
+    } catch (error) {
+      await ticket.release();
+      throw error;
+    }
   }
-  let released = false;
+  let released: Promise<void> | undefined;
   return {
     ticket,
     release() {
-      if (released) return;
-      released = true;
-      ticket.release();
+      released ??= Promise.resolve().then(() => ticket.release());
+      return released;
     },
   };
 }

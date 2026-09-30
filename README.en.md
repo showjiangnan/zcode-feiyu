@@ -5,13 +5,15 @@
 </div>
 <p align="center"><a href="README.md">简体中文</a> | English</p>
 
-ZCode Feiyu is a community fork of [zai-org/ZCode](https://github.com/zai-org/ZCode). It retains the desktop application, Web interface, terminal Agent, and shared runtime, and adds local top-level task collaboration, unified telemetry controls, and built-in image generation through fal.
+ZCode Feiyu is a community fork of [zai-org/ZCode](https://github.com/zai-org/ZCode). It retains the desktop application, Web interface, terminal Agent, and shared runtime, and adds local top-level task collaboration, standard/coordinator/swarm orchestration, persistent project memory and review, controlled proactive work, unified telemetry controls, and built-in image generation through fal.
 
 Maintained independently by Feiyu, this repository is separate from official releases. Existing ZCode UI components and interactions are reused; application names remain ZCode / ZCode Preview. The upstream baseline is **v3.14.3, commit `29628c9acdb81b703bbd4080c207a0e7ce5e276e`**. Comparisons refer to that public source revision, not future upstream versions.
 
 ## Download installers
 
 Get Feiyu builds from [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases). The first release is [v3.14.3-feiyu.1 (prerelease)](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.3-feiyu.1). The in-app version remains **3.14.3**, and the installed application is named **ZCode Preview**.
+
+The capabilities described below refer to **current `main` source**. The older `v3.14.3-feiyu.1` downloads do not include the subsequent memory, orchestration, proactive-work, budget-removal, or swarm fixes. Build current source with the instructions below to obtain these changes; publishing source does not replace older Release packages.
 
 | Platform                    | Download                                                                                                                                                                                                                                                        | Verification in this release                                                                                                                                                         |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -27,23 +29,59 @@ Get Feiyu builds from [GitHub Releases](https://github.com/showjiangnan/zcode-fe
 
 ## Additions and comparison
 
-| Capability                               | Official v3.14.3 baseline                                                    | ZCode Feiyu                                                                                    |
-| ---------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Desktop / Web / CLI, Agent, V4           | Available                                                                    | Retained and reused                                                                            |
-| Local top-level task application service | Low-level session operations, without this fork's unified task tools/service | Discovery, creation, reading, input delivery, receipt queries, waiting, and lifecycle controls |
-| Automatic prompts from task A to B       | Foundations such as subagent messaging                                       | Same-workspace top-level messaging, preferring guide/steer while busy                          |
-| Automatic message attribution            | No source type or label introduced here                                      | Persistent provenance and “Sent automatically from another ZCode task”                         |
-| Unified telemetry setting                | No single setting spanning the three paths implemented here                  | Controls ARMS, ZCode events, and desktop/Agent OTLP reporting                                  |
-| Packaged dynamic workflows               | Forced on in Preview; Production follows upstream gating                     | `alwaysOn` in both Production and Preview packages                                             |
-| Local Session Mailbox                    | Requires `ZCODE_MESSAGE_ENABLED=1/true`                                      | Enabled by default, with an explicit opt-out                                                   |
-| Workspace search settings                | Implemented page with hidden navigation                                      | Visible entry for the existing `.zcodeignore` feature                                          |
-| Built-in fal image generation            | No settings/tools/image-job pipeline introduced here                         | Provider key, generation/edit models, loading, storage, preview, resume, and cancellation      |
-| Subagent image spending                  | Not applicable                                                               | Separate permission switch, off by default                                                     |
-| Image parameters                         | Not applicable                                                               | One PNG by default; explicit dimensions/count/format validated against model capabilities      |
+| Capability                               | Official v3.14.3 baseline                                                    | ZCode Feiyu                                                                                      |
+| ---------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Desktop / Web / CLI, Agent, V4           | Available                                                                    | Retained and reused                                                                              |
+| Per-conversation orchestration           | Existing ordinary subagents                                                  | Standard, `coordinator`, and `swarm`; live switching at model-request boundaries                 |
+| Workspace memory and review              | Existing conversation and context foundations                                | Workspace isolation, relevant recall, extraction/review, history, diffs, and protected undo      |
+| Controlled proactive work                | Existing task runtime                                                        | Application permission plus per-conversation activation, event/timer admission, pause and stop   |
+| Consumption-based execution limits       | Existing execution policy                                                    | Removed accumulated consumption stops; usage, compaction, permissions, and cancellation retained |
+| Local top-level task application service | Low-level session operations, without this fork's unified task tools/service | Discovery, creation, reading, input delivery, receipt queries, waiting, and lifecycle controls   |
+| Automatic prompts from task A to B       | Foundations such as subagent messaging                                       | Same-workspace top-level messaging, preferring guide/steer while busy                            |
+| Automatic message attribution            | No source type or label introduced here                                      | Persistent provenance and “Sent automatically from another ZCode task”                           |
+| Unified telemetry setting                | No single setting spanning the three paths implemented here                  | Controls ARMS, ZCode events, and desktop/Agent OTLP reporting                                    |
+| Packaged dynamic workflows               | Forced on in Preview; Production follows upstream gating                     | `alwaysOn` in both Production and Preview packages                                               |
+| Local Session Mailbox                    | Requires `ZCODE_MESSAGE_ENABLED=1/true`                                      | Enabled by default, with an explicit opt-out                                                     |
+| Workspace search settings                | Implemented page with hidden navigation                                      | Visible entry for the existing `.zcodeignore` feature                                            |
+| Built-in fal image generation            | No settings/tools/image-job pipeline introduced here                         | Provider key, generation/edit models, loading, storage, preview, resume, and cancellation        |
+| Subagent image spending                  | Not applicable                                                               | Separate permission switch, off by default                                                       |
+| Image parameters                         | Not applicable                                                               | One PNG by default; explicit dimensions/count/format validated against model capabilities        |
 
 “App Server capabilities” are implemented using **ZCode's own stdio / V4 / Agent architecture**. This fork does not embed OpenAI Codex or promise compatibility with the external Codex App Server protocol. Existing runtimes retain ownership of sessions, admission ordering, recovery, and image artifacts; there is no second task database.
 
 ## Using the added features
+
+### Standard / coordinator / swarm in the current conversation
+
+The orchestration menu beside the permission selector applies to **the current conversation only** and can be changed at any time:
+
+| Mode               | Behavior                                                                                                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Standard (default) | The main Agent uses its normal tools and may dispatch ordinary subagents.                                                                                                                     |
+| `coordinator`      | The main Agent decomposes, delegates, observes, and integrates. Its direct tools are limited to reading and task management; child agents perform edits under the existing permission policy. |
+| `swarm`            | The main Agent starts named members, maintains a shared board with `TeamTask`, and sends task-local messages with `SendMessage`.                                                              |
+
+Changes during execution take effect at the next model-request boundary. The in-flight request keeps its original configuration. Team messaging stays within that team; top-level conversations use the App Server tools described below. There are at most eight named members, with separate limits for board size, message size, permissions, cancellation, and recovery. Both locales display the exact labels `coordinator` / `swarm` in the menu and trigger.
+
+Current source fixes swarm tool-schema compatibility: providers receive ordinary objects while execution retains strict action-field and permission validation. A prewarmed conversation also avoids writing model-selection entries before its parent exists or reporting a legitimate empty conversation as missing.
+
+### Project memory, automatic review, and proactive work
+
+Configure these in Settings → Agent capabilities:
+
+- **Workspace memory:** off for new configurations. Memory is isolated by workspace identity, with relevant recall, read-only browsing, modification history, diffs, and revision-protected undo.
+- **Automatic extraction:** a separate switch, off for new configurations. Extracts reusable information from completed conversations. Turning off memory permission also prevents new extraction and review.
+- **Automatic review:** a separate switch, off for new configurations. Reviews existing memory after time and candidate-conversation thresholds are met; manual “Review now” is also available. Progress, actual scope, usage, and cancellation are visible. It does not run after every message.
+- **Allow proactive work:** off by default. Application permission must be enabled before proactive work is started in a specific conversation. Conversations can pause or stop it; event and timer triggers use the same task admission path.
+- **Memory history scope:** current conversation, workspace, or no history. Existing memory files and history remain readable after memory is disabled.
+
+macOS execution after closing the last window depends on background permission and an available managed Host. **Cmd+Q exits the application and its managed processes.** Background operation does not imply login startup or guaranteed execution during lid closure or system sleep.
+
+### Continued execution and usage
+
+Current source removes execution budgets that forcibly stop work based on accumulated tokens, cost, request counts, total task duration, or default consecutive-turn caps. Main tasks, subagents, goals, and memory maintenance no longer pause because a retired consumption limit was reached. Legacy budget configuration is discarded on read while historical usage remains available.
+
+Usage remains observable, with estimates labeled when provider usage is unavailable. Context capacity and automatic compaction, per-response output limits, concurrency backpressure, network retries, tool timeouts, explicitly requested `maxTurns`, permissions, and cancellation remain active. **Continued execution is still billable and subject to provider account limits.** Models, subagents, and memory maintenance incur their respective provider charges.
 
 ### Collaborate across tasks in one workspace
 
@@ -196,10 +234,12 @@ This repository includes production sources, required build assets, and Chinese/
 
 ### Verification status
 
-The development workspace has completed relevant type checks, controlled service/Agent integration checks, and UI verification. The latest image compatibility fix passed 19 service and real Agent-process tests. A local macOS arm64 installation and **real fal validation without paid generation** were verified. Paid image output, real CDN failures, and cross-platform installation still require separate validation. Fixture output is not evidence of actual provider-generated images. Test sources are excluded from this repository's publication scope.
+The current update runs root and CLI type checks, root lint, architecture checks, real Agent/SQLite/stdio integration, and production UI-component checks. Swarm requests cover OpenAI Chat Completions and Anthropic Messages formats, the local board, and both recovery profiles. A local HTTP fixture is not proof that every real model has been tested. Full CLI lint still has existing file-length violations and must not be reported as fully passing.
+
+The macOS arm64 package and local startup have actual verification. Earlier image fixes also verified **real fal connectivity without paid generation**. Paid image output, real CDN failures, and real Windows devices require separate validation. Test sources and test records are excluded from publication.
 
 ## License and acknowledgements
 
-Distributed under [Apache License 2.0](LICENSE), retaining upstream and third-party notices in [NOTICE.md](NOTICE.md) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Fork changes cover task collaboration, telemetry controls, feature activation, and fal image support; modified files identify ZCode Feiyu as the modification source. Existing names and marks belong to their respective owners and do not imply official endorsement.
+Distributed under [Apache License 2.0](LICENSE), retaining upstream and third-party notices in [NOTICE.md](NOTICE.md) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Fork changes cover task collaboration, memory, orchestration, proactive work, execution policy, telemetry controls, feature activation, and fal image support; modified files identify ZCode Feiyu as the modification source. Existing names and marks belong to their respective owners and do not imply official endorsement.
 
 Thanks to upstream ZCode and its open-source dependencies. Report issues through [this repository's issue tracker](https://github.com/showjiangnan/zcode-feiyu/issues).

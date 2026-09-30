@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Vercel AI SDK model runner
 // ============================================================
@@ -193,6 +194,7 @@ export class AiSdkModelAdapter {
         responseJsonSchema: request.responseJsonSchema,
         abortSignal: request.abortSignal,
         maxOutputTokens: request.options.maxOutputTokens,
+        modelRequestAdmission: request.modelRequestAdmission,
         ...invocationContext,
         ...(shouldAttachReasoningTelemetry
           ? {

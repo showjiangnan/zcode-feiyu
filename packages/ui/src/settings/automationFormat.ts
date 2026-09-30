@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // 定时任务展示层格式化：cron 表达式 → 人类可读的调度摘要 / 相对时间 / cron builder 组装。
 // 说明：croner 只在 services 侧用于算下次触发时间；UI 这里仅做「已知常见模式」的可读化，
 // 覆盖不到的表达式回退成原始 cron 文本，保证不误导。
@@ -15,7 +16,7 @@ interface AutomationStatusLike {
 
 interface AutomationFailureLike {
   lifecycleStatus: AutomationStatusKind;
-  dispatchStatus?: "idle" | "claimed" | "dispatched" | "failed_to_dispatch";
+  dispatchStatus?: "idle" | "claimed" | "dispatched" | "failed_to_dispatch" | "waiting_for_host";
   dispatchAttempts?: number;
   retryAt?: number;
   lastError?: string;

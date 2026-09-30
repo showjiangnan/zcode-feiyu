@@ -1,10 +1,16 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { Emitter } from "@zcode/rpc";
 import {
   HostResponseTypes,
   HostMessageTypes,
   broadcastMessageSchema,
   hostBroadcastClaimResultMessageSchema,
+  hostBroadcastDeliveryFinalMessageSchema,
+  hostBroadcastDeliveryMessageSchema,
   hostBroadcastEnvelopeSchema,
+  runtimePolicyAcknowledgementSchema,
+  type RuntimePolicyAcknowledgement,
+  type BroadcastDeliverySummary,
 } from "@zcode/shared";
 import type {
   BroadcastClaimAcquireResult,
@@ -17,6 +23,8 @@ const BROADCAST_CLAIM_TIMEOUT_MS = 2_000;
 const BROADCAST_CLAIM_RESERVATION_TTL_MS = 5_000;
 const BROADCAST_CLAIM_RETRY_MS = 250;
 const MAX_LOCAL_CLAIMS = 1_024;
+// Host ACK 与随后 Main 原生停止各有 30 秒屏障；源端不能在 Main 仍收口时先超时。
+const BROADCAST_DELIVERY_TIMEOUT_MS = 65_000;
 let claimRequestSequence = 0;
 
 type LocalClaimRecord = {
@@ -71,8 +79,25 @@ export function createBroadcastService(
     postMessage(message: unknown): void;
     on(event: "message", listener: (e: { data: unknown }) => void): void;
   } | null,
-): IBroadcastService {
+): IBroadcastService & {
+  registerAcknowledgedHandler(
+    channel: string,
+    handler: (message: BroadcastMessage) => Promise<RuntimePolicyAcknowledgement | void>,
+  ): void;
+} {
   const emitter = new Emitter<BroadcastMessage>();
+  const acknowledgedHandlers = new Map<
+    string,
+    (message: BroadcastMessage) => Promise<RuntimePolicyAcknowledgement | void>
+  >();
+  const pendingDeliveries = new Map<
+    string,
+    {
+      resolve: (result: BroadcastDeliverySummary) => void;
+      reject: (error: Error) => void;
+      timeout: ReturnType<typeof setTimeout>;
+    }
+  >();
   const localClaims = new Map<string, LocalClaimRecord>();
   const pendingClaims = new Map<
     string,
@@ -107,6 +132,63 @@ export function createBroadcastService(
       const broadcastResult = hostBroadcastEnvelopeSchema.safeParse(e.data);
       if (broadcastResult.success && broadcastResult.data.type === HostMessageTypes.Broadcast) {
         emitter.fire(broadcastResult.data.message);
+        const handler = acknowledgedHandlers.get(broadcastResult.data.message.channel);
+        if (handler) {
+          // 旧式广播没有 Main 回执；消费仍由 Host 持有，Renderer 是否挂载不影响生效。
+          void handler(broadcastResult.data.message).catch(() => {});
+        }
+        return;
+      }
+
+      const delivery = hostBroadcastDeliveryMessageSchema.safeParse(e.data);
+      if (delivery.success && delivery.data.type === HostMessageTypes.BroadcastDelivery) {
+        const { message, requestId, sourceWindowId } = delivery.data;
+        emitter.fire(message);
+        const handler = acknowledgedHandlers.get(message.channel);
+        void (handler ? handler(message) : Promise.reject(new Error("No delivery handler")))
+          .then(
+            (acknowledgement) =>
+              parentPort.postMessage({
+                type: HostResponseTypes.BroadcastDeliveryResult,
+                requestId,
+                sourceWindowId,
+                ok: !acknowledgement || acknowledgement.status === "applied",
+                ...(acknowledgement
+                  ? { acknowledgement: runtimePolicyAcknowledgementSchema.parse(acknowledgement) }
+                  : {}),
+              }),
+            (error: unknown) =>
+              parentPort.postMessage({
+                type: HostResponseTypes.BroadcastDeliveryResult,
+                requestId,
+                sourceWindowId,
+                ok: false,
+                acknowledgement: {
+                  status: "failed",
+                  error: error instanceof Error ? error.message : String(error),
+                },
+              }),
+          )
+          .catch(() => {
+            // 进程关闭时 Main 的有界等待会把未回执目标计为失败。
+          });
+        return;
+      }
+
+      const deliveryFinal = hostBroadcastDeliveryFinalMessageSchema.safeParse(e.data);
+      if (
+        deliveryFinal.success &&
+        deliveryFinal.data.type === HostMessageTypes.BroadcastDeliveryFinal
+      ) {
+        const pending = pendingDeliveries.get(deliveryFinal.data.requestId);
+        if (!pending) return;
+        pendingDeliveries.delete(deliveryFinal.data.requestId);
+        clearTimeout(pending.timeout);
+        pending.resolve({
+          targetCount: deliveryFinal.data.targetCount,
+          failedCount: deliveryFinal.data.failedCount,
+          ...(deliveryFinal.data.receipts ? { receipts: deliveryFinal.data.receipts } : {}),
+        });
         return;
       }
 
@@ -240,6 +322,33 @@ export function createBroadcastService(
   };
 
   return {
+    registerAcknowledgedHandler(channel, handler) {
+      acknowledgedHandlers.set(channel, handler);
+    },
+    async sendWithAcknowledgements(message) {
+      const validatedMessage = broadcastMessageSchema.parse(message);
+      emitter.fire(validatedMessage);
+      if (!parentPort) return { targetCount: 0, failedCount: 0 };
+      const requestId = createClaimRequestId();
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          pendingDeliveries.delete(requestId);
+          reject(new Error("Broadcast delivery acknowledgement timed out"));
+        }, BROADCAST_DELIVERY_TIMEOUT_MS);
+        pendingDeliveries.set(requestId, { resolve, reject, timeout });
+        try {
+          parentPort.postMessage({
+            type: HostResponseTypes.BroadcastDeliveryRequest,
+            requestId,
+            message: validatedMessage,
+          });
+        } catch (error) {
+          clearTimeout(timeout);
+          pendingDeliveries.delete(requestId);
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+    },
     async send(message: BroadcastMessage): Promise<void> {
       const validatedMessage = broadcastMessageSchema.parse(message);
       // 1. 通知本窗口的 Renderer

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { Output, jsonSchema } from "ai";
 import type { ModelToolChoice } from "@zcode/contracts";
 import type { EnvRecord } from "./model-execution.js";
@@ -70,6 +71,8 @@ export function createGenerateTextOptions(input: {
       supportsNativeWebSearch: input.resolved.properties.supportsNativeWebSearch,
     }),
     toolChoice: toAiSdkToolChoice(input.request.toolChoice),
+    // 请求预算冻结的输出上限必须进入真实 SDK 参数，不能只停留在 ModelRequest。
+    maxOutputTokens: input.request.maxOutputTokens,
     temperature: input.request.temperature,
     topP: input.request.topP,
     topK: input.request.topK,
@@ -131,6 +134,8 @@ export function createStreamTextOptions(input: {
       supportsNativeWebSearch: input.resolved.properties.supportsNativeWebSearch,
     }),
     toolChoice: toAiSdkToolChoice(input.request.toolChoice),
+    // 请求预算冻结的输出上限必须进入真实 SDK 参数，不能只停留在 ModelRequest。
+    maxOutputTokens: input.request.maxOutputTokens,
     temperature: input.request.temperature,
     topP: input.request.topP,
     topK: input.request.topK,

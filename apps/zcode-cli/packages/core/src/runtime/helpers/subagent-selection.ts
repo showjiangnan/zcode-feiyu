@@ -1,3 +1,6 @@
+// Modified by ZCode Feiyu contributors (2026).
+import { parseModelSelectionValue, SESSION_ENTRY_MODEL_SELECTION } from "@zcode/contracts";
+import type { SessionStorePort } from "@zcode/contracts";
 import { createCoreError, CoreErrorType, type ModelSelection } from "../deps.js";
 import { cloneModelSelection } from "../model-selection.js";
 import type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
@@ -55,4 +58,31 @@ export function resolveSubagentSelection(input: {
     hasConcreteModel: explicit != null,
     selection: cloneModelSelection(result.effectiveSelection),
   };
+}
+
+/**
+ * 续跑已有 child 会话时，读取它自己已持久化的模型选择。
+ *
+ * 修复原因：续跑同一个 teammate 时，子模型取自父 runtime **当前**选择；父在两次运行之间切换模型后，
+ * 同一个 child 会悄悄换模型，而它持久化的选择仍是旧值，二者不一致（复审 DEF-16）。
+ * 依据：round-team 约定 child 的模型/权限由原 child session 的既有快照恢复。
+ * 显式覆盖或 profile 固定的模型始终优先，因此只在二者都未指定时读取；持久化选择缺失、损坏或已不可用时
+ * 返回 undefined，由调用方回落到父当前选择，不让恢复因此失败。
+ */
+export async function resolveResumedChildSelection(input: {
+  store: Pick<SessionStorePort, "sessionEntries"> | undefined;
+  childSessionId: string;
+  hasExplicitModel: boolean;
+  validate?: (selection: ModelSelection) => EffectiveModelSelectionResult;
+}): Promise<ModelSelection | undefined> {
+  if (input.hasExplicitModel || !input.store?.sessionEntries) return undefined;
+  const entries = await input.store.sessionEntries({
+    sessionID: input.childSessionId as never,
+    type: SESSION_ENTRY_MODEL_SELECTION,
+  });
+  const persisted = parseModelSelectionValue(entries.at(-1)?.data);
+  if (!persisted) return undefined;
+  if (!input.validate) return cloneModelSelection(persisted);
+  const resolved = input.validate(cloneModelSelection(persisted));
+  return resolved.selectionIssue || !resolved.effectiveSelection ? undefined : persisted;
 }

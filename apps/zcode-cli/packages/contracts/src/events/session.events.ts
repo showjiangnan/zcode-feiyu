@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { ExecutionOutputPreview } from "../interfaces/execution.port.js";
 import type { RuntimeInputPresentation } from "../interfaces/runtime-input-presentation.js";
 /* eslint-disable max-lines -- session event 契约集中在单文件导出，避免 app/agent 协议类型分散后漂移。 */
@@ -31,6 +32,11 @@ import type {
   ModelUsage,
   ModelUsageSummary,
 } from "../model/index.js";
+import type {
+  BackgroundWorkKind,
+  OrchestrationState,
+  TeamBoardState,
+} from "@zcode/shared/zcode-protocol-v4";
 import type { HttpClientEgressInfo } from "../interfaces/http-client.port.js";
 import { createModelUsageSummary } from "../model/index.js";
 import type { ModelApiErrorPhase, ModelFailureExceptionKind } from "../telemetry/index.js";
@@ -87,6 +93,7 @@ export const SessionEventType = {
   SessionCompacted: "session_compacted",
   SessionTitleUpdated: "session_title_updated",
   SessionModeChanged: "session_mode_changed",
+  SessionOrchestrationChanged: "session_orchestration_changed",
   SessionEnded: "session_ended",
   TurnStarted: "turn_started",
   TurnInputReceived: "turn_input_received",
@@ -167,6 +174,7 @@ export const SessionEventType = {
   SubagentSpawned: "subagent_spawned",
   SubagentMessage: "subagent_message",
   SubagentStopped: "subagent_stopped",
+  TeamBoardChanged: "team_board_changed",
   Interrupt: "interrupt",
   Cancel: "cancel",
   Resume: "resume",
@@ -574,6 +582,8 @@ export interface SessionInputPromotedPayload {
 }
 
 export interface TurnCompletePayload {
+  /** 终态冻结原 turn 的已消费输入，重放不得改用当前 runtime 的来源。 */
+  causalContext?: import("@zcode/shared/zcode-protocol-v4").ProactiveCausalContext;
   response: string;
   tokenCount: number;
   usage?: ModelUsageSummary;
@@ -592,6 +602,7 @@ export interface TurnCompletePayload {
 }
 
 export interface TurnErrorPayload {
+  causalContext?: import("@zcode/shared/zcode-protocol-v4").ProactiveCausalContext;
   error: ErrorPayload;
   turnPhase: string;
   inputId?: string;
@@ -647,6 +658,8 @@ export interface SessionModeChangedPayload {
   source: "tool" | "command" | "system";
   toolCallId?: ToolCallId;
 }
+
+export type SessionOrchestrationChangedPayload = OrchestrationState;
 
 export type TargetCompletionVerificationStatus =
   | "started"
@@ -894,7 +907,10 @@ export interface BackgroundTaskPayloadBase {
   toolName?: string;
   // "workflow" = workflow run（CreateWorkflow）。追踪器的行为已按 per-tool lifecycleProvider
   // 分派，taskKind 只决定面板分组与图标，所以加宽是纯展示修正，不改任何生命周期语义。
-  taskKind?: "bash" | "subagent" | "workflow";
+  // 取值清单与 V4 快照的 backgroundWorkSummary.kind 同源（shared 的 BACKGROUND_WORK_KINDS）：
+  // 它是闭集，新增取值必须 CLI 与桌面同批发布。memory_extraction / memory_review / proactive
+  // 是连续工作（复审 GAP-03），由 runtime 自己的所有者产出，不登记 runtime task registry。
+  taskKind?: BackgroundWorkKind;
   childSessionId?: SessionId | string;
   blocked?: boolean;
   blockedReason?: "interactive_prompt_detected" | "no_output_progress" | string;
@@ -1179,6 +1195,8 @@ export type SessionEventPayload =
   | SessionCompactedPayload
   | SessionTitleUpdatedPayload
   | SessionModeChangedPayload
+  | SessionOrchestrationChangedPayload
+  | TeamBoardState
   | TurnStartedPayload
   | TurnInputReceivedPayload
   | TurnSteerQueuedPayload

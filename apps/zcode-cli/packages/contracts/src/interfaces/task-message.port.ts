@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { TaskAppRequest, TaskAppResponse } from "@zcode/shared";
 
 export interface TaskMessageTarget {

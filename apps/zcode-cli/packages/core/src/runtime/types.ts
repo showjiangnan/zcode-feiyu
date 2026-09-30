@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { RuntimeInputPresentation } from "@zcode/contracts";
 /* eslint-disable max-lines -- Runtime 类型集中承载 core/runtime 对外结构，拆分需要单独迁移。 */
 import { PermissionService, ToolScheduler } from "./deps.js";
@@ -199,6 +199,8 @@ export interface AgentRuntimeConfig {
   /** 根 Session runtime 创建时固定；false 只关闭 Bash 的 bfs/ugrep prelude。 */
   nativeSearchEnhancementsEnabled?: boolean;
   memory?: MemoryRuntimeConfig;
+  continuityPolicy?: import("@zcode/shared").ContinuityPolicy;
+  continuityPolicyRevision?: number;
   /** 历史恢复允许未绑定；只有完整选择才能创建本轮执行 Model。 */
   modelSelection?: ModelSelection;
   titleGeneration?: {
@@ -305,6 +307,7 @@ export interface MemoryRuntimeConfig {
   enabled?: boolean;
   /** 是否调度成功 Main turn 后的自动 Extraction；缺省按 true 处理。 */
   extractionEnabled?: boolean;
+  reviewEnabled?: boolean;
   storageRoot?: string;
   use?: boolean;
   workspaceIdentity?: string;
@@ -341,6 +344,8 @@ export interface AgentRuntimeDeps {
   skillPort?: SkillPort;
   mcpPort?: McpPort;
   subagentPort?: SubagentPort;
+  teamBoardPort?: import("@zcode/contracts").TeamBoardPort;
+  teamActorId?: string;
   coordinatorResponsePort?: CoordinatorResponsePort;
   /** 工作流 actor 提交终态结果的端口；存在即作为 submit_result 工具的注册门。 */
   workflowSubmitPort?: WorkflowSubmitPort;
@@ -361,6 +366,14 @@ export interface AgentRuntimeDeps {
    * 包装（受闸门约束），主 runtime 拿治理器的 observer（只喂信号）；缺席即不设闸门。
    */
   modelRequestAdmission?: ModelRequestAdmission;
+  /**
+   * 连续性策略与修订的读取函数。子 runtime 通过它读取根 runtime 的**当前**有效策略，不持有自己的副本，
+   * 因此设置确认对根生效即对其全部子 runtime 生效（复审 DEF-05）；缺席时读取本 runtime 的配置。
+   */
+  continuityPolicySource?: () => {
+    policy?: import("@zcode/shared").ContinuityPolicy;
+    revision?: number;
+  };
   workflowPort?: WorkflowPort;
   /** workflow run 的提交/观察/取消端口；存在即 CreateWorkflow 真启动，缺席则回占位诊断。 */
   dynamicWorkflowRunPort?: DynamicWorkflowRunPort;
@@ -453,6 +466,8 @@ export interface ExecuteTurnOptionsBase {
    */
   epilogueStart?: number;
   inputId?: string;
+  /** 已由调用方持久接纳的输入 ID，供首轮子任务输入原子提升。 */
+  sessionInputId?: string;
   intent?: TurnInputIntentMetadata;
   sharedContextRefs?: TurnInputIntentMetadata["sharedContextRefs"];
   queryId?: QueryId;
@@ -784,6 +799,8 @@ export interface ActiveTurnSteeringState {
   turnId: TurnId;
   /** 本轮的 inputId（与 TurnStarted.inputId 同源）；regular turn 在 beginActiveTurn 时记下。 */
   inputId?: string;
+  /** 仅合并本轮已实际消费的输入，不从历史时间窗口推断。 */
+  causalContext?: import("@zcode/shared/zcode-protocol-v4").ProactiveCausalContext;
 }
 
 export interface ActiveTurnStartReservation {

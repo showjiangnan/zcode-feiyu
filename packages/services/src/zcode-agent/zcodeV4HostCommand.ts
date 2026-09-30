@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // host（services 层）侧的 v4 命令信封构造与 ACK 收口共用件（send/交互回执收敛）。
 //
 // 与 renderer 的 packages/ui/src/v4/commandFactory.ts 平行：renderer 走浏览器

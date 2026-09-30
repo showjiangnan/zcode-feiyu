@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Context Builder Types
 // ============================================================
@@ -36,6 +37,7 @@ export type ContextSource =
   | "skills" // 可用 skills
   | "tools" // 工具定义
   | "request_user_context" // request-level user context provider-visible 组合块
+  | "project_memory_context" // 项目记忆作为可核实资料单独注入，不提升为用户指令
   | "memory" // 长期 memory read path
   | "current_date" // 当前日期
   | "custom_system_prompt" // 自定义 stable system body
@@ -110,6 +112,7 @@ export interface ContextBuilderConfig {
   projectContext?: ProjectContext;
   memoryRoot?: string;
   memoryIndexContent?: string;
+  memoryRelevantContent?: string;
   skills?: SkillLoadOutcome;
   agentProfiles?: readonly AgentProfile[];
   embeddedSearchEnabled?: boolean;

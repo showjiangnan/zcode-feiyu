@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { createLocalTtftSpans } from "./localTtftSpans.js";
 import { LocalTtftExportDedupe } from "./localTtftExportDedupe.js";
 import { resourceFromAttributes } from "@opentelemetry/resources";

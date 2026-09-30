@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+// Modified by ZCode Feiyu contributors (2026).
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectMemoryWorkspaceSummary } from "@zcode/services";
 import {
   TID_SETTINGS_MEMORY_COUNT,
@@ -24,6 +25,10 @@ import { SettingsSearchInput } from "@/settings/SettingsSearchInput.js";
 import { SettingsResourceHeaderActions } from "@/settings/SettingsResourceHeaderActions.js";
 import { formatMemoryUpdatedAt } from "@/settings/memoryUpdatedAt.js";
 import { WorkspaceEditorButtonGroup } from "@/WorkspaceEditorButtonGroup.js";
+import { Button } from "@/components/ui/button.js";
+import { CodeViewer } from "@/components/ui/code-viewer.js";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog.js";
+import { useMemoryFilePreview } from "@/hooks/useWorkspaceMemory.js";
 
 export type MemoryViewerLoadingState = "idle" | "loading" | "ready" | "error";
 
@@ -43,6 +48,8 @@ export function MemorySettingsViewer({
   onScopeKeyChange: (workspaceId: string) => void;
 }) {
   const { intl, locale } = useZCodeIntl();
+  const preview = useMemoryFilePreview(selectedWorkspace?.id);
+  const previewTrigger = useRef<HTMLButtonElement | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -65,7 +72,7 @@ export function MemorySettingsViewer({
     [normalizedSearchQuery, selectedWorkspace],
   );
 
-  if (catalogError) {
+  if (catalogError && workspaces.length === 0) {
     return (
       <Alert>
         <AlertDescription>{catalogError}</AlertDescription>
@@ -90,7 +97,12 @@ export function MemorySettingsViewer({
   }
 
   return (
-    <section className="space-y-4">
+    <section className="min-w-0 space-y-4">
+      {catalogError ? (
+        <Alert>
+          <AlertDescription>{catalogError}</AlertDescription>
+        </Alert>
+      ) : null}
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <PluginScopeMenu
@@ -154,7 +166,7 @@ export function MemorySettingsViewer({
             {visibleFiles.map((file, index) => (
               <Fragment key={file.name}>
                 {index > 0 ? <div className="h-px bg-border/50" aria-hidden="true" /> : null}
-                <div className="flex min-w-0 items-center hover:bg-hover">
+                <div className="flex min-w-0 flex-wrap items-center hover:bg-hover">
                   <div
                     data-testid={testId(TID_SETTINGS_MEMORY_FILE, file.name)}
                     className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left"
@@ -191,8 +203,22 @@ export function MemorySettingsViewer({
                   </div>
                   <span
                     data-testid={testId(TID_SETTINGS_MEMORY_FILE_EDITOR_ACTIONS, file.name)}
-                    className="mr-3 shrink-0"
+                    className="mr-3 flex shrink-0 flex-wrap items-center justify-end gap-1"
                   >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={intl.formatMessage(
+                        { id: "settings.memory.viewer.readFile" },
+                        { name: file.name },
+                      )}
+                      onClick={(event) => {
+                        previewTrigger.current = event.currentTarget;
+                        void preview.open(file.name);
+                      }}
+                    >
+                      {intl.formatMessage({ id: "settings.memory.viewer.read" })}
+                    </Button>
                     <WorkspaceEditorButtonGroup workspaceAbsPath={file.path} />
                   </span>
                 </div>
@@ -201,6 +227,50 @@ export function MemorySettingsViewer({
           </div>
         </>
       )}
+      <Dialog
+        open={preview.fileName !== null}
+        onOpenChange={(open) => {
+          if (!open) preview.close();
+        }}
+      >
+        <DialogContent
+          aria-describedby={undefined}
+          onCloseAutoFocus={(event) => {
+            // 受控弹窗没有 DialogTrigger，Radix 默认无法归还焦点；保留实际打开按钮。
+            event.preventDefault();
+            if (previewTrigger.current?.isConnected) previewTrigger.current.focus();
+          }}
+          className="max-h-[85vh] overflow-y-auto sm:max-w-3xl"
+        >
+          <DialogHeader>
+            <DialogTitle>{preview.fileName}</DialogTitle>
+          </DialogHeader>
+          <p className="text-ui-sm text-foreground-subtle">
+            {intl.formatMessage({ id: "settings.memory.viewer.readOnly" })}
+          </p>
+          {preview.loading ? (
+            <p role="status" className="text-ui-sm text-foreground-subtle">
+              {intl.formatMessage({ id: "settings.memory.viewer.loading" })}
+            </p>
+          ) : null}
+          {preview.error ? (
+            <p role="alert" className="break-words text-ui-sm text-destructive">
+              {preview.error}
+            </p>
+          ) : null}
+          {preview.content !== null ? (
+            <CodeViewer
+              code={preview.content}
+              language="markdown"
+              wrapLongLines
+              showLineNumbers
+              enableLineSelection={false}
+              enableGutterUtility={false}
+              className="min-w-0"
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

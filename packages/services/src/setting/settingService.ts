@@ -1,3 +1,5 @@
+// Modified by ZCode Feiyu contributors (2026).
+import { getSettingsDir, getSettingsFile } from "./settingsPaths.js";
 import { access, readFile, mkdir, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -19,6 +21,8 @@ import { isEffectiveDevelopmentNodeEnv } from "../runtime-tools/nodeEnv.js";
 import { maybeThrowInjectedFsFault } from "../fs/fsFaultInjection.js";
 import { atomicWriteText } from "../fs/atomicFileUtils.js";
 import { withSettingsWriteQueueTimeout } from "./settingsWriteQueue.js";
+import { withSettingsProfileCommit } from "./settingsProfileCommit.js";
+import { applyPendingRuntimePolicy, commitRuntimePolicy } from "./runtimePolicyCommit.js";
 import {
   migrateLegacyAccountConnectionSettings,
   needsLegacyAccountConnectionMigration,
@@ -41,24 +45,6 @@ const debugLog = (...args: unknown[]) => {
   }
   console.debug(formatLogPrefix("settingService", process.pid), ...args);
 };
-
-function resolveUserHomeDir() {
-  // 独立桌面 Dev 实例已设置自己的 home，设置服务却仍写真实 HOME，
-  // 导致启动迁移和外观操作污染其他实例。与 Electron 的显式 home 覆盖保持一致。
-  const envHome =
-    process.env.ZCODE_DESKTOP_HOME_DIR?.trim() ||
-    process.env.HOME?.trim() ||
-    process.env.USERPROFILE?.trim();
-  return envHome && envHome.length > 0 ? envHome : homedir();
-}
-
-function getSettingsDir() {
-  return join(resolveUserHomeDir(), ".zcode", "v2");
-}
-
-function getSettingsFile() {
-  return join(getSettingsDir(), "setting.json");
-}
 
 function defaultSettings(): AppSettings {
   return appSettingsSchema.parse({});
@@ -104,7 +90,8 @@ function shouldPersistSettingsMigrations(rawValue: unknown): boolean {
     (needsLegacyAccountConnectionMigration(rawValue) &&
       readIncompleteLegacyTeamConnections(rawValue).length === 0) ||
     raw.closeToTrayOnWindowsMigrationInitialized !== true ||
-    raw.messageStreamShowReasoningMigrationInitialized !== true
+    raw.messageStreamShowReasoningMigrationInitialized !== true ||
+    (raw.memoryEnabled === true && typeof raw.memoryExtractionEnabled !== "boolean")
   );
 }
 
@@ -114,6 +101,14 @@ interface ReadSettingsResult {
 }
 
 async function readSettingsWithMeta(): Promise<ReadSettingsResult> {
+  const result = await readSettingsFileWithMeta();
+  return {
+    ...result,
+    settings: await applyPendingRuntimePolicy(getSettingsDir(), result.settings),
+  };
+}
+
+async function readSettingsFileWithMeta(): Promise<ReadSettingsResult> {
   const settingsFile = getSettingsFile();
   try {
     // settingService.get() 会被 UI 和远程会话高频调用。
@@ -198,14 +193,19 @@ async function writeSettings(
   const settingsFile = getSettingsFile();
   // Windows 下测试只改了 HOME，模块顶层常量如果在导入时就把 homedir() 固化，
   // 后续读写仍会串到真实用户目录。这里改成每次按当前环境解析配置路径，保证本地和测试都稳定。
-  log("writing settings to:", settingsFile, JSON.stringify(settings));
+  debugLog("writing settings to:", settingsFile);
   maybeThrowInjectedFsFault({ operation: "mkdir", path: settingsDir });
   await mkdir(settingsDir, { recursive: true });
-  if (!shouldCommit()) return;
+  if (!shouldCommit()) throw new Error("stale settings write skipped before policy commit");
   maybeThrowInjectedFsFault({ operation: "writeFile", path: settingsFile });
   const raw = await readLegacyAccountConnectionSettingsFile(settingsFile);
   const rollbackFields = retainLegacyAccountConnectionFields(raw);
-  const persisted = { ...rollbackFields, ...settings };
+  const persisted = {
+    ...rollbackFields,
+    ...settings,
+    // 版本由 profile 提交协调者分配；文件层不得再隐式 +1，避免 ACK 与正文错一版。
+    policyRevision: settings.policyRevision ?? 0,
+  };
   // 旧 Team 尚待 OAuth 补组织时，schema 的默认 {} 不是用户的新选择。
   // 普通偏好保存必须保留新字段缺席；只有迁移提交或用户显式选连接才结束旧导入。
   if (!commitAccountSelection && readIncompleteLegacyTeamConnections(raw).length > 0) {
@@ -256,7 +256,10 @@ export function createSettingServiceWithMigrations(): {
       const currentGeneration = ++writeQueueGeneration;
       const shouldCommit = () => currentGeneration === writeQueueGeneration;
       return withSettingsWriteQueueTimeout(
-        (enterCommitPhase) => runUpdate(shouldCommit, enterCommitPhase),
+        (enterCommitPhase) =>
+          withSettingsProfileCommit(getSettingsDir(), () =>
+            runUpdate(shouldCommit, enterCommitPhase),
+          ),
         () => {
           if (writeQueueGeneration === currentGeneration) {
             writeQueueGeneration += 1;
@@ -314,6 +317,7 @@ export function createSettingServiceWithMigrations(): {
         const merged = appSettingsSchema.parse({
           ...current,
           ...validatedPatch,
+          policyRevision: current.policyRevision ?? 0,
         });
 
         // 打开工作区后会几乎同时写 recentProjects 和 lastWorkspaceSession。
@@ -324,13 +328,22 @@ export function createSettingServiceWithMigrations(): {
           merged.recentProjects = [...new Set(merged.recentProjects)].slice(0, MAX_RECENT_PROJECTS);
         }
 
-        await writeSettings(
-          merged,
+        await commitRuntimePolicy({
+          directory: getSettingsDir(),
+          service,
+          current,
+          next: merged,
           shouldCommit,
-          runSettingsCommit,
           enterCommitPhase,
-          Object.hasOwn(patch, "providerFamilyConnectionSelections"),
-        );
+          commit: (settings) =>
+            writeSettings(
+              settings,
+              shouldCommit,
+              runSettingsCommit,
+              enterCommitPhase,
+              Object.hasOwn(patch, "providerFamilyConnectionSelections"),
+            ),
+        });
       };
 
       await enqueueSettingsWrite(runUpdate);

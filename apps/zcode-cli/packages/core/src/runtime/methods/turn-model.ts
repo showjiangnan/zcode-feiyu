@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   SESSION_ENTRY_MODEL_SELECTION,
   type Model,
@@ -56,7 +57,9 @@ export async function applySubmissionExecutionState(
     if (modelExecution?.selectionScope !== "execution") {
       const appliedSelection = cloneModelSelection(selection);
       runtime.setSessionModelSelection(appliedSelection);
-      await persistRuntimeModelSelection(runtime, appliedSelection);
+      // 预热会话尚无父行，提前保存 entry 会违反外键；首输入创建父行后已有初始选型补写路径。
+      // 此处只更新同一 runtime 的选型，已落库会话仍按原稳定 entry 路径保存。
+      if (runtime.sessionPersisted) await persistRuntimeModelSelection(runtime, appliedSelection);
       if (!sameModelSelection(previousSelection, appliedSelection)) {
         await runtime.emitModelSelected({
           model,

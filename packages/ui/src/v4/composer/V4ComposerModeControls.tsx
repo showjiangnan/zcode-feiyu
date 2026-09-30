@@ -1,8 +1,10 @@
-import { memo, useCallback, useMemo } from "react";
+// Modified by ZCode Feiyu contributors (2026).
+import { memo, useCallback, useMemo, useRef } from "react";
 import { LightbulbIcon, XIcon, ChevronDownIcon } from "lucide-react";
 import {
   TID_CHAT_MODE_SELECT_TRIGGER,
   TID_CHAT_MODE_SELECT_ITEM,
+  TID_V4_COMPOSER,
   TID_V4_COMPOSER_INPUT,
   ZCODE_AGENT_PROVIDER,
   getZCodeAgentAvailableModes,
@@ -26,7 +28,7 @@ import {
   resolveModeOptionIcon,
 } from "@/chat-input-toolbar/display.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { isCoarseTouchDevice } from "@/lib/pickerFocus.js";
+import { isCoarseTouchDevice, resolveOwnComposerInput } from "@/lib/pickerFocus.js";
 import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import {
@@ -57,6 +59,7 @@ function V4ComposerModeSwitchImpl({
   | "onSwitchMode"
 >) {
   const { intl } = useZCodeIntl();
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const displayProvider = provider ?? ZCODE_AGENT_PROVIDER;
   const modeShortcutLabel = useShortcutCommandLabel("cycleSessionMode");
   const modes = getZCodeAgentAvailableModes();
@@ -112,6 +115,7 @@ function V4ComposerModeSwitchImpl({
               variant="ghost"
               size="sm"
               disabled={disabled}
+              ref={triggerRef}
               data-testid={TID_CHAT_MODE_SELECT_TRIGGER}
               data-composer-collapse-priority="1"
               aria-label={intl.formatMessage({ id: "chat.toolbar.mode.label" })}
@@ -135,9 +139,14 @@ function V4ComposerModeSwitchImpl({
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             if (!isCoarseTouchDevice())
-              document
-                .querySelector<HTMLElement>(`[data-testid="${TID_V4_COMPOSER_INPUT}"]`)
-                ?.focus();
+              // 多个会话窗格并存时，焦点只回到触发器所属窗格的输入框；找不到就留在触发器上。
+              (
+                resolveOwnComposerInput(
+                  triggerRef.current,
+                  `[data-testid="${TID_V4_COMPOSER}"]`,
+                  `[data-testid="${TID_V4_COMPOSER_INPUT}"]`,
+                ) ?? triggerRef.current
+              )?.focus();
           }}
         >
           <DropdownMenuCheckboxItem

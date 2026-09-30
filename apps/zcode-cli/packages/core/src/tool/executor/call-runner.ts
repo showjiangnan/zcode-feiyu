@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import {
   type AgentTelemetryErrorCategory,
   CoreErrorType,
@@ -404,6 +404,8 @@ async function executeToolCallImpl(
       },
       skillPort: deps.skillPort,
       subagentPort: deps.subagentPort,
+      teamBoardPort: deps.teamBoardPort,
+      teamActorId: deps.teamActorId,
       coordinatorResponsePort: deps.coordinatorResponsePort,
       workflowSubmitPort: deps.workflowSubmitPort,
       workflowEscalatePort: deps.workflowEscalatePort,
@@ -412,6 +414,7 @@ async function executeToolCallImpl(
       offPeakPort: deps.offPeakPort,
       taskMessagePort: deps.taskMessagePort,
       imageGenerationPort: deps.imageGenerationPort,
+      paidImageInputId: deps.getPaidImageInputId?.(),
       sessionStore: deps.sessionStore,
       sessionModePort: deps.sessionModePort,
       workflowPort: deps.workflowPort,
@@ -435,6 +438,7 @@ async function executeToolCallImpl(
       clientMode: deps.clientMode,
       deliveryKind: deps.deliveryKind,
       memoryRoot: deps.getMemoryRoot?.(),
+      memoryOwnershipFence: deps.getMemoryOwnershipFence?.(),
       runtimeScope: deps.runtimeScope,
       providerVisibleToolNames: deps.registry
         .list()

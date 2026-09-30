@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Tools Index - Core tool definitions
 // ============================================================
@@ -24,6 +24,7 @@ export * from "./target.js";
 export * from "./plan-mode.js";
 export * from "./ask-user-question.js";
 export * from "./send-message.js";
+export * from "./team-task.js";
 export * from "./task-message.js";
 export * from "./respond-to-coordinator.js";
 export * from "./task-output.js";

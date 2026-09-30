@@ -1,10 +1,14 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Node FileSystem Adapter
 // ============================================================
 
+export { listMemoryHistory, readMemoryHistory, recoverMemoryHistory, commitMemoryHistory } from "./memory-history.js";
+export { withSecureMemoryFile } from "./secure-memory-file.js";
+
 import { createHash, randomBytes } from "node:crypto";
 import { constants } from "node:fs";
-import { lstat, mkdir, open, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { link, lstat, mkdir, open, readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, normalize, relative, sep } from "node:path";
 import { Worker } from "node:worker_threads";
 import type { RgArg, RipgrepBufferedResult } from "ripgrep";
@@ -36,6 +40,8 @@ import {
   type FileSystemStatResult,
   type FileSystemWriteTextRequest,
   type FileSystemWriteTextResult,
+  type MemoryBatchInput,
+  type MemoryBatchSettlement,
 } from "@zcode/contracts";
 import {
   applyRequestedLineEndings,
@@ -47,6 +53,10 @@ import {
 } from "./text-metadata.js";
 import { readTextFileRangeFromNode } from "./text-range-reader.js";
 import { maybeThrowStorageFsFault } from "../storage/fs-fault-injection.js";
+import { memoryRootForPath, readSecureMemory, readSecureMemoryRange, memoryRevision } from "./memory-files.js";
+import { commitMemoryHistory, recoverMemoryHistory } from "./memory-history.js";
+import { withSecureMemoryFile } from "./secure-memory-file.js";
+import { MemoryBatchCoordinator } from "./memory-batch.js";
 
 const DEFAULT_GLOB_MAX_RESULTS = 100;
 const DEFAULT_GREP_HEAD_LIMIT = 250;
@@ -109,11 +119,31 @@ function serializeError(error) {
 `;
 
 export interface NodeFileSystemAdapterOptions {
+  memoryRootsDirectory?: string;
+  memoryHistoryDirectory?: string;
   textSearchEngine?: "ripgrep" | "javascript";
 }
 
 export class NodeFileSystemAdapter implements FileSystemPort {
-  constructor(private readonly adapterOptions: NodeFileSystemAdapterOptions = {}) {}
+  private readonly memoryBatches?: MemoryBatchCoordinator;
+  constructor(private readonly adapterOptions: NodeFileSystemAdapterOptions = {}) {
+    if (adapterOptions.memoryHistoryDirectory) this.memoryBatches = new MemoryBatchCoordinator(adapterOptions.memoryHistoryDirectory);
+  }
+  async runMemoryBatch<T>(input: MemoryBatchInput, operation: () => Promise<T>, settlement: MemoryBatchSettlement): Promise<T | undefined> {
+    if (!this.memoryBatches) throw new Error("Memory batch storage unavailable");
+    return this.memoryBatches.run(input, operation, settlement);
+  }
+  async recoverMemoryBatches(sessionId: string, settlement: MemoryBatchSettlement): Promise<void> {
+    await this.memoryBatches?.recover(sessionId, settlement);
+  }
+  async recoverWorkspaceMemoryBatches(rootDir: string, settlement: MemoryBatchSettlement) {
+    if (!this.memoryBatches) throw new Error("Memory batch storage unavailable");
+    return this.memoryBatches.recoverWorkspace(rootDir, settlement);
+  }
+  async recoverMemoryHistory(rootDir: string): Promise<void> {
+    if (!this.adapterOptions.memoryHistoryDirectory) throw new Error("Memory history unavailable");
+    await recoverMemoryHistory(this.adapterOptions.memoryHistoryDirectory, rootDir);
+  }
 
   async createDirectory(
     request: FileSystemCreateDirectoryRequest,
@@ -121,7 +151,9 @@ export class NodeFileSystemAdapter implements FileSystemPort {
     const path = resolveAbsoluteRequestPath(request.path);
     try {
       maybeThrowStorageFsFault({ operation: "mkdir", path });
-      await mkdir(path, { recursive: true });
+      const root = memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path);
+      if (root) await withSecureMemoryFile(root, join(path, ".directory-probe"), true, async () => {});
+      else await mkdir(path, { recursive: true });
       return { path };
     } catch (error) {
       throw toFileSystemError(error, path);
@@ -131,6 +163,10 @@ export class NodeFileSystemAdapter implements FileSystemPort {
   async stat(request: FileSystemStatRequest): Promise<FileSystemStatResult> {
     const path = resolveAbsoluteRequestPath(request.path);
     try {
+      const staged = this.memoryBatches?.read(path);
+      if (staged) return { path, kind: "file", sizeBytes: staged.size, mtimeMs: staged.mtimeMs, revision: memoryRevision(staged) };
+      const root = memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path);
+      if (root) return { path, ...await withSecureMemoryFile(root, path, false, (file) => file.stat()) };
       const info = await stat(path);
       const kind = nodeKind(info);
       return {
@@ -156,6 +192,10 @@ export class NodeFileSystemAdapter implements FileSystemPort {
     const path = resolveAbsoluteRequestPath(request.path);
 
     try {
+      const staged = this.memoryBatches?.read(path);
+      if (staged) return { path, content: staged.content, encoding: "utf8", bytesRead: staged.size, sizeBytes: staged.size, truncated: false, revision: memoryRevision(staged) };
+      const root = memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path);
+      if (root) return await readSecureMemory(root, request);
       const info = await stat(path);
       if (info.isDirectory()) {
         throw createFileSystemError({
@@ -206,6 +246,12 @@ export class NodeFileSystemAdapter implements FileSystemPort {
     const path = resolveAbsoluteRequestPath(request.path);
 
     try {
+      const root = memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path);
+      if (root) {
+        const value = this.memoryBatches?.read(path) ?? await withSecureMemoryFile(root, path, false, (file) => file.read());
+        if (request.maxBytes !== undefined && value.size > request.maxBytes) throw createFileSystemError({ code: "too_large", path, message: "Memory file exceeds binary read limit" });
+        return { path, content: Buffer.from(value.bytes ?? Buffer.from(value.content)), bytesRead: value.size, sizeBytes: value.size, revision: memoryRevision(value) };
+      }
       const info = await stat(path);
       if (info.isDirectory()) {
         throw createFileSystemError({
@@ -266,6 +312,15 @@ export class NodeFileSystemAdapter implements FileSystemPort {
     const path = resolveAbsoluteRequestPath(request.path);
 
     try {
+      const staged = this.memoryBatches?.read(path);
+      if (staged) {
+        const lines = staged.content.split("\n"); const offset = request.offsetLine ?? 0;
+        const selected = lines.slice(offset, request.limitLines === undefined ? undefined : offset + request.limitLines);
+        return { path, content: selected.join("\n"), encoding: "utf8", bytesRead: staged.size, sizeBytes: staged.size, truncated: false,
+          revision: memoryRevision(staged), startLine: offset + 1, lineCount: selected.length, totalLines: lines.length };
+      }
+      const root = memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path);
+      if (root) return await readSecureMemoryRange(root, request);
       const info = await stat(path);
       if (info.isDirectory()) {
         throw createFileSystemError({
@@ -288,13 +343,30 @@ export class NodeFileSystemAdapter implements FileSystemPort {
     }
   }
 
-  async writeTextFile(request: FileSystemWriteTextRequest): Promise<FileSystemWriteTextResult> {
+  async writeTextFile(
+    request: FileSystemWriteTextRequest,
+    options?: { signal?: AbortSignal },
+  ): Promise<FileSystemWriteTextResult> {
     const path = resolveAbsoluteRequestPath(request.path);
     const encoding = request.encoding ?? "utf8";
     const textContent = applyRequestedLineEndings(request.content, request.lineEndings);
     const content = encodeTextContent({ content: textContent, encoding, path });
 
     try {
+      options?.signal?.throwIfAborted();
+      const root = memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path) ?? request.memoryCommit?.rootDir;
+      if (root) {
+        if (!request.memoryCommit || request.memoryCommit.rootDir !== root || !this.adapterOptions.memoryHistoryDirectory) {
+          throw new Error("Memory mutation requires the managed commit port");
+        }
+        const staged = await this.memoryBatches?.stage({ ...request, path, content: textContent });
+        if (staged) return staged;
+        const result = await commitMemoryHistory(this.adapterOptions.memoryHistoryDirectory, { ...request, path, content: textContent }, options?.signal);
+        return { path, bytesWritten: result.size, revision: memoryRevision(result) };
+      }
+      if (request.expectedRevision && request.expectedAbsent) {
+        throw new Error("Cannot require both an existing revision and an absent target");
+      }
       if (request.expectedRevision) {
         await this.assertExpectedRevision(path, request.expectedRevision);
       }
@@ -305,10 +377,25 @@ export class NodeFileSystemAdapter implements FileSystemPort {
       }
 
       if (request.atomic ?? true) {
-        await atomicWrite(path, content);
+        const expectedRevision = request.expectedRevision;
+        await atomicWrite(
+          path,
+          content,
+          expectedRevision ? () => this.assertExpectedRevision(path, expectedRevision) : undefined,
+          options?.signal,
+          request.expectedAbsent === true,
+        );
       } else {
+        options?.signal?.throwIfAborted();
         maybeThrowStorageFsFault({ operation: "writeFile", path });
-        await writeFile(path, content);
+        try {
+          await writeFile(path, content, request.expectedAbsent ? { flag: "wx" } : undefined);
+        } catch (error) {
+          if (request.expectedAbsent && getNodeErrorCode(error) === "EEXIST") {
+            throw staleAbsentWriteError(path);
+          }
+          throw error;
+        }
       }
 
       const info = await stat(path);
@@ -336,6 +423,8 @@ export class NodeFileSystemAdapter implements FileSystemPort {
     try {
       throwIfAborted(options?.signal);
       maybeThrowStorageFsFault({ operation: "rm", path });
+      // 记忆删除必须经过带租约的历史提交；普通文件 API 不能绕过唯一写入者。
+      if (memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path)) throw createFileSystemError({ code: "permission_denied", path, message: "Memory deletion requires a fenced history commit" });
       await unlink(path);
       return { path, removed: true };
     } catch (error) {
@@ -360,6 +449,23 @@ export class NodeFileSystemAdapter implements FileSystemPort {
 
     try {
       throwIfAborted(options?.signal);
+      const root = memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path);
+      if (root) {
+        const names = new Set(await withSecureMemoryFile(root, path, false, (file) => file.list()));
+        for (const staged of this.memoryBatches?.stagedPaths(path) ?? []) names.add(basename(staged));
+        const entries: FileSystemListDirectoryResult["entries"] = [];
+        for (const name of names) {
+          const child = join(path, name);
+          try {
+            const info = await this.stat({ path: child });
+            entries.push({ name, path: child, kind: info.kind });
+          } catch (error) {
+            // 符号链接及已删除目录项不进入受限记忆视图，其他 IO 错误必须可见。
+            if (!["ENOENT", "ELOOP", "not_found"].includes(String(getNodeErrorCode(error) ?? "")) && !(error instanceof Error && String(getNodeErrorCode(error.cause)) === "ELOOP")) throw error;
+          }
+        }
+        return { path, durationMs: Date.now() - startedAt, entries, numEntries: entries.length };
+      }
       const info = await stat(path);
       if (!info.isDirectory()) {
         throw createFileSystemError({
@@ -408,8 +514,9 @@ export class NodeFileSystemAdapter implements FileSystemPort {
 
     try {
       throwIfAborted(options?.signal);
-      const rootInfo = await stat(path);
-      if (!rootInfo.isDirectory()) {
+      const managed = Boolean(memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path));
+      const rootInfo = await this.stat({ path });
+      if (rootInfo.kind !== "directory") {
         throw createFileSystemError({
           code: "not_file",
           path,
@@ -420,12 +527,14 @@ export class NodeFileSystemAdapter implements FileSystemPort {
       const matcher = createGlobMatcher(pattern);
       const matches: Array<{ path: string; mtimeMs: number }> = [];
 
-      await walkFiles(path, options?.signal, async (filePath, info) => {
+      const visit = async (filePath: string, info: { mtimeMs?: number | bigint }) => {
         const relativePath = toPosixRelative(path, filePath);
         if (matcher(relativePath, basename(filePath))) {
-          matches.push({ path: filePath, mtimeMs: Number(info.mtimeMs) });
+          matches.push({ path: filePath, mtimeMs: Number(info.mtimeMs ?? 0) });
         }
-      });
+      };
+      if (managed) await walkProtectedMemoryFiles(this, path, options?.signal, visit);
+      else await walkFiles(path, options?.signal, visit);
 
       matches.sort((left, right) => {
         const timeComparison = right.mtimeMs - left.mtimeMs;
@@ -456,6 +565,7 @@ export class NodeFileSystemAdapter implements FileSystemPort {
     const path = resolveAbsoluteRequestPath(request.path);
     const normalizedRequest = request.path === path ? request : { ...request, path };
 
+    if (memoryRootForPath(this.adapterOptions.memoryRootsDirectory, path)) return searchTextWithJavaScript(normalizedRequest, options?.signal, this);
     if (this.adapterOptions.textSearchEngine === "javascript") {
       return searchTextWithJavaScript(normalizedRequest, options?.signal);
     }
@@ -471,9 +581,19 @@ export class NodeFileSystemAdapter implements FileSystemPort {
   }
 
   private async assertExpectedRevision(path: string, expected: FileSystemRevision): Promise<void> {
-    const info = await stat(path);
-    const actual = revisionId(info.mtimeMs, info.size);
-    if (actual !== expected.id) {
+    const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    let stale = false;
+    try {
+      const info = await handle.stat();
+      stale = revisionId(info.mtimeMs, info.size) !== expected.id;
+      if (!stale && expected.hash) {
+        // 原因：外部编辑器可能在同一时间戳粒度内写入等长内容；仅比较 mtime/size 会误放行。
+        stale = hashBuffer(await handle.readFile()) !== expected.hash;
+      }
+    } finally {
+      await handle.close();
+    }
+    if (stale) {
       throw createFileSystemError({
         code: "stale_write",
         path,
@@ -576,6 +696,7 @@ async function searchTextWithRipgrep(
 async function searchTextWithJavaScript(
   request: FileSystemSearchTextRequest,
   signal?: AbortSignal,
+  protectedFs?: NodeFileSystemAdapter,
 ): Promise<FileSystemSearchTextResult> {
   const path = resolveAbsoluteRequestPath(request.path);
   const pattern = request.pattern.trim();
@@ -592,9 +713,10 @@ async function searchTextWithJavaScript(
   try {
     throwIfAborted(signal);
     const regex = compileSearchRegex(pattern, request);
-    const rootInfo = await stat(path);
     const mode = request.outputMode ?? "files_with_matches";
-    const candidates = await collectTextSearchCandidates(path, rootInfo, request, signal);
+    const candidates = protectedFs
+      ? await collectProtectedMemoryCandidates(protectedFs, path, request, signal)
+      : await collectTextSearchCandidates(path, await stat(path), request, signal);
 
     const searchRequest =
       mode === "content" ? request : { ...request, onlyMatching: false };
@@ -605,7 +727,7 @@ async function searchTextWithJavaScript(
 
     for (const candidate of candidates) {
       throwIfAborted(signal);
-      const content = await readFile(candidate.path, "utf8");
+      const content = protectedFs ? (await protectedFs.readTextFile({ path: candidate.path })).content : await readFile(candidate.path, "utf8");
       if (looksBinary(content)) continue;
 
       const search = request.multiline
@@ -697,11 +819,18 @@ function getNodeErrorCode(error: unknown): unknown {
   return typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
 }
 
-async function atomicWrite(path: string, content: Buffer): Promise<void> {
+async function atomicWrite(
+  path: string,
+  content: Buffer,
+  checkRevision?: () => Promise<void>,
+  signal?: AbortSignal,
+  expectedAbsent = false,
+): Promise<void> {
   let existingMode: number | undefined;
 
   try {
     const targetInfo = await lstat(path);
+    if (expectedAbsent) throw staleAbsentWriteError(path);
     if (targetInfo.isSymbolicLink()) {
       throw new SymlinkWriteRefusedError(
         `Refusing to write through symlink: ${path}. Resolve the symlink and pass the real target path explicitly.`,
@@ -732,26 +861,36 @@ async function atomicWrite(path: string, content: Buffer): Promise<void> {
       await handle.close();
     }
 
-    await rename(tempPath, path);
-  } catch {
-    await unlink(tempPath).catch(() => undefined);
-    const fallbackHandle = await open(
-      path,
-      constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW,
-    ).catch((error: unknown) => {
-      if (getNodeErrorCode(error) === "ELOOP") {
-        throw new SymlinkWriteRefusedError(`Refusing to write through symlink: ${path} (O_NOFOLLOW)`);
+    // 原因：准备临时文件期间外部编辑器仍可改动目标，提交前必须再验证一次修订。
+    await checkRevision?.();
+    signal?.throwIfAborted();
+    maybeThrowStorageFsFault({ operation: "rename", path });
+    if (expectedAbsent) {
+      // 原因：新文件普通 rename 会覆盖租约更替后别人创建的内容；hard link 的
+      // EEXIST 条件由文件系统在提交点原子裁决，不依赖最后一次 lstat 的时序。
+      try {
+        await link(tempPath, path);
+      } catch (error) {
+        if (getNodeErrorCode(error) === "EEXIST") throw staleAbsentWriteError(path);
+        throw error;
       }
-      throw error;
-    });
-
-    try {
-      await fallbackHandle.writeFile(content);
-      await fallbackHandle.sync();
-    } finally {
-      await fallbackHandle.close();
+      await unlink(tempPath).catch(() => undefined);
+    } else {
+      await rename(tempPath, path);
     }
+  } catch (error) {
+    // 原因：原子替换失败时若退化为 O_TRUNC，会把原文件截断且破坏写入合同。
+    await unlink(tempPath).catch(() => undefined);
+    throw error;
   }
+}
+
+function staleAbsentWriteError(path: string): Error {
+  return createFileSystemError({
+    code: "stale_write",
+    path,
+    message: `File was created since it was read: ${path}`,
+  });
 }
 
 function nodeKind(info: Awaited<ReturnType<typeof stat>>): FileSystemNodeKind {
@@ -817,6 +956,7 @@ function toFileSystemError(error: unknown, path: string): Error {
   }
 
   const code = getNodeErrorCode(error);
+  if (code === "ESTALE") return createFileSystemError({ code: "stale_write", path, message: "Memory revision changed; read the file again", cause: error });
   if (code === "ENOENT") {
     return createFileSystemError({
       code: "not_found",
@@ -1274,7 +1414,7 @@ async function sortPathsByMtime(paths: string[]): Promise<string[]> {
     [...new Set(paths)].map(async (path) => {
       try {
         const info = await stat(path);
-        return { path, mtimeMs: Number(info.mtimeMs) };
+        return { path, mtimeMs: Number(info.mtimeMs ?? 0) };
       } catch {
         return { path, mtimeMs: 0 };
       }
@@ -1410,7 +1550,7 @@ async function collectTextSearchCandidates(
     const relativePath = toPosixRelative(root, filePath);
     if (globMatcher && !globMatcher(relativePath, basename(filePath))) return;
     if (request.type && !matchesFileType(filePath, request.type)) return;
-    candidates.push({ path: filePath, mtimeMs: Number(info.mtimeMs) });
+    candidates.push({ path: filePath, mtimeMs: Number(info.mtimeMs ?? 0) });
   };
 
   if (rootInfo.isFile()) {
@@ -1875,4 +2015,27 @@ function throwIfAborted(signal?: AbortSignal): void {
   const error = new Error("File system operation was cancelled");
   error.name = "AbortError";
   throw error;
+}
+
+async function walkProtectedMemoryFiles(
+  fs: NodeFileSystemAdapter, directory: string, signal: AbortSignal | undefined,
+  visitor: (path: string, info: { mtimeMs?: number | bigint }) => void | Promise<void>,
+): Promise<void> {
+  throwIfAborted(signal);
+  for (const entry of (await fs.listDirectory({ path: directory }, { signal })).entries) {
+    throwIfAborted(signal);
+    if (entry.kind === "directory") await walkProtectedMemoryFiles(fs, entry.path, signal, visitor);
+    else if (entry.kind === "file") await visitor(entry.path, await fs.stat({ path: entry.path }));
+  }
+}
+
+async function collectProtectedMemoryCandidates(fs: NodeFileSystemAdapter, path: string, request: FileSystemSearchTextRequest, signal?: AbortSignal): Promise<FileSearchCandidate[]> {
+  const info = await fs.stat({ path });
+  const accept = createTextResultFilter(info.kind === "directory" ? path : dirname(path), request);
+  const candidates: FileSearchCandidate[] = [];
+  const visit = (filePath: string, metadata: { mtimeMs?: number | bigint }) => { if (accept(filePath)) candidates.push({ path: filePath, mtimeMs: Number(metadata.mtimeMs ?? 0) }); };
+  if (info.kind === "directory") await walkProtectedMemoryFiles(fs, path, signal, visit);
+  else if (info.kind === "file") visit(path, info);
+  else throw createFileSystemError({ code: "not_file", path, message: "Memory search requires a regular file or directory" });
+  return candidates.sort((a, b) => a.path.localeCompare(b.path));
 }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
 import { createInMemorySessionEventStore } from "@zcode/adapters/storage";
 import type { ModelSelection } from "@zcode/contracts";
@@ -79,6 +80,12 @@ export async function createWorkspaceZCodeApp(
     providerRuntimeHeadersPort,
     runtimeConfig: {
       ...options.runtimeConfig,
+      continuityPolicy:
+        context.appRuntimePreferences.memory?.continuityPolicy ??
+        options.runtimeConfig?.continuityPolicy,
+      continuityPolicyRevision:
+        context.appRuntimePreferences.memory?.policyRevision ??
+        options.runtimeConfig?.continuityPolicyRevision,
       // createZCodeApp 会把 workingDirectory 规范化为执行 cwd。把协议入口的
       // workspacePath 单独注入 runtime，session 持久化才能保留本地 workspaceKey 的路径表示。
       workspacePath: workspace.workspacePath,

@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Tool Types - Core tool types for registry and executor
 // ============================================================
@@ -31,6 +31,7 @@ import type {
   SkillTelemetryMetadata,
   SubagentRunOptions,
   SubagentPort,
+  TeamBoardPort,
   ToolArtifactStorePort,
   TraceContext,
   TraceId,
@@ -132,6 +133,8 @@ export interface BackgroundTaskControlPort {
 
 export interface ToolExecutionContext {
   toolCallId: string;
+  /** 由 runtime 绑定的当前输入身份，模型不可自报付费许可。 */
+  paidImageInputId?: string;
   /**
    * 当前 Tool 的实时观测写入器。Handler 只能通过窄接口写事实，不能接触原始 OTel Span。
    */
@@ -161,6 +164,8 @@ export interface ToolExecutionContext {
   subagentModelOverride?: SubagentRunOptions["modelOverride"];
   skillPort?: SkillPort;
   subagentPort?: SubagentPort;
+  teamBoardPort?: TeamBoardPort;
+  teamActorId?: string;
   coordinatorResponsePort?: CoordinatorResponsePort;
   /** 工作流 actor 提交终态结果并等待引擎裁决的端口；仅在 workflow actor 会话注入。 */
   workflowSubmitPort?: WorkflowSubmitPort;
@@ -195,6 +200,8 @@ export interface ToolExecutionContext {
   clientMode?: "desktop-continuous" | "web-remote-replayable";
   deliveryKind?: "desktop-continuous" | "web-remote-replayable";
   memoryRoot?: string;
+  /** 见 ToolExecutionDeps.getMemoryOwnershipFence；由记忆工具在提交点复核。 */
+  memoryOwnershipFence?: import("@zcode/contracts").MemoryCommitFence;
   runtimeScope?: ToolRuntimeScope;
   providerVisibleToolNames?: readonly string[];
   sessionId: SessionId;
@@ -218,6 +225,11 @@ export interface ReadFileStateEntry {
   revisionId?: string;
   mtimeMs?: number;
   sizeBytes?: number;
+  /**
+   * `content` 是读取时文件的完整文本（整文件读取且未被截断，或工具自己写入的完整结果）。
+   * 只有此时才能在 mtime 与 size 都未变化的情况下，仍用内容比较识别写前已可见的外部改动。
+   */
+  complete?: boolean;
 }
 
 export type ReadFileStateMap = Map<string, ReadFileStateEntry>;

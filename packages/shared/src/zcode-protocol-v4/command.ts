@@ -1,15 +1,21 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { localTtftContextSchema, localTtftClockSchema } from "../localTtft.js";
 // Command 层：信封 / ACK / 命令全集 payload。
 // conversation rewind 无独立命令（裁决：= editUserQuery 的 UI 入口）；
 // workspace-only 文件撤销走 applyFileRewind，不截断聊天历史。
 import { z } from "zod";
+import { commandExecutionSchema } from "./command-execution.js";
 import { conversationRowTargetSchema, timestampSchema } from "./core.js";
 import { attachmentRefSchema } from "./attachment-ref.js";
 import { v4ConversationFileRewindPreviewResultSchema } from "./transport.js";
 import { modelSelectionSchema } from "../model-selection.js";
 import { modelExecutionSchema } from "../model-execution.js";
 import { submissionModeSchema } from "./submission.js";
+import {
+  orchestrationModeSchema,
+  proactiveSubscriptionSchema,
+  proactiveCausalContextSchema,
+} from "./orchestration.js";
 import { zcodeAutomationBotDeliveryTargetSchema } from "../bots.js";
 import {
   amendWorkflowRunSettingsPayloadSchema,
@@ -39,6 +45,7 @@ const createSessionRequestedConfigSchema = z.object({
   // 会把“没传 mode”误变成“请求切回 build”，覆盖 workspace 默认 yolo。
   mode: z.string().optional(),
   planEnabled: z.boolean().optional(),
+  orchestrationMode: orchestrationModeSchema.optional(),
 });
 
 // ── 命令 payload 全集 ──
@@ -46,6 +53,8 @@ export const commandPayloadSchemas = {
   // firstInput 缺省 → phase=draft 空会话；携带 → 直接 turnHeader+userInput rows。
   createSession: z.object({
     workspaceId: z.string(),
+    originCommandId: z.string().min(1).optional(),
+    title: z.string().optional(),
     firstInput: z
       .object({
         text: z.string(),
@@ -88,6 +97,7 @@ export const commandPayloadSchemas = {
       requestedDelivery: z.enum(["startNow", "queue", "guide"]).optional(),
       /** 只由 Host 内部任务消息投递写入；外部 client 的同名字段在连接门面清除。 */
       interTaskSourceTaskId: z.string().min(1).optional(),
+      causalContext: proactiveCausalContextSchema.optional(),
       browserAmbientContext: zcodeBrowserAmbientContextSchema.optional(),
       // Share handover 只允许当前 session 的一个已导入上下文；完整正文由 runtime 从
       // 持久化 provenance 解析，不能随 command 从 renderer 传入。
@@ -218,6 +228,13 @@ export const commandPayloadSchemas = {
   switchCollaborationMode: z.object({
     mode: z.enum(["build", "edit", "plan", "yolo"]),
   }),
+  setOrchestrationMode: z.object({ mode: orchestrationModeSchema }).strict(),
+  controlProactiveWork: z
+    .object({
+      action: z.enum(["start", "pause", "stop"]),
+      subscriptions: z.array(proactiveSubscriptionSchema).max(20).optional(),
+    })
+    .strict(),
   setFollowupMode: z.object({ mode: z.enum(["queue", "guide"]) }),
   pauseGoal: z.object({}),
   resumeGoal: z.object({}),
@@ -435,6 +452,10 @@ export type CommandResult = z.infer<typeof commandResultSchema>;
 export const commandAckSchema = z.object({
   /** 会话创建期采用的 App Memory 开关；旧发送端缺省表示未知。 */
   memoryEnabled: z.boolean().optional(),
+  requestFingerprint: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/u)
+    .optional(),
   ttftExcluded: z.literal("capacity").optional(),
   commandId: z.string(),
   // accepted 不承诺跨 CLI 进程存活；最终收口以权威数据（sourceCommandId）为准。
@@ -471,22 +492,8 @@ export const commandsQueryParamsSchema = z
   );
 export type CommandsQueryParams = z.infer<typeof commandsQueryParamsSchema>;
 
-export const commandExecutionSchema = z
-  .object({
-    state: z.enum([
-      "queued",
-      "running",
-      "succeeded",
-      "interrupted",
-      "failed",
-      "cancelled",
-      "unknown",
-    ]),
-    targetTurnId: z.string().optional(),
-    reasonCode: z.string().optional(),
-  })
-  .strict();
-export type CommandExecution = z.infer<typeof commandExecutionSchema>;
+// 定义在 command-execution.ts（本文件有效行数受 max-lines 约束）；重新导出保持既有公开入口。
+export { commandExecutionSchema, type CommandExecution } from "./command-execution.js";
 
 export const commandQueryItemSchema = z
   .object({

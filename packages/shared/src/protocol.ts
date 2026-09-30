@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { RemoteAssetInstallMode } from "./remoteAssetInstallMode.js";
 import type { RemoteResourcePackageSelection } from "./remoteResourcePackages.js";
 import type { ProviderFamilyDomain } from "./model-provider-family.js";
@@ -236,6 +236,8 @@ export interface ResourceUsageSnapshot {
 }
 
 export interface AppSettings {
+  /** SettingService 独占写入的持久单调修订，跨 Host 防止旧策略回滚。 */
+  policyRevision?: number;
   imageGeneration?: import("./imageGeneration.js").ImageGenerationConfig;
   /** 是否允许安装版管理的自动遥测出口发送；缺失或读取失败时启动门禁保持关闭。 */
   telemetryReportingEnabled?: boolean;
@@ -284,6 +286,8 @@ export interface AppSettings {
   closeToTrayOnWindows?: boolean;
   /** 存在执行中的闲时任务时阻止系统闲置休眠（手动开关，防不了合盖）。 */
   keepAwakeWhileRunning?: boolean;
+  /** macOS 关闭全部窗口后保留隐藏窗口及其本地 Host，继续执行已获授权的任务。 */
+  continueAfterCloseOnMac?: boolean;
   /** Windows 关闭到托盘默认值是否已执行过一次性迁移；只用于设置迁移，不参与业务判断。 */
   closeToTrayOnWindowsMigrationInitialized?: boolean;
   /** 桌面端全局页面缩放档位；用于重启后恢复界面缩放，Web/手机端忽略。 */
@@ -327,6 +331,11 @@ export interface AppSettings {
   nativeSearchEnhancementsEnabled?: boolean;
   /** 新建或冷恢复 Session 是否启用 Memory；默认关闭。 */
   memoryEnabled?: boolean;
+  /** 完成顶层轮次后是否允许自动提取项目记忆；新 profile 默认关闭。 */
+  memoryExtractionEnabled?: boolean;
+  /** 是否允许读取本地历史会话并自动整理项目记忆；默认关闭。 */
+  memoryReviewEnabled?: boolean;
+  continuityPolicy?: import("./continuity-policy.js").ContinuityPolicy;
   onboardingOccupation?:
     | "office"
     | "developer"

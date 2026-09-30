@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { z } from "zod";
 import { imageGenerationDisplaySchema } from "./image-generation-display.js";
 import { OFFICIAL_MCP_TOOL_ERROR_CODES } from "@zcode/shared";

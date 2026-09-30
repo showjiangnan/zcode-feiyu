@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { randomUUID } from "node:crypto";
 import { resolveStandaloneDeviceMid } from "./standalone-device-mid.js";
 import type {

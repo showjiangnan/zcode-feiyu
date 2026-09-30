@@ -1,24 +1,9 @@
-import type { SessionTaskType } from "@zcode/contracts";
+// Modified by ZCode Feiyu contributors (2026).
+import { isTaskRoot, SESSION_TASK_ROOT_TYPES, type SessionTaskType } from "@zcode/contracts";
 
-/**
- * 左侧任务列表的 session 类型投影。
- *
- * 列表可见性不能用 `parent_id is null` 的层级查询代替：显式 fork
- * 这类有 parent 的主任务会在 CLI 重启后被冷启动种子过滤。可见性必须由 taskType 决定，
- * 而辅助对话、subagent 与 workflow child 继续由各自专用投影承载。
- */
-export const TASK_LIST_SESSION_TYPES = [
-  "interactive",
-  "fork",
-  "workflow_parent",
-] as const satisfies readonly SessionTaskType[];
+/** fork 虽有 parent 仍是主任务；同一类型事实也约束 Core 主动工作和预算归属。 */
+export const TASK_LIST_SESSION_TYPES = SESSION_TASK_ROOT_TYPES;
 
-const TASK_LIST_SESSION_TYPE_SET = new Set<SessionTaskType>(
-  TASK_LIST_SESSION_TYPES,
-);
-
-export function isTaskListSessionType(
-  taskType: SessionTaskType | undefined,
-): boolean {
-  return TASK_LIST_SESSION_TYPE_SET.has(taskType ?? "interactive");
+export function isTaskListSessionType(taskType: SessionTaskType | undefined): boolean {
+  return isTaskRoot(taskType);
 }

@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* oxlint-disable eslint(max-lines) -- composer 集中收口输入区 wiring（附件/草稿/历史/mention），拆分会打散收口粒度。 */
 import { getLocalTtftObserver } from "@/v4/telemetry/localTtftObserver.js";
 /**
@@ -48,6 +48,7 @@ import {
 import type {
   AttachmentRef,
   ConversationSnapshot,
+  OrchestrationMode,
   SessionConfigState,
 } from "@zcode/shared/zcode-protocol-v4";
 import {
@@ -163,6 +164,8 @@ import {
   resolveV4ComposerConfigPickerState,
   type V4ComposerConfigPicker,
 } from "@/v4/composer/configPickerState.js";
+import { V4ComposerOrchestrationSwitch } from "@/v4/composer/V4ComposerOrchestrationSwitch.js";
+import { V4ComposerContinuityControl } from "@/v4/composer/V4ComposerContinuityControl.js";
 import { WebElementContextAttachmentChip } from "@/v4/composer/WebElementContextAttachmentChip.js";
 import { ConversationSelectionReferenceChip } from "@/v4/composer/ConversationSelectionReferenceChip.js";
 import type { AttachmentPutFn } from "@/v4/composer/attachmentUpload.js";
@@ -431,6 +434,10 @@ interface ConversationComposerProps {
   /** 选中思考深度；同时带上用户操作时看到的模型，避免异步回流后把 thought 归到另一模型。 */
   onSelectThought: (thought: string, modelContext: { provider: string; model: string }) => void;
   onSwitchMode: (mode: string) => void;
+  onSetOrchestrationMode: (mode: OrchestrationMode) => void | Promise<void>;
+  onControlProactiveWork?: (
+    input: import("@zcode/shared/zcode-protocol-v4").CommandPayloadMap["controlProactiveWork"],
+  ) => Promise<void>;
   /** 打开当前 session 的 Status panel，并直达 Running 明细。 */
   onOpenRunningBackgroundWorks?: () => void;
   /**
@@ -520,6 +527,8 @@ function ConversationComposerImpl({
   onSelectModel,
   onSelectThought,
   onSwitchMode,
+  onSetOrchestrationMode,
+  onControlProactiveWork,
   onOpenRunningBackgroundWorks,
   backgroundWorkOpenTarget = "panel",
   runningSubagentCount = 0,
@@ -2175,6 +2184,22 @@ function ConversationComposerImpl({
           onConfigPickerOpenChange={handleConfigPickerOpenChange}
           onSwitchMode={onSwitchMode}
         />
+        <V4ComposerOrchestrationSwitch
+          state={draftMode ? draftConfig?.orchestration : snapshot?.config.orchestration}
+          disabled={disabled}
+          activeConfigPicker={activeConfigPicker}
+          onConfigPickerOpenChange={handleConfigPickerOpenChange}
+          onSetMode={onSetOrchestrationMode}
+        />
+        {sessionId && !workspaceIdentity && !remoteSessionId && onControlProactiveWork ? (
+          <V4ComposerContinuityControl
+            state={snapshot?.config.orchestration.proactive}
+            sessionId={sessionId}
+            workspacePath={workspacePath}
+            disabled={disabled}
+            onControl={onControlProactiveWork}
+          />
+        ) : null}
         {/* 附件画廊重构曾整段覆盖 leadingActions，误删 CUA 常驻入口。
             入口自身继续负责平台、远程与设置可见性，不在 composer 重复判定。 */}
         <V4ComposerCuaEntry
@@ -2196,14 +2221,19 @@ function ConversationComposerImpl({
       canStop,
       disabled,
       draftConfig,
+      draftMode,
       handleConfigPickerOpenChange,
       backgroundWorkOpenTarget,
       onOpenRunningBackgroundWorks,
       onSwitchMode,
+      onSetOrchestrationMode,
+      onControlProactiveWork,
+      sessionId,
       provider,
       remoteSessionId,
       runningSubagentCount,
       snapshot?.backgroundWorks,
+      snapshot?.config.orchestration,
       workspaceIdentity,
       workspacePath,
     ],

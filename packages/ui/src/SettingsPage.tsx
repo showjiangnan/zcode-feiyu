@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* oxlint-disable eslint(max-lines) */
 import { ArrowLeft, Rocket, type LucideIcon } from "lucide-react";
 import {
@@ -84,6 +84,7 @@ import {
 } from "@/settings/SettingsHeaderBreadcrumb.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
+import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 import type { Theme } from "@/useTheme.js";
 import { WindowsTopLeftLogo } from "@/WindowsTopLeftLogo.js";
@@ -629,6 +630,11 @@ export function SettingsPage({
   const activeWorkspaceIdentity = useTabStore(
     (state) => state.activeWorkspaceIdentity ?? undefined,
   );
+  const activeTaskId = useZCodeSessionStore((state) =>
+    activeWorkspacePath
+      ? state.getWorkspaceState(activeWorkspacePath, activeWorkspaceIdentity).activeTaskId
+      : null,
+  );
   const activeWorkspaceTab = useTabStore((state) => {
     const workspacePath = state.activeWorkspacePath;
     if (!workspacePath) {
@@ -680,7 +686,20 @@ export function SettingsPage({
     }
     return [...names];
   }, [sharedSettings?.recentProjects, workspaceTabs]);
+  const memoryMaintenanceWorkspacePaths = useMemo(
+    () => [
+      ...new Set([
+        ...(sharedSettings?.recentProjects ?? []),
+        ...workspaceTabs
+          .filter((tab) => !tab.workspaceIdentity && !tab.remoteSessionId && !tab.remoteTarget)
+          .map((tab) => tab.workspacePath),
+      ]),
+    ],
+    [sharedSettings?.recentProjects, workspaceTabs],
+  );
   const memoryEnabled = sharedSettings?.memoryEnabled === true;
+  const memoryExtractionEnabled = sharedSettings?.memoryExtractionEnabled === true;
+  const memoryReviewEnabled = sharedSettings?.memoryReviewEnabled === true;
   const nativeSearchEnhancementsEnabled = sharedSettings?.nativeSearchEnhancementsEnabled !== false;
   const askUserQuestionAutoResolutionEnabled =
     sharedSettings?.askUserQuestionAutoResolutionEnabled !== false;
@@ -688,6 +707,8 @@ export function SettingsPage({
   const telemetryReportingEnabled = sharedSettings?.telemetryReportingEnabled === true;
   const [telemetryConsentApplying, setTelemetryConsentApplying] = useState(false);
   const [telemetryConsentError, setTelemetryConsentError] = useState(false);
+  const [continueAfterCloseApplying, setContinueAfterCloseApplying] = useState(false);
+  const [continueAfterCloseError, setContinueAfterCloseError] = useState<string | null>(null);
   const [dataBaseDir, setDataBaseDir] = useState("");
   const [terminalInheritSystemProfile, setTerminalInheritSystemProfile] = useState(true);
   const [terminalFontFamily, setTerminalFontFamily] = useState("");
@@ -966,6 +987,36 @@ export function SettingsPage({
     },
     [updateSharedSettings],
   );
+  const handleMemoryExtractionEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await runSettingsActionAsync({
+        featureId: "settings.memory",
+        action: "toggle_auto_extraction",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ memoryExtractionEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
+  const handleMemoryReviewEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await runSettingsActionAsync({
+        featureId: "settings.memory",
+        action: "toggle_auto_review",
+        trigger: "switch",
+        operation: () => updateSharedSettings({ memoryReviewEnabled: enabled }),
+        completed: {
+          resultSource: "shared_settings",
+          stateAfter: enabled ? "enabled" : "disabled",
+        },
+      });
+    },
+    [updateSharedSettings],
+  );
   const handleHttpProxyChange = useCallback(
     async (proxy: string) => {
       const normalizedProxy = proxy.trim();
@@ -1109,6 +1160,32 @@ export function SettingsPage({
           stateAfter: enabled ? "enabled" : "disabled",
         },
       });
+    },
+    [updateSharedSettings],
+  );
+  const handleContinueAfterCloseOnMacChange = useCallback(
+    async (enabled: boolean) => {
+      // 修复原因：这个开关没有提交中与失败反馈，失败还会作为未处理的异步异常冒出（复审 DEF-23）。
+      // 依据：沿用相邻遥测开关的结构——提交中禁用开关，失败在行内显示原因；
+      // 开关的值来自共享设置，写入失败后 useSettings.update 已重新读取权威值，界面自然回到实际保存的状态。
+      setContinueAfterCloseApplying(true);
+      setContinueAfterCloseError(null);
+      try {
+        await runSettingsActionAsync({
+          featureId: "settings.desktop",
+          action: "toggle_background_continuity",
+          trigger: "switch",
+          operation: () => updateSharedSettings({ continueAfterCloseOnMac: enabled }),
+          completed: {
+            resultSource: "shared_settings",
+            stateAfter: enabled ? "enabled" : "disabled",
+          },
+        });
+      } catch (cause) {
+        setContinueAfterCloseError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setContinueAfterCloseApplying(false);
+      }
     },
     [updateSharedSettings],
   );
@@ -1678,11 +1755,17 @@ export function SettingsPage({
                             setInterfaceMode={setInterfaceMode}
                             isDesktop={isDesktop}
                             isWindowsDesktop={isWindowsDesktop}
+                            isMacDesktop={isMacDesktop}
                             platform={platform}
                             notificationEnabled={notificationEnabled}
                             notificationSoundEnabled={notificationSoundEnabled}
                             closeToTrayOnWindows={closeToTrayOnWindows}
                             keepAwakeWhileRunning={sharedSettings?.keepAwakeWhileRunning ?? false}
+                            continueAfterCloseOnMac={
+                              sharedSettings?.continueAfterCloseOnMac ?? false
+                            }
+                            continueAfterCloseApplying={continueAfterCloseApplying}
+                            continueAfterCloseError={continueAfterCloseError}
                             desktopChromiumHardwareAccelerationEnabled={
                               desktopChromiumHardwareAccelerationEnabled
                             }
@@ -1770,6 +1853,7 @@ export function SettingsPage({
                             }
                             onCloseToTrayOnWindowsChange={handleCloseToTrayOnWindowsChange}
                             onKeepAwakeWhileRunningChange={handleKeepAwakeWhileRunningChange}
+                            onContinueAfterCloseOnMacChange={handleContinueAfterCloseOnMacChange}
                             onDesktopChromiumHardwareAccelerationChange={
                               handleDesktopChromiumHardwareAccelerationChange
                             }
@@ -1852,8 +1936,13 @@ export function SettingsPage({
                             {/* Memory catalog 始终使用本地 Host，避免远程 workspace 误读本机数据。 */}
                             <MemorySettingsSection
                               memoryEnabled={memoryEnabled}
+                              memoryExtractionEnabled={memoryExtractionEnabled}
+                              memoryReviewEnabled={memoryReviewEnabled}
                               memoryService={localHostServices.memoryService}
                               onMemoryEnabledChange={handleMemoryEnabledChange}
+                              onMemoryExtractionEnabledChange={handleMemoryExtractionEnabledChange}
+                              onMemoryReviewEnabledChange={handleMemoryReviewEnabledChange}
+                              maintenanceWorkspacePaths={memoryMaintenanceWorkspacePaths}
                               projectMemoryViewerAvailable={Boolean(isDesktop)}
                               workspaceDisplayNames={memoryWorkspaceDisplayNames}
                             />

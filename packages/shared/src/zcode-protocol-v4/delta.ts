@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ConversationDelta：七个操作，封闭集合。
 // 没有 row.inserted（中间插入）、没有 row.moved、没有字段级 JSON patch——
 // 凡此模型表达不了的结构变化，服务端一律发 snapshot resync，刻意压缩客户端错误面。
@@ -7,6 +8,7 @@
 // 按 (runId, siteId, ordinal) 的增量口子，语义仍是「键内整体替换，只是下探了两级」：
 // header 键整键替换、条目整条替换，没有任何字段级深合并。规则在 workflow-runs-delta.ts。
 import { z } from "zod";
+import { teamBoardStateSchema } from "./team-board.js";
 import { streamablePathSchema } from "./core.js";
 import { conversationRowSchema } from "./rows.js";
 import { sharedContextImportStateSchema } from "./shared-context-import.js";
@@ -51,6 +53,7 @@ export const statePatchSchema = z.object({
   pendingCommands: z.array(commandStateSummarySchema).optional(),
   backgroundWorks: z.array(backgroundWorkSummarySchema).optional(),
   subagents: subagentProjectionStateSchema.optional(),
+  teamBoard: teamBoardStateSchema.optional(),
   // workflow run 的实时运行态。容器本身不 strict，所以旧桌面收到这个新键只是**剥离一个键**、
   // 保住 patch 其余全部键——这正是它不需要任何版本偏斜防御的原因。
   workflowRuns: workflowRunsStateSchema.optional(),

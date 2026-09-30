@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- rewind message primitive 与 cascade 封装共享 conversation/workspace 语义，避免拆分时误改原 /rewind 行为。 */
 import {
   RewindScope,
@@ -579,6 +580,8 @@ async function applyConversationRewindPlan(
   });
   this.branchGeneration = branchGeneration;
   this.runtimeTaskRegistry.setActiveBranchGeneration?.(branchGeneration);
+  await this.teamMessageLedger?.cancelOtherBranches(branchGeneration);
+  await this.teamBoardPort?.execute({ action: "list" }, "coordinator");
 
   await rebuildConversationDerivedState.call(this, {
     branchCutAfterMessageId,

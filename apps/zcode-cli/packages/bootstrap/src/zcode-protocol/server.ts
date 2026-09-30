@@ -1,8 +1,14 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { querySessionDebug } from "./session-debug.js";
+import { workspaceMemory } from "./workspace-memory.js";
+import { getWorkspaceMaintenanceApps } from "./maintenance-registry.js";
+import { stopProactiveDispatchers } from "./proactive-dispatcher.js";
 import {
   zcodePluginsCancelOperationParamsSchema,
   zcodeProtocolMethods,
+  zcodeSessionReviewProjectMemoryParamsSchema,
+  zcodeSessionReadProjectMemoryReviewParamsSchema,
+  zcodeSessionCancelProjectMemoryReviewParamsSchema,
   zcodeWorkspaceCancelGenerateTextParamsSchema,
   zcodeWorkspaceHookTrustGrantParamsSchema,
 } from "@zcode/shared";
@@ -84,6 +90,7 @@ import {
 } from "./saved-workflows.js";
 import { listMcpServers } from "./mcp.js";
 import { updateInteractionPreferences } from "./interaction-preferences.js";
+import { updateMemoryPreferences } from "./memory-preferences.js";
 import { updateAccountProviderConfig } from "./account-provider-config.js";
 import { updateModelIoPreferences } from "./model-io-preferences.js";
 import { updateTelemetryConsent } from "./telemetry-consent.js";
@@ -359,7 +366,14 @@ export class ZCodeProtocolAgentServer {
   /** 进程资源关闭，不使用会删除产品会话/发布 session.removed 的 session/close。 */
   shutdown(): Promise<void> {
     if (this.shutdownPromise) return this.shutdownPromise;
-    this.shutdownPromise = this.runtimeResources.close();
+    stopProactiveDispatchers(this.context);
+    this.shutdownPromise = Promise.all([
+      this.runtimeResources.close(),
+      ...[...getWorkspaceMaintenanceApps(this.context).values()].map(async (app) => {
+        app.runtime.cancelProjectMemoryReview();
+        await app.close?.();
+      }),
+    ]).then(() => undefined);
     const error = new Error("ZCode Protocol runtime stopping");
     this.disconnectClient(error);
     this.messageSink = undefined;
@@ -594,6 +608,47 @@ export class ZCodeProtocolAgentServer {
         return await forkSession(this.context, request.params);
       case zcodeProtocolMethods.sessionCompact:
         return await compactSession(this.context, request.params);
+      case zcodeProtocolMethods.sessionReviewProjectMemory: {
+        const params = parseParams(zcodeSessionReviewProjectMemoryParamsSchema, request.params);
+        const record = this.context.sessions.get(params.sessionId);
+        if (!record)
+          throw new ProtocolRequestError(-32020, `Session not found: ${params.sessionId}`);
+        return await record.app.runtime.reviewProjectMemoryNow();
+      }
+      case zcodeProtocolMethods.sessionReadProjectMemoryReview: {
+        const params = parseParams(zcodeSessionReadProjectMemoryReviewParamsSchema, request.params);
+        const record = this.context.sessions.get(params.sessionId);
+        if (!record)
+          throw new ProtocolRequestError(-32020, `Session not found: ${params.sessionId}`);
+        return (
+          (await this.context.deps.sessionStore?.getProjectMemoryReview?.(
+            record.workspace.workspaceKey,
+          )) ?? null
+        );
+      }
+      case zcodeProtocolMethods.sessionCancelProjectMemoryReview: {
+        const params = parseParams(
+          zcodeSessionCancelProjectMemoryReviewParamsSchema,
+          request.params,
+        );
+        const record = this.context.sessions.get(params.sessionId);
+        if (!record)
+          throw new ProtocolRequestError(-32020, `Session not found: ${params.sessionId}`);
+        const workspaceKey = record.workspace.workspaceKey;
+        const accepted =
+          (await this.context.deps.sessionStore?.requestCancelProjectMemoryReview?.({
+            workspaceKey,
+            reviewId: params.reviewId,
+          })) ?? false;
+        if (accepted) {
+          for (const candidate of this.context.sessions.values()) {
+            if (candidate.workspace.workspaceKey === workspaceKey) {
+              candidate.app.runtime.cancelProjectMemoryReview();
+            }
+          }
+        }
+        return { accepted };
+      }
       case zcodeProtocolMethods.sessionGoal:
         return await goalSession(this.context, request.params);
       case zcodeProtocolMethods.sessionSetModel:
@@ -629,6 +684,10 @@ export class ZCodeProtocolAgentServer {
         return await updateAccountProviderConfig(this.context, request.params);
       case zcodeProtocolMethods.workspaceUpdateInteractionPreferences:
         return await updateInteractionPreferences(this.context, request.params);
+      case zcodeProtocolMethods.workspaceUpdateMemoryPreferences:
+        return await updateMemoryPreferences(this.context, request.params);
+      case zcodeProtocolMethods.workspaceMemory:
+        return await workspaceMemory(this.context, request.params);
       case zcodeProtocolMethods.workspaceUpdateModelIoPreferences:
         return await updateModelIoPreferences(this.context, request.params);
       case zcodeProtocolMethods.workspaceUpdateTelemetryConsent:

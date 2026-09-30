@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // SQLite session target helpers
 // ============================================================
@@ -41,6 +42,7 @@ export function setSessionTarget(
     tokenBudget?: number | null;
   },
 ): SessionGoal {
+  // tokenBudget 入参仅保留旧协议兼容；新建/替换目标不再保存消费额度，fork 仍保留历史元数据。
   const now = Date.now();
   const targetID = createStorageTargetId();
   db.prepare(
@@ -66,8 +68,8 @@ export function setSessionTarget(
     input.sessionID,
     targetID,
     input.objective,
-    input.status,
-    input.tokenBudget ?? null,
+    currentGoalStatus(input.status),
+    null,
     now,
     now,
   );
@@ -124,7 +126,7 @@ export function cloneSessionTargetForFork(
     source.targetID,
     source.objective,
     source.summaryTitle,
-    input.status,
+    currentGoalStatus(input.status),
     source.tokenBudget,
     source.tokensUsed,
     source.timeUsedSeconds,
@@ -147,7 +149,7 @@ export function createSessionTarget(
       session_id, target_id, objective, summary_title, status, token_budget, tokens_used, time_used_seconds, time_created, time_updated
     ) values (?, ?, ?, null, 'active', ?, 0, 0, ?, ?)
     `,
-  ).run(input.sessionID, targetID, input.objective, input.tokenBudget ?? null, now, now);
+  ).run(input.sessionID, targetID, input.objective, null, now, now);
 
   const target = readSessionTarget(db, { sessionID: input.sessionID });
   if (target?.targetID !== targetID) return null;
@@ -168,7 +170,7 @@ export function updateSessionTargetStatus(
       where session_id = ?
       `,
     )
-    .run(input.status, now, input.sessionID);
+    .run(currentGoalStatus(input.status), now, input.sessionID);
   if (result.changes === 0) return null;
   touchSessionForTarget(db, input.sessionID, now);
   return mustReadTarget(db, input.sessionID);
@@ -191,13 +193,14 @@ export function startSessionTargetRun(
       `
       update session_target
       set
+        status = 'active',
         active_input_id = ?,
         active_run_started_at = ?,
         active_run_last_seen_at = ?,
         time_updated = max(time_updated, ?)
       where session_id = ?
         and target_id = ?
-        and status = 'active'
+        and status in ('active', 'budget_limited')
       `,
     )
     .run(input.inputID, startedAt, startedAt, startedAt, input.sessionID, input.targetID);
@@ -268,7 +271,7 @@ export function finishSessionTargetRun(
         time_used_seconds = time_used_seconds + ?,
         status = case
           when ? is not null then ?
-          when status = 'active' and token_budget is not null and tokens_used + ? >= token_budget then 'budget_limited'
+          when status = 'budget_limited' then 'active'
           else status
         end,
         active_input_id = null,
@@ -284,9 +287,8 @@ export function finishSessionTargetRun(
     .run(
       tokenDelta,
       timeDelta,
-      input.status ?? null,
-      input.status ?? null,
-      tokenDelta,
+      input.status ? currentGoalStatus(input.status) : null,
+      input.status ? currentGoalStatus(input.status) : null,
       endedAt,
       input.sessionID,
       input.targetID,
@@ -367,14 +369,14 @@ export function accountSessionTargetUsage(
         tokens_used = tokens_used + ?,
         time_used_seconds = time_used_seconds + ?,
         status = case
-          when status = 'active' and token_budget is not null and tokens_used + ? >= token_budget then 'budget_limited'
+          when status = 'budget_limited' then 'active'
           else status
         end,
         time_updated = ?
       where session_id = ? and target_id = ?
       `,
     )
-    .run(tokenDelta, timeDelta, tokenDelta, now, input.sessionID, input.targetID);
+    .run(tokenDelta, timeDelta, now, input.sessionID, input.targetID);
   if (result.changes === 0) return readSessionTarget(db, { sessionID: input.sessionID });
   touchSessionForTarget(db, input.sessionID, now);
   return mustReadTarget(db, input.sessionID);
@@ -434,7 +436,7 @@ function decodeTargetRow(row: TargetRow): SessionGoal {
     targetID: row.target_id,
     objective: row.objective,
     summaryTitle: row.summary_title,
-    status: row.status as GoalStatus,
+    status: currentGoalStatus(row.status as GoalStatus),
     tokenBudget: row.token_budget,
     tokensUsed: row.tokens_used,
     timeUsedSeconds: row.time_used_seconds,
@@ -450,6 +452,11 @@ function decodeTargetRow(row: TargetRow): SessionGoal {
 
 function createStorageTargetId(): string {
   return `target_${Date.now().toString(36)}_${randomUUID()}`;
+}
+
+// 老额度暂停不再是执行状态；只映射该历史值，用户暂停/完成及崩溃恢复仍走原来的状态边界。
+function currentGoalStatus(status: GoalStatus): GoalStatus {
+  return status === "budget_limited" ? "active" : status;
 }
 
 function elapsedSecondsBetween(startedAtMs: number, endedAtMs: number): number {

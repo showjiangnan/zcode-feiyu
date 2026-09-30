@@ -1,11 +1,14 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { basename, relative, sep } from "node:path";
 import type { FileSystemPort } from "@zcode/contracts";
 import { parse as parseYaml } from "yaml";
+import { assertMemoryToolPathSafe } from "../tool-path-guard.js";
 
 import { MEMORY_RECALL_TYPES, type MemoryManifestEntry, type MemoryRecallType } from "./types.js";
 
 const MANIFEST_FILE_LIMIT = 200;
 const MANIFEST_PREVIEW_LINE_LIMIT = 30;
+const MANIFEST_DIRECTORY_DEPTH_LIMIT = 4;
 
 export async function scanMemoryManifest(input: {
   fileSystem: FileSystemPort;
@@ -13,7 +16,13 @@ export async function scanMemoryManifest(input: {
   signal?: AbortSignal;
 }): Promise<MemoryManifestEntry[]> {
   try {
-    const paths = await collectMemoryPaths(input.fileSystem, input.rootDir, input.signal);
+    const paths = await collectMemoryPaths(
+      input.fileSystem,
+      input.rootDir,
+      input.rootDir,
+      0,
+      input.signal,
+    );
     const settled = await Promise.allSettled(
       paths.map((filePath) =>
         readManifestEntry(input.fileSystem, input.rootDir, filePath, input.signal),
@@ -45,28 +54,37 @@ export function formatMemoryManifest(manifest: readonly MemoryManifestEntry[]): 
 
 async function collectMemoryPaths(
   fileSystem: FileSystemPort,
+  rootDir: string,
   directory: string,
+  depth: number,
   signal?: AbortSignal,
 ): Promise<string[]> {
+  if (depth > MANIFEST_DIRECTORY_DEPTH_LIMIT) return [];
+  await assertMemoryToolPathSafe({
+    rootDir,
+    toolCall: { name: "Glob", input: { path: directory } },
+    workingDirectory: rootDir,
+    workspaceRoot: rootDir,
+  });
   const listed = await fileSystem.listDirectory({ path: directory }, { signal });
   const paths: string[] = [];
 
   for (const entry of listed.entries) {
+    if (paths.length >= MANIFEST_FILE_LIMIT) break;
+    const pathFromRoot = relative(rootDir, entry.path);
+    if (
+      !pathFromRoot ||
+      pathFromRoot === ".." ||
+      pathFromRoot.startsWith("../") ||
+      pathFromRoot.startsWith("..\\")
+    )
+      continue;
     if (entry.kind === "directory") {
-      paths.push(...(await collectMemoryPaths(fileSystem, entry.path, signal)));
+      paths.push(...(await collectMemoryPaths(fileSystem, rootDir, entry.path, depth + 1, signal)));
       continue;
     }
     if (entry.kind === "file") {
       if (isMemoryCandidate(entry.path)) paths.push(entry.path);
-      continue;
-    }
-    if (entry.kind !== "symlink" || !isMemoryCandidate(entry.path)) continue;
-
-    try {
-      const target = await fileSystem.stat({ path: entry.path }, { signal });
-      if (target.kind === "file") paths.push(entry.path);
-    } catch {
-      // 单个失效的文件 symlink 与单个无法读取的事实文件一样，不影响其他 manifest 项。
     }
   }
 
@@ -83,6 +101,12 @@ async function readManifestEntry(
   filePath: string,
   signal?: AbortSignal,
 ): Promise<MemoryManifestEntry> {
+  await assertMemoryToolPathSafe({
+    rootDir,
+    toolCall: { name: "Read", input: { file_path: filePath } },
+    workingDirectory: rootDir,
+    workspaceRoot: rootDir,
+  });
   const [stat, preview] = await Promise.all([
     fileSystem.stat({ path: filePath }, { signal }),
     fileSystem.readTextFileRange(

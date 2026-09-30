@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Subagent Port - child agent execution boundary
 // ============================================================
@@ -15,6 +16,7 @@ export interface SubagentRunRequest {
   agentType: string;
   description: string;
   prompt: string;
+  teamMemberName?: string;
   callerCanReadOutputFile?: boolean;
   workingDirectory: string;
   workspaceRoot: string;
@@ -56,6 +58,11 @@ export interface SubagentStopOptions {
 }
 
 export interface SubagentSendMessageRequest {
+  /** Retried team delivery keeps the original message identity. */
+  messageId?: string;
+  /** Runtime-attested sender for teammate messages; absent for the lead agent. */
+  senderAgentId?: string;
+  senderName?: string;
   sessionId: SessionId;
   turnId?: TurnId;
   parentToolCallId: ToolCallId | string;

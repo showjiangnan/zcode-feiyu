@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   createRootTraceContext,
   createTraceId,
@@ -83,6 +84,8 @@ export interface ZCodeProtocolToolInputTransmissionState {
 export interface ZCodeProtocolSessionRecord {
   app: ZCodeApp;
   memoryEnabled: boolean;
+  memoryExtractionEnabled: boolean;
+  memoryReviewEnabled: boolean;
   nativeSearchEnhancementsEnabled: boolean;
   modelContextBudgetStrategy: ZCodeModelContextBudgetStrategy;
   createdAt: number;
@@ -130,6 +133,13 @@ export interface ZCodeProtocolAgentServerContext {
   deps: ZCodeProtocolAgentResolvedDependencies;
   logger?: Logger;
   appRuntimePreferences: {
+    memory?: {
+      enabled: boolean;
+      extractionEnabled: boolean;
+      reviewEnabled: boolean;
+      policyRevision?: number;
+      continuityPolicy?: import("@zcode/shared").ContinuityPolicy;
+    };
     askUserQuestionAutoResolutionEnabled: boolean;
     modelIoFullRetentionEnabled: boolean;
     /** host 同步的 Off-Peak 工具面门禁；缺省 false（fail-closed），供 v4 冷恢复等无 host 参数的路径读取。 */

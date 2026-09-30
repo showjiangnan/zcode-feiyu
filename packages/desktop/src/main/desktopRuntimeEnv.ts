@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- desktop runtime/env 解析需要集中维护 main/host/remote assets 的启动边界，拆分会扩大远程连接回归面。 */
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -9,6 +9,7 @@ import { DEV_HELPER_APP_NAME, HELPER_APP_NAME } from "@zcode/zcode-cua/broker/he
 import {
   ZCODE_APP_VERSION_ENV,
   ZCODE_AGENT_RUNTIME,
+  ZCODE_AGENT_NODE_BUNDLE_PATH_ENV,
   ZCODE_DYNAMIC_WORKFLOW_MODE_ENV,
   ZCODE_ENV,
   ZCODE_PRODUCT_FLAVOR,
@@ -441,6 +442,14 @@ function resolveWindowsAppInstallDirForDataBaseDirGuard(
 
 export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>) {
   const glmBinaryPath = resolveBundledGlmBinaryPath();
+  // Utility Host 缺少 resourcesPath；清理仓库 dist 后会丢失 Agent，必须由 Main 下发包内入口。
+  const packagedNodeBundlePath = isElectronAppPackaged()
+    ? join(
+        process.resourcesPath,
+        ZCODE_AGENT_RUNTIME.bundledResourceDir,
+        ...ZCODE_AGENT_RUNTIME.resolveNodeBundleSegments(),
+      )
+    : undefined;
   const larkCliBinaryPath = resolveBundledLarkCliBinaryPath();
   const resolvedGlmBinaryPath = resolveHostProcessBinaryEnv(
     "GLM_BINARY_PATH",
@@ -528,6 +537,9 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
     // 模型请求默认 header 由 agent 进程构造，过去只继承 shell env 导致桌面启动时拿不到 app 版本。
     // 这里从 main 进程显式下发，agent 子进程继承 host env 后即可稳定写入请求 header。
     [ZCODE_APP_VERSION_ENV]: ZCODE_VERSION,
+    ...(packagedNodeBundlePath
+      ? { [ZCODE_AGENT_NODE_BUNDLE_PATH_ENV]: packagedNodeBundlePath }
+      : {}),
     ...(dataBaseDir !== homedir() ? { ZCODE_DATA_BASE_DIR: dataBaseDir } : {}),
     ...(windowsAppInstallDir ? { [ZCODE_WINDOWS_APP_INSTALL_DIR_ENV]: windowsAppInstallDir } : {}),
     ...(bundledCuaHelperAppPath

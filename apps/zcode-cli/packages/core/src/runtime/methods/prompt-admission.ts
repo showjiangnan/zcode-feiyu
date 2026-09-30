@@ -1,8 +1,10 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
+import { isTrustedUserInput } from "../trusted-user-input.js";
 import { createChildTraceContext, createQueryId, createTurnId } from "../deps.js";
 import type { QueryId, TurnInputIntentMetadata } from "../deps.js";
 import type { PromptRuntimeCommand } from "../command-queue.js";
 import { createRuntimeCommandId } from "../command-queue.js";
+import { isProactiveCommandId, assertProactiveAdmission, resetProactiveForUserInput } from "../orchestration.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { enqueueCancellableRuntimeCommand } from "./runtime-command-submit.js";
 import type {
@@ -24,6 +26,9 @@ export async function admitPrompt(
   attachments?: Parameters<AgentRuntimeInternal["executeTurn"]>[1],
   options?: PromptAdmissionOptions,
 ): Promise<PromptAdmissionReceipt> {
+  const commandId = options?.intent?.sourceCommandId ?? options?.inputId;
+  if (isProactiveCommandId(commandId)) await assertProactiveAdmission(this, commandId!);
+  if (isTrustedUserInput(this, options)) await resetProactiveForUserInput(this);
   const promotionLeaseOnly =
     options?.requireIdle === true &&
     this.foregroundPromotionLease !== undefined &&

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { BackgroundBashOutputResult } from "@zcode/shared";
 import type { RuntimeInputPresentation } from "@zcode/contracts";
 import type {
@@ -255,6 +256,11 @@ export interface AgentRuntimeTurnMethods {
     taskId: string,
     options: RuntimeBackgroundStopOptions,
   ): Promise<RuntimeBackgroundStopResult>;
+  /**
+   * 取消本 runtime 正在跑的整理。迟到取消必须带原 reviewId——同一 runtime 里已经接管的新整理
+   * 不能被旧回执停掉。后台抽屉的记忆整理条目按这条既存路径停止（复审 GAP-03），不新增取消能力。
+   */
+  cancelProjectMemoryReview(expectedReviewId?: string): boolean;
   cancelRunningRuntimeBackgroundTasks(input: {
     reason: "subagent_cancelled";
     traceContext?: TraceContext;

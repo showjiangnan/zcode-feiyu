@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // Transcript → SessionEvent 合成（「reduce(transcript) ≡ reduce(events)」）。
 //
 // 动机：v4 投影是事件溯源，但部分历史突变（纯对话 fork 复制 message 不复制 event、
@@ -392,6 +392,7 @@ function inputIntentOfMessage(message: MessageWithParts): TurnInputIntentMetadat
       ...(value.interTaskSourceTaskId
         ? { interTaskSourceTaskId: value.interTaskSourceTaskId }
         : {}),
+      ...(value.causalContext ? { causalContext: value.causalContext } : {}),
       queueItemId: value.queueItemId,
       clientId: value.clientId,
       kind: value.kind,

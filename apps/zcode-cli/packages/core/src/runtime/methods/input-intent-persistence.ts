@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { TurnInputIntentMetadata } from "../deps.js";
 
 /**
@@ -26,6 +26,7 @@ export function buildPersistedConversationInputIntent(
     ...(intent.interTaskSourceTaskId
       ? { interTaskSourceTaskId: intent.interTaskSourceTaskId }
       : {}),
+    ...(intent.causalContext ? { causalContext: intent.causalContext } : {}),
     queueItemId: intent.queueItemId,
     clientId: intent.clientId,
     kind: intent.kind,

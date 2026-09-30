@@ -1,5 +1,6 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 跨端 platform contract 集中声明 renderer 能力；OAuth 与 browser lifecycle 必须保持 desktop/web 类型合同，本 MR 不拆分平台边界。 */
+import type { BackgroundContinuityStatus } from "./continuity-policy.js";
 import type {
   DockerConnectOptions,
   RemoteTarget,
@@ -731,6 +732,8 @@ export interface IPlatformService {
   syncAppSettings?(patch: Partial<AppSettings>): void;
   /** 持久化选择后等待所有受控 Desktop Host/Agent 应用遥测门禁。 */
   applyTelemetryConsent?(enabled: boolean): Promise<void>;
+  readBackgroundContinuity?(): Promise<BackgroundContinuityStatus>;
+  stopBackgroundContinuity?(): Promise<BackgroundContinuityStatus>;
 
   /** 快捷键设置页录制态开关；桌面端 main 据此暂时摘除可配置菜单 accelerator，Web 可忽略 */
   setShortcutRecordingActive?(active: boolean): void;

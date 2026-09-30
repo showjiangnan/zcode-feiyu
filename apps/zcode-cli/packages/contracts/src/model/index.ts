@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Model Protocol - provider-neutral model contracts
 // ============================================================
@@ -55,7 +56,8 @@ export type ModelRetryBudget = (typeof ModelRetryBudget)[keyof typeof ModelRetry
  * 抛出、消费者提前放弃流）runner 都在 finally 里调一次；未见终结事件即按终结处理。**幂等**。
  */
 export interface ModelRequestAdmissionTicket extends ModelStatusSink {
-  release(): void;
+  /** 持久预算必须在下一物理尝试前结算完成。 */
+  release(): void | Promise<void>;
 }
 
 /**
@@ -73,9 +75,16 @@ export interface ModelRequestAdmissionTicket extends ModelStatusSink {
  */
 export interface ModelRequestAdmission {
   /** 同步快路径：闸门开着且无人排队即给票；否则 undefined，runner 转 `acquire` 并报排队。 */
-  tryAcquire?(input: { model: ModelRequestTarget }): ModelRequestAdmissionTicket | undefined;
+  tryAcquire?(input: {
+    model: ModelRequestTarget;
+    requestId?: string;
+    attempt?: number;
+  }): ModelRequestAdmissionTicket | undefined;
   acquire(input: {
     model: ModelRequestTarget;
+    /** Adapter 已创建的物理尝试 ID；重试沿用同一个 ID 供用量/预算对账。 */
+    requestId?: string;
+    attempt?: number;
     signal?: AbortSignal;
   }): Promise<ModelRequestAdmissionTicket>;
 }
@@ -562,7 +571,11 @@ export function getModelUsageInputWindowTokens(usage?: ModelUsage): number | und
   return cacheTokens > 0 ? cacheTokens : undefined;
 }
 
-export function hasModelUsage(usage?: ModelUsage): boolean {
+/**
+ * 用量里至少有一个 token 计数。只有服务端工具计数（搜索/抓取次数）不能证明 token 消费，
+ * 预算结算不得因此把这次请求当成已知的零消费。
+ */
+export function hasModelTokenUsage(usage?: ModelUsage): boolean {
   if (!usage) return false;
   return (
     usage.inputTokens !== undefined ||
@@ -570,7 +583,14 @@ export function hasModelUsage(usage?: ModelUsage): boolean {
     usage.totalTokens !== undefined ||
     usage.cacheReadTokens !== undefined ||
     usage.cacheWriteTokens !== undefined ||
-    usage.reasoningTokens !== undefined ||
+    usage.reasoningTokens !== undefined
+  );
+}
+
+export function hasModelUsage(usage?: ModelUsage): boolean {
+  if (!usage) return false;
+  return (
+    hasModelTokenUsage(usage) ||
     usage.serverToolUse?.webSearchRequests !== undefined ||
     usage.serverToolUse?.webFetchRequests !== undefined
   );

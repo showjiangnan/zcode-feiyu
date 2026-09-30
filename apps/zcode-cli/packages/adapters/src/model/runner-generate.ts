@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { Logger, ModelStatusSink, ModelTextResult } from "@zcode/contracts";
 import {
   ModelErrorCode,
@@ -91,6 +92,7 @@ export async function runGenerateText(input: {
   let requestMessages = input.request.messages;
   let signatureRepairAttempted = false;
   let emptyCompletionRetryCount = 0;
+  let physicalAttempt = 0;
 
   for (
     let attempt = 1;
@@ -113,7 +115,7 @@ export async function runGenerateText(input: {
           Number(signatureRepairAttempted),
         ),
       },
-      attempt,
+      ++physicalAttempt,
     );
     let options: ReturnType<typeof createGenerateTextOptions> | undefined;
     let requestInvocationCompleted = false;
@@ -127,6 +129,8 @@ export async function runGenerateText(input: {
     try {
       admission = await admitAttempt({
         admission: input.request.modelRequestAdmission,
+        requestId: statusContext.requestId,
+        attempt: physicalAttempt,
         model: { providerId: String(resolved.providerId), modelId: String(resolved.modelId) },
         signal: input.request.abortSignal,
         ...admissionWaitPublishers(statusContext, attempt, statusPublishOptions(input)),
@@ -256,6 +260,10 @@ export async function runGenerateText(input: {
           toolCallCount: toolCalls?.length ?? 0,
           usage,
         });
+        // 空响应同样是已计费物理请求，必须先结算真实 usage 再释放票据并重试。
+        await publishModelStatus({ ...statusContext, attempt, durationMs: completedAt - startedAt,
+          finishReason: result.finishReason, usage, timestamp: new Date(completedAt).toISOString(), type: "model_request_completed" }, statusPublishOptions(input, admission));
+        await admission.release();
         emptyCompletionRetryCount += 1;
         await scheduleEmptyCompletionRetry({
           abortSignal: input.request.abortSignal,
@@ -418,7 +426,7 @@ export async function runGenerateText(input: {
           responseHeaders,
           retryable: canRetry,
           statusCode: failure.statusCode,
-          ...modelFailureStatusFields(error, failure, options ? "response" : "prepare"),
+          ...modelFailureStatusFields(error, failure, requestInvocationCompleted ? "response" : "prepare"),
           timestamp: new Date(completedAt).toISOString(),
           type: "model_request_failed",
         },
@@ -493,7 +501,7 @@ export async function runGenerateText(input: {
       );
 
       // 退避期间不持票：槽位让给别人，重试再准入。
-      admission.release();
+      await admission.release();
       try {
         await sleep(delayMs, input.request.abortSignal);
       } catch (sleepError) {
@@ -532,7 +540,7 @@ export async function runGenerateText(input: {
         attempt -= 1;
       }
     } finally {
-      admission.release();
+      await admission.release();
     }
   }
 

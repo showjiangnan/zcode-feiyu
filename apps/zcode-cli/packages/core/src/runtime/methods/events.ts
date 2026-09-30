@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { WorkspaceId } from "@zcode/contracts";
 import { buildExecutionStateEntry, readRuntimeExecutionState } from "../execution-state.js";
 import {
@@ -26,6 +26,9 @@ import { buildPersistedConversationInputIntent } from "./input-intent-persistenc
 import { recordToolUsageFromEvent } from "./usage-observability.js";
 import { persistSessionShellEnvironmentSnapshot } from "./session-shell-environment.js";
 import { persistRuntimeModelSelection } from "./turn-model.js";
+import { persistFirstInputTitle } from "./session-first-input-title.js";
+import { publishRuntimeProactiveEvent, runtimeProactiveCause } from "../proactive-causality.js";
+import { persistRuntimeOrchestrationState } from "../orchestration.js";
 import {
   persistWorkspaceCheckpointEntry,
   persistWorkspaceFileRewindEntry,
@@ -101,6 +104,19 @@ export async function appendEvent(
 
   let phase = "event_store.append";
   try {
+    // 终态落库前冻结本轮已消费来源；重放或迟到发布不得读取另一个 active turn 的上下文。
+    if (
+      (event.type === SessionEventType.TurnComplete || event.type === SessionEventType.TurnError) &&
+      this.activeTurn?.turnId === event.turnId
+    ) {
+      const causalContext = runtimeProactiveCause(this);
+      if (causalContext)
+        event = { ...event, payload: { ...(event.payload as object), causalContext } };
+    }
+    // 先原子确认源事实与触发，再让内存 eventStore/snapshot 看见生命周期；否则并发读也可能早于持久确认。
+    phase = "session_event.publish_proactive";
+    await publishRuntimeProactiveEvent(this, event);
+    phase = "event_store.append";
     const storedEvent = await this.eventStore.append(event);
     phase = "session_event.persist_durable";
     await persistDurableSessionEvent.call(this, storedEvent, traceContext);
@@ -561,7 +577,12 @@ export async function ensureSessionPersisted(
   input: string,
   traceContext: TraceContext,
 ): Promise<void> {
-  if (!this.sessionStore || this.sessionPersisted) return;
+  if (!this.sessionStore) return;
+  if (this.sessionPersisted) {
+    // 创建来源会先持久空 session；首输入仍沿同一命名路径，不能把“有行”等同于“已有首输入”。
+    await persistFirstInputTitle(this, input, traceContext);
+    return;
+  }
 
   const startedAt = Date.now();
   let phase = "session_store.create";
@@ -625,6 +646,9 @@ export async function ensureSessionPersisted(
       buildExecutionStateEntry(this.sessionId, readRuntimeExecutionState(this)),
     );
     this.sessionPersisted = true;
+    // 预热会话上已确认的编排模式在此补写，避免首个模型边界前取消/崩溃后回到 standard。
+    phase = "session_orchestration_state";
+    await persistRuntimeOrchestrationState(this);
     this.logger?.debug("Session persisted", {
       ...traceContextToLogContext(traceContext),
       event: "session.persisted",

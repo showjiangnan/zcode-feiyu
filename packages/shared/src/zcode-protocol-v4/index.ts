@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ZCode Protocol v4 —— 数据模型草稿。
 //
 // 本包纪律：只放 schema 类型 + 纯函数
@@ -10,6 +11,8 @@ export * from "./toolDisplay.js";
 export * from "./create-workflow-display.js";
 export * from "./workflow-observation-display.js";
 export * from "./snapshot.js";
+export * from "./orchestration.js";
+export * from "./team-board.js";
 export * from "./workflow-runs.js";
 export * from "./workflow-runs-reducer.js";
 // workflowRuns 的键级增量（diff / apply / 规范键序）；op 本身在 delta.js。

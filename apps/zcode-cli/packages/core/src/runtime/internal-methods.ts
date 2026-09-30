@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type {
   CollaborationMode,
   Model,
@@ -256,7 +257,12 @@ export interface AgentRuntimeCoreMethods {
   createContextBuilderFromSnapshot(
     snapshot: ContextSourceSnapshot,
     memoryRoot?: string,
-    options?: { memoryIndexContent?: string; model?: Model; persistEnvInfo?: boolean },
+    options?: {
+      memoryIndexContent?: string;
+      memoryRelevantContent?: string;
+      model?: Model;
+      persistEnvInfo?: boolean;
+    },
   ): ContextBuilder;
   loadProjectMemoryRoot(traceContext: TraceContext): Promise<string | undefined>;
   logMemorySkipped(

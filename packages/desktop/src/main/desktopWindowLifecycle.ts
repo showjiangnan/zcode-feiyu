@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { getDatabaseStartupPortPayload } from "./databaseStartupRelay.js";
 import { randomUUID } from "node:crypto";
 import { app, BrowserWindow, Menu, MessageChannelMain } from "electron";
@@ -26,6 +27,7 @@ export function createWindow(options: {
   preloadPath: string;
   logger: { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void };
   forceQuitRef: { current: boolean };
+  shouldContinueAfterCloseOnMac?: () => boolean;
   handleBeforeClose?: (win: BrowserWindow, label: string) => boolean;
   windowHostProcessMap: Map<number, ElectronUtilityProcess>;
   spawnHostProcess: (
@@ -100,6 +102,7 @@ export function createWindow(options: {
         handleDarwinWindowCloseRequest({
           win,
           forceQuit: options.forceQuitRef.current,
+          continueAfterClose: options.shouldContinueAfterCloseOnMac?.() ?? true,
           label,
           logger: options.logger,
         })

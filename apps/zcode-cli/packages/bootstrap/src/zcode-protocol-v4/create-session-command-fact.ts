@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { SessionStorePort } from "@zcode/contracts";
 import type { CommandAck } from "@zcode/shared/zcode-protocol-v4";
 import { queueItemIdForCommand } from "./command-inbox.js";
@@ -9,10 +10,35 @@ import { queueItemIdForCommand } from "./command-inbox.js";
 export async function lookupGlobalCreateSessionCommand(
   store: SessionStorePort | undefined,
   commandId: string,
+  expectedSessionId?: string,
 ): Promise<CommandAck | null> {
+  const allOrigins = await store?.readSessionCreateOrigins?.(commandId);
+  const origins = expectedSessionId
+    ? allOrigins?.filter((origin) => origin.sessionId === expectedSessionId)
+    : allOrigins;
+  if (origins?.length) {
+    if (origins.length !== 1) throw new Error("Create command ID is ambiguous across workspaces");
+    const origin = origins[0]!;
+    const session = await store?.getSession(origin.sessionId);
+    if (!session || session.time.archived !== undefined)
+      return {
+        commandId,
+        status: "failed",
+        reasonCode: "fault.command.createdSessionUnavailable",
+        revisionAtDecision: 0,
+      };
+    return {
+      commandId,
+      status: "accepted",
+      requestFingerprint: origin.commandFingerprint,
+      revisionAtDecision: 0,
+      result: { type: "createSession", sessionId: origin.sessionId },
+    };
+  }
   const record = await store?.getSessionInputById?.(queueItemIdForCommand(commandId));
   if (
     !record ||
+    (expectedSessionId !== undefined && record.sessionID !== expectedSessionId) ||
     record.payload.sourceCommandType !== "createSession" ||
     (record.payload.conversationInputIntent as { sourceCommandId?: unknown } | undefined)
       ?.sourceCommandId !== commandId

@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { resolveZCodeAgentSpawnCwd } from "#src/zcode-agent/zcodeAgentSpawnCwd.js";
 import type { ZCodeAgentStorageStartupSnapshot } from "#src/zcode-agent/zcodeAgent.js";
 /* eslint-disable max-lines -- zcodeAgentProcessManager 集中维护 agent 子进程启动、复用、超时回收和 runtime identity，拆分会扩大进程生命周期状态同步面 */
@@ -17,6 +17,7 @@ import {
 } from "@zcode/shared/process-diagnostic";
 import {
   ZCODE_AGENT_RUNTIME,
+  ZCODE_AGENT_NODE_BUNDLE_PATH_ENV,
   ZCODE_AGENT_PROVIDER,
   ZCODE_RUNTIME_ENV_KEY,
   resolveWorkspaceKey,
@@ -453,15 +454,18 @@ export function resolveDefaultZCodeAgentCommand(
     );
   }
 
-  // 顺序：env 显式覆盖 → monorepo dev 源码/dist（dev 改源码立刻生效，不会被远端历史装的 native binary
-  // 抢先匹配）→ 桌面打包态 Electron Node runtime 跑 zcode.cjs → 已部署 native binary（远端 SSH 兜底）。
-  const bundled =
-    resolveBundledWorkspaceZCodeAgentCommand(context) ??
-    resolveElectronRuntimeZCodeAgentCommand(context);
+  // 安装版声明由 Main 裁决，不能先选仓库 dist；开发/远端未声明时保留原候选顺序。
+  const declaredBundle = Boolean(process.env[ZCODE_AGENT_NODE_BUNDLE_PATH_ENV]?.trim());
+  const bundled = declaredBundle
+    ? resolveElectronRuntimeZCodeAgentCommand(context)
+    : (resolveBundledWorkspaceZCodeAgentCommand(context) ??
+      resolveElectronRuntimeZCodeAgentCommand(context));
   return applyPresentationSurfaceToCommand(
     bundled
       ? { ...bundled, supportsStorageStartup: true }
-      : resolveDeployedZCodeAgentBinaryCommand(context),
+      : declaredBundle
+        ? null
+        : resolveDeployedZCodeAgentBinaryCommand(context),
     context.presentationSurface,
   );
 }

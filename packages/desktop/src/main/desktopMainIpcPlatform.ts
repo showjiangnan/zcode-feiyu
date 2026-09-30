@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 桌面平台 IPC 集中装配，拆散会让权限边界更难审计；行数随平台能力增长。 */
 import { BrowserWindow, dialog, ipcMain, nativeTheme } from "electron";
 import { readZCodeStdioTapDevState } from "@zcode/services/node";
@@ -90,6 +90,8 @@ export function registerPlatformIpcHandlers(options: {
   setAutoDownloadAndInstallUpdates: (enabled: boolean) => Promise<void>;
   syncAppSettings: (patch: unknown) => void;
   applyTelemetryConsent: (enabled: boolean) => Promise<void>;
+  readBackgroundContinuity: () => import("@zcode/shared").BackgroundContinuityStatus;
+  stopBackgroundContinuity: () => Promise<import("@zcode/shared").BackgroundContinuityStatus>;
   /** 快捷键设置页录制态开关：true 时 main 重建菜单摘除可配置 accelerator */
   setShortcutRecordingActive?: (active: boolean, ownerWebContentsId?: number | null) => void;
   /** 桌面端设备标识符（基于 userData 路径的 SHA-256） */
@@ -299,6 +301,12 @@ export function registerPlatformIpcHandlers(options: {
     }
     await options.applyTelemetryConsent(payload);
   });
+  ipcMain.handle(PlatformChannels.ReadBackgroundContinuity, () =>
+    options.readBackgroundContinuity(),
+  );
+  ipcMain.handle(PlatformChannels.StopBackgroundContinuity, () =>
+    options.stopBackgroundContinuity(),
+  );
 
   // 快捷键录制态：renderer 设置页进入/退出录制时通知。macOS 系统菜单会先于 renderer
   // 吃掉按键，录制 menu 通道命令必须先摘掉可配置 accelerator，否则按键直接触发原命令。

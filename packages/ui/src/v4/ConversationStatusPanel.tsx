@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* oxlint-disable eslint(max-lines) -- 状态面板同时维护收起态摘要、展开态分区、菜单策略和宽度自适应，同文件能保证两种形态共享同一内容优先级。 */
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import {
@@ -51,6 +52,7 @@ import type {
   BackgroundWorkSummary,
   GoalState,
   PlanState,
+  TeamBoardState,
   ToolCallRow,
   WorkflowRunState,
 } from "@zcode/shared/zcode-protocol-v4";
@@ -110,6 +112,7 @@ interface ConversationStatusPanelProps {
   gitWorktreeChangeSummary?: { added: number; removed: number } | null;
   activeTaskChangeSummary?: ZCodeTaskChangeSummary | null;
   goal?: GoalState | null;
+  teamBoard?: TeamBoardState;
   sessionPlans?: readonly ToolCallRow[];
   plan?: PlanState | null;
   backgroundWorks?: readonly BackgroundWorkSummary[];
@@ -133,6 +136,9 @@ interface ConversationStatusPanelProps {
   onVariantChange?: (variant: ChatViewSummaryPanelVariant | null) => void;
   terminalSectionOpen?: boolean;
   onTerminalSectionOpenChange?: (open: boolean) => void;
+  /** 记忆提取/整理/主动执行分区（复审 GAP-03）；与终端分区同一受控折叠语义。 */
+  continuitySectionOpen?: boolean;
+  onContinuitySectionOpenChange?: (open: boolean) => void;
   agentSectionOpen?: boolean;
   onAgentSectionOpenChange?: (open: boolean) => void;
   workflowSectionOpen?: boolean;
@@ -232,6 +238,7 @@ type StatusSectionKind =
   | "plan"
   | "terminal"
   | "workflow"
+  | "teamBoard"
   | "agent";
 
 const STATUS_SECTION_SCROLL_POLICY = {
@@ -243,6 +250,7 @@ const STATUS_SECTION_SCROLL_POLICY = {
   terminal: "max-h-48",
   // workflow 行与 terminal / agent 行同高（两行 + 控制），限高沿用同一档。
   workflow: "max-h-48",
+  teamBoard: "max-h-48",
   agent: "max-h-48",
 } as const satisfies Record<StatusSectionKind, string | null>;
 
@@ -905,6 +913,59 @@ function PlanStatusSection({
         plan={plan}
         popoverSide={popoverSide}
       />
+    </StatusSection>
+  );
+}
+
+function TeamBoardStatusSection({
+  board,
+  separated,
+}: {
+  board: TeamBoardState;
+  separated: boolean;
+}) {
+  const { intl } = useZCodeIntl();
+  const completed = board.tasks.filter((task) => task.status === "completed").length;
+  return (
+    <StatusSection
+      section="teamBoard"
+      separated={separated}
+      title={intl.formatMessage({ id: "chat.statusPanel.teamBoard" })}
+      trailing={() => (
+        <span className="tabular-nums text-[var(--color-foreground-subtle)]">
+          {completed}/{board.tasks.length}
+        </span>
+      )}
+    >
+      <ul className="space-y-0" data-testid="chat-team-board">
+        {board.tasks.map((task) => (
+          <li
+            key={task.id}
+            data-team-task-id={task.id}
+            data-team-task-status={task.status}
+            className="flex min-h-8 min-w-0 items-start gap-2 rounded-lg px-2 py-1.5 text-ui-base text-[var(--color-foreground)]"
+          >
+            {task.status === "completed" ? (
+              <CircleCheckBigIcon
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-[var(--color-success)]"
+              />
+            ) : (
+              <CircleIcon
+                aria-hidden
+                className="mt-0.5 size-4 shrink-0 text-[var(--color-foreground-subtle)]"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-2">{task.description}</p>
+              <p className="truncate text-ui-sm text-[var(--color-foreground-subtle)]">
+                {intl.formatMessage({ id: `chat.statusPanel.teamTask.${task.status}` })}
+                {task.assigneeId ? ` · ${task.assigneeName ?? task.assigneeId}` : ""}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
     </StatusSection>
   );
 }
@@ -1593,15 +1654,21 @@ function StatusSummaryRow({
   // Running 明细的 Bot 语义。规则现在是三类的：**恰好一类**沿用该类图标，混合才是 Activity
   // （两类矩阵在 workflow 加入后就不够用了，硬写下去会漏掉 workflow+agent 这种组合）。
   const hasRunningBash = model.runningBashWorks.length > 0;
+  // 记忆提取/整理/主动执行与终端并列展示，参与胶囊摘要的「混合即 Activity」判定（复审 GAP-03）。
+  const hasRunningContinuity = model.runningContinuityWorks.length > 0;
   const hasRunningSubagent = model.runningSubagentWorks.length > 0;
   const hasRunningWorkflow = model.runningWorkflowRuns.length > 0;
   const runningCount =
     model.runningBashWorks.length +
+    model.runningContinuityWorks.length +
     model.runningSubagentWorks.length +
     model.runningWorkflowRuns.length;
-  const runningKindCount = [hasRunningWorkflow, hasRunningBash, hasRunningSubagent].filter(
-    Boolean,
-  ).length;
+  const runningKindCount = [
+    hasRunningWorkflow,
+    hasRunningBash,
+    hasRunningContinuity,
+    hasRunningSubagent,
+  ].filter(Boolean).length;
   const RunningSummaryIcon =
     runningKindCount > 1
       ? ActivityIcon
@@ -1712,6 +1779,7 @@ function ConversationStatusPanelImpl({
   gitWorktreeChangeSummary,
   activeTaskChangeSummary,
   goal,
+  teamBoard,
   sessionPlans,
   plan,
   backgroundWorks = EMPTY_BACKGROUND_WORKS,
@@ -1727,6 +1795,8 @@ function ConversationStatusPanelImpl({
   onVariantChange,
   terminalSectionOpen,
   onTerminalSectionOpenChange,
+  continuitySectionOpen,
+  onContinuitySectionOpenChange,
   agentSectionOpen,
   onAgentSectionOpenChange,
   workflowSectionOpen,
@@ -1795,9 +1865,11 @@ function ConversationStatusPanelImpl({
   );
   const canRenderGit = Boolean(model.git && gitSummary && onRefreshGit);
   const canRenderGoal = Boolean(model.goal);
+  const canRenderTeamBoard = Boolean(teamBoard && teamBoard.tasks.length > 0);
   const canRenderSessionPlans = Boolean(model.sessionPlans);
   const canRenderPlan = Boolean(model.plan);
   const canRenderTerminals = model.runningBashWorks.length > 0;
+  const canRenderContinuityWorks = model.runningContinuityWorks.length > 0;
   // 已结束的 run 也开门（与 canRenderAgents 同判断）：重启后活动数为零，若只按它开门，
   // 通往 run 目录的唯一入口会连带消失。
   const canRenderEndedWorkflows = Boolean(
@@ -1855,7 +1927,7 @@ function ConversationStatusPanelImpl({
   // 会话会连整个胶囊一起消失——而那正是重启后打开一条旧对话的样子，run 目录的入口于是又没了。
   // 已结束的 run 因此单独开这道门。（Agents 的已结束行有同一个洞：`endedSubagentCount` 也
   // 没进 `hasContent`。那是既有行为，不在本轮一起翻。）
-  if (!model.hasContent && !canRenderEndedWorkflows) {
+  if (!model.hasContent && !canRenderEndedWorkflows && !canRenderTeamBoard) {
     return null;
   }
 
@@ -1884,10 +1956,12 @@ function ConversationStatusPanelImpl({
         data-goal-objective={model.goal?.objective}
         data-running-background-count={
           model.runningBashWorks.length +
+          model.runningContinuityWorks.length +
           model.runningSubagentWorks.length +
           model.runningWorkflowRuns.length
         }
         data-running-terminal-count={model.runningBashWorks.length}
+        data-running-continuity-count={model.runningContinuityWorks.length}
         data-running-agent-count={model.runningSubagentWorks.length}
         data-running-workflow-count={model.runningWorkflowRuns.length}
         data-ended-workflow-count={endedWorkflowRunCount}
@@ -2000,6 +2074,12 @@ function ConversationStatusPanelImpl({
                 separated={canRenderGit || canRenderGoal || canRenderSessionPlans}
               />
             ) : null}
+            {canRenderTeamBoard && teamBoard ? (
+              <TeamBoardStatusSection
+                board={teamBoard}
+                separated={canRenderGit || canRenderGoal || canRenderSessionPlans || canRenderPlan}
+              />
+            ) : null}
             {canRenderTerminals ? (
               <BackgroundWorkStatusSection
                 onOpenBackgroundBash={onOpenBackgroundBash}
@@ -2008,7 +2088,31 @@ function ConversationStatusPanelImpl({
                 works={model.runningBashWorks}
                 open={terminalSectionOpen}
                 onOpenChange={onTerminalSectionOpenChange}
-                separated={canRenderGit || canRenderGoal || canRenderSessionPlans || canRenderPlan}
+                separated={
+                  canRenderGit ||
+                  canRenderGoal ||
+                  canRenderSessionPlans ||
+                  canRenderPlan ||
+                  canRenderTeamBoard
+                }
+                onCancelBackgroundWork={onCancelBackgroundWork}
+              />
+            ) : null}
+            {canRenderContinuityWorks ? (
+              <BackgroundWorkStatusSection
+                section="terminal"
+                title={intl.formatMessage({ id: "chat.statusPanel.continuityWorks" })}
+                works={model.runningContinuityWorks}
+                open={continuitySectionOpen}
+                onOpenChange={onContinuitySectionOpenChange}
+                separated={
+                  canRenderGit ||
+                  canRenderGoal ||
+                  canRenderSessionPlans ||
+                  canRenderPlan ||
+                  canRenderTeamBoard ||
+                  canRenderTerminals
+                }
                 onCancelBackgroundWork={onCancelBackgroundWork}
               />
             ) : null}
@@ -2024,6 +2128,7 @@ function ConversationStatusPanelImpl({
                   canRenderGoal ||
                   canRenderSessionPlans ||
                   canRenderPlan ||
+                  canRenderTeamBoard ||
                   canRenderTerminals
                 }
                 parentSessionId={parentSessionId}
@@ -2045,6 +2150,7 @@ function ConversationStatusPanelImpl({
                   canRenderGoal ||
                   canRenderSessionPlans ||
                   canRenderPlan ||
+                  canRenderTeamBoard ||
                   canRenderTerminals ||
                   canRenderWorkflows
                 }

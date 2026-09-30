@@ -1,3 +1,5 @@
+// Modified by ZCode Feiyu contributors (2026).
+import { commandRequestFingerprint } from "../../command-fingerprint.js";
 // 会话管理命令组：createSession / renameSession / deleteSession。
 // 每个命令组一个文件：handler 纯函数 (host, envelope) → CommandResult|undefined，
 // 决策逻辑直驱 core，环境能力走 host 钩子（见 ../types.ts 的过渡标注）。
@@ -47,8 +49,20 @@ async function createSession(
   ) {
     throw new V4InputAdmissionRejectedError("proto.invalidPayload", "input must not be empty");
   }
+  if (payload.originCommandId && payload.originCommandId !== envelope.commandId)
+    throw new V4InputAdmissionRejectedError(
+      "proto.invalidPayload",
+      "Create origin must match the command ID",
+    );
   const { sessionId } = await host.createSessionRecord({
     workspaceId: payload.workspaceId,
+    ...(payload.originCommandId
+      ? {
+          originCommandId: envelope.commandId,
+          originRequestFingerprint: commandRequestFingerprint(envelope),
+          title: payload.title,
+        }
+      : {}),
     mcpServers: payload.mcpServers,
     offPeakToolEnabled: payload.offPeakToolEnabled,
     dynamicWorkflowEnabled: payload.dynamicWorkflowEnabled,
@@ -66,6 +80,15 @@ async function createSession(
         error: error instanceof Error ? error.message : String(error),
         sessionId,
       });
+    }
+    if (payload.config.orchestrationMode) {
+      try {
+        await record.app.runtime.requestOrchestrationMode(payload.config.orchestrationMode);
+      } catch (error) {
+        // 编排模式直接决定首轮可调用的工具面；失败后不能继续用缺省模式运行首条输入。
+        await host.closeSession?.(sessionId);
+        throw error;
+      }
     }
   }
   let firstInput:

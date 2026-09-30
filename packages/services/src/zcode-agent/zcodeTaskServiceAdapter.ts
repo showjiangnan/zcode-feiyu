@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* oxlint-disable eslint(max-lines) -- 迁移期需要在一个门面里集中维护旧 task projection 到 ZCode session 的协议适配。 */
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -168,6 +168,7 @@ import {
 import type { CuaProductMcpServerResolver } from "#src/cua-permission-broker/index.js";
 import { registerMemoryDiagnosticsProvider } from "#src/memoryDiagnostics.js";
 import { createTaskAppService } from "./taskAppService.js";
+import { describeBackgroundContinuityCapability } from "./platformCapabilities.js";
 
 interface TaskOverlay {
   archived?: boolean;
@@ -1759,6 +1760,16 @@ export function createZCodeTaskServiceAdapter(
     agent: options.zcodeAgentService,
     index: taskIndexRepo,
     tasks: () => service,
+    readPlatformCapabilities: async () => {
+      const settings = await options.settingService?.get();
+      return {
+        backgroundContinuity: describeBackgroundContinuityCapability({
+          platform: process.platform,
+          continueAfterCloseOnMac: settings?.continueAfterCloseOnMac,
+          policyRevision: settings?.policyRevision,
+        }),
+      };
+    },
     adoptSession: async (workspace, taskId) => {
       const snapshot = await options.zcodeAgentService.readSession({
         ...workspace,
@@ -1789,6 +1800,15 @@ export function createZCodeTaskServiceAdapter(
     },
 
     async createTask(params): Promise<ZCodeTaskCreateResult> {
+      if (
+        params.originCommandId !== undefined &&
+        (!params.persistBeforeFirstPrompt ||
+          params.v4Create ||
+          params.draftSessionId ||
+          params.deferPersistenceUntilFirstPrompt)
+      ) {
+        throw new Error("originCommandId requires a persistent session create without a draft");
+      }
       const target = normalizeWorkspaceParams(params);
       const requestedSelection =
         params.modelSelection ??
@@ -1883,10 +1903,15 @@ export function createZCodeTaskServiceAdapter(
           snapshot = await options.zcodeAgentService.createSession({
             ...target,
             sessionTraceId: createSessionTraceId(),
+            ...(params.persistBeforeFirstPrompt ? { persistence: "immediate" as const } : {}),
+            ...(params.originCommandId !== undefined
+              ? { originCommandId: params.originCommandId }
+              : {}),
             mode: toZCodeMode(params.mode),
             model: requestedSelection,
             thoughtLevel: requestedSelection?.options?.reasoningLevel,
-            ...(params.automationId || params.deferPersistenceUntilFirstPrompt
+            ...(!params.persistBeforeFirstPrompt &&
+            (params.automationId || params.deferPersistenceUntilFirstPrompt)
               ? {
                   // 修复原因：automation / 闲时任务新建空 session 后会立即 sendText。session_input 有
                   // session 外键，必须让 V4 admission 在首发前统一持久化 session 主记录；

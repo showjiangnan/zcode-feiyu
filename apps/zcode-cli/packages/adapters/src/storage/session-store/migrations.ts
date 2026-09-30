@@ -1,4 +1,7 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { PROVIDER_MODEL_SELECTION_MIGRATION_SQL } from "./migrations/0020-provider-model-selection.js";
+import { TASK_RESOURCE_SCHEMA } from "./migrations/0026-task-resource-budget.js";
+import { PROACTIVE_EVENTS_SCHEMA } from "./migrations/0027-proactive-events.js";
 
 interface SqliteMigration {
   appVersion: string;
@@ -924,6 +927,89 @@ export const SQLITE_MIGRATIONS: readonly SqliteMigration[] = [
     appVersion: "0.16.5",
     id: "0022_backfilled_session_reasoning",
     sql: BACKFILLED_SESSION_REASONING_MIGRATION_SQL,
+  },
+  {
+    appVersion: "3.14.3",
+    id: "0023_project_memory_review",
+    sql: `
+      create table if not exists project_memory_review (
+        workspace_key text primary key,
+        workspace_path text not null,
+        baseline_at integer not null,
+        last_success_at integer,
+        review_id text,
+        epoch integer not null default 0,
+        lease_until integer,
+        cancel_requested integer not null default 0,
+        stage text not null default 'idle',
+        status text not null default 'idle',
+        failure_count integer not null default 0,
+        next_retry_at integer,
+        changed_files_json text not null default '[]',
+        total_tokens integer not null default 0,
+        error text
+      );
+      create table if not exists project_memory_review_run (
+        review_id text primary key,
+        workspace_key text not null references project_memory_review(workspace_key) on delete cascade,
+        epoch integer not null,
+        trigger text not null,
+        session_ids_json text not null,
+        status text not null,
+        started_at integer not null,
+        finished_at integer,
+        changed_files_json text not null default '[]',
+        total_tokens integer not null default 0,
+        error text
+      );
+      create index if not exists project_memory_review_run_workspace_started_idx
+        on project_memory_review_run(workspace_key, started_at desc);
+    `,
+  },
+  {
+    appVersion: "3.14.3",
+    id: "0024_project_memory_extraction_cursor",
+    sql: `
+      create table if not exists project_memory_extraction_cursor (
+        session_id text primary key references session(id) on delete cascade,
+        boundary_message_id text not null,
+        updated_at integer not null
+      );
+    `,
+  },
+  {
+    appVersion: "3.14.3",
+    id: "0025_project_memory_write_lease",
+    sql: `
+      create table if not exists project_memory_write_lease (
+        workspace_key text primary key,
+        owner_id text,
+        epoch integer not null default 0,
+        lease_until integer
+      );
+    `,
+  },
+  { appVersion: "3.14.3", id: "0026_task_resource_budget", sql: TASK_RESOURCE_SCHEMA },
+  { appVersion: "3.14.3", id: "0027_proactive_events", sql: PROACTIVE_EVENTS_SCHEMA },
+  {
+    appVersion: "3.14.3",
+    id: "0028_project_memory_review_observability",
+    // 旧账本的范围、实际采集数量和估计标记不可由候选列表推断，增量可空列保留“未报告”。
+    sql: `
+      alter table project_memory_review add column history_scope text;
+      alter table project_memory_review add column session_count integer;
+      alter table project_memory_review add column token_usage_estimated integer;
+      alter table project_memory_review_run add column history_scope text;
+      alter table project_memory_review_run add column session_count integer;
+      alter table project_memory_review_run add column token_usage_estimated integer;
+      alter table project_memory_review_run add column stage text;
+    `,
+  },
+  {
+    appVersion: "3.14.3",
+    id: "0029_task_budget_owner_identity",
+    // owner_pid 继续用于诊断；恢复依据持有 OS 生命周期锁的实例 UUID，不因 PID 复用误认存活。
+    sql: `alter table task_resource_request add column owner_identity text;`,
   },
 ];
 import { OFFICIAL_GLM_SELECTION_MIGRATION_SQL } from "./migrations/0021-official-glm-selection.js";

@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // 会话流命令组：sendText / stop（模式样板）。
 // 每个命令组一个文件：handler 纯函数 (host, envelope) → CommandResult|undefined，
 // 决策逻辑直驱 core，环境能力走 host 钩子（见 ../types.ts 的过渡标注）。
@@ -189,6 +189,7 @@ async function sendText(
 ): Promise<CommandResult | undefined> {
   const payload = envelope.payload as CommandPayloadMap["sendText"];
   const record = requireRecord(host, envelope.sessionId);
+  await record.app.runtime.authorizeProactiveCommand?.(envelope.commandId);
   // 旧校验只看正文，UI 已允许的 attachment-only query 会在 CLI 被误判为空。
   if (!hasPromptInput(payload.text, payload.attachments)) {
     throw new V4InputAdmissionRejectedError("proto.invalidPayload", "input must not be empty");
@@ -259,7 +260,10 @@ async function sendText(
         payload.requestedDelivery ??
         (routingMode === "guide" ? "guide" : routingMode === "enqueue" ? "queue" : "startNow"),
       ...(payload.interTaskSourceTaskId
-        ? { interTaskSourceTaskId: payload.interTaskSourceTaskId }
+        ? {
+            interTaskSourceTaskId: payload.interTaskSourceTaskId,
+            causalContext: payload.causalContext,
+          }
         : {}),
       ...(routingMode === "guide" && attachments?.length
         ? { fallbackReasonCode: "guide.attachmentsUnsupported" }

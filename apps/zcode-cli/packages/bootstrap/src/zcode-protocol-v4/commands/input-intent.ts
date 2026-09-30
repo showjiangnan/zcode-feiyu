@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { TurnInputIntentMetadata } from "@zcode/contracts";
 import type { ModelSelection } from "@zcode/shared";
 import type { AttachmentRef, CommandEnvelope, QueueItem } from "@zcode/shared/zcode-protocol-v4";
@@ -21,6 +21,7 @@ interface CanonicalCommandIntent {
   sharedContextRefs?: TurnInputIntentMetadata["sharedContextRefs"];
   provenance?: TurnInputIntentMetadata["provenance"];
   interTaskSourceTaskId?: string;
+  causalContext?: TurnInputIntentMetadata["causalContext"];
 }
 
 export function inputIntentMetadata(
@@ -36,6 +37,7 @@ export function inputIntentMetadata(
     planEnabled?: boolean;
     sharedContextRefs?: TurnInputIntentMetadata["sharedContextRefs"];
     interTaskSourceTaskId?: string;
+    causalContext?: TurnInputIntentMetadata["causalContext"];
   },
 ): TurnInputIntentMetadata {
   const admission = commandAdmissionOf(envelope);
@@ -44,6 +46,7 @@ export function inputIntentMetadata(
     ...(options.interTaskSourceTaskId
       ? { interTaskSourceTaskId: options.interTaskSourceTaskId }
       : {}),
+    ...(options.causalContext ? { causalContext: options.causalContext } : {}),
     queueItemId: admission.queueItemId,
     clientId: envelope.clientId || "cli",
     kind:
@@ -88,6 +91,7 @@ export function inputIntentMetadataFromCanonical(
     ...(canonical.interTaskSourceTaskId
       ? { interTaskSourceTaskId: canonical.interTaskSourceTaskId }
       : {}),
+    ...(canonical.causalContext ? { causalContext: canonical.causalContext } : {}),
     queueItemId: admission.queueItemId,
     clientId: envelope.clientId || canonical.clientId || "cli",
     kind: canonical.kind,
@@ -122,6 +126,7 @@ export function inputIntentMetadataFromQueueItem(
   return {
     sourceCommandId: item.sourceCommandId,
     ...(item.interTaskSourceTaskId ? { interTaskSourceTaskId: item.interTaskSourceTaskId } : {}),
+    ...(item.causalContext ? { causalContext: item.causalContext } : {}),
     queueItemId: item.queueItemId,
     clientId: item.clientId,
     kind: item.kind,

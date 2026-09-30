@@ -86,3 +86,7 @@ packages/desktop/.e2e-network-capture/
 *.spec.*
 TASKS.md
 AGENTS.md
+
+**/dist-types/
+packages/desktop/src/shared/armsRumShared.js
+packages/desktop/src/shared/armsRumShared.d.ts

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { IMAGE_MAX_BYTES } from "@zcode/shared";
 
 export function imageApiUrl(value: string): URL {

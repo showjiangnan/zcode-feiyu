@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { imageGenerationConfigSchema } from "@zcode/shared";
 import type { ImageGenerationPort, SessionId, SessionStorePort } from "@zcode/contracts";
 

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";

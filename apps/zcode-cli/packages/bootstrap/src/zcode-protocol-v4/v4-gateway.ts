@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { LocalTtftRecorder } from "./local-ttft.js";
 import { observeCommandExecution } from "./command-execution-observation.js";
 import { localTtftNow, localTtftFactsSchema } from "@zcode/shared/zcode-protocol-v4";
@@ -316,6 +316,7 @@ export interface V4GatewayHost {
     reasonCode: "proto.payloadTooLarge",
   ): Promise<void> | void;
   /** commands/query 持久化 fallback；四个来源必须按 sourceCommandId 精确命中。 */
+  lookupRequestFingerprint?(key: CommandKey): Promise<string | null>;
   lookupTranscriptCommand?(key: CommandKey): Promise<CommandAck | null> | CommandAck | null;
   lookupTimelineCommand?(key: CommandKey): Promise<CommandAck | null> | CommandAck | null;
   lookupChildCommand?(key: CommandKey): Promise<CommandAck | null> | CommandAck | null;
@@ -668,6 +669,7 @@ export class ConversationV4Gateway {
           ? { verdict: "stale", reasonCode: resolution.reasonCode }
           : { verdict: "reject", reasonCode: resolution.reasonCode };
       },
+      lookupRequestFingerprint: (key) => this.host.lookupRequestFingerprint?.(key) ?? Promise.resolve(null),
       lookupTranscriptCommand: (key) => this.host.lookupTranscriptCommand?.(key) ?? null,
       lookupTimelineCommand: (key) => this.host.lookupTimelineCommand?.(key) ?? null,
       lookupChildCommand: (key) => this.host.lookupChildCommand?.(key) ?? null,

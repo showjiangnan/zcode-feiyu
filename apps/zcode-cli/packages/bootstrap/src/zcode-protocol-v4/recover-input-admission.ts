@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { MessageWithParts } from "@zcode/contracts";
 import type { CommandAck } from "@zcode/shared/zcode-protocol-v4";
 

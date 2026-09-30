@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   zcodeProtocolMethods,
   zcodeTaskMessageListResultSchema,
@@ -25,6 +26,10 @@ export function createProtocolTaskMessagePort(
   return {
     async request(input, signal) {
       const sourceSessionId = ownSessionId();
+      // 只信发送 runtime 在此刻已消费的输入；不能让工具或旧请求自行盖因果深度。
+      const causalContext = resolveOwnSession()?.app.runtime?.getProactiveCausalContext();
+      const operation =
+        input.operation.type === "send" ? { ...input.operation, causalContext } : input.operation;
       const cancel = () => {
         if (input.operation.type !== "wait") return;
         // 取消等待是独立只读控制，不发送 stop，不撤销 B 已接收的输入。
@@ -49,7 +54,7 @@ export function createProtocolTaskMessagePort(
       try {
         return await context.requestClient(
           zcodeProtocolMethods.interactionTaskService,
-          { ...input, sourceSessionId },
+          { ...input, sourceSessionId, operation },
           taskAppResponseSchema,
         );
       } finally {

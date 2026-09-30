@@ -44,6 +44,5 @@
   "engines": {
     "node": "24.14.0"
   },
-  "packageManager": "pnpm@10.33.2",
-  "x-feiyu-notice": "Modified for ZCode Feiyu: development-only commands omitted from this production source distribution."
+  "packageManager": "pnpm@10.33.2"
 }

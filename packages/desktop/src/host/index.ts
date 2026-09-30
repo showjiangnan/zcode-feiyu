@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- Host 入口集中编排 local/remote service wiring，本次退出保护需要在同一处桥接 host 上报。 */
 /* eslint-disable max-lines -- host process 入口集中维护 local/remote 初始化和资源回收，realtime bridge 接入后先保持同文件收口。 */
 /**
@@ -61,6 +61,7 @@ import {
   buildTaskChangeSummary,
   createHostApiNetworkTransport,
   createSettingServiceWithMigrations,
+  runtimePolicyFromSettings,
   OffPeakModelUnavailableError,
   OffPeakPermanentDispatchError,
   type HostApiNetworkTransport,
@@ -684,6 +685,9 @@ async function dispatchOffPeakRun(request: OffPeakRunDispatchRequest): Promise<{
   }
 }
 
+/** Host 本身尚未就绪（服务未初始化），属于等待 Host，不是任务派发失败。 */
+class CronHostNotReadyError extends Error {}
+
 interface CronRunDispatchRequest {
   automationId: string;
   runId: string;
@@ -714,10 +718,10 @@ function resolveAutomationTargetServices(request: {
   // 远程 Automation 找不到目标 logical session 时，旧派发会静默落到 Local Host，
   // 从而使用本地模型首选与 Registry。远程身份只能失败，不能跨 Environment fallback。
   if (request.workspaceIdentity && isRemoteWorkspaceIdentity(request.workspaceIdentity)) {
-    throw new Error("Automation 目标 Remote Host 当前不可用");
+    throw new CronHostNotReadyError("Automation 目标 Remote Host 当前不可用");
   }
   if (!activeServices) {
-    throw new Error("Local Host services are not initialized.");
+    throw new CronHostNotReadyError("Local Host services are not initialized.");
   }
   return activeServices;
 }
@@ -853,18 +857,23 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
   taskId: string;
   sessionId: string;
 }> {
+  if (hasDisposedHostResources || databaseStartup?.coordinator.snapshot.phase !== "ready")
+    throw new CronHostNotReadyError("Local Host is not ready or is shutting down");
   const targetServices = resolveAutomationTargetServices(request);
   const zcodeTaskService = targetServices.getOptional(IZCodeTaskService);
   if (!zcodeTaskService) {
-    throw new Error("ZCode task service is not initialized.");
+    throw new CronHostNotReadyError("ZCode task service is not initialized.");
   }
   const modelSelectionService = targetServices.getOptional(IModelSelectionService);
   if (!modelSelectionService) {
-    throw new Error("目标 Host Model Selection service is not initialized.");
+    throw new CronHostNotReadyError("目标 Host Model Selection service is not initialized.");
   }
   // 长期配置是原意图；首次派发在目标 Host 解析后固定。已有 run 必须直接复用，
   // 不能因账号变化或本次 Registry 读取失败重新解释历史执行选择。
   const existingRun = await cronAutomationRepo.getRun(request.runId);
+  if (existingRun?.dispatchStatus === "dispatched" && existingRun.sessionId) {
+    return { taskId: existingRun.sessionId, sessionId: existingRun.sessionId };
+  }
   const resolvedSubmissionModelSelection = await resolveAutomationSubmissionModelSelection({
     selection: request.modelSelection,
     fixedSelection: existingRun?.modelSelection,
@@ -886,9 +895,15 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
   const trigger = request.runId.includes(":manual:") ? "manual" : "schedule";
   const scheduledAt = parseCronRunScheduledAt(request.runId, request.automationId);
   try {
-    const task = request.targetTaskId
-      ? { taskId: request.targetTaskId }
+    if (hasDisposedHostResources) throw new CronHostNotReadyError("Local Host is shutting down");
+    // CLI 创建成功后、run 固定前强杀曾重复产生空任务。原 runId 作为创建键与 CLI session
+    // 同事务落盘；重试先查回唯一身份，不能由 Host 指定 sessionId 或只靠 task index 分组猜测。
+    const existingTaskId = existingRun?.sessionId ?? request.targetTaskId;
+    const task = existingTaskId
+      ? { taskId: existingTaskId }
       : await zcodeTaskService.createTask({
+          persistBeforeFirstPrompt: true,
+          originCommandId: request.runId,
           workspacePath: request.workspacePath,
           workspaceIdentity: request.workspaceIdentity,
           model: formatModelPickerValue(submissionModelSelection),
@@ -899,8 +914,11 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
     // 未绑定会话时不能沿用 createTask 的 session trace 作为首条 prompt trace：
     // CLI 无法从 inputId 还原 manual/schedule admission。
     // 建会话 trace 与执行 runId 是两种身份；两条派发路径的 prompt 都必须统一使用 runId。
+    const fixedSessionId = await cronAutomationRepo.fixRunSessionId(request.runId, task.taskId);
+    if (fixedSessionId !== task.taskId)
+      throw new CronHostNotReadyError("Automation run was assigned to another dispatch session");
     const promptTraceId = request.runId as TraceId;
-    if (request.targetTaskId) {
+    if (existingTaskId) {
       // 绑定会话在 app 重启或切换 workspace 后通常不处于 active；旧实现直接
       // setConfig/sendPrompt 会立即报 Session is not active，看起来像「立即运行」没有触发。
       await zcodeTaskService.resumeTask({
@@ -939,6 +957,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
         );
       }
     }
+    if (hasDisposedHostResources) throw new CronHostNotReadyError("Local Host is shutting down");
     trackedKey = cronRunSubscriptionKey(task.taskId, promptTraceId);
     trackCronRunOutcome({
       zcodeTaskService,
@@ -960,7 +979,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       automationId: request.automationId,
     });
     // prompt 创建的定时任务带 targetTaskId，追加原会话不能计成 session_create。
-    if (!request.targetTaskId) {
+    if (!existingTaskId) {
       reportHostSessionCreate(parentPort, {
         sessionId: task.taskId,
         messageId: promptTraceId,
@@ -971,6 +990,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
     return { taskId: task.taskId, sessionId: task.taskId };
   } catch (error) {
     if (trackedKey) disposeCronRunSubscription(trackedKey);
+    if (error instanceof CronHostNotReadyError) throw error;
     markCronRunOutcome({
       runId: request.runId,
       automationId: request.automationId,
@@ -1008,6 +1028,20 @@ async function dispatchManualAutomationRun(params: {
       `direct manual automation dispatch failed automation=${params.automation.automationId} runId=${params.run.runId}:`,
       error,
     );
+    if (error instanceof CronHostNotReadyError) {
+      await cronAutomationRepo.markWaitingForHost({
+        automationId: params.automation.automationId,
+        runId: params.run.runId,
+        now: Date.now(),
+        trigger: "manual",
+      });
+      // readiness 可能已先于直派结算到达 Main；让既有 scheduler 用实时 Host 事实重新唤醒。
+      parentPort?.postMessage({
+        type: HostResponseTypes.CronSchedulerWakeRequest,
+        automationId: params.automation.automationId,
+      });
+      return;
+    }
     await settleManualDispatchFailureBestEffort({
       repo: cronAutomationRepo,
       automationId: params.automation.automationId,
@@ -2364,12 +2398,13 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
 
   if (msg.type === HostMessageTypes.CronRun) {
     if (databaseStartup?.coordinator.snapshot.phase !== "ready") {
+      // 原因：数据库未就绪原先按 transient 计入派发失败，5 次后计划被丢弃；这是等待 Host。
       parentPort.postMessage({
         type: HostResponseTypes.CronRunResult,
         runId: msg.runId,
         ok: false,
         error: "Local database startup is not ready",
-        failureKind: "transient",
+        failureKind: "waiting_for_host",
       });
       return;
     }
@@ -2391,7 +2426,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           runId: msg.runId,
           ok: false,
           error: error instanceof Error ? error.message : String(error),
-          failureKind: "transient",
+          failureKind: error instanceof CronHostNotReadyError ? "waiting_for_host" : "transient",
         });
       }
     })();
@@ -2450,7 +2485,11 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     return;
   }
 
-  if (msg.type === HostMessageTypes.Broadcast) {
+  if (
+    msg.type === HostMessageTypes.Broadcast ||
+    msg.type === HostMessageTypes.BroadcastDelivery ||
+    msg.type === HostMessageTypes.BroadcastDeliveryFinal
+  ) {
     return;
   }
 
@@ -2651,12 +2690,14 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
             workspacePath: descriptor.workspacePath,
             workspaceIdentity: descriptor.workspaceIdentity,
           });
-          await remoteServices.get(IZCodeAgentService).syncAppRuntimePreferences({
-            askUserQuestionAutoResolutionEnabled:
-              persistedSettings.askUserQuestionAutoResolutionEnabled !== false,
-            modelIoFullRetentionEnabled: persistedSettings.modelIoFullRetentionEnabled === true,
-            telemetryReportingEnabled: persistedSettings.telemetryReportingEnabled === true,
-          });
+          const policy = runtimePolicyFromSettings(persistedSettings);
+          const ack = await remoteServices
+            .get(IZCodeAgentService)
+            .syncAppRuntimePreferences(policy);
+          if (!ack || ack.status !== "applied" || ack.policyRevision !== policy.policyRevision)
+            throw new Error(
+              ack?.error ?? "Remote startup did not confirm the runtime policy revision",
+            );
         } catch (error) {
           await windowRemoteConnectionRegistry.disposeSession(descriptor.remoteSessionId);
           throw error;
@@ -2926,6 +2967,43 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               parentPort,
               settingService,
               prepareLegacyAccountConnections,
+              applyRemoteRuntimePolicy: async (policy) => {
+                const results = await Promise.allSettled(
+                  windowRemoteConnectionRegistry.listSessions().map(async (session) => {
+                    if (
+                      session.state !== "online" ||
+                      !session.workspacePath ||
+                      !session.workspaceIdentity
+                    )
+                      throw new Error(
+                        "A managed remote workspace cannot confirm the runtime policy",
+                      );
+                    const scoped = windowRemoteConnectionRegistry.resolveScopedServices({
+                      kind: "remote",
+                      remoteSessionId: session.remoteSessionId,
+                      workspacePath: session.workspacePath,
+                      workspaceIdentity: session.workspaceIdentity,
+                    });
+                    const ack = await scoped
+                      .get(IZCodeAgentService)
+                      .syncAppRuntimePreferences(policy);
+                    if (
+                      !ack ||
+                      ack.status !== "applied" ||
+                      ack.policyRevision !== policy.policyRevision
+                    )
+                      throw new Error(
+                        ack?.error ?? "Remote Host did not confirm the runtime policy revision",
+                      );
+                  }),
+                );
+                const failures = results.filter((result) => result.status === "rejected");
+                if (failures.length)
+                  throw new AggregateError(
+                    failures.map((result) => result.reason),
+                    "Remote Host runtime policy update failed",
+                  );
+              },
               hostApiNetworkTransport,
               authorizeLocalMediaPreviewPath,
               runtimeProcessEnvPatch: msg.runtimeProcessEnvPatch,

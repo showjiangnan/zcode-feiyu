@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // v4 原生命令层的 core 能力契约（原生重做版）。
 //
 // 分层纪律（不做桥接）：
@@ -233,6 +233,9 @@ export interface V4CommandCoreHost {
    */
   createSessionRecord?(params: {
     workspaceId: string;
+    originCommandId?: string;
+    originRequestFingerprint?: string;
+    title?: string;
     mcpServers?: CommandPayloadMap["createSession"]["mcpServers"];
     /** host 判定的 Off-Peak 工具面门禁；缺省不注册工具。 */
     offPeakToolEnabled?: boolean;

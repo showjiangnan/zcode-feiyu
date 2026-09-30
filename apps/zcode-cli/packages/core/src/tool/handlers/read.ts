@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Read Tool Handler
 // ============================================================
@@ -376,6 +377,12 @@ function updateReadFileState(
     revisionId: revision?.id,
     mtimeMs: normalizeReadFileStateMtimeMs(revision?.mtimeMs ?? input.stat.mtimeMs),
     sizeBytes: input.stat.sizeBytes,
+    // 整文件读取且未被截断时，记录的内容就是文件全文，可用于识别 mtime/size 不变的同尺寸改写。
+    complete:
+      (input.offset === undefined || input.offset <= 1) &&
+      input.limit === undefined &&
+      input.output.truncated !== true &&
+      input.output.truncatedByTokenCap !== true,
   });
 }
 

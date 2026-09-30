@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { DatabaseSync } from "node:sqlite";
 import type {
   MessageId,
@@ -37,11 +38,16 @@ const PART_DATA_UPDATE = preserveLegacyMembers("part", ["fromModel", "toModel", 
 // 会把 NULL 历史行（迁移遗漏/旧版本二进制写入）在任何一次再保存时重排到队尾（excluded=max+1），
 // assistant 完成后的二次 save 就足以触发，造成时间线漂移；NULL 由 0015 backfill 统一修复。
 // 跨 scope 改绑（id 冲突但 session/message 不同，仅导入 upsert 场景）才取 excluded 的新 scope 队尾。
-export async function saveMessage(
+/**
+ * 同步核心。共享 DatabaseSync 连接上的事务必须在一个同步块内完成：事务窗口内出现 await 会让同连接上
+ * 交叠的写入被并入外层事务（随其回滚而丢失）或触发嵌套事务错误（复审 DEF-03）。
+ * 因此事务内只能调用 *Sync；异步版本仅为端口签名保留。
+ */
+export function saveMessageSync(
   db: DatabaseSync,
   input: MessageInfo,
   copyFrom?: Parameters<SessionStorePort["saveMessage"]>[1],
-): Promise<void> {
+): void {
   const { id, sessionID, ...data } = input;
   // 冻结旧版协议 mapper 无条件读取 user.model；缺少整个对象会让正文也无法打开。
   // 只补必需对象；旧行的原 model 仍由冲突更新/复制逻辑保留，新版 Reader 不使用它。
@@ -100,6 +106,14 @@ export async function saveMessage(
   touchSession(db, sessionID, timeUpdated);
 }
 
+export async function saveMessage(
+  db: DatabaseSync,
+  input: MessageInfo,
+  copyFrom?: Parameters<SessionStorePort["saveMessage"]>[1],
+): Promise<void> {
+  saveMessageSync(db, input, copyFrom);
+}
+
 export async function removeMessage(
   db: DatabaseSync,
   input: { sessionID: SessionId; messageID: MessageId },
@@ -110,11 +124,12 @@ export async function removeMessage(
   );
 }
 
-export async function savePart(
+/** 同步核心，见 saveMessageSync。 */
+export function savePartSync(
   db: DatabaseSync,
   input: MessagePart,
   copyFrom?: Parameters<SessionStorePort["savePart"]>[1],
-): Promise<void> {
+): void {
   const { id, sessionID, messageID, ...data } = input;
   let storedData: Record<string, unknown> = data;
   if (input.type === "timeline" && input.timelineType === "model_change") {
@@ -181,6 +196,14 @@ export async function savePart(
   touchSession(db, sessionID, now);
 }
 
+export async function savePart(
+  db: DatabaseSync,
+  input: MessagePart,
+  copyFrom?: Parameters<SessionStorePort["savePart"]>[1],
+): Promise<void> {
+  savePartSync(db, input, copyFrom);
+}
+
 function copyLegacyMembers(
   db: DatabaseSync,
   table: "message" | "part",
@@ -218,10 +241,11 @@ export async function removePart(
   );
 }
 
-export async function messages(
+/** 同步核心，见 saveMessageSync。 */
+export function messagesSync(
   db: DatabaseSync,
   input: { sessionID: SessionId },
-): Promise<MessageWithParts[]> {
+): MessageWithParts[] {
   const messageRows = db
     .prepare(
       `
@@ -254,6 +278,13 @@ export async function messages(
     info: decodeMessageRow(row),
     parts: partsByMessage.get(row.id) ?? [],
   }));
+}
+
+export async function messages(
+  db: DatabaseSync,
+  input: { sessionID: SessionId },
+): Promise<MessageWithParts[]> {
+  return messagesSync(db, input);
 }
 
 export async function messageWithParts(

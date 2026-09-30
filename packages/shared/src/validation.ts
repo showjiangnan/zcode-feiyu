@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { databaseStartupControlSchema, databaseStartupStateSchema } from "./database-startup.js";
 import {
   sessionCreateTelemetrySchema,
@@ -6,6 +6,10 @@ import {
 } from "./sessionCreateTelemetry.js";
 /* eslint-disable max-lines -- 运行时 schema 当前集中在共享包入口，外部 relay payload 校验加入后先保持单一导出面。 */
 import { z } from "zod";
+import {
+  broadcastDeliveryReceiptSchema,
+  runtimePolicyAcknowledgementSchema,
+} from "./app-runtime-preferences.js";
 import { taskAppOperationSchema, taskAppResponseSchema } from "./taskAppServer.js";
 import { zcodeProcessDiagnosticSchema } from "./process-diagnostic.js";
 import { browserCommandSchema } from "./browser-use/commands.js";
@@ -284,6 +288,25 @@ export const hostBroadcastEnvelopeSchema = z.object({
   message: broadcastMessageSchema,
 });
 
+export const hostBroadcastDeliveryMessageSchema = z
+  .object({
+    type: z.literal("broadcast-delivery"),
+    requestId: nonEmptyStringSchema,
+    sourceWindowId: z.number().int(),
+    message: broadcastMessageSchema,
+  })
+  .strict();
+
+export const hostBroadcastDeliveryFinalMessageSchema = z
+  .object({
+    type: z.literal("broadcast-delivery-final"),
+    requestId: nonEmptyStringSchema,
+    targetCount: z.number().int().nonnegative(),
+    failedCount: z.number().int().nonnegative(),
+    receipts: z.array(broadcastDeliveryReceiptSchema).optional(),
+  })
+  .strict();
+
 export const hostBroadcastClaimResultMessageSchema = z.discriminatedUnion("status", [
   z.object({
     type: z.literal("broadcast-claim-result"),
@@ -503,6 +526,8 @@ export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
   hostDetachServicePortMessageSchema,
   hostDisposeMessageSchema,
   hostBroadcastEnvelopeSchema,
+  hostBroadcastDeliveryMessageSchema,
+  hostBroadcastDeliveryFinalMessageSchema,
   hostBroadcastClaimResultMessageSchema,
   hostTaskRealtimeDeliverMessageSchema,
   hostTaskRunLeaseResultMessageSchema,
@@ -793,6 +818,24 @@ export const hostBroadcastClaimRequestResponseSchema = z.object({
   key: nonEmptyStringSchema.max(1_024),
 });
 
+export const hostBroadcastDeliveryRequestResponseSchema = z
+  .object({
+    type: z.literal("broadcast-delivery-request"),
+    requestId: nonEmptyStringSchema,
+    message: broadcastMessageSchema,
+  })
+  .strict();
+
+export const hostBroadcastDeliveryResultResponseSchema = z
+  .object({
+    type: z.literal("broadcast-delivery-result"),
+    requestId: nonEmptyStringSchema,
+    sourceWindowId: z.number().int(),
+    ok: z.boolean(),
+    acknowledgement: runtimePolicyAcknowledgementSchema.optional(),
+  })
+  .strict();
+
 export const hostBroadcastClaimCommitResponseSchema = z.object({
   type: z.literal("broadcast-claim-commit"),
   key: nonEmptyStringSchema.max(1_024),
@@ -898,7 +941,8 @@ export const hostCronRunResultResponseSchema = z.object({
   taskId: z.string().optional(),
   sessionId: z.string().optional(),
   error: z.string().optional(),
-  failureKind: z.enum(["transient", "permanent"]).optional(),
+  // waiting_for_host：Host 尚未就绪（数据库或任务服务未初始化），不计派发失败。
+  failureKind: z.enum(["transient", "permanent", "waiting_for_host"]).optional(),
 });
 
 // host → main：闲时任务派发结果。ok=session 已确保存在且 prompt 已发出；迟到结果用 offPeakTaskId 兜底结算。
@@ -1036,6 +1080,8 @@ export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostWorkspaceRunningTaskCountChangedResponseSchema,
   hostCuaOperationStateResponseSchema,
   hostBroadcastEnvelopeSchema,
+  hostBroadcastDeliveryRequestResponseSchema,
+  hostBroadcastDeliveryResultResponseSchema,
   hostBroadcastClaimRequestResponseSchema,
   hostBroadcastClaimCommitResponseSchema,
   hostBroadcastClaimReleaseResponseSchema,

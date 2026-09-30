@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { parseRuntimeInputPresentation } from "@zcode/contracts";
 import {
   unpublishedPermissionGrants,
@@ -50,6 +50,12 @@ import {
   type RuntimeMessageEntry,
 } from "../../agent/message-history.js";
 import type { AgentRuntimeInternal } from "../internal.js";
+import { resolveProactiveInputCause } from "../proactive-causality.js";
+import {
+  assertProactiveAdmission,
+  isProactiveCommandId,
+  admitConsecutiveProactiveTurn,
+} from "../orchestration.js";
 
 function hasSteerInput(request: Pick<TurnSteerInput, "attachments" | "input">): boolean {
   return request.input.trim().length > 0 || Boolean(request.attachments?.length);
@@ -1172,6 +1178,17 @@ async function drainPendingInputUnlocked(
   // sendQueuedNow 已 reserve 的队首只能由 reservation owner 提升；普通 roundtrip drain
   // 必须暂停，避免 stop barrier 期间同一输入又被当前 turn 消费一次。
   if (this.pendingInputReservations.has(pendingInput.id)) return undefined;
+  const commandId = pendingInput.intent?.sourceCommandId ?? pendingInput.id;
+  if (isProactiveCommandId(commandId)) await admitConsecutiveProactiveTurn(this, commandId);
+  const causalContext = await resolveProactiveInputCause(
+    this,
+    commandId,
+    pendingInput.intent,
+    options.activeTurn.causalContext,
+  );
+  // 持久转录也冻结已合并因果，冷恢复或 Mailbox 校验不再只看到原始 guide 的较浅深度。
+  if (pendingInput.intent && causalContext)
+    pendingInput.intent = { ...pendingInput.intent, causalContext };
   // 普通 queue 只能由 bootstrap 在 session-ready + goal gate 后提升；runtime 行内 drain
   // 从 guide 子序列取最早一项，不能让 future queue 偷跑，也不能让它阻塞当前轮引导。
   options.activeTurn.pendingInputs.splice(guideIndex, 1);
@@ -1222,8 +1239,16 @@ async function drainPendingInputUnlocked(
       buildUserContentFromTurn(pendingInput.input, resolvedAttachments),
       runtimeInputMetadata(inputPresentation) ?? realUserRuntimeMetadata(),
     );
+    if (
+      !pendingInput.source &&
+      !isProactiveCommandId(commandId) &&
+      !commandId.startsWith("mailbox:") &&
+      (!inputPresentation || inputPresentation === "user_steer")
+    )
+      this.paidImageInputId = commandId;
     this.messageHistory.addEntries([runtimeEntry]);
     runtimeEntries.push(runtimeEntry);
+    options.activeTurn.causalContext = causalContext;
     await this.persistUserPrompt(
       messageId,
       pendingInput.input,
@@ -1239,6 +1264,7 @@ async function drainPendingInputUnlocked(
         intent: pendingInput.intent,
       },
     );
+    options.activeTurn.causalContext = causalContext;
     messageIds.push(messageId);
     drainedInputs.push({
       pendingInputId: pendingInput.id,

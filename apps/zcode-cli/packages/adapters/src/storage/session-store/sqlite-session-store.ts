@@ -1,5 +1,12 @@
+// Modified by ZCode Feiyu contributors (2026).
+import { claimImageGenerationSubmission } from "./repositories/image-generation-admission.js";
 import * as permissionFullAccessRepository from "./repositories/permission-full-access.js";
 import { DatabaseSync } from "node:sqlite";
+import {
+  PROJECT_MEMORY_BATCH_CANCELLED_CODE,
+  selectActiveConversationBranch,
+  type ProjectMemoryExtractionCursorPort,
+} from "@zcode/contracts";
 import type {
   CollaborationMode,
   ClaimLegacySessionWorkspaceInput,
@@ -28,6 +35,10 @@ import type {
   ModelUsageRecord,
   PartId,
   PermissionRuleset,
+  ProjectMemoryReviewClaim,
+  ProjectMemoryReviewClaimInput,
+  ProjectMemoryReviewFinishInput,
+  ProjectMemoryReviewRecord,
   ProjectId,
   SessionEntryInfo,
   SessionEntryType,
@@ -94,11 +105,21 @@ import { createDwfJournalStore } from "./repositories/dwf-journal.js";
 import * as inputHistoryRepository from "./repositories/input-history.js";
 import * as localSettingsRepository from "./repositories/local-settings.js";
 import * as messageRepository from "./repositories/messages.js";
+import * as projectMemoryExtractionCursorRepository from "./repositories/project-memory-extraction-cursor.js";
+import * as projectMemoryReviewRepository from "./repositories/project-memory-review.js";
+import * as projectMemoryWriteLeaseRepository from "./repositories/project-memory-write-lease.js";
+import { withMemoryCoordination, assertMemoryFence } from "./memory-coordination.js";
+import * as proactiveRepository from "./repositories/proactive-events.js";
+import { resumeRetiredProactiveWorkspace } from "./repositories/proactive-upgrade.js";
 import * as scriptWorkflowActivityRepository from "./repositories/script-workflow-activities.js";
 import * as scriptWorkflowRunRepository from "./repositories/script-workflow-runs.js";
 import * as sessionEntryRepository from "./repositories/session-entries.js";
 import * as sessionInputRepository from "./repositories/session-inputs.js";
 import * as sessionRepository from "./repositories/sessions.js";
+import {
+  getOrCreateSessionByOrigin,
+  readSessionCreateOrigins,
+} from "./repositories/session-create-origin.js";
 import * as todoRepository from "./repositories/todos.js";
 import * as usageRepository from "./repositories/usage.js";
 
@@ -307,9 +328,20 @@ export class SqliteSessionStore
     }
   }
 
+  async readSessionCreateOrigins(commandId: string) {
+    return readSessionCreateOrigins(this.db, commandId);
+  }
   async createSession(input: CreateSessionInput): Promise<SessionInfo> {
     this.throwBeforeWrite();
     return sessionRepository.createSession(this.db, input);
+  }
+
+  async getOrCreateSessionByOrigin(
+    input: CreateSessionInput,
+    origin: Parameters<NonNullable<SessionStorePort["getOrCreateSessionByOrigin"]>>[1],
+  ): Promise<SessionInfo> {
+    this.throwBeforeWrite();
+    return getOrCreateSessionByOrigin(this.db, input, origin);
   }
 
   async createForkedSessionWithMetadata(
@@ -500,9 +532,10 @@ export class SqliteSessionStore
         return existing;
       }
       const persisted = sessionRepository.createSession(this.db, session);
-      await messageRepository.saveMessage(this.db, contextMessage.info);
+      // 共享连接上的事务窗口内不得 await（复审 DEF-03），一律使用同步核心。
+      messageRepository.saveMessageSync(this.db, contextMessage.info);
       for (const part of contextMessage.parts) {
-        await messageRepository.savePart(this.db, part);
+        messageRepository.savePartSync(this.db, part);
       }
       sessionEntryRepository.saveSessionEntry(this.db, provenance);
       this.db.exec("commit");
@@ -549,18 +582,18 @@ export class SqliteSessionStore
           ...(input.sourceId ? { sourceId: input.sourceId } : {}),
         },
       });
-      const contextMessage = (
-        await messageRepository.messages(this.db, { sessionID: input.sessionID })
-      ).find((message) => {
-        const metadata = message.info.metadata;
-        return Boolean(
-          metadata &&
-          typeof metadata === "object" &&
-          (metadata as Record<string, unknown>).contextId === input.contextId,
-        );
-      });
+      const contextMessage = messageRepository
+        .messagesSync(this.db, { sessionID: input.sessionID })
+        .find((message) => {
+          const metadata = message.info.metadata;
+          return Boolean(
+            metadata &&
+            typeof metadata === "object" &&
+            (metadata as Record<string, unknown>).contextId === input.contextId,
+          );
+        });
       if (contextMessage) {
-        await messageRepository.saveMessage(this.db, {
+        messageRepository.saveMessageSync(this.db, {
           ...contextMessage.info,
           metadata: {
             ...(contextMessage.info.metadata ?? {}),
@@ -578,7 +611,10 @@ export class SqliteSessionStore
 
   async updateSession(input: UpdateSessionInput): Promise<SessionInfo> {
     this.throwBeforeWrite();
-    return sessionRepository.updateSession(this.db, input);
+    // repository 即使只改标题也会读后整行写回 revert；同屏障防止旧快照复活已撤回分支。
+    return withMemoryCoordination(this.dbPath, () =>
+      sessionRepository.updateSession(this.db, input),
+    );
   }
 
   async getSession(sessionID: SessionId): Promise<SessionInfo | null> {
@@ -587,6 +623,288 @@ export class SqliteSessionStore
 
   async listSessions(input: ListSessionsInput = {}): Promise<SessionInfo[]> {
     return sessionRepository.listSessions(this.db, input);
+  }
+
+  async readProjectMemoryExtractionCursor(sessionId: SessionId): Promise<MessageId | undefined> {
+    return projectMemoryExtractionCursorRepository.readProjectMemoryExtractionCursor(
+      this.db,
+      sessionId,
+    );
+  }
+
+  async withProjectMemoryExtractionFence<T>(
+    sessionId: SessionId,
+    commit: (cursor: ProjectMemoryExtractionCursorPort) => Promise<T>,
+  ): Promise<T> {
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, async () => {
+      let active = true;
+      const assertActive = () => {
+        if (!active) throw new Error("Project memory extraction fence is closed");
+      };
+      const cursor: ProjectMemoryExtractionCursorPort = {
+        read: async () => {
+          assertActive();
+          return projectMemoryExtractionCursorRepository.readProjectMemoryExtractionCursor(
+            this.db,
+            sessionId,
+          );
+        },
+        advance: async (input) => {
+          assertActive();
+          const session = sessionRepository.getSession(this.db, sessionId);
+          const messages = await messageRepository.messages(this.db, { sessionID: sessionId });
+          assertActive();
+          // batch 后的调度器也会 advance；即便游标相同，撤回后的旧边界也不能再被确认为有效。
+          const branch = selectActiveConversationBranch(messages, {
+            branchCutAfterMessageId: session?.revert?.branchCutAfterMessageID,
+            rewindCreatedMessageId: session?.revert?.createdMessageID,
+            rewindKeptMessageIds: session?.revert?.keptMessageIDs,
+            rewindTargetMessageId: session?.revert?.targetMessageID,
+          });
+          if (!session || !branch.some((message) => message.info.id === input.nextCursor)) {
+            // false 在原 scheduler 表示 CAS 失主并永久停机；单次分支取消必须保留新分支调度资格。
+            throw Object.assign(new Error("Memory extraction boundary is no longer current"), {
+              code: PROJECT_MEMORY_BATCH_CANCELLED_CODE,
+            });
+          }
+          // 已持有同一协调锁：直接复用 repository，不能嵌套调用公开 advance 再获锁。
+          return projectMemoryExtractionCursorRepository.advanceProjectMemoryExtractionCursor(
+            this.db,
+            { ...input, sessionId },
+          );
+        },
+      };
+      try {
+        return await commit(cursor);
+      } finally {
+        active = false;
+      }
+    });
+  }
+
+  async advanceProjectMemoryExtractionCursor(input: {
+    sessionId: SessionId;
+    expectedCursor?: MessageId;
+    nextCursor: MessageId;
+    now: number;
+  }): Promise<boolean> {
+    return this.withProjectMemoryExtractionFence(input.sessionId, (cursor) =>
+      cursor.advance(input),
+    );
+  }
+
+  async claimProjectMemoryWrite(input: {
+    workspaceKey: string;
+    ownerId: string;
+    now: number;
+    leaseDurationMs: number;
+  }): Promise<{ status: "claimed"; epoch: number } | { status: "leased" }> {
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, (db) =>
+      projectMemoryWriteLeaseRepository.claimProjectMemoryWrite(db, input, true),
+    );
+  }
+
+  async claimImageGenerationSubmission(
+    input: Parameters<NonNullable<SessionStorePort["claimImageGenerationSubmission"]>>[0],
+  ) {
+    this.throwBeforeWrite();
+    return claimImageGenerationSubmission(this.db, input);
+  }
+  async publishProactiveEvent(
+    input: Parameters<NonNullable<SessionStorePort["publishProactiveEvent"]>>[0],
+  ) {
+    this.throwBeforeWrite();
+    proactiveRepository.publishProactiveEvent(this.db, input);
+  }
+  async resumeRetiredProactiveWorkspace(
+    workspaceKey: string,
+    now: number,
+    activeSessionIds?: readonly string[],
+  ) {
+    this.throwBeforeWrite();
+    resumeRetiredProactiveWorkspace(this.db, workspaceKey, now, activeSessionIds);
+  }
+  async claimProactiveTriggers(workspaceKey: string, ownerId: string, now: number) {
+    this.throwBeforeWrite();
+    return proactiveRepository.claimProactiveTriggers(this.db, workspaceKey, ownerId, now);
+  }
+  async settleProactiveTrigger(
+    input: Parameters<NonNullable<SessionStorePort["settleProactiveTrigger"]>>[0],
+  ) {
+    this.throwBeforeWrite();
+    proactiveRepository.settleProactiveTrigger(this.db, input);
+  }
+  async readProactiveTrigger(commandId: string) {
+    return proactiveRepository.readProactiveTrigger(this.db, commandId);
+  }
+  async listProactiveMailboxTargets(workspaceKey: string) {
+    return proactiveRepository.listProactiveMailboxTargets(this.db, workspaceKey);
+  }
+  async pauseProactiveWorkspace(
+    workspaceKey: string,
+    reason: string,
+    activeSessionIds?: readonly string[],
+  ) {
+    this.throwBeforeWrite();
+    proactiveRepository.pauseProactiveWorkspace(this.db, workspaceKey, reason, activeSessionIds);
+  }
+  async proactiveDepthForSource(sourceSessionId: string, commandId: string) {
+    return proactiveRepository.proactiveDepthForSource(this.db, sourceSessionId, commandId);
+  }
+  async mergeProactiveInputCause(
+    sessionId: SessionId,
+    cause: Parameters<NonNullable<SessionStorePort["mergeProactiveInputCause"]>>[1],
+  ) {
+    this.throwBeforeWrite();
+    proactiveRepository.mergeProactiveInputCause(this.db, sessionId, cause);
+  }
+  async rejectSupersededProactiveTriggers(
+    targetSessionId: string,
+    generation: number,
+    reason: string,
+    now: number,
+  ) {
+    this.throwBeforeWrite();
+    return proactiveRepository.rejectSupersededProactiveTriggers(
+      this.db,
+      targetSessionId,
+      generation,
+      reason,
+      now,
+    );
+  }
+  async withProjectMemoryWriteFence<T>(
+    input: { workspaceKey: string; ownerId: string; epoch: number },
+    commit: () => Promise<T>,
+  ): Promise<T> {
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, async (db) => {
+      assertMemoryFence(db, input);
+      return commit();
+    });
+  }
+
+  async renewProjectMemoryWrite(input: {
+    workspaceKey: string;
+    ownerId: string;
+    epoch: number;
+    now: number;
+    leaseDurationMs: number;
+  }): Promise<boolean> {
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, (db) =>
+      projectMemoryWriteLeaseRepository.renewProjectMemoryWrite(db, input),
+    );
+  }
+
+  async releaseProjectMemoryWrite(input: {
+    workspaceKey: string;
+    ownerId: string;
+    epoch: number;
+  }): Promise<boolean> {
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, (db) =>
+      projectMemoryWriteLeaseRepository.releaseProjectMemoryWrite(db, input),
+    );
+  }
+
+  async claimProjectMemoryReview(
+    input: ProjectMemoryReviewClaimInput,
+  ): Promise<ProjectMemoryReviewClaim> {
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, () =>
+      projectMemoryReviewRepository.claimProjectMemoryReview(this.db, input),
+    );
+  }
+
+  async renewProjectMemoryReview(input: {
+    workspaceKey: string;
+    reviewId: string;
+    epoch: number;
+    now: number;
+    leaseDurationMs: number;
+    stage?: ProjectMemoryReviewRecord["stage"];
+    totalTokens?: number;
+    changedFiles?: string[];
+    sessionCount?: number;
+    tokenUsageEstimated?: boolean;
+  }): Promise<boolean> {
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, () =>
+      projectMemoryReviewRepository.renewProjectMemoryReview(this.db, input),
+    );
+  }
+
+  async finishProjectMemoryReview(
+    input: ProjectMemoryReviewFinishInput,
+  ): Promise<"completed" | "failed" | "cancelled" | "stale"> {
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, () =>
+      projectMemoryReviewRepository.finishProjectMemoryReview(this.db, input),
+    );
+  }
+
+  async requestCancelProjectMemoryReview(input: {
+    workspaceKey: string;
+    reviewId: string;
+  }): Promise<boolean> {
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, () =>
+      projectMemoryReviewRepository.requestCancelProjectMemoryReview(this.db, input),
+    );
+  }
+
+  async getProjectMemoryReview(workspaceKey: string): Promise<ProjectMemoryReviewRecord | null> {
+    const record = projectMemoryReviewRepository.getProjectMemoryReview(this.db, workspaceKey);
+    // 常见路径不取协调锁：只有确认 running 的租约已过期，才经与 claim 相同的屏障收口（复审 DEF-17）。
+    if (record?.status === "running" && (record.leaseUntil ?? 0) <= Date.now()) {
+      this.throwBeforeWrite();
+      const reaped = await withMemoryCoordination(this.dbPath, () =>
+        projectMemoryReviewRepository.reapExpiredProjectMemoryReview(
+          this.db,
+          workspaceKey,
+          Date.now(),
+        ),
+      );
+      if (reaped)
+        return projectMemoryReviewRepository.getProjectMemoryReview(this.db, workspaceKey);
+    }
+    return record;
+  }
+  async listProjectMemoryReviews(
+    workspaceKey: string,
+    before?: { startedAt: number; reviewId: string },
+  ) {
+    return projectMemoryReviewRepository.listProjectMemoryReviews(this.db, workspaceKey, before);
+  }
+
+  // 只读门槛进度：与认领共用候选口径，只统计不写入，因此不需要写前守卫或协调锁（复审 GAP-05）。
+  async readProjectMemoryReviewThreshold(input: {
+    workspaceKey: string;
+    workspacePath: string;
+    currentSessionId: SessionId;
+    historyScope: "workspace" | "current_session" | "none";
+    now: number;
+  }) {
+    return projectMemoryReviewRepository.readProjectMemoryReviewThreshold(this.db, input);
+  }
+
+  // 整理租约的全部写入口也取得同一协调锁；跨库 SELECT 本身不能阻止取消或抢占。
+
+  projectMemoryReviewFence(input: { workspaceKey: string; reviewId: string; epoch: number }) {
+    // 统一栅栏形状以复用提交点断言：整理任务的 owner 就是本次 reviewId。
+    return {
+      workspaceKey: input.workspaceKey,
+      ownerId: input.reviewId,
+      epoch: input.epoch,
+      assertHeld: () =>
+        projectMemoryReviewRepository.assertProjectMemoryReviewFence(this.db, {
+          ...input,
+          now: Date.now(),
+        }),
+    };
   }
 
   async claimLegacySessionWorkspace(input: ClaimLegacySessionWorkspaceInput): Promise<number> {
@@ -904,11 +1222,16 @@ export class SqliteSessionStore
     revert: SessionRevert;
     summary?: { additions: number; deletions: number; files: number; diffs?: FileDiff[] };
   }): Promise<void> {
-    return sessionRepository.setRevert(this.db, input);
+    this.throwBeforeWrite();
+    // 跨 Host 恢复也读取来源分支；撤回与最终文件/游标提交必须在线性化的同一屏障内。
+    return withMemoryCoordination(this.dbPath, () => sessionRepository.setRevert(this.db, input));
   }
 
   async clearRevert(sessionID: SessionId): Promise<void> {
-    return sessionRepository.clearRevert(this.db, sessionID);
+    this.throwBeforeWrite();
+    return withMemoryCoordination(this.dbPath, () =>
+      sessionRepository.clearRevert(this.db, sessionID),
+    );
   }
 
   async upsertScriptWorkflowDefinition(

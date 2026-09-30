@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // Agent bundle 的暂存动作：把 apps/zcode-cli/packages/cli/dist/zcode.cjs 放进
 // bundled-agents/<平台>/glm，并写 meta。
 //
@@ -9,7 +10,9 @@
 // 实测陈旧 3 天，任何 agent CLI 侧改动在 dev 里静默不生效，排查时会把「改动没生效」
 // 误判成「代码没起作用」。两边共用这一份，dev 与打包不可能再各自漂移。
 import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
+import { stageKoffiIntoBundledAgents } from "./koffi-package-assets.mjs";
 
 export const AGENT_BUNDLE_SOURCE_RELATIVE = "apps/zcode-cli/packages/cli/dist/zcode.cjs";
 
@@ -39,6 +42,17 @@ export function stageAgentBundle({ repoRoot, platformKey, log = console.log }) {
   rmSync(glmDir, { recursive: true, force: true });
   mkdirSync(glmDir, { recursive: true });
   copyFileSync(cliBundlePath, stagedBundlePath);
+  // 受控记忆 IO 在独立 Worker 使用 N-API；开发与安装包必须携带相同目标平台原生依赖。
+  const [os, arch] = platformKey.split("-");
+  stageKoffiIntoBundledAgents({
+    koffiPackageRoot: dirname(
+      createRequire(resolve(repoRoot, "apps/zcode-cli/packages/adapters/package.json")).resolve(
+        "koffi/package.json",
+      ),
+    ),
+    glmDir,
+    targetPlatform: { os, arch },
+  });
   const meta = {
     runtime: "electron-node",
     entry: "zcode.cjs",

@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // SessionEvent payload → ConversationRow 的构造纯函数。
 // row 自包含原则：这里产出的每一行都必须不依赖其它行即可渲染。
 import type {

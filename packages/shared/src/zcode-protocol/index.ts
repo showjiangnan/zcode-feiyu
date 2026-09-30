@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import {
   databaseStartupErrorCodeSchema,
   databaseStartupErrorDetailsSchema,
@@ -22,6 +22,13 @@ import { bashOutputDisplaySchema } from "../bash-output-display.js";
 export * from "../background-bash-output.js";
 import { executionOutputPreviewSchema } from "../execution-output-preview.js";
 import { z } from "zod";
+import {
+  memoryHistoryEntrySchema,
+  memoryHistorySummarySchema,
+  memoryReviewRunSchema,
+  memoryReviewThresholdProgressSchema,
+  runtimeCapabilitySchema,
+} from "../continuity-policy.js";
 import { imageGenerationDisplaySchema } from "../imageGeneration.js";
 export * from "../process-diagnostic.js";
 import { errorAttributionSchema } from "../zcode-protocol-v4/snapshot.js";
@@ -1562,6 +1569,13 @@ export type ZCodeSessionSubagentsResult = z.infer<typeof zcodeSessionSubagentsRe
 export const zcodeSessionCreateParamsSchema = z
   .object({
     sessionId: nonEmptyString.optional(),
+    /** 持久创建幂等键；CLI 分配 sessionId，按 workspace + origin 查回首次会话。 */
+    originCommandId: nonEmptyString.optional(),
+    originRequestFingerprint: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/u)
+      .optional(),
+    originTitle: z.string().optional(),
     workspace: zcodeWorkspaceRefSchema,
     parentSessionId: nonEmptyString.optional(),
     mode: zcodeSessionModeSchema.optional(),
@@ -1703,18 +1717,29 @@ export const DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY = "preflight-v1" as con
 export const zcodeModelContextBudgetStrategySchema = z.enum(["legacy", "preflight-v1"]);
 export type ZCodeModelContextBudgetStrategy = z.infer<typeof zcodeModelContextBudgetStrategySchema>;
 
-export const zcodeSessionRuntimePreferencesResultSchema = z
-  .object({
-    nativeSearchEnhancementsEnabled: z.boolean(),
-    memoryEnabled: z.boolean().default(false),
-    askUserQuestionAutoResolutionEnabled: z.boolean().default(true),
-    integratedTerminalShell: integratedTerminalShellSelectionSchema.optional(),
-    // 兼容旧 Host：缺少字段时在协议解析边界使用当前默认策略。
-    modelContextBudgetStrategy: zcodeModelContextBudgetStrategySchema.default(
-      DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
-    ),
-  })
-  .strict();
+export const zcodeSessionRuntimePreferencesResultSchema = z.preprocess(
+  (value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    const preferences = value as Record<string, unknown>;
+    if (typeof preferences.memoryExtractionEnabled === "boolean") return value;
+    // 旧 Host 只传总开关，原有自动提取行为须在协议升级时保留。
+    return { ...preferences, memoryExtractionEnabled: preferences.memoryEnabled === true };
+  },
+  z
+    .object({
+      nativeSearchEnhancementsEnabled: z.boolean(),
+      memoryEnabled: z.boolean().default(false),
+      memoryExtractionEnabled: z.boolean().default(false),
+      memoryReviewEnabled: z.boolean().default(false),
+      askUserQuestionAutoResolutionEnabled: z.boolean().default(true),
+      integratedTerminalShell: integratedTerminalShellSelectionSchema.optional(),
+      // 兼容旧 Host：缺少字段时在协议解析边界使用当前默认策略。
+      modelContextBudgetStrategy: zcodeModelContextBudgetStrategySchema.default(
+        DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
+      ),
+    })
+    .strict(),
+);
 export type ZCodeSessionRuntimePreferencesResult = z.infer<
   typeof zcodeSessionRuntimePreferencesResultSchema
 >;
@@ -1856,6 +1881,164 @@ export const zcodeSessionCompactResultSchema = z
   })
   .strict();
 export type ZCodeSessionCompactResult = z.infer<typeof zcodeSessionCompactResultSchema>;
+
+export const zcodeSessionReviewProjectMemoryParamsSchema = z
+  .object({ sessionId: nonEmptyString })
+  .strict();
+export const zcodeSessionReviewProjectMemoryResultSchema = z
+  .object({
+    status: z.enum(["skipped", "completed", "failed", "cancelled", "stale"]),
+    reviewId: nonEmptyString.optional(),
+    reason: z.string().optional(),
+    error: z.string().optional(),
+    changedFiles: z.array(z.string()).optional(),
+    totalTokens: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+export type ZCodeSessionReviewProjectMemoryResult = z.infer<
+  typeof zcodeSessionReviewProjectMemoryResultSchema
+>;
+
+export const zcodeSessionReadProjectMemoryReviewParamsSchema = z
+  .object({ sessionId: nonEmptyString })
+  .strict();
+export const zcodeSessionReadProjectMemoryReviewResultSchema = z
+  .object({
+    workspaceKey: nonEmptyString,
+    lastSuccessAt: z.number().int().nonnegative().optional(),
+    reviewId: nonEmptyString.optional(),
+    epoch: z.number().int().nonnegative(),
+    leaseUntil: z.number().int().nonnegative().optional(),
+    cancelRequested: z.boolean(),
+    stage: z.enum(["idle", "locate", "gather", "consolidate", "prune", "settle"]),
+    status: z.enum(["idle", "running", "completed", "failed", "cancelled"]),
+    nextRetryAt: z.number().int().nonnegative().optional(),
+    changedFiles: z.array(z.string()),
+    totalTokens: z.number().int().nonnegative(),
+    error: z.string().optional(),
+    historyScope: z.enum(["workspace", "current_session", "none"]).optional(),
+    sessionCount: z.number().int().nonnegative().optional(),
+    tokenUsageEstimated: z.boolean().optional(),
+    failureCount: z.number().int().nonnegative().optional(),
+    automaticRetryExhausted: z.boolean().optional(),
+  })
+  .strict()
+  .nullable();
+export type ZCodeSessionReadProjectMemoryReviewResult = z.infer<
+  typeof zcodeSessionReadProjectMemoryReviewResultSchema
+>;
+
+export const zcodeSessionCancelProjectMemoryReviewParamsSchema = z
+  .object({ sessionId: nonEmptyString, reviewId: nonEmptyString })
+  .strict();
+export const zcodeSessionCancelProjectMemoryReviewResultSchema = z
+  .object({ accepted: z.boolean() })
+  .strict();
+
+const memoryCatalogWorkspaceSchema = z
+  .object({
+    id: nonEmptyString,
+    label: z.string(),
+    updatedAt: z.number(),
+    files: z.array(
+      z
+        .object({
+          name: nonEmptyString,
+          path: nonEmptyString,
+          kind: z.enum(["index", "item"]),
+          size: z.number(),
+          updatedAt: z.number(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+export const workspaceMemoryOperationSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("catalog") }).strict(),
+  z
+    .object({
+      type: z.literal("readCatalogFile"),
+      workspaceId: z.string().min(1).max(255),
+      fileName: z.string().min(1).max(255),
+    })
+    .strict(),
+  z.object({ type: z.literal("capabilities"), sessionId: nonEmptyString }).strict(),
+  z.object({ type: z.literal("history"), cursor: z.string().max(4096).optional() }).strict(),
+  z.object({ type: z.literal("revision"), operationId: nonEmptyString }).strict(),
+  z.object({ type: z.literal("readFile"), fileName: z.string().min(1).max(255) }).strict(),
+  z
+    .object({
+      type: z.literal("revert"),
+      operationId: nonEmptyString,
+      expectedHash: nonEmptyString.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("review"),
+      selection: modelSelectionSchema.optional(),
+      sourceSessionId: nonEmptyString.optional(),
+    })
+    .strict(),
+  z.object({ type: z.literal("status"), cursor: z.string().max(4096).optional() }).strict(),
+  z.object({ type: z.literal("cancelReview"), reviewId: nonEmptyString }).strict(),
+]);
+export const zcodeWorkspaceMemoryParamsSchema = z
+  .object({ workspace: zcodeWorkspaceRefSchema, operation: workspaceMemoryOperationSchema })
+  .strict();
+export type WorkspaceMemoryOperation = z.infer<typeof workspaceMemoryOperationSchema>;
+export const zcodeWorkspaceMemoryResultSchema = z.discriminatedUnion("type", [
+  z
+    .object({ type: z.literal("catalog"), workspaces: z.array(memoryCatalogWorkspaceSchema) })
+    .strict(),
+  z
+    .object({
+      type: z.literal("capabilities"),
+      capabilities: z.record(z.string(), runtimeCapabilitySchema),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("history"),
+      entries: z.array(memoryHistorySummarySchema),
+      nextCursor: z.string().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("revision"),
+      entry: memoryHistoryEntrySchema,
+      currentHash: z.string().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("file"),
+      content: z.string(),
+      hash: z.string(),
+      updatedAt: z.number(),
+    })
+    .strict(),
+  z.object({ type: z.literal("reverted"), path: z.string(), hash: z.string().nullable() }).strict(),
+  z
+    .object({ type: z.literal("review"), result: zcodeSessionReviewProjectMemoryResultSchema })
+    .strict(),
+  z
+    .object({
+      type: z.literal("status"),
+      current: zcodeSessionReadProjectMemoryReviewResultSchema,
+      runs: z.array(memoryReviewRunSchema),
+      /**
+       * 自动整理的门槛进度（复审 GAP-05）：开启但未达门槛时，界面据此说明
+       * 「距上次成功后已变化几个会话、门槛是多少」。旧执行端不提供时按缺省处理。
+       */
+      thresholdProgress: memoryReviewThresholdProgressSchema.optional(),
+      nextCursor: z.string().nullable(),
+    })
+    .strict(),
+  z.object({ type: z.literal("cancelled"), accepted: z.boolean() }).strict(),
+]);
+export type WorkspaceMemoryResult = z.infer<typeof zcodeWorkspaceMemoryResultSchema>;
 
 export const zcodeSessionGoalActionSchema = z.enum([
   "show",
@@ -2208,6 +2391,39 @@ export const zcodeWorkspaceUpdateInteractionPreferencesResultSchema = z
   .strict();
 export type ZCodeWorkspaceUpdateInteractionPreferencesResult = z.infer<
   typeof zcodeWorkspaceUpdateInteractionPreferencesResultSchema
+>;
+
+export const zcodeWorkspaceUpdateMemoryPreferencesParamsSchema = z
+  .object({
+    workspace: zcodeWorkspaceRefSchema,
+    preferences: z
+      .object({
+        policyRevision: z.number().int().nonnegative().default(0),
+        continuityPolicy: continuityPolicySchema.optional(),
+        enabled: z.boolean(),
+        extractionEnabled: z.boolean(),
+        reviewEnabled: z.boolean().default(false),
+      })
+      .strict(),
+  })
+  .strict();
+export type ZCodeWorkspaceUpdateMemoryPreferencesParams = z.infer<
+  typeof zcodeWorkspaceUpdateMemoryPreferencesParamsSchema
+>;
+
+export const zcodeWorkspaceUpdateMemoryPreferencesResultSchema = z
+  .object({
+    continuityPolicy: continuityPolicySchema.optional(),
+    policyRevision: z.number().int().nonnegative().default(0),
+    workspace: zcodeWorkspaceRefSchema,
+    enabled: z.boolean(),
+    extractionEnabled: z.boolean(),
+    reviewEnabled: z.boolean(),
+    updatedSessionCount: z.number().int().nonnegative(),
+  })
+  .strict();
+export type ZCodeWorkspaceUpdateMemoryPreferencesResult = z.infer<
+  typeof zcodeWorkspaceUpdateMemoryPreferencesResultSchema
 >;
 
 export const zcodeModelIoPreferencesSchema = z
@@ -3639,6 +3855,9 @@ export const zcodeProtocolMethods = {
   // fork params/result schema 保留＝op 存活面；fork record 归 v4 原生重写。
   sessionFork: "session/fork",
   sessionCompact: "session/compact",
+  sessionReviewProjectMemory: "session/reviewProjectMemory",
+  sessionReadProjectMemoryReview: "session/readProjectMemoryReview",
+  sessionCancelProjectMemoryReview: "session/cancelProjectMemoryReview",
   sessionGoal: "session/goal",
   sessionClose: "session/close",
   // setModel 仍被 zcodeSessionService 的 desktop 旧链路消费；replayable
@@ -3654,6 +3873,8 @@ export const zcodeProtocolMethods = {
   // 进程级 Account Provider Config 与 workspace 运行目录分离。
   providerUpdateAccountConfig: "provider/updateAccountConfig",
   workspaceUpdateInteractionPreferences: "workspace/updateInteractionPreferences",
+  workspaceUpdateMemoryPreferences: "workspace/updateMemoryPreferences",
+  workspaceMemory: "workspace/memory",
   workspaceUpdateModelIoPreferences: "workspace/updateModelIoPreferences",
   workspaceUpdateTelemetryConsent: "workspace/updateTelemetryConsent",
   // Off-Peak 工具面门禁是 workspace 级事实（灰度 + 本地/远程），由 host 在 agent 就绪时同步；
@@ -3776,3 +3997,4 @@ export * from "../localTtft.js";
 // 桌面本地 TTFT 的严格事实合同；检查点不能替代实际内容帧。
 export { localTtftFactsSchema } from "../localTtft.js";
 export * from "../imageGeneration.js";
+import { continuityPolicySchema } from "../continuity-policy.js";

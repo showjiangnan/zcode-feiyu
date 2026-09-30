@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /** 进程内只读投影。设置服务是用户选择的唯一写入所有者。 */
 export function createTelemetryConsentGate() {
   let enabled = false;

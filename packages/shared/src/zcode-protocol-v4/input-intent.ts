@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // CLI admission 后的自包含输入事实。
 // queue / guide / runtime / transcript 只能携带同一个 intent，不允许各层重建字段。
 import { z } from "zod";
@@ -7,6 +7,7 @@ import { attachmentRefSchema } from "./attachment-ref.js";
 import { modelSelectionSchema } from "../model-selection.js";
 import { submissionModeSchema } from "./submission.js";
 import { sharedContextRefSchema } from "./shared-context-ref.js";
+import { proactiveCausalContextSchema } from "./orchestration.js";
 
 export const conversationInputDeliverySchema = z
   .object({
@@ -41,6 +42,7 @@ export const conversationInputIntentSchema = z
   .object({
     sourceCommandId: z.string().min(1),
     interTaskSourceTaskId: z.string().min(1).optional(),
+    causalContext: proactiveCausalContextSchema.optional(),
     queueItemId: z.string().min(1),
     clientId: z.string().min(1),
     // compact 是可排队的维护意图；消费时走 compact lifecycle，不投影为 user row。

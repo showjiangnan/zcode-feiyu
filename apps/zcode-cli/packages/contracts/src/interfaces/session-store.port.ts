@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // Session Store Port：为会话输入、消息和投影提供稳定的存储边界。
 // ============================================================
 
@@ -303,6 +304,80 @@ export interface ListSessionsInput {
   taskTypes?: SessionTaskType[];
   includeArchived?: boolean;
   limit?: number;
+}
+
+export interface ProjectMemoryReviewClaimInput {
+  workspaceKey: string;
+  workspacePath: string;
+  currentSessionId: SessionId;
+  trigger: "automatic" | "manual";
+  now: number;
+  leaseDurationMs: number;
+  historyScope?: "workspace" | "current_session" | "none";
+}
+
+export type ProjectMemoryReviewClaim =
+  | {
+      status: "skipped";
+      reason:
+        | "initialized"
+        | "cooldown"
+        | "insufficient_sessions"
+        | "leased"
+        | "backoff"
+        | "retry_exhausted"
+        | "cancelled";
+      /**
+       * 未达门槛时同时回报进度（复审 GAP-05）：界面据此说明「距上次成功后已变化几个会话、
+       * 门槛是多少」。只在 `insufficient_sessions` 时提供；其他跳过原因与门槛无关。
+       */
+      thresholdProgress?: import("@zcode/shared").MemoryReviewThresholdProgress;
+    }
+  | {
+      status: "claimed";
+      reviewId: string;
+      epoch: number;
+      sessionIds: SessionId[];
+      leaseUntil: number;
+    };
+
+export interface ProjectMemoryReviewFinishInput {
+  workspaceKey: string;
+  reviewId: string;
+  epoch: number;
+  now: number;
+  status: "completed" | "failed" | "cancelled";
+  changedFiles: string[];
+  totalTokens: number;
+  /** 实际进入 gather 请求的非空会话数；省略时保留已记录的进度。 */
+  sessionCount?: number;
+  /** 至少一次物理请求未报告用量而保留预留；显式报告 0 不算估计。 */
+  tokenUsageEstimated?: boolean;
+  error?: string;
+}
+
+export interface ProjectMemoryReviewRecord {
+  workspaceKey: string;
+  lastSuccessAt?: number;
+  reviewId?: string;
+  epoch: number;
+  leaseUntil?: number;
+  cancelRequested: boolean;
+  stage: "idle" | "locate" | "gather" | "consolidate" | "prune" | "settle";
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
+  nextRetryAt?: number;
+  changedFiles: string[];
+  totalTokens: number;
+  error?: string;
+  /** 认领时冻结的实际范围；旧账本未报告时不从当前设置推断。 */
+  historyScope?: "workspace" | "current_session" | "none";
+  /** 实际进入 gather 请求的非空会话数，不是候选 sessionIds 数量。 */
+  sessionCount?: number;
+  tokenUsageEstimated?: boolean;
+  /** 连续自动失败次数（含过期租约）；用户取消不计入。 */
+  failureCount?: number;
+  /** 自动整理已因连续失败暂停，需用户手动整理开启新一轮尝试。 */
+  automaticRetryExhausted?: boolean;
 }
 
 export interface ClaimLegacySessionWorkspaceInput {
@@ -804,6 +879,10 @@ export const SESSION_ENTRY_TARGET_COMPLETION_VERIFICATION =
 export const SESSION_ENTRY_BASH_SHELL_SELECTION = "runtime/bash_shell_selection" as const;
 export const SESSION_ENTRY_MODEL_SELECTION = "runtime/model_selection" as const;
 export const SESSION_ENTRY_EXECUTION_STATE = "runtime/execution_state" as const;
+export const SESSION_ENTRY_ORCHESTRATION_STATE = "runtime/orchestration_state" as const;
+export const SESSION_ENTRY_TEAM_BOARD = "runtime/team_board" as const;
+export const SESSION_ENTRY_TEAM_MESSAGE = "runtime/team_message" as const;
+export const SESSION_ENTRY_TEAM_MEMBER = "runtime/team_member" as const;
 export const SESSION_ENTRY_USER_INPUT_AUTO_RESOLUTION =
   "runtime/user_input_auto_resolution" as const;
 export const SESSION_ENTRY_WORKSPACE_CHECKPOINT = "runtime/workspace_checkpoint" as const;
@@ -814,6 +893,10 @@ export const SESSION_ENTRY_TYPES = [
   SESSION_ENTRY_BASH_SHELL_SELECTION,
   SESSION_ENTRY_MODEL_SELECTION,
   SESSION_ENTRY_EXECUTION_STATE,
+  SESSION_ENTRY_ORCHESTRATION_STATE,
+  SESSION_ENTRY_TEAM_BOARD,
+  SESSION_ENTRY_TEAM_MESSAGE,
+  SESSION_ENTRY_TEAM_MEMBER,
   SESSION_ENTRY_USER_INPUT_AUTO_RESOLUTION,
   SESSION_ENTRY_WORKSPACE_CHECKPOINT,
   SESSION_ENTRY_WORKSPACE_FILE_REWIND,
@@ -1086,8 +1169,131 @@ export interface LocalSettingStorePort {
   }): CollaborationMode | Promise<CollaborationMode>;
 }
 
+/** 任务列表、主动工作与预算共享的顶层语义；fork 的 parentID 仅为历史来源。 */
+export const SESSION_TASK_ROOT_TYPES = [
+  "interactive",
+  "fork",
+  "workflow_parent",
+] as const satisfies readonly SessionTaskType[];
+export function isTaskRoot(
+  taskType: SessionTaskType | undefined,
+  parentId?: string | null,
+): boolean {
+  return taskType === undefined
+    ? !parentId
+    : (SESSION_TASK_ROOT_TYPES as readonly SessionTaskType[]).includes(taskType);
+}
+
+/** 来源分支已撤回/失效；批次必须终态取消，不能当作暂时 IO 失败重试。 */
+export const PROJECT_MEMORY_BATCH_CANCELLED_CODE = "memory_batch_cancelled";
+
+/** 仅在 withProjectMemoryExtractionFence 回调期间有效，固定到原 session，不再次获取协调锁。 */
+export interface ProjectMemoryExtractionCursorPort {
+  read(): Promise<MessageId | undefined>;
+  /** 原 CAS 与同边界幂等；已退出活动分支的 nextCursor 抛 memory_batch_cancelled，不冒充 CAS 竞争。 */
+  advance(input: {
+    expectedCursor?: MessageId;
+    nextCursor: MessageId;
+    now: number;
+  }): Promise<boolean>;
+}
+
 export interface SessionStorePort {
+  /** lifecycle 事实与原 event/trigger 同事务；调用返回后才允许对外确认源事件。 */
+  publishProactiveEvent?(input: {
+    eventId: string;
+    workspaceKey: string;
+    sourceSessionId: string;
+    sourceId: string;
+    kind: "task_completed" | "task_failed" | "mailbox_message" | "automation_due";
+    targetSessionId?: string;
+    depth: number;
+    now: number;
+    lifecycle?: {
+      eventId: string;
+      type: "turn_started" | "turn_complete" | "turn_error";
+      turnId?: string;
+      commandId: string;
+    };
+  }): Promise<void>;
+  listProactiveMailboxTargets?(workspaceKey: string): Promise<string[]>;
+  claimProactiveTriggers?(
+    workspaceKey: string,
+    ownerId: string,
+    now: number,
+  ): Promise<
+    Array<{
+      triggerId: string;
+      sourceSessionId: string;
+      targetSessionId: string;
+      commandId: string;
+      prompt: string;
+      generation: number;
+      depth: number;
+    }>
+  >;
+  settleProactiveTrigger?(input: {
+    triggerId: string;
+    ownerId: string;
+    status: "delivered" | "rejected" | "pending";
+    error?: string;
+    now: number;
+  }): Promise<void>;
+  readProactiveTrigger?(commandId: string): Promise<{
+    targetSessionId: string;
+    generation: number;
+    depth: number;
+    state: "pending" | "dispatching" | "delivered" | "rejected";
+  } | null>;
+  /** 活跃会话由其 runtime 发布编排事件；这里只暂停未加载会话。 */
+  pauseProactiveWorkspace?(
+    workspaceKey: string,
+    reason: string,
+    activeSessionIds?: readonly string[],
+  ): Promise<void>;
+  /** 当前许可确认后恢复旧执行限额暂停；跳过活动 runtime，由其自身负责状态发布。 */
+  resumeRetiredProactiveWorkspace?(
+    workspaceKey: string,
+    now: number,
+    activeSessionIds?: readonly string[],
+  ): Promise<void>;
+  /** 只接受该发送者已提升的原 commandId；无法证明来源时返回 null，不按时间猜测。 */
+  proactiveDepthForSource?(sourceSessionId: string, commandId: string): Promise<number | null>;
+  /** 单调合并到原已提升输入，保证运行中 Mailbox 消费在冷恢复后仍有准确因果。 */
+  mergeProactiveInputCause?(
+    sessionId: SessionId,
+    cause: import("@zcode/shared/zcode-protocol-v4").ProactiveCausalContext,
+  ): Promise<void>;
+  rejectSupersededProactiveTriggers?(
+    targetSessionId: string,
+    generation: number,
+    reason: string,
+    now: number,
+  ): Promise<number>;
+  /** 图片付费许可和首次提交意图同事务固定；每个输入最多一个新作业。 */
+  claimImageGenerationSubmission?(input: {
+    sessionId: SessionId;
+    inputId: string;
+    job: import("@zcode/shared").ImageGenerationJob;
+  }): Promise<boolean>;
   createSession(input: CreateSessionInput): Promise<SessionInfo>;
+  /**
+   * 持久 create 的幂等边界：workspaceID.trim() || directory + commandId 唯一。
+   * session、来源与初始模型同事务；重试只读首次身份，参数冲突/归档拒绝。
+   * 缺席时调用方必须失败，禁止退回不带来源的普通 createSession。
+   */
+  getOrCreateSessionByOrigin?(
+    input: CreateSessionInput,
+    origin: {
+      commandId: string;
+      requestFingerprint: string;
+      commandFingerprint?: string;
+      modelSelection?: ModelSelection;
+    },
+  ): Promise<SessionInfo>;
+  readSessionCreateOrigins?(
+    commandId: string,
+  ): Promise<Array<{ sessionId: SessionId; workspaceKey: string; commandFingerprint: string }>>;
   /** legacy 兼容原语；V4 stable/compact-edit fork 禁止调用，统一走 commitForkBundle。 */
   createForkedSessionWithMetadata?(
     input: CreateSessionInput,
@@ -1100,6 +1306,95 @@ export interface SessionStorePort {
   updateSession(input: UpdateSessionInput): Promise<SessionInfo>;
   getSession(sessionID: SessionId): Promise<SessionInfo | null>;
   listSessions(input?: ListSessionsInput): Promise<SessionInfo[]>;
+  readProjectMemoryExtractionCursor?(sessionId: SessionId): Promise<MessageId | undefined>;
+  /**
+   * 与分支撤回、文件最终提交共用排他屏障。回调须在此处复核来源分支，再使用受限 cursor。
+   * 禁止回调内调用 setRevert/公开 advance 等再次取锁的写入口；cursor 在回调结束后失效。
+   */
+  withProjectMemoryExtractionFence?<T>(
+    sessionId: SessionId,
+    commit: (cursor: ProjectMemoryExtractionCursorPort) => Promise<T>,
+  ): Promise<T>;
+  advanceProjectMemoryExtractionCursor?(input: {
+    sessionId: SessionId;
+    expectedCursor?: MessageId;
+    nextCursor: MessageId;
+    now: number;
+  }): Promise<boolean>;
+  claimProjectMemoryWrite?(input: {
+    workspaceKey: string;
+    ownerId: string;
+    now: number;
+    leaseDurationMs: number;
+  }): Promise<{ status: "claimed"; epoch: number } | { status: "leased" }>;
+  withProjectMemoryWriteFence?<T>(
+    input: {
+      workspaceKey: string;
+      ownerId: string;
+      epoch: number;
+    },
+    commit: () => Promise<T>,
+  ): Promise<T>;
+  renewProjectMemoryWrite?(input: {
+    workspaceKey: string;
+    ownerId: string;
+    epoch: number;
+    now: number;
+    leaseDurationMs: number;
+  }): Promise<boolean>;
+  releaseProjectMemoryWrite?(input: {
+    workspaceKey: string;
+    ownerId: string;
+    epoch: number;
+  }): Promise<boolean>;
+  claimProjectMemoryReview?(
+    input: ProjectMemoryReviewClaimInput,
+  ): Promise<ProjectMemoryReviewClaim>;
+  /**
+   * 只读门槛进度（复审 GAP-05）：用与 `claimProjectMemoryReview` 完全相同的候选口径统计
+   * 「距上次成功后已变化的顶层会话数」，因此界面显示的数字就是准入判定用的数字。
+   * 只统计不写入，可在整理运行期间安全调用。
+   */
+  readProjectMemoryReviewThreshold?(input: {
+    workspaceKey: string;
+    workspacePath: string;
+    currentSessionId: SessionId;
+    historyScope: "workspace" | "current_session" | "none";
+    now: number;
+  }): Promise<import("@zcode/shared").MemoryReviewThresholdProgress>;
+  renewProjectMemoryReview?(input: {
+    workspaceKey: string;
+    reviewId: string;
+    epoch: number;
+    now: number;
+    leaseDurationMs: number;
+    stage?: ProjectMemoryReviewRecord["stage"];
+    totalTokens?: number;
+    changedFiles?: string[];
+    sessionCount?: number;
+    tokenUsageEstimated?: boolean;
+  }): Promise<boolean>;
+  requestCancelProjectMemoryReview?(input: {
+    workspaceKey: string;
+    reviewId: string;
+  }): Promise<boolean>;
+  finishProjectMemoryReview?(
+    input: ProjectMemoryReviewFinishInput,
+  ): Promise<"completed" | "failed" | "cancelled" | "stale">;
+  /**
+   * 构造整理任务的提交点栅栏；`assertHeld` 在写租约排他事务内同步复核该 review 的
+   * reviewId/epoch 仍然有效，失效时抛错，禁止静默跳过。
+   */
+  projectMemoryReviewFence?(input: {
+    workspaceKey: string;
+    reviewId: string;
+    epoch: number;
+  }): import("./file-system.port.js").MemoryCommitFence;
+  getProjectMemoryReview?(workspaceKey: string): Promise<ProjectMemoryReviewRecord | null>;
+  listProjectMemoryReviews?(
+    workspaceKey: string,
+    before?: { startedAt: number; reviewId: string },
+  ): Promise<import("@zcode/shared").MemoryReviewRun[]>;
   /**
    * 用 host task-index allowlist 为旧远端 session 补写 workspace identity。
    * 实现必须同时校验 id、directory 与 workspace_id is null，禁止覆盖已有 identity。

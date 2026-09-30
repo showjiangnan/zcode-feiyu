@@ -1,5 +1,7 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ProductProjection 状态工厂与派生规则。
 // 本文件只放纯函数：初始快照、availability/inputRouting 派生、revision 递进判定。
+import { DEFAULT_ORCHESTRATION_STATE } from "@zcode/shared/zcode-protocol-v4";
 import type {
   ActionAvailability,
   ConversationDelta,
@@ -69,6 +71,7 @@ export function createInitialConversationSnapshot(
       thought: "",
       thoughtLevels: [],
       followupMode: "queue",
+      orchestration: { ...DEFAULT_ORCHESTRATION_STATE },
       mode: "build",
     },
     modelTransition: null,
@@ -86,6 +89,7 @@ export function createInitialConversationSnapshot(
     pendingCommands: [],
     backgroundWorks: [],
     subagents: { revision: 0, childSessionIds: [], running: [], endedTotal: 0 },
+    teamBoard: { branchGeneration: 0, revision: 0, tasks: [] },
     goal: null,
     plan: null,
     // 软门禁：初始无待审核状态;activate() 上报后由投影写入。

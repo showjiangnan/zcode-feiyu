@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { BackgroundBashOutputResult, SessionDebugSnapshot } from "@zcode/shared";
 /* eslint-disable max-lines -- ZCode agent service 接口集中声明 protocol/session/workspace 方法，拆分会增加 service descriptor 迁移成本。 */
 import type { Event, IDisposable } from "@zcode/rpc";
@@ -12,6 +12,8 @@ import type {
   ZCodeBackgroundTurnAttribution,
   TraceId,
   ZCodeSessionCompactResult,
+  ZCodeSessionReviewProjectMemoryResult,
+  ZCodeSessionReadProjectMemoryReviewResult,
   ZCodeSessionGoalAction,
   ZCodeSessionGoalResult,
   ZCodeMessageWithParts,
@@ -192,6 +194,8 @@ export type ZCodeAgentCuaPermissionObservation = CuaPermissionObservation &
 
 export interface ZCodeAgentCreateSessionParams extends ZCodeAgentWorkspaceTarget {
   sessionId?: string;
+  /** workspace 作用域内持久创建幂等键；不授予调用者分配 sessionId 的权限。 */
+  originCommandId?: string;
   sessionTraceId?: TraceId;
   parentSessionId?: string;
   mode?: ZCodeSessionMode;
@@ -551,9 +555,15 @@ export type ZCodeAgentServiceEvent =
   | { type: "snapshot"; snapshot: ZCodeSessionStateSnapshot };
 
 export interface ZCodeAgentAppRuntimePreferences {
+  continueAfterCloseOnMac?: boolean;
+  continuityPolicy?: import("@zcode/shared").ContinuityPolicy;
+  policyRevision?: number;
   askUserQuestionAutoResolutionEnabled: boolean;
   modelIoFullRetentionEnabled?: boolean;
   telemetryReportingEnabled?: boolean;
+  memoryEnabled?: boolean;
+  memoryExtractionEnabled?: boolean;
+  memoryReviewEnabled?: boolean;
 }
 
 export interface ZCodeAgentLocalRuntimeChildProcesses {
@@ -582,7 +592,9 @@ export interface IZCodeAgentService {
   /**
    * 同步 App 全局运行时偏好到所有已活动 workspace；不得为此启动空闲 Agent。
    */
-  syncAppRuntimePreferences(preferences: ZCodeAgentAppRuntimePreferences): Promise<void>;
+  syncAppRuntimePreferences(
+    preferences: ZCodeAgentAppRuntimePreferences,
+  ): Promise<import("@zcode/shared").RuntimePolicyAcknowledgement | void>;
   getWorkspaceRuntimeIdentity(
     params: ZCodeAgentWorkspaceTarget,
   ): Promise<ZCodeAgentWorkspaceRuntimeIdentity>;
@@ -700,6 +712,20 @@ export interface IZCodeAgentService {
    */
   sendPrompt(params: ZCodeAgentSendPromptParams): Promise<ZCodeSessionSendResult>;
   compactSession(params: ZCodeAgentCompactParams): Promise<ZCodeSessionCompactResult>;
+  reviewProjectMemory(
+    params: ZCodeAgentSessionTarget,
+  ): Promise<ZCodeSessionReviewProjectMemoryResult>;
+  workspaceMemory(
+    params: ZCodeAgentWorkspaceTarget & {
+      operation: import("@zcode/shared").WorkspaceMemoryOperation;
+    },
+  ): Promise<import("@zcode/shared").WorkspaceMemoryResult>;
+  readProjectMemoryReview(
+    params: ZCodeAgentSessionTarget,
+  ): Promise<ZCodeSessionReadProjectMemoryReviewResult>;
+  cancelProjectMemoryReview(
+    params: ZCodeAgentSessionTarget & { reviewId: string },
+  ): Promise<{ accepted: boolean }>;
   goalSession(params: ZCodeAgentGoalParams): Promise<ZCodeSessionGoalResult>;
   closeSession(
     params: ZCodeAgentSessionTarget & {

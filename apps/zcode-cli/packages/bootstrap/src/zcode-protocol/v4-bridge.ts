@@ -1,4 +1,5 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
+import { commandRequestFingerprint } from "../zcode-protocol-v4/command-fingerprint.js";
 import { readBackgroundBashOutputFromOwner } from "./background-work-owner.js";
 // v4 网关 binder。
 // 定位：ConversationV4Gateway 是域无关的通道运行时，本文件把它绑到协议服务器上下文：
@@ -270,6 +271,8 @@ interface InputCommandForAdmission {
   admittedDelivery?: ConversationInputIntent["delivery"]["admitted"];
   fallbackReasonCode?: string;
   provenance?: ConversationInputIntent["provenance"];
+  interTaskSourceTaskId?: string;
+  causalContext?: ConversationInputIntent["causalContext"];
 }
 
 type ResolveAdmissionRowTarget = (
@@ -342,10 +345,18 @@ function resolveInputCommandForAdmission(
       text: string;
       attachments?: AttachmentRef[];
       context_refs?: ConversationInputIntent["sharedContextRefs"];
+      interTaskSourceTaskId?: string;
+      causalContext?: ConversationInputIntent["causalContext"];
     };
     return {
       kind: envelope.type,
       text: payload.text,
+      ...(payload.interTaskSourceTaskId
+        ? {
+            interTaskSourceTaskId: payload.interTaskSourceTaskId,
+            causalContext: payload.causalContext,
+          }
+        : {}),
       attachments: payload.attachments ?? [],
       ...(payload.context_refs ? { sharedContextRefs: payload.context_refs } : {}),
     };
@@ -369,6 +380,10 @@ function resolveInputCommandForAdmission(
     canonical.intent.provenance?.sourceCommandId ?? canonical.intent.sourceCommandId;
   return {
     kind: canonical.intent.kind,
+    ...(canonical.intent.causalContext ? { causalContext: canonical.intent.causalContext } : {}),
+    ...(canonical.intent.interTaskSourceTaskId
+      ? { interTaskSourceTaskId: canonical.intent.interTaskSourceTaskId }
+      : {}),
     text:
       envelope.type === "editUserQuery"
         ? (payload.newText ?? canonical.intent.text)
@@ -764,6 +779,10 @@ export function createConversationV4Gateway(
         clientId: envelope.clientId || "cli",
         kind,
         text: input.text ?? "",
+        ...(input.causalContext ? { causalContext: input.causalContext } : {}),
+        ...(input.interTaskSourceTaskId
+          ? { interTaskSourceTaskId: input.interTaskSourceTaskId }
+          : {}),
         attachments: attachmentRefs,
         ...(input.sharedContextRefs ? { sharedContextRefs: input.sharedContextRefs } : {}),
         delivery: {
@@ -787,9 +806,16 @@ export function createConversationV4Gateway(
         kind,
         delivery: conversationInputIntent.delivery.admitted,
         payload: {
+          requestFingerprint: commandRequestFingerprint(envelope),
           text: conversationInputIntent.text,
           intent: {
             sourceCommandId: conversationInputIntent.sourceCommandId,
+            ...(conversationInputIntent.causalContext
+              ? { causalContext: conversationInputIntent.causalContext }
+              : {}),
+            ...(conversationInputIntent.interTaskSourceTaskId
+              ? { interTaskSourceTaskId: conversationInputIntent.interTaskSourceTaskId }
+              : {}),
             queueItemId: conversationInputIntent.queueItemId,
             clientId: conversationInputIntent.clientId,
             kind: conversationInputIntent.kind,
@@ -1117,6 +1143,9 @@ export function createConversationV4Gateway(
     // 语义决策（draft persistence / firstInput 走原生 prompt turn）在原生 handler。
     createSessionRecord: async ({
       workspaceId,
+      originCommandId,
+      originRequestFingerprint,
+      title,
       mcpServers,
       offPeakToolEnabled,
       dynamicWorkflowEnabled,
@@ -1133,7 +1162,10 @@ export function createConversationV4Gateway(
       const created = await createSessionRecordForV4(context, {
         workspace: resolveWorkspaceRefFromId(workspaceId),
         // 一律 deferred（draft 不进 sqlite）；提升时机归原生 prompt-turn。
-        persistence: "deferred",
+        persistence: originCommandId ? "immediate" : "deferred",
+        ...(originCommandId
+          ? { originCommandId, originRequestFingerprint, originTitle: title }
+          : {}),
         // MCP 是 runtime 创建期配置；v4 createSession 必须与 legacy
         // session/create 等价透传，否则创建的 session 永远不会启动这些工具。
         mcpServers,
@@ -1533,6 +1565,7 @@ export function createConversationV4Gateway(
               ?.reasoning?.levels.map((level) => level.value) ?? [])
           : [],
         mode: record.app.getMode(),
+        orchestration: record.app.runtime.getOrchestrationState(),
         planEnabled: record.app.runtime.getPlanEnabled(),
         ...(record.app.runtime.lastPermissionGrantId
           ? { permissionGrant: { interactionId: record.app.runtime.lastPermissionGrantId } }
@@ -1628,10 +1661,26 @@ export function createConversationV4Gateway(
     },
     // commands/query 持久化 fallback：同 session 首次查询惰性建索引，后续四个来源
     // 共用该索引；anchor/marker/child/discarded 写入走 record 增量更新。
-    lookupTranscriptCommand: (key) =>
-      key.sessionId === null
-        ? lookupGlobalCreateSessionCommand(context.deps.sessionStore, key.commandId)
-        : persistentCommands.lookup("transcript", key),
+    lookupRequestFingerprint: async (key) => {
+      if (!key.sessionId) return null;
+      const input = await context.deps.sessionStore?.getSessionInputById?.(
+        `queue_${key.commandId}`,
+      );
+      if (input?.sessionID !== key.sessionId) return null;
+      return typeof input.payload.requestFingerprint === "string"
+        ? input.payload.requestFingerprint
+        : null;
+    },
+    lookupTranscriptCommand: async (key) => {
+      if (key.sessionId === null)
+        return lookupGlobalCreateSessionCommand(context.deps.sessionStore, key.commandId);
+      const transcript = await persistentCommands.lookup("transcript", key);
+      // 创建命令在 global bucket 接收；新任务内的冷查询仍须按目标身份读同一 origin。
+      return (
+        transcript ??
+        lookupGlobalCreateSessionCommand(context.deps.sessionStore, key.commandId, key.sessionId)
+      );
+    },
     lookupTimelineCommand: (key) => persistentCommands.lookup("timeline", key),
     lookupChildCommand: (key) => persistentCommands.lookup("child", key),
     lookupDiscardedCommand: (key) => persistentCommands.lookup("discarded", key),

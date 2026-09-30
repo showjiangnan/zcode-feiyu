@@ -1,4 +1,8 @@
+// Modified by ZCode Feiyu contributors (2026).
 export type ZCodeAgentBinaryKind = "native-binary";
+
+/** Main 下发的包内 JS 入口；Utility Host 不保证提供 process.resourcesPath。 */
+export const ZCODE_AGENT_NODE_BUNDLE_PATH_ENV = "ZCODE_AGENT_NODE_BUNDLE_PATH";
 
 export interface ZCodeAgentRuntimeDescriptor {
   binaryKind: ZCodeAgentBinaryKind;

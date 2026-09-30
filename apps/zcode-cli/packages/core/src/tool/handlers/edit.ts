@@ -1,3 +1,5 @@
+// Modified by ZCode Feiyu contributors (2026).
+import { commitMemoryAwareFile } from "../../memory/commit-file.js";
 /* eslint-disable max-lines -- Edit 工具需要集中维护文本匹配、read-before-edit 与写回状态，避免 bugfix 期间拆分扩大行为面。 */
 // ============================================================
 // Edit Tool Handler
@@ -37,6 +39,7 @@ import {
 } from "../edit-matchers.js";
 import { resolveWorkspacePath } from "../path-policy.js";
 import {
+  completeReadContentDiffers,
   createReadFileStateKey,
   findEditableReadFileState,
   normalizeReadFileStateMtimeMs,
@@ -454,7 +457,11 @@ function hasReadStateChanged(
       normalizedCurrentMtimeMs !== undefined &&
       normalizedLastReadMtimeMs !== undefined &&
       normalizedCurrentMtimeMs > normalizedLastReadMtimeMs;
-    return mtimeAdvanced || lastRead.sizeBytes !== currentRead.sizeBytes;
+    return (
+      mtimeAdvanced ||
+      lastRead.sizeBytes !== currentRead.sizeBytes ||
+      completeReadContentDiffers(lastRead, currentRead.content)
+    );
   }
 
   if (lastRead.sizeBytes !== undefined && lastRead.sizeBytes !== currentRead.sizeBytes) {
@@ -462,8 +469,10 @@ function hasReadStateChanged(
   }
 
   const currentRevisionId = currentRead.revision?.id;
-  return Boolean(
-    lastRead.revisionId && currentRevisionId && lastRead.revisionId !== currentRevisionId,
+  return (
+    Boolean(
+      lastRead.revisionId && currentRevisionId && lastRead.revisionId !== currentRevisionId,
+    ) || completeReadContentDiffers(lastRead, currentRead.content)
   );
 }
 
@@ -505,19 +514,16 @@ async function writeEditResult(input: {
     sessionId: input.context.sessionId,
   });
   const writeStartedAt = Date.now();
-  const writeResult = await fileSystemPort.writeTextFile(
-    {
-      path: input.filePath,
-      content: contentToWrite,
-      encoding: input.read?.encoding,
-      lineEndings: input.read?.lineEndings ?? detectLineEndings(input.originalFile),
-      createParents: true,
-      atomic: true,
-      expectedRevision: input.read?.revision,
-      trace: createEditTrace(input.context),
-    },
-    { signal: input.context.abortSignal },
-  );
+  const writeResult = await commitMemoryAwareFile(input.context, {
+    path: input.filePath,
+    content: contentToWrite,
+    encoding: input.read?.encoding,
+    lineEndings: input.read?.lineEndings ?? detectLineEndings(input.originalFile),
+    createParents: true,
+    atomic: true,
+    expectedRevision: input.read?.revision,
+    trace: createEditTrace(input.context),
+  });
   const fsWriteMs = elapsedMsSince(writeStartedAt);
 
   const readFileStateEntry = updateReadFileStateAfterEdit(
@@ -587,6 +593,7 @@ function updateReadFileStateAfterEdit(
     revisionId: revision?.id,
     mtimeMs: normalizeReadFileStateMtimeMs(revision?.mtimeMs),
     sizeBytes: revision?.sizeBytes ?? Buffer.byteLength(content, "utf8"),
+    complete: true,
   };
   readFileState.set(createReadFileStateKey(filePath, 1, undefined), entry);
   return entry;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type {
   ModelUsage,
   SessionId,
@@ -28,7 +29,9 @@ export interface RuntimeTaskPendingMessage {
   isMeta?: boolean;
   message: string;
   origin?: {
-    kind: "coordinator";
+    kind: "coordinator" | "member";
+    agentId?: string;
+    memberName?: string;
     toolCallId?: string;
   };
   queuedAt: Date;
@@ -51,6 +54,7 @@ export interface RuntimeTaskSnapshot extends SubagentTaskSnapshot {
   parentSessionId?: SessionId;
   pendingMessages?: RuntimeTaskPendingMessage[];
   prompt?: string;
+  teamMemberName?: string;
   /**
    * workflow run 产物的序列化文本。TaskOutput 的投影只读得到 registry 条目（dwf 从不写
    * outputFile），所以产物必须在终态更新时就存到条目上。
@@ -71,10 +75,7 @@ export interface RuntimeTaskRegistry {
   all(): Record<string, RuntimeTaskSnapshot>;
   get(id: string): RuntimeTaskSnapshot | undefined;
   drainMessages(id: string): RuntimeTaskPendingMessage[];
-  queueMessage(
-    id: string,
-    message: RuntimeTaskPendingMessage,
-  ): RuntimeTaskSnapshot | undefined;
+  queueMessage(id: string, message: RuntimeTaskPendingMessage): RuntimeTaskSnapshot | undefined;
   register(task: RuntimeTaskSnapshot): void;
   remove(id: string): void;
   requestBackground(id: string): boolean;
@@ -165,13 +166,12 @@ export class InMemoryRuntimeTaskRegistry implements RuntimeTaskRegistry {
     return Object.fromEntries(this.tasks);
   }
 
-  queueMessage(
-    id: string,
-    message: RuntimeTaskPendingMessage,
-  ): RuntimeTaskSnapshot | undefined {
+  queueMessage(id: string, message: RuntimeTaskPendingMessage): RuntimeTaskSnapshot | undefined {
     return this.update(id, (task) => ({
       ...task,
-      pendingMessages: [...(task.pendingMessages ?? []), message],
+      pendingMessages: (task.pendingMessages ?? []).some((pending) => pending.id === message.id)
+        ? task.pendingMessages
+        : [...(task.pendingMessages ?? []), message],
     }));
   }
 
@@ -242,10 +242,7 @@ export class InMemoryRuntimeTaskRegistry implements RuntimeTaskRegistry {
     }
   }
 
-  private resolveBackgroundWaiters(
-    id: string,
-    task: RuntimeTaskSnapshot | undefined,
-  ): void {
+  private resolveBackgroundWaiters(id: string, task: RuntimeTaskSnapshot | undefined): void {
     this.resolveWaiters(this.backgroundWaiters, id, task);
   }
 

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // 常驻 cron scheduler 进程：由 desktop main 通过 electronUtilityProcess.fork 拉起。
 // 职责（tasks-index 属主方案）：
 //   - 轮询 tasks-index 的 automations，事务认领到期任务（AutomationRepo.claimDue：BEGIN IMMEDIATE + running 0→1）
@@ -17,12 +18,15 @@ import {
 import {
   resolveWorkspaceKey,
   type ZCodeAutomation,
-  type ZCodeAutomationTrigger,
   type ZCodeAutomationRun,
   type ZCodeOffPeakTask,
 } from "@zcode/shared";
 import type { MainToSchedulerMessage, SchedulerToMainMessage } from "./schedulerProtocol.js";
-import { settleManualClaimForDispatchResult } from "./manualClaimRelease.js";
+import {
+  settleCronDispatchResult,
+  createHostReadyWakeCoordinator,
+  type CronDispatchContext,
+} from "./manualClaimRelease.js";
 import { settleOffPeakDispatchResult } from "./offPeakDispatchSettlement.js";
 import {
   startSchedulerResourceTelemetry,
@@ -39,15 +43,15 @@ const MISFIRE_GRACE_MS = 5 * 60_000;
 
 const { parentPort } = process;
 
-type InFlight = {
-  automationId: string;
-  workspaceKey: string;
-  trigger: ZCodeAutomationTrigger;
-};
-
 const repo = new AutomationRepo();
 /** runId → 在途派发上下文；等 main 回报后结算。scheduler 重启丢失时靠 claimDue 的僵尸回收兜底。 */
-const inFlight = new Map<string, InFlight>();
+const inFlight = new Map<string, CronDispatchContext>();
+const hostReadyWake = createHostReadyWakeCoordinator(repo, requestTick);
+const operations = new Set<Promise<void>>();
+function trackOperation(operation: Promise<void>): void {
+  operations.add(operation);
+  void operation.finally(() => operations.delete(operation)).catch(() => {});
+}
 
 // ---- 闲时任务（off-peak）----
 const offPeakRepo = new OffPeakTaskRepo();
@@ -123,7 +127,7 @@ function requestTick(): void {
     tickRequested = true;
     return;
   }
-  void tick();
+  trackOperation(tick());
 }
 
 async function handleClaimed(automation: ZCodeAutomation, now: number): Promise<void> {
@@ -133,7 +137,10 @@ async function handleClaimed(automation: ZCodeAutomation, now: number): Promise<
     workspacePath: automation.workspacePath,
     workspaceIdentity: automation.workspaceIdentity,
   });
-  const isRetry = automation.dispatchAttempts > 0;
+  // 强杀/崩溃留下的原 run 不是从未派发的 misfire，必须沿原身份对账后重试。
+  const existingRun = await repo.getRun(runId);
+  const isRetry =
+    Boolean(existingRun) || automation.dispatchAttempts > 0 || automation.retryAt !== undefined;
 
   // misfire：首轮（非重试）且计划触发时间已远早于 now → 认定错过窗口，跳过不补跑。
   const missed =
@@ -173,6 +180,7 @@ async function handleClaimed(automation: ZCodeAutomation, now: number): Promise<
     automationId: automation.automationId,
     workspaceKey,
     trigger: "schedule",
+    hostReadySequence: hostReadyWake.sequence(),
   });
   const run = await repo.getRun(runId);
   postDispatchRequest(automation, runId, run?.modelSelection);
@@ -183,6 +191,7 @@ function postDispatchRequest(
   runId: string,
   fixedSelection?: ZCodeAutomationRun["modelSelection"],
 ): void {
+  if (disposed) return;
   const request: SchedulerToMainMessage = {
     type: "cron-dispatch-request",
     automationId: automation.automationId,
@@ -210,6 +219,7 @@ async function handleClaimedManual(
       workspaceIdentity: automation.workspaceIdentity,
     }),
     trigger: "manual",
+    hostReadySequence: hostReadyWake.sequence(),
   });
   postDispatchRequest(automation, run.runId, run.modelSelection);
 }
@@ -243,6 +253,13 @@ async function handleOffPeakClaimed(task: ZCodeOffPeakTask, now: number): Promis
     await offPeakRepo.releaseClaim(task.offPeakTaskId, { now });
     return;
   }
+  if (disposed || !task.modelSelection) {
+    // 历史任务可能尚无有效模型选择；不能用非空断言把不完整任务送给 Host。
+    await offPeakRepo.releaseClaim(task.offPeakTaskId, { now });
+    if (!task.modelSelection)
+      log("warn", `off-peak model selection unavailable task=${task.offPeakTaskId}`);
+    return;
+  }
   offPeakInFlight.add(task.offPeakTaskId);
   const request: SchedulerToMainMessage = {
     type: "offpeak-dispatch-request",
@@ -260,70 +277,6 @@ async function handleOffPeakClaimed(task: ZCodeOffPeakTask, now: number): Promis
   log("info", `off-peak dispatch requested task=${task.offPeakTaskId}`);
 }
 
-async function settleDispatchResult(
-  msg: Extract<MainToSchedulerMessage, { type: "cron-dispatch-result" }>,
-): Promise<void> {
-  const context = inFlight.get(msg.runId);
-  inFlight.delete(msg.runId);
-  const now = Date.now();
-  // 从 runId 还原 automationId（context 丢失时兜底，如 scheduler 重启后收到迟到回报）。
-  const automationId = context?.automationId ?? msg.runId.split(":")[0]!;
-  const workspaceKey = context?.workspaceKey;
-  const trigger: ZCodeAutomationTrigger =
-    context?.trigger ?? (msg.runId.includes(":manual:") ? "manual" : "schedule");
-  const settleManualClaim = async (ok: boolean): Promise<void> => {
-    await settleManualClaimForDispatchResult({
-      repo,
-      automationId,
-      runId: msg.runId,
-      workspaceKey,
-      ok,
-      logError: (message) => log("error", message),
-    });
-  };
-
-  if (msg.ok) {
-    if (trigger === "manual") {
-      await repo.markManualRunDispatched({
-        runId: msg.runId,
-        sessionId: msg.sessionId ?? null,
-        dispatchedAt: now,
-      });
-      await settleManualClaim(true);
-      return;
-    }
-    await repo.markRunDispatch({
-      runId: msg.runId,
-      dispatchStatus: "dispatched",
-      sessionId: msg.sessionId ?? null,
-    });
-    const automation = await repo.get(automationId);
-    const nextRunAt = automation ? computeAutomationNextRunAt(automation, now) : null;
-    await repo.markDispatched(automationId, { dispatchedAt: now, nextRunAt });
-    return;
-  }
-
-  await repo.markRunDispatch({
-    runId: msg.runId,
-    dispatchStatus: "failed_to_dispatch",
-    error: msg.error ?? "dispatch failed",
-  });
-  if (trigger === "manual") {
-    await settleManualClaim(false);
-    return;
-  }
-  const kind = msg.failureKind ?? "transient";
-  await repo.markDispatchFailed(automationId, {
-    failedAt: now,
-    error: msg.error ?? "dispatch failed",
-    kind,
-    // transient 达上限后循环任务跳下一个正常 next_run_at。
-    nextRunAt: await repo
-      .get(automationId)
-      .then((automation) => (automation ? computeAutomationNextRunAt(automation, now) : null)),
-  });
-}
-
 async function dispose(): Promise<void> {
   if (disposed) return;
   disposed = true;
@@ -331,14 +284,17 @@ async function dispose(): Promise<void> {
   pollTimer = null;
   resourceTelemetry?.stop();
   resourceTelemetry = null;
-  // 释放本进程仍在途的认领，避免下次启动等到 CLAIM_STALE 才回收。
-  for (const [, context] of inFlight) {
+  // 先关闭 admission 并等已开始的 tick/结算，不能一边 markWaiting 一边关库。
+  while (operations.size > 0) await Promise.allSettled(operations);
+  // 退出不是任务失败；保留原 runId/sessionId，转 waiting 后下次恢复不得落入 misfire 丢弃。
+  for (const [runId, context] of inFlight) {
     try {
-      if (context.trigger === "manual") {
-        await repo.releaseManualClaim(context.automationId, context.workspaceKey);
-      } else {
-        await repo.releaseClaim(context.automationId);
-      }
+      await repo.markWaitingForHost({
+        runId,
+        automationId: context.automationId,
+        now: Date.now(),
+        trigger: context.trigger,
+      });
     } catch {
       // 忽略：退出路径尽力而为。
     }
@@ -367,46 +323,65 @@ async function dispose(): Promise<void> {
 
 parentPort?.on("message", (event: Electron.MessageEvent) => {
   const msg = event.data as MainToSchedulerMessage;
-  if (!msg || typeof msg !== "object") return;
+  if (!msg || typeof msg !== "object" || disposed) return;
   if (msg.type === "scheduler-dispose") {
     void dispose();
     return;
   }
   if (msg.type === "cron-dispatch-result") {
-    void settleDispatchResult(msg)
-      .then(() => {
-        // manual run 可能因同一 automation 已有派发在途而暂时无法认领。
-        // 前一轮结算释放 single-flight 锁后主动 tick，避免再次等待 20 秒轮询。
-        requestTick();
-      })
-      .catch((error) => {
-        log(
-          "error",
-          `settle dispatch result failed runId=${msg.runId}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      });
+    trackOperation(
+      settleCronDispatchResult(
+        { repo, inFlight, hostReadyWake, logError: (message) => log("error", message) },
+        msg,
+      )
+        .then(() => {
+          // manual run 可能因同一 automation 已有派发在途而暂时无法认领。
+          // 前一轮结算释放 single-flight 锁后主动 tick，避免再次等待 20 秒轮询。
+          requestTick();
+        })
+        .catch((error) => {
+          log(
+            "error",
+            `settle dispatch result failed runId=${msg.runId}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }),
+    );
     return;
   }
   if (msg.type === "offpeak-dispatch-result") {
     offPeakInFlight.delete(msg.offPeakTaskId);
-    void settleOffPeakDispatchResult(
-      {
-        repo: offPeakRepo,
-        retryAt: offPeakRetryAt,
-        retryAttempts: offPeakRetryAttempts,
-        now: Date.now,
-        log,
-      },
-      msg,
-    ).catch((error) => {
-      log(
-        "error",
-        `settle off-peak dispatch result failed task=${msg.offPeakTaskId}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    });
+    trackOperation(
+      settleOffPeakDispatchResult(
+        {
+          repo: offPeakRepo,
+          retryAt: offPeakRetryAt,
+          retryAttempts: offPeakRetryAttempts,
+          now: Date.now,
+          log,
+        },
+        msg,
+      ).catch((error) => {
+        log(
+          "error",
+          `settle off-peak dispatch result failed task=${msg.offPeakTaskId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }),
+    );
     return;
   }
   if (msg.type === "scheduler-wake") {
+    if (msg.reason === "host_ready") {
+      trackOperation(
+        hostReadyWake.hostReady(Date.now()).catch((error) => {
+          log(
+            "error",
+            `release waiting runs failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+          requestTick();
+        }),
+      );
+      return;
+    }
     log("info", `manual run wake requested automation=${msg.automationId}`);
     requestTick();
   }
@@ -427,6 +402,7 @@ async function main(): Promise<void> {
       `off-peak recoverInterrupted failed: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
+  if (disposed) return;
   schedulerReady = true;
   log("info", "cron scheduler started");
   requestTick();
@@ -437,10 +413,12 @@ async function main(): Promise<void> {
   });
 }
 
-void main().catch((error) => {
-  log(
-    "error",
-    `scheduler bootstrap failed: ${error instanceof Error ? error.message : String(error)}`,
-  );
-  process.exit(1);
-});
+trackOperation(
+  main().catch((error) => {
+    log(
+      "error",
+      `scheduler bootstrap failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    process.exit(1);
+  }),
+);

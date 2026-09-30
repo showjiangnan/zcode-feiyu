@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { useCodingPlanEntryGate } from "@/settings/CodingPlanEntryButton.js";
 /* eslint-disable max-lines -- 定时任务主视图集中维护列表、创建/编辑整页路由与启停/删除操作，集中更利于交互一致。 */
 import {
@@ -1672,12 +1673,14 @@ export function AutomationsSection({
                         // nextRunAt 仍可能指向未来时刻，曾被拼进卡片误显“下次运行”。只有活跃
                         // 且未失败的卡片才追加下次运行时间，其余一律只展示频率摘要。
                         const scheduleCardText =
-                          status === "active" && !hasFailure && formattedNextRun
-                            ? `${scheduleText} · ${intl.formatMessage(
-                                { id: "automations.nextRun" },
-                                { when: formattedNextRun },
-                              )}`
-                            : scheduleText;
+                          automation.dispatchStatus === "waiting_for_host"
+                            ? intl.formatMessage({ id: "automations.waitingForHost" })
+                            : status === "active" && !hasFailure && formattedNextRun
+                              ? `${scheduleText} · ${intl.formatMessage(
+                                  { id: "automations.nextRun" },
+                                  { when: formattedNextRun },
+                                )}`
+                              : scheduleText;
                         // Card 展示的是定时 + 手动派发的累计次数；maxRuns 只约束定时计划，
                         // 若作为分母会让用户误以为“立即运行”也消耗有限任务额度。
                         const runCountText = intl.formatMessage(

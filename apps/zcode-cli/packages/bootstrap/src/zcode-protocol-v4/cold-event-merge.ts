@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   SessionEventType,
   selectActiveConversationBranch,
@@ -152,6 +153,7 @@ const MEMORY_ONLY_EVENT_TYPES = new Set<string>([
   SessionEventType.SessionResumed,
   SessionEventType.SessionTitleUpdated,
   SessionEventType.SessionModeChanged,
+  SessionEventType.SessionOrchestrationChanged,
   SessionEventType.PermissionRequested,
   SessionEventType.PermissionResolved,
   SessionEventType.PermissionDenied,

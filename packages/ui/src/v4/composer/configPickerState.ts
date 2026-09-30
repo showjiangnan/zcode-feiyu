@@ -1,4 +1,5 @@
-export type V4ComposerConfigPicker = "mode" | "model" | "thought";
+// Modified by ZCode Feiyu contributors (2026).
+export type V4ComposerConfigPicker = "mode" | "orchestration" | "model" | "thought";
 
 export function resolveV4ComposerConfigPickerState(
   current: V4ComposerConfigPicker | null,

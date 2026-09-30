@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // 后台停止分派的共享类型
 // ============================================================
@@ -26,7 +27,9 @@ export type RuntimeBackgroundStopResult =
       ok: true;
       status: RuntimeBackgroundStopStatus;
       taskId: string;
-      type: RuntimeTaskType;
+      // 连续工作（记忆提取/整理/主动执行）不登记 runtime task registry，没有对应的 RuntimeTaskType；
+      // 消费方（TaskStop 工具）本来就允许缺席（`result.type ?? "background_task"`）。
+      type?: RuntimeTaskType;
     }
   | {
       reason: RuntimeBackgroundStopFailureReason;

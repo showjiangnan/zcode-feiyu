@@ -1,7 +1,9 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* oxlint-disable max-lines -- v4 snapshot schema is a frozen cross-process contract; additions stay grouped here. */
 // ConversationSnapshot A 区。
 // A 区更新语义 = 字段级整体替换（state.updated），绝不深合并——深合并是错乱之母。
 import { z } from "zod";
+import { EMPTY_TEAM_BOARD, teamBoardStateSchema } from "./team-board.js";
 import { sharedContextImportStateSchema } from "./shared-context-import.js";
 export { sharedContextImportStateSchema } from "./shared-context-import.js";
 import { conversationInputDispatchSchema, conversationInputIntentSchema } from "./input-intent.js";
@@ -359,13 +361,53 @@ export const commandStateSummarySchema = z.object({
 });
 export type CommandStateSummary = z.infer<typeof commandStateSummarySchema>;
 
+// backgroundWorks 的 kind 闭集：面板分区与图标只看它，生命周期语义与它无关。
+//
+// workflow = workflow run（CreateWorkflow）。**闭集加值的偏斜代价**：
+// 旧桌面收到未知值时整个 state.updated patch 解析失败（已知键的非法值是错误，不是剥离），
+// 于是整帧被 assembler 拒收，且 resync 的 snapshot 携带同一个值、同样失败——不能优雅降级。
+// CLI 与桌面同批发布才使它可接受。
+//
+// memory_extraction / memory_review / proactive（复审 GAP-03）：把记忆提取、整理与主动执行
+// 接进后台工作抽屉，用户能在同一处看到阶段、用量与停止入口。这三个取值只有在 CLI 与桌面
+// 同批发布时才由执行端发出；桌面未同步升级时执行端不得写入，否则整帧解析失败。
+// 旧客户端的降级事实：这些工作照常执行，只是不出现在抽屉里。
+// 这是**唯一**的 kind 清单：schema、CLI 的 taskKind 与投影的分区判定都从它派生，不另抄一份。
+export const BACKGROUND_WORK_KINDS = [
+  "bash",
+  "subagent",
+  "workflow",
+  "memory_extraction",
+  "memory_review",
+  "proactive",
+] as const;
+export type BackgroundWorkKind = (typeof BACKGROUND_WORK_KINDS)[number];
+
+/**
+ * 连续工作：记忆提取、记忆整理与主动执行。
+ * 它们的运行事实各由 runtime 自己持有的所有者产生（提取调度器、整理任务、主动 work 目标），
+ * 不登记 runtime task registry，因此不改变会话驻留与轮次收口判断（见 core 的 residency）。
+ * 终态没有 continuation inbox 结果可投递，投影在终态事件上移除条目而不是留一个永不落地的
+ * `resultPending`（见 bootstrap 的 onBackgroundTaskLifecycle）。
+ */
+export const CONTINUITY_BACKGROUND_WORK_KINDS = [
+  "memory_extraction",
+  "memory_review",
+  "proactive",
+] as const;
+export type ContinuityBackgroundWorkKind = (typeof CONTINUITY_BACKGROUND_WORK_KINDS)[number];
+
+export function isContinuityBackgroundWorkKind(
+  kind: string | undefined,
+): kind is ContinuityBackgroundWorkKind {
+  return (
+    kind !== undefined && (CONTINUITY_BACKGROUND_WORK_KINDS as readonly string[]).includes(kind)
+  );
+}
+
 export const backgroundWorkSummarySchema = z.object({
   workId: z.string(),
-  // workflow = workflow run（CreateWorkflow）。**闭集加值的偏斜代价**：
-  // 旧桌面收到未知值时整个 state.updated patch 解析失败（已知键的非法值是错误，不是剥离），
-  // 于是整帧被 assembler 拒收，且 resync 的 snapshot 携带同一个值、同样失败——不能优雅降级。
-  // CLI 与桌面同批发布才使它可接受。
-  kind: z.enum(["bash", "subagent", "workflow"]),
+  kind: z.enum(BACKGROUND_WORK_KINDS),
   title: z.string(),
   // resultPending = 已完成、结果在 continuation inbox 等待前台空闲；
   // 投递后条目消失（结果本体成为 origin=backgroundResult 的 userInput row）。
@@ -494,6 +536,7 @@ export const conversationSnapshotSchema = z.object({
   backgroundWorks: z.array(backgroundWorkSummarySchema),
   // optional 只服务旧快照 wire 兼容；新 CLI 的初始态和每次投影都始终携带该字段。
   subagents: subagentProjectionStateSchema.optional(),
+  teamBoard: teamBoardStateSchema.default(EMPTY_TEAM_BOARD),
   // 冷快照必须携带 workflowRuns：漏这一处，刷新/重连后正在跑的 run 会静默消失
   // （详情页因此空白，而 run 本身仍在飞）。optional 同样只服务旧快照 wire 兼容。
   workflowRuns: workflowRunsStateSchema.optional(),

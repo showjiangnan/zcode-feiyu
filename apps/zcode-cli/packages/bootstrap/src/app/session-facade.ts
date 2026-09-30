@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { updateUiLocaleInFileConfig, type ConfigResult } from "@zcode/adapters/config";
 import type { AgentRuntime } from "@zcode/core";
 import { resolveLocale } from "@zcode/i18n";
@@ -647,6 +648,8 @@ async function closeSessionResourceWithinDeadline(
 }
 
 async function persistSessionModelSelection(deps: CreateSessionFacadeDeps): Promise<void> {
+  // 预热会话的选型由 runtime 持有，父行不存在时不能写 entry；首输入落库会补写当前完整选型。
+  if (!deps.runtime.isSessionPersisted()) return;
   if (!deps.sessionStore.saveSessionEntry) return;
   const selection = deps.runtime.getSessionModelSelection();
   if (!selection) return;

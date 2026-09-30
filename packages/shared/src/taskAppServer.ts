@@ -1,4 +1,7 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { z } from "zod";
+import { runtimeCapabilitySchema } from "./continuity-policy.js";
+import { proactiveCausalContextSchema } from "./zcode-protocol-v4/orchestration.js";
 import { commandAckSchema, commandExecutionSchema } from "./zcode-protocol-v4/command.js";
 import { conversationRowTargetSchema } from "./zcode-protocol-v4/core.js";
 import { v4ConversationRowsRangeResultSchema } from "./zcode-protocol-v4/transport.js";
@@ -48,6 +51,8 @@ export const taskAppOperationSchema = z.discriminatedUnion("type", [
         .refine((v) => v.trim().length > 0),
       delivery: z.enum(["auto", "queue"]).optional(),
       retryCommandId: id.optional(),
+      /** 执行端注入；工具输入不提供此字段。 */
+      causalContext: proactiveCausalContextSchema.optional(),
     })
     .strict(),
   z.object({ type: z.literal("query"), ...target, commandId: id }).strict(),
@@ -127,6 +132,7 @@ export const taskAppResultSchema = z.discriminatedUnion("type", [
       version: z.literal(1),
       scope: z.literal("desktop-local-workspace"),
       operations: z.array(z.string()),
+      capabilities: z.record(z.string(), runtimeCapabilitySchema).optional(),
       maxPageSize: z.number(),
       maxWaitMs: z.number(),
       maxPendingRequests: z.number(),

@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { PERMISSION_FULL_ACCESS_OPTION_ID } from "@zcode/shared/zcode-protocol-v4";
 // ProductProjection —— CLI 权威投影第二 reducer。
 // 输入：CLI 事件日志（SessionEvent，权威事实源）；输出：ConversationDelta[]。
@@ -77,6 +77,7 @@ import {
 import type {
   AssistantTextRow,
   ApiRetryState,
+  BackgroundWorkKind,
   BackgroundWorkSummary,
   CuaAppIdentity,
   ConversationDelta,
@@ -89,6 +90,7 @@ import type {
   PendingInteraction,
   ReasoningRow,
   SessionControl,
+  SessionConfigState,
   StatePatch,
   SubagentRow,
   TimelineMarkerPayload,
@@ -113,10 +115,13 @@ import {
 } from "./cua-app-snapshot.js";
 import {
   PROTOCOL_V4_LIMITS,
+  orchestrationStateSchema,
+  teamBoardStateSchema,
   applyConversationDeltas,
   applyConversationDeltasMutable,
   createMutableConversationSnapshotAccumulator,
   diffWorkflowRunsState,
+  isContinuityBackgroundWorkKind,
   reduceWorkflowRunsState,
   workspaceHookReviewRequestPayloadSchema,
 } from "@zcode/shared/zcode-protocol-v4";
@@ -237,6 +242,7 @@ export interface SessionConfigSeed {
   thought?: string;
   thoughtLevels?: readonly string[];
   mode?: string;
+  orchestration?: SessionConfigState["orchestration"];
 }
 
 export interface SessionUsageSeed {
@@ -307,6 +313,8 @@ export interface ConversationEditTarget {
     kind: "sendText" | "sendGoalCommand";
     text: string;
     sourceCommandId?: string;
+    interTaskSourceTaskId?: string;
+    causalContext?: TurnInputIntentMetadata["causalContext"];
     clientId?: string;
     attachments?: CanonicalUserIntentFact["attachments"];
     queueItemId?: string;
@@ -399,6 +407,35 @@ function nonNegativeInteger(value: number, fallback: number): number {
   return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
 }
 
+/**
+ * 事件载荷上的显式 taskKind → 抽屉分区（= summary.kind）。
+ *
+ * 两边取值同源（shared 的 BACKGROUND_WORK_KINDS），这里仍然逐个列出、且**不写 default**：
+ * 直传会让「新增取值」在投影里静默生效，而漏掉一个 case 时 TypeScript 会在这里报错。
+ * 与 `bash` / `subagent` / `workflow` 的后备推断（resolveZCodeBackgroundTaskControlKind，
+ * 只服务没有 taskKind 的旧事件）刻意分开：新取值不允许被推断出来。
+ */
+function explicitBackgroundWorkKind(
+  kind: BackgroundWorkKind | undefined,
+): BackgroundWorkSummary["kind"] | undefined {
+  switch (kind) {
+    case undefined:
+      return undefined;
+    case "bash":
+      return "bash";
+    case "subagent":
+      return "subagent";
+    case "workflow":
+      return "workflow";
+    case "memory_extraction":
+      return "memory_extraction";
+    case "memory_review":
+      return "memory_review";
+    case "proactive":
+      return "proactive";
+  }
+}
+
 interface FileToolInputPreviewState {
   lastPublishedAt: number | null;
   pendingAppend: string;
@@ -488,6 +525,7 @@ export class ProductProjection {
   // 又避免后续种子覆盖新事件已原子发布的模型能力。
   private configThoughtLevelsTouchedByEvent = false;
   private configModeTouchedByEvent = false;
+  private configOrchestrationTouchedByEvent = false;
   // assistant 守恒：非运行期拒收的正文流计数（gateway 据此置 stale）。
   private droppedContentStreamEventCount = 0;
   // 读取期 legacy fallback 必须可观测；否则 normalizer 缺字段后仍会退化为“可见但不可寻址”。
@@ -596,6 +634,16 @@ export class ProductProjection {
     }
     if (!this.configModeTouchedByEvent && seed.mode && config.mode !== seed.mode) {
       config.mode = seed.mode;
+      changed = true;
+    }
+    if (
+      !this.configOrchestrationTouchedByEvent &&
+      seed.orchestration &&
+      (config.orchestration.revision !== seed.orchestration.revision ||
+        config.orchestration.requested !== seed.orchestration.requested ||
+        config.orchestration.effective !== seed.orchestration.effective)
+    ) {
+      config.orchestration = { ...seed.orchestration };
       changed = true;
     }
     if (
@@ -1128,6 +1176,7 @@ export class ProductProjection {
     clone.configModelTouchedByEvent = this.configModelTouchedByEvent;
     clone.configThoughtLevelsTouchedByEvent = this.configThoughtLevelsTouchedByEvent;
     clone.configModeTouchedByEvent = this.configModeTouchedByEvent;
+    clone.configOrchestrationTouchedByEvent = this.configOrchestrationTouchedByEvent;
     clone.droppedContentStreamEventCount = this.droppedContentStreamEventCount;
     clone.normalizationDiagnostics = [...this.normalizationDiagnostics];
     return clone;
@@ -1171,6 +1220,7 @@ export class ProductProjection {
     this.configModelTouchedByEvent = candidate.configModelTouchedByEvent;
     this.configThoughtLevelsTouchedByEvent = candidate.configThoughtLevelsTouchedByEvent;
     this.configModeTouchedByEvent = candidate.configModeTouchedByEvent;
+    this.configOrchestrationTouchedByEvent = candidate.configOrchestrationTouchedByEvent;
     this.droppedContentStreamEventCount = candidate.droppedContentStreamEventCount;
     this.normalizationDiagnostics = candidate.normalizationDiagnostics;
   }
@@ -1411,6 +1461,10 @@ export class ProductProjection {
         return this.onFollowupModeChanged(event);
       case SessionEventType.SessionModeChanged:
         return this.onSessionModeChanged(event);
+      case SessionEventType.SessionOrchestrationChanged:
+        return this.onSessionOrchestrationChanged(event);
+      case SessionEventType.TeamBoardChanged:
+        return this.onTeamBoardChanged(event);
       case SessionEventType.TurnComplete:
         return this.onTurnComplete(event);
       case SessionEventType.TurnError:
@@ -2061,6 +2115,8 @@ export class ProductProjection {
                 kind: fact.intentKind,
                 text: fact.intentText,
                 ...(fact.sourceCommandId ? { sourceCommandId: fact.sourceCommandId } : {}),
+                ...(fact.sourceTaskId ? { interTaskSourceTaskId: fact.sourceTaskId } : {}),
+                ...(fact.causalContext ? { causalContext: fact.causalContext } : {}),
                 ...(fact.clientId ? { clientId: fact.clientId } : {}),
                 ...(fact.attachments ? { attachments: fact.attachments } : {}),
                 ...(fact.queueItemId ? { queueItemId: fact.queueItemId } : {}),
@@ -3373,6 +3429,7 @@ export class ProductProjection {
         payload.pendingInputId,
       interTaskSourceTaskId:
         payload.intent?.interTaskSourceTaskId ?? existing?.interTaskSourceTaskId,
+      causalContext: payload.intent?.causalContext ?? existing?.causalContext,
       clientId: payload.intent?.clientId ?? existing?.clientId ?? "cli",
       attachments: payload.intent?.attachmentRefs ?? existing?.attachments ?? [],
       // QueueItem 同时是提升执行的输入，不只是 UI 展示；漏字段会让新 Turn 沿用旧权限／模型。
@@ -3584,6 +3641,10 @@ export class ProductProjection {
               intent: {
                 kind: item.intent?.kind === "sendGoalCommand" ? "sendGoalCommand" : "sendText",
                 text: item.intent?.text ?? item.text,
+                ...(item.intent?.causalContext ? { causalContext: item.intent.causalContext } : {}),
+                ...(item.intent?.interTaskSourceTaskId
+                  ? { interTaskSourceTaskId: item.intent.interTaskSourceTaskId }
+                  : {}),
                 ...(item.intent?.sourceCommandId
                   ? { sourceCommandId: item.intent.sourceCommandId }
                   : {}),
@@ -3841,6 +3902,28 @@ export class ProductProjection {
         },
       },
     ];
+  }
+
+  private onSessionOrchestrationChanged(event: SessionEvent): ConversationDelta[] {
+    const parsed = orchestrationStateSchema.safeParse(event.payload);
+    if (!parsed.success) return [];
+    this.configOrchestrationTouchedByEvent = true;
+    const current = this.snapshot.config.orchestration;
+    if (parsed.data.revision <= current.revision) return [];
+    return [
+      {
+        op: "state.updated",
+        patch: {
+          config: { ...this.snapshot.config, orchestration: parsed.data },
+        },
+      },
+    ];
+  }
+
+  private onTeamBoardChanged(event: SessionEvent): ConversationDelta[] {
+    const parsed = teamBoardStateSchema.safeParse(event.payload);
+    if (!parsed.success || parsed.data.revision <= this.snapshot.teamBoard.revision) return [];
+    return [{ op: "state.updated", patch: { teamBoard: parsed.data } }];
   }
 
   /**
@@ -4253,18 +4336,16 @@ export class ProductProjection {
     // 不能再在 reducer 内散落 Agent/Task/subagent 字符串分支。
     // "workflow" 是 workflow run（此前错标成 bash）；legacy resolver 里没有对应值，因为
     // legacy `Workflow` 工具刻意仍归 bash——两者是不同的东西，共用类别会让面板混在一起。
+    const explicitKind = explicitBackgroundWorkKind(
+      payload.taskKind as BackgroundWorkKind | undefined,
+    );
     const kind: BackgroundWorkSummary["kind"] =
-      payload.taskKind === "subagent"
+      explicitKind ??
+      (legacyKind === "agent"
         ? "subagent"
-        : payload.taskKind === "bash"
+        : legacyKind === "bash"
           ? "bash"
-          : payload.taskKind === "workflow"
-            ? "workflow"
-            : legacyKind === "agent"
-              ? "subagent"
-              : legacyKind === "bash"
-                ? "bash"
-                : (existing?.kind ?? "bash");
+          : (existing?.kind ?? "bash"));
     // 事件 status（running/completed/failed/timed_out/cancelled/spawn_error/lost）
     // → summary status（running/resultPending/failed/cancelled）。
     const rawStatus = payload.status ?? "running";
@@ -4282,6 +4363,27 @@ export class ProductProjection {
       existing?.title ||
       payload.toolName ||
       workId;
+    // 连续工作的终态**移除**条目，不留 resultPending（复审 GAP-03）。
+    // 原因：summary.status 的 resultPending 语义是「结果在 continuation inbox 等待前台空闲，
+    // 投递后条目消失」，而提取/整理/主动执行没有这样的投递；保留它等于声明一个永不落地的结果。
+    // 另外提取按轮次发生，终态条目会让 backgroundWorks 随轮数无界增长，且它在
+    // REVISION_BEARING_PATCH_KEYS 里：每个旧条目都会随每次状态变化重发一遍。
+    // 抽屉的记忆与主动工作分区是实时视图（只渲染 running），移除不丢可见信息；
+    // bash / subagent / workflow 的既有保留语义不变。
+    if (
+      explicitKind !== undefined &&
+      isContinuityBackgroundWorkKind(explicitKind) &&
+      status !== "running"
+    ) {
+      // 没有对应 running 条目时无事可做（冷回放的事件流被裁剪过）：不产 delta。
+      if (!existing) return [];
+      return [
+        {
+          op: "state.updated",
+          patch: { backgroundWorks: prev.filter((work) => work.workId !== workId) },
+        },
+      ];
+    }
     const next: BackgroundWorkSummary = {
       workId,
       kind,

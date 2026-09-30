@@ -1,4 +1,14 @@
+// Modified by ZCode Feiyu contributors (2026).
+import { dropRevokedMemoryFromTurnPrefix } from "./methods/context-refresh.js";
 import { DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY, resolveExecutionState } from "@zcode/shared";
+import { recoverProjectMemoryWorkspace } from "./helpers/project-memory-batch.js";
+import { resolveEnabledProjectMemoryRoot } from "./helpers/project-memory.js";
+import { withProjectMemoryWriteLease } from "../memory/write-lease.js";
+import {
+  DEFAULT_ORCHESTRATION_STATE,
+  type OrchestrationMode,
+  type OrchestrationState,
+} from "@zcode/shared/zcode-protocol-v4";
 import type { BackgroundBashOutputResult } from "@zcode/shared";
 import {
   createDenyPermissionBroker,
@@ -84,6 +94,7 @@ import type {
   RuntimeBackgroundStopResult,
 } from "./methods/background.js";
 import { initializeRuntimeTooling } from "./helpers/runtime-tools.js";
+import { loadProjectMemoryIndexContent, loadProjectMemoryRoot } from "./methods/context.js";
 import type {
   ActiveTurnInfo,
   ActiveForegroundExecutionState,
@@ -122,11 +133,25 @@ import type { AgentRuntimeInternal } from "./internal.js";
 import { InMemoryRuntimeTaskRegistry, type RuntimeTaskRegistry } from "../runtime-task/registry.js";
 import type { ChildClientPortsContext, ClientFacingPorts } from "./helpers/child-client-ports.js";
 import type { ProjectMemoryExtractionScheduler } from "./helpers/project-memory-extraction.js";
+import {
+  runProjectMemoryReview,
+  type ProjectMemoryReviewOutcome,
+} from "./helpers/project-memory-review.js";
 import { projectPersistentAgentMemoryTools } from "../subagent/persistent-memory.js";
 import { RuntimeTelemetryFacade } from "../telemetry/runtime-telemetry.js";
 import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-runtime-admission.js";
 import { disposeNodeReplSession } from "../tool/handlers/node-repl.js";
 import { cloneModelSelection } from "./model-selection.js";
+import {
+  requestRuntimeOrchestrationMode,
+  controlRuntimeProactiveWork,
+  isProactiveCommandId,
+  assertProactiveAdmission,
+} from "./orchestration.js";
+import { runtimeProactiveCause } from "./proactive-causality.js";
+import { createTeamBoardPort } from "./team-board.js";
+import { createTeamMessageLedger, type TeamMessageLedger } from "./team-message-ledger.js";
+import { createSessionEvent, SessionEventType } from "@zcode/contracts";
 
 // oxlint-disable typescript-eslint/no-unsafe-declaration-merging
 export class AgentRuntime {
@@ -154,6 +179,8 @@ export class AgentRuntime {
   private browserControlPort?: AgentRuntimeDeps["browserControlPort"];
   /** 模型请求准入端口；随每次模型请求进调用上下文。 */
   private modelRequestAdmission?: AgentRuntimeDeps["modelRequestAdmission"];
+  private continuityPolicySource?: AgentRuntimeDeps["continuityPolicySource"];
+  private automationPort?: AgentRuntimeDeps["automationPort"];
   private sessionModelSelection: ModelSelection | undefined;
   private messageHistory: MessageHistory;
   private readFileState: ReadFileStateMap;
@@ -165,6 +192,17 @@ export class AgentRuntime {
   private memoryRoot?: string;
   private memoryIndexContent?: string;
   private memoryExtractionScheduler?: ProjectMemoryExtractionScheduler;
+  private memoryRecoveryTask?: Promise<void>;
+  private memoryRecoveryAbortController?: AbortController;
+  private memoryReviewAbortController?: AbortController;
+  private memoryReviewId?: string;
+  private proactiveWork?: { controller: AbortController; settled: Promise<void> };
+  private memoryReviewTrigger?: "automatic" | "manual";
+  private memoryReviewTask?: Promise<ProjectMemoryReviewOutcome>;
+  private memoryPreferenceRevision = 0;
+  private orchestration: OrchestrationState = { ...DEFAULT_ORCHESTRATION_STATE };
+  private orchestrationPersistedRevision = 0;
+  private orchestrationMutation?: Promise<void>;
   private contextSourcePort?: ContextSourcePort;
   private skillPort?: SkillPort;
   private mcpPort?: McpPort;
@@ -173,6 +211,8 @@ export class AgentRuntime {
   private mcpInitialized = false;
   private mcpToolsRegistered = false;
   private subagentPort?: SubagentPort;
+  private teamBoardPort?: import("@zcode/contracts").TeamBoardPort;
+  private teamMessageLedger?: TeamMessageLedger;
   private dynamicWorkflowRunPort?: DynamicWorkflowRunPort;
   private modelCatalogPort?: ModelCatalogPort;
   private runtimeTaskRegistry: RuntimeTaskRegistry;
@@ -271,6 +311,8 @@ export class AgentRuntime {
     this.providerRuntimeHeadersPort = deps.providerRuntimeHeadersPort;
     this.browserControlPort = deps.browserControlPort;
     this.modelRequestAdmission = deps.modelRequestAdmission;
+    this.continuityPolicySource = deps.continuityPolicySource;
+    this.automationPort = deps.automationPort;
     // 旧会话的选择缺失不能阻断历史恢复；不在这里制造默认模型。
     this.sessionModelSelection =
       config.modelSelection && cloneModelSelection(config.modelSelection);
@@ -283,6 +325,28 @@ export class AgentRuntime {
     this.mcpPort = deps.mcpPort;
     this.runtimeTaskRegistry = deps.runtimeTaskRegistry ?? new InMemoryRuntimeTaskRegistry();
     this.runtimeTaskRegistry.setActiveBranchGeneration?.(this.branchGeneration);
+    this.teamBoardPort =
+      deps.teamBoardPort ??
+      (!config.parentSessionId && deps.sessionStore
+        ? createTeamBoardPort(
+            sessionId,
+            deps.sessionStore,
+            this.runtimeTaskRegistry,
+            async (state) => {
+              await this.appendEvent(
+                createSessionEvent(SessionEventType.TeamBoardChanged, sessionId, state, {
+                  traceId: this.rootTraceContext.traceId,
+                }),
+                this.rootTraceContext,
+              );
+            },
+            () => this.branchGeneration,
+          )
+        : undefined);
+    this.teamMessageLedger =
+      !config.parentSessionId && deps.sessionStore
+        ? createTeamMessageLedger(sessionId, deps.sessionStore)
+        : undefined;
     this.artifactStore = deps.artifactStore;
     this.executionPort = deps.executionPort;
     this.fileSystemPort = deps.fileSystemPort;
@@ -324,6 +388,10 @@ export class AgentRuntime {
     }
   }
 
+  async recoverProjectMemory(): Promise<void> {
+    await recoverProjectMemoryWorkspace(this as unknown as AgentRuntimeInternal);
+  }
+
   beginShutdown(): void {
     // ExecutionPort.close() 会把后台 Bash 收口为 cancelled；若允许
     // teardown terminal event 再唤醒模型，并与随后关闭的 session store 竞态。
@@ -331,12 +399,154 @@ export class AgentRuntime {
     // 关闭单个 session 后进程仍存活，
     // 因此必须先终止该 runtime 的 Extraction，不能只在超时后放弃等待。
     this.memoryExtractionScheduler?.shutdown();
+    this.memoryRecoveryAbortController?.abort();
+    this.memoryReviewAbortController?.abort();
+  }
+
+  async updateProjectMemoryPreferences(input: {
+    policyRevision?: number;
+    continuityPolicy?: import("@zcode/shared").ContinuityPolicy;
+    enabled: boolean;
+    extractionEnabled: boolean;
+    reviewEnabled: boolean;
+  }): Promise<void> {
+    const preferenceRevision = ++this.memoryPreferenceRevision;
+    const previousMemoryRoot =
+      this.memoryRoot ?? resolveEnabledProjectMemoryRoot(this.config, this.workspaceRoot);
+    if (input.continuityPolicy) this.config.continuityPolicy = input.continuityPolicy;
+    if (input.policyRevision !== undefined)
+      this.config.continuityPolicyRevision = input.policyRevision;
+    if (
+      input.continuityPolicy?.proactiveWorkAllowed === false &&
+      ((this.orchestration.proactive && this.orchestration.proactive.status !== "stopped") ||
+        this.proactiveWork)
+    ) {
+      await controlRuntimeProactiveWork(
+        this as unknown as AgentRuntimeInternal,
+        "pause",
+        undefined,
+        "permission_disabled",
+      );
+    }
+    const extractionEnabled = input.enabled && input.extractionEnabled;
+    const reviewEnabled = input.enabled && input.reviewEnabled;
+    this.config.memory = {
+      ...this.config.memory,
+      enabled: input.enabled,
+      extractionEnabled,
+      reviewEnabled,
+    };
+    const recoveryToSettle = !extractionEnabled ? this.memoryRecoveryTask : undefined;
+    if (!extractionEnabled) this.memoryRecoveryAbortController?.abort();
+    const extractionToSettle = !extractionEnabled ? this.memoryExtractionScheduler : undefined;
+    if (extractionToSettle) {
+      extractionToSettle.shutdown();
+      this.memoryExtractionScheduler = undefined;
+    }
+    const reviewToSettle =
+      !input.enabled || (!reviewEnabled && this.memoryReviewTrigger === "automatic")
+        ? this.memoryReviewTask
+        : undefined;
+    if (reviewToSettle || !input.enabled) {
+      this.memoryReviewAbortController?.abort();
+    }
+    if (!input.enabled) {
+      this.memoryRoot = undefined;
+      this.memoryIndexContent = undefined;
+      const runtime = this as unknown as AgentRuntimeInternal;
+      dropRevokedMemoryFromTurnPrefix(runtime, this.messageHistory.borrowReadOnlyRuntimeEntries());
+    }
+    // 原因：旧实现仅发送 abort 就返回设置同步 ACK；旧 worker 仍可能在写文件。
+    // 等原任务真实收口，协议若超时会报告未知/失败，不能提前宣称关闭已完成。
+    const settling = await Promise.allSettled([
+      ...(extractionToSettle ? [extractionToSettle.drain()] : []),
+      ...(recoveryToSettle ? [recoveryToSettle] : []),
+      ...(reviewToSettle ? [reviewToSettle.then(() => undefined)] : []),
+    ]);
+    const settlementFailures = settling.filter((result) => result.status === "rejected");
+    if (settlementFailures.length > 0) {
+      throw new AggregateError(
+        settlementFailures.map((result) => result.reason),
+        "Project memory workers failed while stopping",
+      );
+    }
+    if (!input.enabled && previousMemoryRoot && this.sessionStore?.withProjectMemoryWriteFence) {
+      // 等已进入最终提交的主线程记忆工具结束；旧调用在屏障内复核许可，ACK 后不会再迟到落盘。
+      await withProjectMemoryWriteLease({
+        sessionStore: this.sessionStore,
+        workspaceKey: previousMemoryRoot,
+        operation: (_signal, guard) => guard(async () => {}),
+      });
+    }
+    if (!input.enabled || preferenceRevision !== this.memoryPreferenceRevision) {
+      return;
+    }
+    if (!this.contextInitialized) return;
+    const runtime = this as unknown as AgentRuntimeInternal;
+    const root = await loadProjectMemoryRoot.call(runtime, this.rootTraceContext);
+    if (preferenceRevision !== this.memoryPreferenceRevision || !this.config.memory.enabled) return;
+    const indexContent = await loadProjectMemoryIndexContent(runtime, root, {
+      recordReadState: false,
+    });
+    if (preferenceRevision !== this.memoryPreferenceRevision || !this.config.memory.enabled) return;
+    this.memoryRoot = root;
+    this.memoryIndexContent = indexContent;
+  }
+
+  async reviewProjectMemoryNow(sourceSessionId?: string): Promise<ProjectMemoryReviewOutcome> {
+    return runProjectMemoryReview(this as unknown as AgentRuntimeInternal, {
+      traceContext: this.rootTraceContext,
+      trigger: "manual",
+      sourceSessionId: sourceSessionId as SessionId | undefined,
+    });
+  }
+
+  getOrchestrationState(): OrchestrationState {
+    return { ...this.orchestration };
+  }
+  getProactiveCausalContext():
+    | import("@zcode/shared/zcode-protocol-v4").ProactiveCausalContext
+    | undefined {
+    return runtimeProactiveCause(this as unknown as AgentRuntimeInternal);
+  }
+  async controlProactiveWork(
+    action: "start" | "pause" | "stop",
+    subscriptions?: import("@zcode/shared/zcode-protocol-v4").ProactiveSubscription[],
+  ): Promise<OrchestrationState> {
+    return controlRuntimeProactiveWork(
+      this as unknown as AgentRuntimeInternal,
+      action,
+      subscriptions,
+    );
+  }
+  async authorizeProactiveCommand(commandId: string): Promise<void> {
+    if (isProactiveCommandId(commandId))
+      await assertProactiveAdmission(this as unknown as AgentRuntimeInternal, commandId);
+  }
+
+  async requestOrchestrationMode(mode: OrchestrationMode): Promise<OrchestrationState> {
+    return requestRuntimeOrchestrationMode(
+      this as unknown as AgentRuntimeInternal,
+      mode,
+      this.rootTraceContext,
+    );
+  }
+
+  cancelProjectMemoryReview(expectedReviewId?: string): boolean {
+    const controller = this.memoryReviewAbortController;
+    // 旧取消回执不能停止同一个 runtime 中已经接管的新整理。
+    if (expectedReviewId !== undefined && this.memoryReviewId !== expectedReviewId) return false;
+    if (!controller || controller.signal.aborted) return false;
+    controller.abort();
+    return true;
   }
 }
 
 export interface AgentRuntime {
   lastPermissionGrantId?: string;
   beginShutdown(): void;
+  reviewProjectMemoryNow(sourceSessionId?: string): Promise<ProjectMemoryReviewOutcome>;
+  cancelProjectMemoryReview(expectedReviewId?: string): boolean;
   closeBrowserSession(): Promise<void>;
   updateConfig(
     patch: Pick<AgentRuntimeConfig, "mode" | "planEnabled" | "language" | "outputStyle">,

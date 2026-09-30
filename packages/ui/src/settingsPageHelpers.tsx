@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* oxlint-disable eslint(max-lines) -- settings helper 聚合多个设置分组；终端、网络与自动归档多侧能力暂时超过行数限制。 */
 import type {
   IntegratedTerminalShellOption,
@@ -32,6 +32,7 @@ import { DataBaseDirControl } from "@/settings/DataBaseDirControl.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
 import { ProactiveSuggestionsSetting } from "@/settings/ProactiveSuggestionsSetting.js";
+import { BackgroundContinuityStatusRow } from "@/settings/BackgroundContinuityStatusRow.js";
 import { normalizeInterfaceMode, type InterfaceMode } from "@/lib/interfaceMode.js";
 import {
   createSettingsPageConfig,
@@ -54,6 +55,9 @@ export function GeneralSectionContent({
   notificationSoundEnabled,
   closeToTrayOnWindows,
   keepAwakeWhileRunning = false,
+  continueAfterCloseOnMac = false,
+  continueAfterCloseApplying = false,
+  continueAfterCloseError = null,
   desktopChromiumHardwareAccelerationEnabled = true,
   receivePreviewUpdates,
   autoDownloadAndInstallUpdates,
@@ -69,6 +73,7 @@ export function GeneralSectionContent({
   defaultHomeDir,
   isDesktop,
   isWindowsDesktop,
+  isMacDesktop,
   showIntegratedTerminalShell = false,
   setLocalePreference,
   setNotificationEnabled,
@@ -99,6 +104,7 @@ export function GeneralSectionContent({
   onTaskAutoArchiveOlderThanDaysChange,
   onCloseToTrayOnWindowsChange,
   onKeepAwakeWhileRunningChange = async () => {},
+  onContinueAfterCloseOnMacChange = async () => {},
   onDesktopChromiumHardwareAccelerationChange = async () => {},
   onReceivePreviewUpdatesChange,
   onAutoDownloadAndInstallUpdatesChange,
@@ -120,6 +126,11 @@ export function GeneralSectionContent({
   notificationSoundEnabled: boolean;
   closeToTrayOnWindows: boolean;
   keepAwakeWhileRunning?: boolean;
+  continueAfterCloseOnMac?: boolean;
+  /** 提交中：开关禁用，防止连点产生互相覆盖的写入。 */
+  continueAfterCloseApplying?: boolean;
+  /** 最近一次提交失败的原因；下一次提交开始时清除。 */
+  continueAfterCloseError?: string | null;
   desktopChromiumHardwareAccelerationEnabled?: boolean;
   receivePreviewUpdates: boolean;
   autoDownloadAndInstallUpdates: boolean;
@@ -135,6 +146,7 @@ export function GeneralSectionContent({
   defaultHomeDir: string;
   isDesktop?: boolean;
   isWindowsDesktop?: boolean;
+  isMacDesktop?: boolean;
   showIntegratedTerminalShell?: boolean;
   platform?: IPlatformService;
   setLocalePreference: (locale: LocalePreference) => void;
@@ -166,6 +178,7 @@ export function GeneralSectionContent({
   onTaskAutoArchiveOlderThanDaysChange: (days: number) => Promise<void>;
   onCloseToTrayOnWindowsChange: (enabled: boolean) => Promise<void>;
   onKeepAwakeWhileRunningChange?: (enabled: boolean) => Promise<void>;
+  onContinueAfterCloseOnMacChange?: (enabled: boolean) => Promise<void>;
   onDesktopChromiumHardwareAccelerationChange?: (enabled: boolean) => Promise<void>;
   onReceivePreviewUpdatesChange: (enabled: boolean) => Promise<void>;
   onAutoDownloadAndInstallUpdatesChange: (enabled: boolean) => Promise<void>;
@@ -676,6 +689,35 @@ export function GeneralSectionContent({
             }
           />
         ) : null}
+        {isMacDesktop ? (
+          <SettingsRow
+            label={intl.formatMessage({ id: "settings.continueAfterCloseOnMac" })}
+            description={
+              <>
+                {intl.formatMessage({ id: "settings.continueAfterCloseOnMacDescription" })}
+                {continueAfterCloseError ? (
+                  <span role="alert" className="block break-words text-ui-caption text-destructive">
+                    {intl.formatMessage(
+                      { id: "settings.continueAfterCloseOnMacApplyFailed" },
+                      { error: continueAfterCloseError },
+                    )}
+                  </span>
+                ) : null}
+              </>
+            }
+            control={
+              <Switch
+                aria-label={intl.formatMessage({ id: "settings.continueAfterCloseOnMac" })}
+                checked={continueAfterCloseOnMac}
+                disabled={continueAfterCloseApplying}
+                onCheckedChange={(checked) => {
+                  void onContinueAfterCloseOnMacChange(checked);
+                }}
+              />
+            }
+          />
+        ) : null}
+        {isMacDesktop ? <BackgroundContinuityStatusRow /> : null}
       </SettingsGroupCard>
 
       <SettingsGroupCard>

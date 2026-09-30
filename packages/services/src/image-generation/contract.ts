@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { ServiceChannels, type ImageGenerationConfig } from "@zcode/shared";
 import { createServiceDescriptor } from "../descriptors.js";
 

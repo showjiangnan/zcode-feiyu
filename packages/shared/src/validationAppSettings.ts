@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* oxlint-disable eslint(max-lines) -- AppSettings schema 聚合历史迁移、默认值和 patch 校验，拆分会削弱设置迁移的单一入口。 */
 import { z } from "zod";
 import type { AppSettings } from "./protocol.js";
@@ -444,6 +444,7 @@ const appSettingsObjectSchema = z.object({
   closeToTrayOnWindows: z.boolean().default(true),
   closeToTrayOnWindowsMigrationInitialized: z.boolean().default(true),
   keepAwakeWhileRunning: z.boolean().default(false),
+  continueAfterCloseOnMac: z.boolean().default(false),
   desktopZoomLevel: desktopZoomLevelSchema.optional(),
   desktopWindowSize: desktopWindowSizeSchema.optional(),
   desktopChromiumHardwareAccelerationEnabled: z.boolean().default(true),
@@ -465,6 +466,10 @@ const appSettingsObjectSchema = z.object({
   onboardingOccupation: appSettingsOccupationSchema.nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
   memoryEnabled: z.boolean().default(false),
+  policyRevision: z.number().int().nonnegative().default(0),
+  memoryExtractionEnabled: z.boolean().default(false),
+  memoryReviewEnabled: z.boolean().default(false),
+  continuityPolicy: continuityPolicySchema.default(() => continuityPolicySchema.parse({})),
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).default([]),
   lastActiveTabIndex: z.number().int().nonnegative().default(0),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
@@ -477,14 +482,24 @@ const appSettingsObjectSchema = z.object({
   zcodeEndpointOrigin: zcodeEndpointOriginSchema.optional(),
 });
 
+function migrateMemoryExtractionPreference(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const settings = value as Record<string, unknown>;
+  if (typeof settings.memoryExtractionEnabled === "boolean") return value;
+  // 旧 profile 只有记忆总开关，已开启用户的原自动提取行为必须保留。
+  return { ...settings, memoryExtractionEnabled: settings.memoryEnabled === true };
+}
+
 export const appSettingsSchema = z.preprocess(
   (value) =>
-    sanitizeEmbeddedBrowserViewportPreference(
-      sanitizeDesktopWindowSize(
-        migrateMessageStreamShowReasoningDefault(
-          migrateCloseToTrayOnWindowsDefault(
-            migrateLegacyLocalePreference(
-              sanitizeZCodeEndpointOrigin(migrateLegacyWorkspaceSession(value)),
+    migrateMemoryExtractionPreference(
+      sanitizeEmbeddedBrowserViewportPreference(
+        sanitizeDesktopWindowSize(
+          migrateMessageStreamShowReasoningDefault(
+            migrateCloseToTrayOnWindowsDefault(
+              migrateLegacyLocalePreference(
+                sanitizeZCodeEndpointOrigin(migrateLegacyWorkspaceSession(value)),
+              ),
             ),
           ),
         ),
@@ -513,6 +528,7 @@ export const appSettingsPatchSchema = z.object({
   taskAutoArchiveOlderThanDays: z.number().int().positive().max(365).optional(),
   closeToTrayOnWindows: z.boolean().optional(),
   keepAwakeWhileRunning: z.boolean().optional(),
+  continueAfterCloseOnMac: z.boolean().optional(),
   closeToTrayOnWindowsMigrationInitialized: z.boolean().optional(),
   desktopZoomLevel: desktopZoomLevelSchema.optional(),
   desktopWindowSize: desktopWindowSizeSchema.optional(),
@@ -552,6 +568,9 @@ export const appSettingsPatchSchema = z.object({
     .nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
   memoryEnabled: z.boolean().optional(),
+  memoryExtractionEnabled: z.boolean().optional(),
+  memoryReviewEnabled: z.boolean().optional(),
+  continuityPolicy: continuityPolicySchema.optional(),
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).optional(),
   lastActiveTabIndex: z.number().int().nonnegative().optional(),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
@@ -566,3 +585,4 @@ export const appSettingsPatchSchema = z.object({
   zcodeEndpointOrigin: zcodeEndpointOriginSchema.optional(),
 });
 import { imageGenerationConfigSchema } from "./imageGeneration.js";
+import { continuityPolicySchema } from "./continuity-policy.js";

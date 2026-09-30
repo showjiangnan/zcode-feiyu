@@ -1,5 +1,7 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { z } from "zod";
 import { modelSelectionSchema } from "../model-selection.js";
+import { DEFAULT_ORCHESTRATION_STATE, orchestrationStateSchema } from "./orchestration.js";
 
 // ── config──
 export const sessionConfigStateSchema = z.object({
@@ -12,6 +14,7 @@ export const sessionConfigStateSchema = z.object({
   // default 仅用于兼容旧快照；新 agent 必须从 runtime 投影实际集合。
   thoughtLevels: z.array(z.string()).default([]),
   followupMode: z.enum(["queue", "guide"]),
+  orchestration: orchestrationStateSchema.default(DEFAULT_ORCHESTRATION_STATE),
   // additive（冻结面演进，同 meta 的裁决口径）：agent 协作模式（core CollaborationMode）。
   // 必须带 default 才不破坏旧快照/旧发送端的解析；投影经 SessionModeChanged 事件更新。
   mode: z.string().default("build"),

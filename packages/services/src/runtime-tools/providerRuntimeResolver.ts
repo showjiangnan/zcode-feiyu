@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve as resolvePath } from "node:path";
-import { ZCODE_AGENT_RUNTIME } from "@zcode/shared";
+import { ZCODE_AGENT_RUNTIME, ZCODE_AGENT_NODE_BUNDLE_PATH_ENV } from "@zcode/shared";
 
 const packagedResourcesPath =
   typeof (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath === "string"
@@ -75,6 +76,9 @@ export function findZCodeAgentRuntimeBinary(): string | null {
  * 不查 GLM_BINARY_PATH——那个 env 指向原生二进制，语义不同。
  */
 export function findZCodeAgentRuntimeNodeBundle(): string | null {
+  // Main 已声明安装入口时不能换用 cwd 下的开发副本；缺失必须显式失败，避免混用协议版本。
+  const declaredBundle = process.env[ZCODE_AGENT_NODE_BUNDLE_PATH_ENV]?.trim();
+  if (declaredBundle) return existsSync(declaredBundle) ? declaredBundle : null;
   const runtime = ZCODE_AGENT_RUNTIME;
   const entrySegments = runtime.resolveNodeBundleSegments();
   const resourceSegments = [runtime.bundledResourceDir, ...entrySegments];

@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type {
   BackgroundResultOriginMeta,
   ModelStreamingPayload,
@@ -50,14 +50,8 @@ interface CanonicalConversationFactBase {
 export interface CanonicalUserIntentFact extends CanonicalConversationFactBase {
   semanticKind: "userIntent";
   visibility: "visible" | "modelOnly";
-  origin:
-    | "realUser"
-    | "interTaskAuto"
-    | "backgroundResult"
-    | "goalContinuation"
-    | "mailbox"
-    | "synthetic"
-    | "workflowLaunch";
+  // 用户意图事实只可能来自输入侧来源，助手与系统来源不在其中；复用总来源联合，避免两处各维护一份。
+  origin: Exclude<CanonicalConversationOrigin, "assistant" | "system">;
   input: string;
   intentText: string;
   intentKind: "sendText" | "sendGoalCommand";
@@ -79,6 +73,7 @@ export interface CanonicalUserIntentFact extends CanonicalConversationFactBase {
   epilogueStart?: number;
   sourceCommandId?: string;
   sourceTaskId?: string;
+  causalContext?: TurnInputIntentMetadata["causalContext"];
   foregroundExecutionId?: string;
   clientId?: string;
   attachments?: readonly CanonicalTurnAttachment[];
@@ -251,6 +246,7 @@ function normalizeTurnStarted(
     visibility: payload.inputVisibility === "model-only" ? "modelOnly" : "visible",
     origin,
     ...(sourceTaskId ? { sourceTaskId } : {}),
+    ...(payload.intent?.causalContext ? { causalContext: payload.intent.causalContext } : {}),
     placement: { lane: "trigger", relation: "withinProductTurn" },
     diagnostics,
     input: payload.input,

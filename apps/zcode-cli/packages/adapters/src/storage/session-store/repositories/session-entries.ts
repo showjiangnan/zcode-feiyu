@@ -1,6 +1,8 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { DatabaseSync } from "node:sqlite";
 import {
   SESSION_ENTRY_MODEL_SELECTION,
+  SESSION_ENTRY_ORCHESTRATION_STATE,
   type SessionEntryInfo,
   type SessionEntryType,
   type SessionId,
@@ -21,8 +23,9 @@ export function saveSessionEntry(db: DatabaseSync, input: SessionEntryInfo): voi
     throw new Error("Session entry data must be JSON-serializable");
   }
 
-  db.prepare(
-    `
+  const result = db
+    .prepare(
+      `
       insert into session_entry (id, session_id, type, time_created, time_updated, data)
       values (?, ?, ?, ?, ?, ?)
       on conflict(id) do update set
@@ -36,16 +39,21 @@ export function saveSessionEntry(db: DatabaseSync, input: SessionEntryInfo): voi
           then json_set(session_entry.data, '$.modelSelection', json_extract(excluded.data, '$.modelSelection'))
           else excluded.data
         end
+      where excluded.type <> ? or coalesce(json_extract(session_entry.data,'$.revision'),-1) < json_extract(excluded.data,'$.revision')
       `,
-  ).run(
-    input.id,
-    input.sessionID,
-    input.type,
-    input.time.created,
-    input.time.updated,
-    encoded,
-    Number(isModelSelection),
-  );
+    )
+    .run(
+      input.id,
+      input.sessionID,
+      input.type,
+      input.time.created,
+      input.time.updated,
+      encoded,
+      Number(isModelSelection),
+      SESSION_ENTRY_ORCHESTRATION_STATE,
+    );
+  if (input.type === SESSION_ENTRY_ORCHESTRATION_STATE && result.changes === 0)
+    throw new Error("Session orchestration revision changed");
   if (input.touchSession !== false) {
     touchSession(db, input.sessionID, input.time.updated);
   }

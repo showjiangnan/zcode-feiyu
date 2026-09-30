@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { ConfigResult } from "@zcode/adapters/config";
 import { resolveInitialModelSelection, type ModelSelectionOptions } from "@zcode/provider";
 import { resolveBashTimeoutPolicy, type AgentProfile, type AgentRuntimeConfig } from "@zcode/core";
@@ -179,6 +180,9 @@ export function resolveAppRuntimeConfig(input: {
       ...(options.runtimeConfig?.memory?.extractionEnabled === undefined
         ? {}
         : { extractionEnabled: options.runtimeConfig.memory.extractionEnabled }),
+      ...(options.runtimeConfig?.memory?.reviewEnabled === undefined
+        ? {}
+        : { reviewEnabled: options.runtimeConfig.memory.reviewEnabled }),
       ...(input.storageRoot ? { storageRoot: input.storageRoot } : {}),
       use: options.runtimeConfig?.memory?.use ?? configResult.config.memory.use,
       workspaceIdentity: workspaceIdentity?.trim() || undefined,

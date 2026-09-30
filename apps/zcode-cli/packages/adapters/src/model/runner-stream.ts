@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { TextStreamPart, ToolSet } from "ai";
 import type { Logger, ModelStatusSink, ModelStreamEvent } from "@zcode/contracts";
 import {
@@ -119,6 +120,7 @@ export async function* runStreamText(input: {
   let requestMessages = input.request.messages;
   let signatureRepairAttempted = false;
   let emptyCompletionRetryCount = 0;
+  let physicalAttempt = 0;
 
   for (
     let attempt = 1;
@@ -158,7 +160,7 @@ export async function* runStreamText(input: {
           Number(signatureRepairAttempted),
         ),
       },
-      attempt,
+      ++physicalAttempt,
     );
     const toolCallAssembler = new StreamingToolCallAssembler({ logger: input.logger });
     let streamIterator: AsyncIterator<TextStreamPart<ToolSet>> | undefined;
@@ -242,6 +244,8 @@ export async function* runStreamText(input: {
     try {
       admission = await admitAttempt({
         admission: input.request.modelRequestAdmission,
+        requestId: statusContext.requestId,
+        attempt: physicalAttempt,
         model: { providerId: String(resolved.providerId), modelId: String(resolved.modelId) },
         signal: input.request.abortSignal,
         ...admissionWaitPublishers(statusContext, attempt, statusPublishOptions(input)),
@@ -556,6 +560,11 @@ export async function* runStreamText(input: {
               outboundHeaders: resolved.headers,
               statusContext,
             });
+            // 空流也可能报告输入消费；原路径只 retry 会把这次 usage 丢掉。
+            await publishModelStatus({ ...statusContext, attempt, durationMs: completedAt - startedAt,
+              finishReason: diagnostics.finishReason, usage: diagnostics.usage, timestamp: new Date(completedAt).toISOString(), type: "model_request_completed" }, statusPublishOptions(input, admission));
+            terminalStatusPublished = true;
+            await admission.release();
             emptyCompletionRetryCount += 1;
             await scheduleEmptyCompletionRetry({
               abortSignal: input.request.abortSignal,
@@ -822,7 +831,7 @@ export async function* runStreamText(input: {
         admission,
       );
       // 退避期间不持票：槽位让给别人，重试再准入。
-      admission.release();
+      await admission.release();
       try {
         await sleep(delayMs, input.request.abortSignal);
       } catch (sleepError) {
@@ -916,7 +925,7 @@ export async function* runStreamText(input: {
       }
       attemptAbortController.cleanup();
       // 兜底归还（成功 / 抛出 / 消费者提前 return 都到这里）；正常失败路径已在 sleep 前归还，幂等。
-      admission.release();
+      await admission.release();
     }
   }
 }
@@ -1336,7 +1345,7 @@ async function handleStreamErrorEvent(
     input.admission,
   );
   // 退避期间不持票：这次尝试到此结束，槽位让给别人。
-  input.admission.release();
+  await input.admission.release();
   // Note: AI SDK can surface pre-output APICallError as an error chunk;
   // retry it here so protocol clients still receive the normal apiRetry status updates.
   try {

@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type {
   AgentExecutionTelemetryPort,
   AgentTelemetryActorKind,
@@ -101,6 +101,8 @@ export interface ToolExecutorOptions {
   nativeSearchEnhancementsEnabled?: boolean;
   skillPort?: SkillPort;
   subagentPort?: SubagentPort;
+  teamBoardPort?: import("@zcode/contracts").TeamBoardPort;
+  teamActorId?: string;
   coordinatorResponsePort?: CoordinatorResponsePort;
   workflowSubmitPort?: WorkflowSubmitPort;
   /** actor 的升级端口；存在即为该会话注册 escalate。 */
@@ -109,6 +111,7 @@ export interface ToolExecutorOptions {
   automationPort?: AutomationPort;
   offPeakPort?: OffPeakPort;
   taskMessagePort?: TaskMessagePort;
+  getPaidImageInputId?: () => string | undefined;
   imageGenerationPort?: import("@zcode/contracts").ImageGenerationPort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
@@ -136,6 +139,11 @@ export interface ToolExecutorOptions {
   setWorkingDirectory?: (cwd: string) => Promise<void> | void;
   getWorkspaceRoot?: () => string;
   getMemoryRoot?: () => string | undefined;
+  /**
+   * 调用方自身的长期所有权栅栏（如整理任务租约）。记忆工具在最终文件替换前于写租约排他
+   * 事务内复核，使调用方在自身租约被抢占后不能继续提交。
+   */
+  getMemoryOwnershipFence?: () => import("@zcode/contracts").MemoryCommitFence | undefined;
   traceContext?: TraceContext;
   mode?: CollaborationMode;
   getMode?: () => CollaborationMode;
@@ -183,6 +191,7 @@ export interface ToolBatchExecuteOptions extends ToolExecuteOptions {
 }
 
 export interface ToolExecutorDeps {
+  getPaidImageInputId?: () => string | undefined;
   imageGenerationPort?: import("@zcode/contracts").ImageGenerationPort;
   agentTelemetry?: AgentExecutionTelemetryPort;
   agentTelemetryActorKind?: AgentTelemetryActorKind;
@@ -210,6 +219,8 @@ export interface ToolExecutorDeps {
   nativeSearchEnhancementsEnabled?: boolean;
   skillPort?: SkillPort;
   subagentPort?: SubagentPort;
+  teamBoardPort?: import("@zcode/contracts").TeamBoardPort;
+  teamActorId?: string;
   coordinatorResponsePort?: CoordinatorResponsePort;
   workflowSubmitPort?: WorkflowSubmitPort;
   /** actor 的升级端口；存在即为该会话注册 escalate。 */
@@ -240,6 +251,8 @@ export interface ToolExecutorDeps {
   clientMode?: "desktop-continuous" | "web-remote-replayable";
   deliveryKind?: "desktop-continuous" | "web-remote-replayable";
   getMemoryRoot?: () => string | undefined;
+  /** 见 ToolExecutionDeps.getMemoryOwnershipFence。 */
+  getMemoryOwnershipFence?: () => import("@zcode/contracts").MemoryCommitFence | undefined;
   runtimeScope: ToolRuntimeScope;
   traceContext?: TraceContext;
   getMode: () => CollaborationMode;

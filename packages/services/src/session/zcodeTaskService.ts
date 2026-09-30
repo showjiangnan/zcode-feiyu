@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- ZCode task wrapper service 接口集中承载 app/runtime API，拆散会让替换阶段更难追踪。 */
 import type { Event } from "@zcode/rpc";
 import { ServiceChannels } from "@zcode/shared";
@@ -224,6 +225,10 @@ export interface IZCodeTaskService {
     /** @deprecated 仅供尚未迁移的旧调用边界读取。 */
     thoughtLevel?: string;
     draftSessionId?: string;
+    /** Cron 在发首条输入前把真实 sessionId 固定进 run 账本，需要先持久会话才能跨 Host 恢复。 */
+    persistBeforeFirstPrompt?: boolean;
+    /** 首次创建的稳定命令键；CLI 原子固定 workspace + origin，Host 不指定 sessionId。 */
+    originCommandId?: string;
     forkedFromTaskId?: string;
     mcpServers?: ZCodeAgentMcpServer[];
     /** 定时任务派发时标记所属 automation，落 tasks-index 的 cron_automation_id 并归入 cron 分组。 */

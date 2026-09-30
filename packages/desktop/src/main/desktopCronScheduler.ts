@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // desktop main 侧的 cron scheduler 进程管理器。
 // 职责：拉起/销毁常驻 scheduler 进程；把 scheduler 的派发请求路由给某个本地 host（转成 CronRun）；
 // 把 host 回报的 CronRunResult 转回 scheduler 结算。scheduler 只碰 tasks-index，createTask 在 host 域执行。
@@ -18,7 +19,7 @@ export interface CronRunResultPayload {
   taskId?: string;
   sessionId?: string;
   error?: string;
-  failureKind?: "transient" | "permanent";
+  failureKind?: "transient" | "permanent" | "waiting_for_host";
 }
 
 /** host → main 的闲时任务派发结果（与 cron 消息独立）。 */
@@ -51,6 +52,8 @@ export interface CronSchedulerHandle {
   handleOffPeakRunResult: (result: OffPeakRunResultPayload) => void;
   /** manual run 落库后立即唤醒 scheduler，不等待下一次轮询。 */
   wake: (automationId: string) => void;
+  /** 某个 Host 数据库就绪：让等待 Host 的原运行记录立即可认领并触发一次 tick。 */
+  wakeForHostReady: () => void;
   /** app 退出前优雅收尾（通知 scheduler 释放认领 + 关库，兜底强杀）。 */
   dispose: () => Promise<void>;
 }
@@ -72,6 +75,12 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
   registerSchedulerProcess(child);
   let isDisposing = false;
   let disposePromise: Promise<void> | null = null;
+  const pendingRuns = new Map<string, { host: ElectronUtilityProcess; onExit: () => void }>();
+  const forgetRun = (runId: string) => {
+    const pending = pendingRuns.get(runId);
+    if (pending) pending.host.removeListener("exit", pending.onExit);
+    pendingRuns.delete(runId);
+  };
 
   const postToScheduler = (message: MainToSchedulerMessage): void => {
     try {
@@ -107,27 +116,42 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
       if (isDisposing) {
         // App 退出时 Cron 与 Host 并行收口；进入 disposing 后继续派发会把新任务
         // 发送给正在关闭的 Host。明确拒绝派发，避免为了保持串行而额外增加 1.5 秒退出延迟。
+        // 原因：原先按 transient 回执，会消耗派发失败次数，多次退出后计划被丢弃。退出不是任务
+        // 失败，按等待 Host 释放认领，下次启动沿用原 runId。
         postToScheduler({
           type: "cron-dispatch-result",
           runId: msg.runId,
           ok: false,
-          failureKind: "transient",
+          failureKind: "waiting_for_host",
           error: "app is shutting down",
         });
         return;
       }
       const host = deps.resolveDispatchHost();
       if (!host) {
-        // 没有可派发的本地 host（无窗口/未就绪）：按 transient 回执，scheduler 退避后重试。
+        // Host 未就绪不是任务失败，保留原运行记录等待窗口恢复。
         postToScheduler({
           type: "cron-dispatch-result",
           runId: msg.runId,
           ok: false,
-          failureKind: "transient",
+          failureKind: "waiting_for_host",
           error: "no local host available",
         });
         return;
       }
+      forgetRun(msg.runId);
+      const onExit = () => {
+        forgetRun(msg.runId);
+        postToScheduler({
+          type: "cron-dispatch-result",
+          runId: msg.runId,
+          ok: false,
+          failureKind: "waiting_for_host",
+          error: "dispatch Host exited before acknowledgement",
+        });
+      };
+      pendingRuns.set(msg.runId, { host, onExit });
+      host.once("exit", onExit);
       try {
         host.postMessage({
           type: HostMessageTypes.CronRun,
@@ -141,12 +165,13 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
           workspaceIdentity: msg.workspaceIdentity,
         });
       } catch (error) {
+        forgetRun(msg.runId);
         deps.logger.warn("[cron-scheduler] forward CronRun to host failed:", error);
         postToScheduler({
           type: "cron-dispatch-result",
           runId: msg.runId,
           ok: false,
-          failureKind: "transient",
+          failureKind: "waiting_for_host",
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -154,7 +179,7 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
     }
 
     if (msg.type === "offpeak-dispatch-request") {
-      const host = deps.resolveDispatchHost();
+      const host = isDisposing ? null : deps.resolveDispatchHost();
       if (!host) {
         // 无可用 host：transient 回执，scheduler 按 off-peak 独立退避重试（顺延不丢弃）。
         postToScheduler({
@@ -193,12 +218,14 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
   });
 
   child.on("exit", (code) => {
+    for (const runId of pendingRuns.keys()) forgetRun(runId);
     unregisterSchedulerProcess(child);
     deps.logger.info(`[cron-scheduler] scheduler process exited code=${code}`);
   });
 
   return {
     handleCronRunResult(result) {
+      forgetRun(result.runId);
       postToScheduler({ type: "cron-dispatch-result", ...result });
     },
     handleOffPeakRunResult(result) {
@@ -206,7 +233,16 @@ export function spawnCronScheduler(deps: CronSchedulerDeps): CronSchedulerHandle
     },
     wake(automationId) {
       if (isDisposing) return;
-      postToScheduler({ type: "scheduler-wake", automationId });
+      // 直派 manual 的 waiting 结算可能晚于 Host ready 事件；以当前路由事实补发释放，不缓存 ready。
+      postToScheduler({
+        type: "scheduler-wake",
+        automationId,
+        ...(deps.resolveDispatchHost() ? { reason: "host_ready" as const } : {}),
+      });
+    },
+    wakeForHostReady() {
+      if (isDisposing) return;
+      postToScheduler({ type: "scheduler-wake", automationId: "host-ready", reason: "host_ready" });
     },
     dispose() {
       if (disposePromise) return disposePromise;

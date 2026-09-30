@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- ZCode Protocol 的 session/workspace 方法共享同一个 server context 与 snapshot helpers，迁移期先集中维护。 */
 import { observeSessionDebug } from "./session-debug.js";
 import {
@@ -104,12 +104,14 @@ import {
   type ZCodeProtocolToolInputTransmissionState,
 } from "./server-types.js";
 import { createWorkspaceZCodeApp, ensureSessionModelAvailable } from "./workspace-model-runtime.js";
+import { startProactiveDispatcher } from "./proactive-dispatcher.js";
 import { buildAppUsageSnapshot, resolveTzOffsetMs } from "./usage-stats-builder.js";
 import { createProtocolInteractionBroker } from "./interaction-broker.js";
 import { createProtocolAutomationPort } from "./automation-port.js";
 import { createProtocolOffPeakPort } from "./offpeak-port.js";
 import { createProtocolBrowserControlBroker } from "./browser-control-broker.js";
 import { createProtocolTaskMessagePort } from "./task-message-port.js";
+import { getOrCreateSessionRecordByOrigin } from "./session-create-origin.js";
 import { mapComputerUseOperationEvent } from "./computer-use-operation-event.js";
 import { protocolMcpServersToRuntimeMcpConfig } from "./protocol-mcp-config.js";
 import { projectIdFromDirectory } from "../app/paths.js";
@@ -143,6 +145,8 @@ type ZCodeSessionRecordParams = (
 
 interface SessionStartupPreferences {
   memoryEnabled: boolean;
+  memoryExtractionEnabled: boolean;
+  memoryReviewEnabled: boolean;
   modelContextBudgetStrategy: ZCodeModelContextBudgetStrategy;
   nativeSearchEnhancementsEnabled: boolean;
   resolveInitialBashShellSelection: () => Promise<ExecutionShellSelection | undefined>;
@@ -1254,6 +1258,19 @@ async function createSessionWithProjection<T>(
       "sessionId is only supported for imported history creates",
     );
   }
+  if (params.originCommandId) {
+    // 首次会话与来源先在 CLI 同事务固定；不能把 Host 写另一个库之前的空窗交给 task index 猜。
+    const record = await getOrCreateSessionRecordByOrigin(
+      context,
+      params,
+      trace,
+      async (sessionId) => {
+        const { record } = await activateSessionForResume(context, { ...params, sessionId });
+        return record;
+      },
+    );
+    return (await project(record)).value;
+  }
   const sessionId = (params.sessionId ?? createSessionId()) as SessionId;
   const workspace = params.workspace;
   context.logger?.info("ZCode Protocol session/create started", {
@@ -1691,6 +1708,16 @@ export async function listSessionSubagents(
 
   const parentSession = await store.getSession(params.sessionId as SessionId);
   if (!parentSession) {
+    // 在线预热会话在首输入前合法地没有父行；按 runtime 权威事实返回空种子，避免订阅误报丢失。
+    // 已落库 runtime 或冷任务缺失仍走下方错误路径，不能把数据库损坏伪装成空历史。
+    if (liveParent && !liveParent.app.runtime.isSessionPersisted()) {
+      return {
+        revision: liveParent.stateRevision,
+        childSessionIds: [],
+        running: [],
+        ended: { total: 0, items: [] },
+      };
+    }
     // 诊断：hydrate 会复用子任务种子读取；若 task index/旧 ACP task 残留了无效 ID，
     // 这里会把“持久化记录不存在”包装成 v4.hydrate，必须记录调用阶段而不是只看错误文本。
     context.logger?.warn("ZCode Protocol session subagents has no persisted parent", {
@@ -2725,8 +2752,16 @@ export async function closeSession(context: ZCodeProtocolAgentServerContext, raw
       record.app.runtime.hasResidencyBlockingWork() ||
       (record.residencyFinalizationCount ?? 0) > 0 ||
       context.v4Interactions.hasPendingForSession(params.sessionId))
-  )
+  ) {
+    context.logger?.info("协作关闭会话被运行时工作保护拒绝", {
+      sessionId: params.sessionId,
+      foregroundOrQueue: record.app.runtime.hasActiveOrQueuedTurnWork(),
+      residencyWork: record.app.runtime.hasResidencyBlockingWork(),
+      finalizationCount: record.residencyFinalizationCount ?? 0,
+      pendingInteractions: context.v4Interactions.hasPendingForSession(params.sessionId),
+    });
     return { closed: false };
+  }
   if (!shouldCloseSessionForExpectedPersistence(record.persistence, params.expectedPersistence)) {
     // 连接切换与跨端首发可能并发。session/send 会先把 deferred 提升为
     // immediate；条件关闭必须在 Agent record 上原子判断，不能依赖 renderer 的旧快照。
@@ -2825,13 +2860,7 @@ function formatGoalSummary(target: ProtocolGoalTarget | null): string {
 
 function formatGoalChanged(title: string, target: ProtocolGoalTarget): string {
   const lines = [title, `Objective: ${target.objective}`];
-  if (target.tokensUsed !== undefined || target.tokenBudget !== undefined) {
-    const budget =
-      target.tokenBudget === null || target.tokenBudget === undefined
-        ? "none"
-        : target.tokenBudget.toString();
-    lines.push(`Usage: ${target.tokensUsed ?? 0} tokens / ${budget}`);
-  }
+  if (target.tokensUsed !== undefined) lines.push(`Usage: ${target.tokensUsed} tokens`);
   if (target.timeUsedSeconds !== undefined) {
     lines.push(`Time: ${target.timeUsedSeconds} seconds`);
   }
@@ -3061,6 +3090,8 @@ export function onSessionEvent(
   // v4 通道：权威事件无条件喂给 v4 投影/发布器——v4 订阅不依赖旧协议的
   // deliveryKind 订阅态，帧节奏由 gateway 按订阅者 profile 自行调度。
   context.v4Gateway?.ingest(record.app.sessionId, event);
+  if (event.type === SessionEventType.TurnComplete || event.type === SessionEventType.TurnError)
+    startProactiveDispatcher(context, record.workspace);
   if (!record.deliveryKind) return;
   const deltaInfo = readStreamingDeltaBatchableEvent(event);
   if (deltaInfo && !shouldHideProtocolSessionEvent(record, event)) {
@@ -3234,6 +3265,8 @@ async function requestSessionRuntimePreferences(
       return {
         askUserQuestionAutoResolutionEnabled: true,
         memoryEnabled: false,
+        memoryExtractionEnabled: false,
+        memoryReviewEnabled: false,
         modelContextBudgetStrategy: DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
         nativeSearchEnhancementsEnabled: true,
       };
@@ -3252,6 +3285,8 @@ async function resolveSessionStartupPreferences(
     const inheritedShellSelection = source.parent.app.runtime.getSessionShellSelection();
     return {
       memoryEnabled: source.parent.memoryEnabled,
+      memoryExtractionEnabled: source.parent.memoryExtractionEnabled,
+      memoryReviewEnabled: source.parent.memoryReviewEnabled,
       modelContextBudgetStrategy: DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
       nativeSearchEnhancementsEnabled: source.parent.nativeSearchEnhancementsEnabled,
       resolveInitialBashShellSelection: async () => inheritedShellSelection,
@@ -3269,7 +3304,13 @@ async function resolveSessionStartupPreferences(
     runtimePreferences.askUserQuestionAutoResolutionEnabled,
   );
   return {
-    memoryEnabled: runtimePreferences.memoryEnabled,
+    memoryEnabled:
+      context.appRuntimePreferences.memory?.enabled ?? runtimePreferences.memoryEnabled,
+    memoryExtractionEnabled:
+      context.appRuntimePreferences.memory?.extractionEnabled ??
+      runtimePreferences.memoryExtractionEnabled,
+    memoryReviewEnabled:
+      context.appRuntimePreferences.memory?.reviewEnabled ?? runtimePreferences.memoryReviewEnabled,
     modelContextBudgetStrategy: DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
     nativeSearchEnhancementsEnabled: runtimePreferences.nativeSearchEnhancementsEnabled,
     resolveInitialBashShellSelection: async () => {
@@ -3365,7 +3406,12 @@ async function createRecord(
       modelContextBudgetStrategy: startupPreferences.modelContextBudgetStrategy,
       // Memory Settings 是现有 CLI features.memory/use 之外的总开关。只在关闭时
       // 写入 override，避免开启值反向覆盖用户已有的 CLI 禁用配置。
-      ...(startupPreferences.memoryEnabled ? {} : { memory: { enabled: false } }),
+      memory: startupPreferences.memoryEnabled
+        ? {
+            extractionEnabled: startupPreferences.memoryExtractionEnabled,
+            reviewEnabled: startupPreferences.memoryReviewEnabled,
+          }
+        : { enabled: false, extractionEnabled: false, reviewEnabled: false },
       // desktop-continuous session/create 由 UI 先解析 ~/.zcode/.agents 的 enabled MCP，
       // 但 protocol app-server 自己不会读取 UI/main 侧的 MCP store；之前 createRecord 没把
       // params.mcpServers 注入 runtimeConfig，导致日志里 runtimeHasMcpConfig=false，工具永远不启动。
@@ -3426,6 +3472,8 @@ async function createRecord(
     createdAt: now,
     eventStore,
     memoryEnabled: startupPreferences.memoryEnabled,
+    memoryExtractionEnabled: startupPreferences.memoryExtractionEnabled,
+    memoryReviewEnabled: startupPreferences.memoryReviewEnabled,
     modelContextBudgetStrategy: startupPreferences.modelContextBudgetStrategy,
     nativeSearchEnhancementsEnabled: startupPreferences.nativeSearchEnhancementsEnabled,
     ...(parentSessionId ? { parentSessionId } : {}),

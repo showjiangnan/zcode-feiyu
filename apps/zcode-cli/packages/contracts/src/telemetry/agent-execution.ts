@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { CompactPhase, CompactTrigger } from "../compact/index.js";
 import type { SyntheticUserMessageSource } from "../interfaces/session-store.port.js";
 
@@ -9,6 +10,7 @@ export const AgentTelemetryOperation = {
   GoalCompletionVerification: "goal_completion_verification",
   GoalTitleGeneration: "goal_title_generation",
   ProjectMemoryExtract: "project_memory_extract",
+  ProjectMemoryReview: "project_memory_review",
   ReadSessionContextExtract: "read_session_context_extract",
   ReadSessionContextSynthesize: "read_session_context_synthesize",
   SessionTitleGeneration: "session_title_generation",

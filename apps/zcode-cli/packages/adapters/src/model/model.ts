@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   ModelErrorCode,
   ModelFailureReason,
@@ -86,6 +87,7 @@ class ExecutableModel implements Model {
       tools: request.tools,
       responseJsonSchema: request.responseJsonSchema,
       abortSignal: request.abortSignal,
+      modelRequestAdmission: request.modelRequestAdmission,
       options: {
         ...validateOptions(this.optionSpecs, { ...this.options, ...requestOptions }),
       },

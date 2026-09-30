@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { taskAppOperationSchema, taskAppResponseSchema } from "@zcode/shared";
 import { z } from "zod";
 import type { ToolEntry } from "../types.js";

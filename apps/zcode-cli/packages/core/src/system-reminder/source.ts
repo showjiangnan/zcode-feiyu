@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 type SystemReminderDeliveryChannel =
   | "request_prefix"
   | "current_turn"
@@ -41,10 +42,14 @@ export const SYSTEM_REMINDER_PER_REQUEST_SOURCES = [
   "incoming_message",
   "hook_context",
   "runtime_mode",
+  "orchestration_mode",
   "plan_mode_exit",
   "output_style",
   "date_change",
   "referenced_session_context",
+  // 相关记忆主题随每个新模型请求重新检索并追加（复审 GAP-01）；只在当次请求可见，
+  // 不写入 canonical history，下一回合由回合起点的检索重新决定。
+  "memory_recall",
   "model_anomaly",
   "prompt_attachment",
   "diagnostics",
@@ -91,6 +96,7 @@ const SYSTEM_REMINDER_DESCRIPTORS: Record<SystemReminderSource, DescriptorShape>
   skills_listing: descriptor("request_prefix", "request_prefix", true, "sr.skills_listing"),
   hook_context: descriptor("current_turn", "per_current_turn", true, "sr.hook_context"),
   runtime_mode: descriptor("current_turn", "per_current_turn", true, "sr.runtime_mode"),
+  orchestration_mode: descriptor("current_turn", "per_current_turn", true, "sr.orchestration_mode"),
   plan_mode_exit: descriptor("current_turn", "runtime_local", true, "sr.plan_mode_exit"),
   output_style: descriptor("current_turn", "per_current_turn", true, "sr.output_style"),
   date_change: descriptor("current_turn", "runtime_local", true, "sr.date_change"),
@@ -100,6 +106,7 @@ const SYSTEM_REMINDER_DESCRIPTORS: Record<SystemReminderSource, DescriptorShape>
     true,
     "sr.referenced_session_context",
   ),
+  memory_recall: descriptor("current_turn", "per_current_turn", true, "sr.memory_recall"),
   // Plugin 对话引用：当轮生成后按
   // model-only synthetic notice 固化，后续只追加、不改写；冷恢复按原文重建以保持缓存前缀。
   plugin_reference: descriptor("current_turn", "per_current_turn", true, "sr.plugin_reference"),

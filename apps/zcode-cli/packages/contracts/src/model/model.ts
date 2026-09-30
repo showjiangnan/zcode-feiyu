@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type {
   JsonSchema,
   ModelInputMessage,
@@ -34,6 +35,8 @@ export interface ModelRequest {
   responseJsonSchema?: JsonSchema;
   options?: ModelOptions;
   abortSignal?: AbortSignal;
+  /** 本次逻辑调用的附加预算，runtime 必须与根任务准入组合而非覆盖。 */
+  modelRequestAdmission?: import("./index.js").ModelRequestAdmission;
 }
 
 // 第一阶段沿用已经完成 Provider SDK 归一化的结果和流事件字段；

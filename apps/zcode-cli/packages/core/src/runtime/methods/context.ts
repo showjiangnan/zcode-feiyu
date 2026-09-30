@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { join } from "node:path";
 
 import {
@@ -17,11 +18,14 @@ import type {
 import type { AgentRuntimeInternal } from "../internal.js";
 import { ensureMemoryDirectoryExists } from "../../memory/directory.js";
 import { formatProjectMemoryIndexContent } from "../../memory/index-content.js";
+import { budgetProjectMemoryContext } from "../../memory/context-budget.js";
+import { assertMemoryToolPathSafe } from "../../memory/tool-path-guard.js";
 import {
   createReadFileStateKey,
   normalizeReadFileStateMtimeMs,
 } from "../../tool/read-file-state.js";
 import { resolveEnabledProjectMemoryRoot } from "../helpers/project-memory.js";
+import { recoverProjectMemoryWorkspace } from "../helpers/project-memory-batch.js";
 import { buildContextHistoryEntries } from "./context-history-entries.js";
 import { resolveRuntimeEmbeddedSearchEnabled } from "./embedded-search-branch.js";
 import { getContextSourceShellDisplayName } from "./session-shell-environment.js";
@@ -97,7 +101,12 @@ export function createContextBuilderFromSnapshot(
   this: AgentRuntimeInternal,
   snapshot: ContextSourceSnapshot,
   memoryRoot?: string,
-  options: { memoryIndexContent?: string; model?: Model; persistEnvInfo?: boolean } = {},
+  options: {
+    memoryIndexContent?: string;
+    memoryRelevantContent?: string;
+    model?: Model;
+    persistEnvInfo?: boolean;
+  } = {},
 ): ContextBuilder {
   const envInfo = snapshot.envInfo;
   // 同步 preview / config-only fallback 会构造 unknown envInfo。
@@ -119,6 +128,12 @@ export function createContextBuilderFromSnapshot(
     });
   }
 
+  const boundedMemory = budgetProjectMemoryContext({
+    contextWindow: options.model?.properties.contextWindow,
+    indexContent: options.memoryIndexContent,
+    relevantContent: options.memoryRelevantContent,
+  });
+
   const contextConfig: ContextBuilderConfig = {
     workingDirectory: snapshot.workingDirectory,
     envInfo,
@@ -127,7 +142,8 @@ export function createContextBuilderFromSnapshot(
     currentDate: snapshot.currentDate,
     userInstructions: snapshot.userInstructions,
     projectContext: snapshot.projectContext,
-    memoryIndexContent: options.memoryIndexContent,
+    memoryIndexContent: boundedMemory.indexContent,
+    memoryRelevantContent: boundedMemory.relevantContent,
     memoryRoot,
     skills: this.skillLoadOutcome,
     agentProfiles: this.config.subagents?.profiles,
@@ -162,32 +178,43 @@ export async function loadProjectMemoryRoot(
     return undefined;
   }
   await ensureMemoryDirectoryExists(this.fileSystemPort, memoryRoot, traceContext, this.logger);
+  await recoverProjectMemoryWorkspace(this);
   return memoryRoot;
 }
 
-async function loadProjectMemoryIndexContent(
+export async function loadProjectMemoryIndexContent(
   runtime: AgentRuntimeInternal,
   memoryRoot: string | undefined,
+  options: { recordReadState?: boolean } = {},
 ): Promise<string | undefined> {
   const fileSystemPort = runtime.fileSystemPort;
   if (!fileSystemPort || !memoryRoot) return undefined;
   const indexPath = join(memoryRoot, "MEMORY.md");
   try {
+    await assertMemoryToolPathSafe({
+      rootDir: memoryRoot,
+      toolCall: { name: "Read", input: { file_path: indexPath } },
+      workingDirectory: memoryRoot,
+      workspaceRoot: memoryRoot,
+    });
     const read = await fileSystemPort.readTextFile({ path: indexPath });
     const formattedContent = formatProjectMemoryIndexContent(read.content);
     if (!formattedContent) return undefined;
-    runtime.readFileState.set(createReadFileStateKey(indexPath, undefined, undefined), {
-      content: read.content,
-      isPartialView: formattedContent !== read.content,
-      limit: undefined,
-      mtimeMs: normalizeReadFileStateMtimeMs(read.revision?.mtimeMs),
-      offset: undefined,
-      path: indexPath,
-      readAt: runtime.now(),
-      revisionId: read.revision?.id,
-      sizeBytes: read.sizeBytes,
-    });
-    return read.content;
+    if (options.recordReadState !== false) {
+      runtime.readFileState.set(createReadFileStateKey(indexPath, undefined, undefined), {
+        content: read.content,
+        isPartialView: formattedContent !== read.content,
+        limit: undefined,
+        mtimeMs: normalizeReadFileStateMtimeMs(read.revision?.mtimeMs),
+        offset: undefined,
+        path: indexPath,
+        readAt: runtime.now(),
+        revisionId: read.revision?.id,
+        sizeBytes: read.sizeBytes,
+      });
+    }
+    const revision = read.revision?.id ?? "unknown";
+    return `Revision: ${revision}; observed: ${new Date(runtime.now()).toISOString()}\n\n${formattedContent}`;
   } catch {
     // 默认 Memory 分支将缺失或不可读的 index 视为没有该 context source。
     return undefined;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { ingestToolExecResource } from "./desktopResourceTelemetry.js";
 import { ingestMcpResourceSamples } from "./processResourceMcpTelemetrySource.js";
 /* eslint-disable max-lines -- host process 统一处理 main↔host 生命周期、日志、ZCode Agent，拆分前先保持跨进程消息收口。 */
@@ -100,6 +101,8 @@ interface SpawnHostProcessOptions {
 }
 
 const exitedHostProcesses = new WeakSet<ElectronUtilityProcess>();
+const hostExitCodes = new WeakMap<ElectronUtilityProcess, number>();
+const forceKilledHostProcesses = new WeakSet<ElectronUtilityProcess>();
 const disposingHostProcesses = new Set<ElectronUtilityProcess>();
 
 export function listDisposingHostProcesses(): ElectronUtilityProcess[] {
@@ -212,7 +215,7 @@ export function spawnHostProcess(
       taskId?: string;
       sessionId?: string;
       error?: string;
-      failureKind?: "transient" | "permanent";
+      failureKind?: "transient" | "permanent" | "waiting_for_host";
     }) => void;
     /** host → main：闲时任务派发结果，转交给 scheduler 结算（与 cron 独立）。 */
     onOffPeakRunResult?: (result: {
@@ -566,7 +569,6 @@ export function spawnHostProcess(
       return;
     }
 
-
     if (result.data.type === HostResponseTypes.BotRemoteWorkspaceReconnectRequest) {
       const request = result.data;
       const handler = dependencies.handleBotRemoteWorkspaceReconnectRequest;
@@ -751,13 +753,14 @@ export function spawnHostProcess(
 
   child.on("exit", (code) => {
     exitedHostProcesses.add(child);
+    hostExitCodes.set(child, code);
     // Host exit 是 fail-hidden 权威边界；不能依赖即将退出的 Host 再补发 inactive。
     dependencies.onCuaOperationStateSourceExited?.(child);
     hostLogRelay.flushRawLogs();
     dependencies.logger.info(`[spawnHostProcess] host process (${label}) exited with code ${code}`);
     dependencies.hostRunningTaskCountMap.delete(child);
     if (shouldRegisterBroadcast) {
-      dependencies.broadcastHub.unregister(windowId);
+      dependencies.broadcastHub.unregister(windowId, child);
     }
     unregisterHostProcess(label);
     for (const [wcId, process] of dependencies.windowHostProcessMap) {
@@ -802,6 +805,7 @@ export function disposeHostProcess(
   const killTimer = setTimeout(() => {
     disposingHostProcessTimers.delete(child);
     try {
+      forceKilledHostProcesses.add(child);
       child.kill();
     } catch (error) {
       logger.warn(`[disposeHostProcess] failed to kill host process (${label}):`, error);
@@ -827,18 +831,30 @@ export function disposeHostProcessAndWait(
   options: {
     forceKillDelayMs?: number;
     waitTimeoutMs?: number;
+    rejectOnTimeout?: boolean;
+    rejectOnFailure?: boolean;
   } = {},
 ): Promise<void> {
   // Electron UtilityProcess 不是 Node ChildProcess，没有 exitCode 字段。
   // 右键 Dock 退出会走 before-quit -> disposeHostProcessAndWait；旧判断把运行中的 host
   // 的 undefined exitCode 当成“已退出”。这里改为记录 exit 事件，避免第一次退出漏发 Dispose。
+  const exitFailure = (): Error | undefined => {
+    if (!options.rejectOnFailure) return undefined;
+    if (forceKilledHostProcesses.has(child))
+      return new Error(`Host ${label} required forced termination`);
+    const code = hostExitCodes.get(child);
+    return code !== undefined && code !== 0
+      ? new Error(`Host ${label} exited with code ${code}`)
+      : undefined;
+  };
   if (exitedHostProcesses.has(child)) {
-    return Promise.resolve();
+    const failure = exitFailure();
+    return failure ? Promise.reject(failure) : Promise.resolve();
   }
 
   const waitTimeoutMs = Math.max(options.waitTimeoutMs ?? 0, 0);
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let settled = false;
     let waitTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -851,20 +867,29 @@ export function disposeHostProcessAndWait(
         clearTimeout(waitTimeout);
         waitTimeout = null;
       }
-      resolve();
+      const failure = exitFailure();
+      if (failure) reject(failure);
+      else resolve();
     };
 
-    child.once("exit", () => {
+    const onExit = (code: number) => {
       exitedHostProcesses.add(child);
+      hostExitCodes.set(child, code);
       settle();
-    });
+    };
+    child.once("exit", onExit);
 
     if (waitTimeoutMs > 0) {
       waitTimeout = setTimeout(() => {
         logger.warn(
           `[disposeHostProcessAndWait] host process exit wait timed out (${label}), pid=${child.pid ?? "unknown"}`,
         );
-        settle();
+        if (options.rejectOnTimeout) {
+          settled = true;
+          waitTimeout = null;
+          child.removeListener("exit", onExit);
+          reject(new Error(`Host ${label} did not confirm exit`));
+        } else settle();
       }, waitTimeoutMs);
       waitTimeout.unref?.();
     }

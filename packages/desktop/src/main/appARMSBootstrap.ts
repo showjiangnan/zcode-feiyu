@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import { wrapStartupReporterRequest } from "./startupTelemetryDelivery.js";
 import { createArmsTelemetryConsent } from "./armsTelemetryConsent.js";
 import { randomUUID } from "node:crypto";

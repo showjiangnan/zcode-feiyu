@@ -1,119 +1,23 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 /**
  * useSettingService —— 设置服务 hooks
  */
 import { useState, useEffect, useCallback } from "react";
-import { APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL, type AppSettings } from "@zcode/shared";
-import type { ISettingService } from "@zcode/services";
+import type { AppSettings } from "@zcode/shared";
 import { useServices } from "./useServices.js";
 import { usePlatform } from "./usePlatform.js";
-
-type SettingsSnapshot = {
-  settings: AppSettings | null;
-  loading: boolean;
-  error: unknown | null;
-};
-
-interface SettingsStore {
-  snapshot: SettingsSnapshot;
-  inflightRefresh: Promise<void> | null;
-  listeners: Set<(snapshot: SettingsSnapshot) => void>;
-}
-
-// SettingsPage 外层与模型配置页内层可能分别绑定 Local/Remote Service；
-// 共享一份 snapshot/inflight 会让一次 Environment 的刷新结果覆盖另一份事实源。
-// 按 Service 实例隔离 store，保持同一 Environment 内的组件共享，同时阻断跨 Environment 串写。
-const stores = new WeakMap<object, SettingsStore>();
-const unavailableSettingsStore: SettingsStore = {
-  snapshot: {
-    settings: null,
-    loading: true,
-    error: null,
-  },
-  inflightRefresh: null,
-  listeners: new Set(),
-};
-
-function getSettingsStore(settingService: ISettingService | undefined): SettingsStore {
-  if (
-    !settingService ||
-    (typeof settingService !== "object" && typeof settingService !== "function")
-  ) {
-    return unavailableSettingsStore;
-  }
-  const existing = stores.get(settingService);
-  if (existing) {
-    return existing;
-  }
-  const created: SettingsStore = {
-    snapshot: {
-      settings: null,
-      loading: true,
-      error: null,
-    },
-    inflightRefresh: null,
-    listeners: new Set(),
-  };
-  stores.set(settingService, created);
-  return created;
-}
-
-function emitSettingsSnapshot(store: SettingsStore) {
-  for (const listener of store.listeners) {
-    listener(store.snapshot);
-  }
-}
-
-async function refreshSettingsStore(settingService: ISettingService | undefined) {
-  const store = getSettingsStore(settingService);
-  if (!settingService) {
-    return;
-  }
-  if (store.inflightRefresh) {
-    return store.inflightRefresh;
-  }
-
-  store.snapshot = {
-    ...store.snapshot,
-    loading: true,
-    error: null,
-  };
-  emitSettingsSnapshot(store);
-
-  store.inflightRefresh = (async () => {
-    try {
-      const result = await settingService.get();
-      store.snapshot = {
-        settings: result,
-        loading: false,
-        error: null,
-      };
-      emitSettingsSnapshot(store);
-    } catch (error) {
-      store.snapshot = {
-        // 设置读取失败时保留旧快照，避免一次刷新错误把已可用的设置页降级为空状态。
-        settings: store.snapshot.settings,
-        loading: false,
-        error,
-      };
-      emitSettingsSnapshot(store);
-    }
-  })().finally(() => {
-    store.inflightRefresh = null;
-  });
-
-  return store.inflightRefresh;
-}
+import { getSettingsStore, refreshSettingsStore, type SettingsSnapshot } from "./settingsStore.js";
 
 /** 获取和更新应用设置 */
 export function useSettings() {
-  const { botsService, broadcastService, settingService, zcodeAgentService } = useServices();
+  const { settingService } = useServices();
   const platform = usePlatform();
   const settingsStore = getSettingsStore(settingService);
   const [snapshot, setSnapshot] = useState<SettingsSnapshot>(settingsStore.snapshot);
 
+  // 显式刷新（写入之后、收到变更通知之后）必须读到写入之后的值，不能共用更早发起的在途读取。
   const refresh = useCallback(async () => {
-    await refreshSettingsStore(settingService);
+    await refreshSettingsStore(settingService, { fresh: true });
   }, [settingService]);
 
   useEffect(() => {
@@ -123,12 +27,13 @@ export function useSettings() {
 
     settingsStore.listeners.add(listener);
     setSnapshot(settingsStore.snapshot);
-    void refresh();
+    // 挂载时的首次读取不依赖任何写入，多个使用方同时挂载共用一次读取即可。
+    void refreshSettingsStore(settingService);
 
     return () => {
       settingsStore.listeners.delete(listener);
     };
-  }, [refresh, settingsStore]);
+  }, [settingService, settingsStore]);
 
   useEffect(() => {
     return (
@@ -140,7 +45,12 @@ export function useSettings() {
 
   const update = useCallback(
     async (patch: Partial<AppSettings>) => {
-      await settingService.update(patch);
+      try {
+        await settingService.update(patch);
+      } catch (error) {
+        await refresh();
+        throw error;
+      }
       platform.syncAppSettings?.(patch);
       if (typeof patch.telemetryReportingEnabled === "boolean") {
         try {
@@ -154,43 +64,8 @@ export function useSettings() {
       } else {
         await refresh();
       }
-      if (
-        typeof patch.askUserQuestionAutoResolutionEnabled === "boolean" ||
-        typeof patch.modelIoFullRetentionEnabled === "boolean"
-      ) {
-        const preferences = {
-          askUserQuestionAutoResolutionEnabled:
-            patch.askUserQuestionAutoResolutionEnabled ??
-            settingsStore.snapshot.settings?.askUserQuestionAutoResolutionEnabled !== false,
-          modelIoFullRetentionEnabled:
-            patch.modelIoFullRetentionEnabled ??
-            settingsStore.snapshot.settings?.modelIoFullRetentionEnabled === true,
-        };
-        const syncResults = await Promise.allSettled([
-          zcodeAgentService.syncAppRuntimePreferences(preferences),
-          botsService.syncAppRuntimePreferences(preferences),
-        ]);
-        const syncError = syncResults.find(
-          (result): result is PromiseRejectedResult => result.status === "rejected",
-        )?.reason;
-        await broadcastService.send({
-          channel: APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
-          payload: preferences,
-        });
-        if (syncError) {
-          throw syncError;
-        }
-      }
     },
-    [
-      botsService,
-      broadcastService,
-      settingService,
-      settingsStore,
-      zcodeAgentService,
-      platform,
-      refresh,
-    ],
+    [settingService, platform, refresh],
   );
 
   return {

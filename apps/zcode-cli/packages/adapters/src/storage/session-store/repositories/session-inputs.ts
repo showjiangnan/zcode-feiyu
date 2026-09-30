@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // session_input 账本仓库。
 // 语义：admitted（已接受）→ promoted（与 user message/parts 同事务落 transcript）
 // / cancelled / discarded / failed。promotion 的原子性是硬要求：杜绝
@@ -13,7 +14,7 @@ import type {
   TurnInputIntentMetadata,
 } from "@zcode/contracts";
 import { encodeJson } from "../json.js";
-import { messages as readMessages, saveMessage, savePart } from "./messages.js";
+import { messagesSync as readMessagesSync, saveMessageSync, savePartSync } from "./messages.js";
 import * as sessionEntryRepository from "./session-entries.js";
 
 interface SessionInputRow {
@@ -62,7 +63,8 @@ export async function saveSessionInput(
       on conflict(id) do update set
         kind = excluded.kind,
         delivery = excluded.delivery,
-        payload = excluded.payload,
+        payload = case when json_extract(session_input.payload,'$.requestFingerprint') is not null
+          then json_set(excluded.payload,'$.requestFingerprint',json_extract(session_input.payload,'$.requestFingerprint')) else excluded.payload end,
         time_updated = excluded.time_updated
       `,
   ).run(
@@ -120,6 +122,7 @@ function patchObject(value: unknown, patch: SessionInputPatch): unknown {
       : {}),
     ...(intent
       ? {
+          ...(intent.causalContext ? { causalContext: intent.causalContext } : {}),
           delivery: {
             requested: intent.requestedDelivery,
             admitted: intent.admittedDelivery,
@@ -188,6 +191,10 @@ export async function updateSessionInputs(
   }
 }
 
+/**
+ * 提升输入为消息。整个事务在一个同步块内完成（复审 DEF-03）：共享连接上事务窗口内不得出现 await，
+ * 否则同连接交叠的写入会被并入本事务（随回滚丢失）或触发嵌套事务错误。函数保持 async 仅为端口签名。
+ */
 export async function promoteSessionInput(
   db: DatabaseSync,
   input: {
@@ -200,9 +207,16 @@ export async function promoteSessionInput(
   const now = Date.now();
   db.exec("begin immediate");
   try {
-    await saveMessage(db, input.message);
+    const causalContext = (
+      input.message.metadata?.conversationInputIntent as { causalContext?: unknown } | undefined
+    )?.causalContext;
+    if (causalContext)
+      db.prepare(
+        "update session_input set payload=json_set(payload,'$.causalContext',json(?)) where id=? and session_id=? and status='admitted'",
+      ).run(JSON.stringify(causalContext), input.id, input.sessionID);
+    saveMessageSync(db, input.message);
     for (const part of input.parts) {
-      await savePart(db, part);
+      savePartSync(db, part);
     }
     const refs =
       input.message.metadata && typeof input.message.metadata === "object"
@@ -247,11 +261,9 @@ export async function promoteSessionInput(
           time: { ...entry.time, updated: now },
           data: { ...data, status: "attached", attachedMessageId: String(input.message.id) },
         });
-        const contextMessage = (
-          await readMessages(db, {
-            sessionID: input.sessionID,
-          })
-        ).find((candidate) => {
+        const contextMessage = readMessagesSync(db, {
+          sessionID: input.sessionID,
+        }).find((candidate) => {
           const metadata = candidate.info.metadata;
           return Boolean(
             metadata &&
@@ -260,7 +272,7 @@ export async function promoteSessionInput(
           );
         });
         if (contextMessage) {
-          await saveMessage(db, {
+          saveMessageSync(db, {
             ...contextMessage.info,
             metadata: {
               ...(contextMessage.info.metadata ?? {}),

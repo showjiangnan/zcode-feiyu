@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { AgentRuntimeInternal } from "../internal.js";
 
 /**
@@ -23,6 +24,7 @@ export function hasResidencyBlockingWork(this: AgentRuntimeInternal): boolean {
     this.hasActiveOrQueuedTurnWork() ||
     this.hasRunningBackgroundTasks() ||
     this.residencyBlockingWorkCount > 0 ||
-    (this.memoryExtractionScheduler?.hasPendingWork() ?? false)
+    (this.memoryExtractionScheduler?.hasPendingWork() ?? false) ||
+    this.memoryReviewTask !== undefined
   );
 }

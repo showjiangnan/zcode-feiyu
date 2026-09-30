@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { z } from "zod";
 import {
   imageGenerationInputSchema,
@@ -66,7 +67,18 @@ export const generateImageHandler: ToolHandler = async (raw, context) => {
       updatedAt: Date.now(),
     };
     // 先持久化意图再提交；中断后没有 request_id 的意图必须保持 unknown，不能重复付费。
-    await saveImageJob(context, job);
+    if (!context.paidImageInputId || !context.sessionStore?.claimImageGenerationSubmission)
+      throw new Error("Image generation requires durable payment admission for the current input.");
+    if (
+      !(await context.sessionStore.claimImageGenerationSubmission({
+        sessionId: context.sessionId,
+        inputId: context.paidImageInputId,
+        job,
+      }))
+    )
+      throw new Error(
+        "This input already submitted a paid image request. Use ManageImageGeneration to resume it; send a new input to generate again.",
+      );
     try {
       context.abortSignal.throwIfAborted();
       const response = await imageRequest(context, {
@@ -150,6 +162,7 @@ function entry(
         "Honor explicit pixel dimensions, image count and output format exactly. Default to one PNG. Do not substitute an unsupported model, size or format.",
         "Use referenceImages for editing: authorized workspace files or current-session zcode-artifact URIs. Never upload unrelated repository content.",
         "Generation can take several minutes. Wait for completion; the UI shows loading and then images. Do not create extra variants unless requested.",
+        "Each input permits one new paid submission; use count for explicitly requested multiple images. A different tool call ID does not grant another submission.",
         "On interruption or submission unknown, use ManageImageGeneration list/resume with the existing generationId. Never resubmit automatically. Resume after user stop only when requested.",
         "Images are already displayed in the tool result. Mention their completion without duplicating the gallery. Use existing file tools if the user requests a project copy.",
       ],

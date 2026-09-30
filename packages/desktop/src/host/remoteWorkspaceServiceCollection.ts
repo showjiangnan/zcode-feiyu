@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 远程 workspace 服务注册需集中维护，以保持依赖注入顺序 */
 import {
   ServiceCollection,
@@ -83,6 +84,30 @@ import {
 const runtimePreferencesLogger = createServiceLogger("remote-runtime-preferences");
 const ZCODE_JWT_TOKEN_KEY = "zcodejwttoken";
 
+/**
+ * 远程 attachment 的「本机全局服务」选择：优先复用 Local Host 已装配的实例。
+ *
+ * 修复原因（复审 DEF-08/09）：此前每个远程 collection 都自建 SettingService 与 BroadcastService。
+ * 自建的 SettingService 没有绑定运行时提交，经它写设置会落盘并返回成功，但本机执行端从未同步；
+ * 自建的 BroadcastService 在同一 parentPort 上对没有 handler 的投递抢先回复失败，
+ * 让 Main 提前结算并给提交方一个错误的失败回执，且每个远程连接都会额外累积一组监听器。
+ * 依据：远程 attachment 读写的本来就是本机 profile，单一提交所有者与单一确认来源必须是 Local Host 的实例。
+ * 仅当 Local Host 尚未装配（启动顺序退化）时才回退为自建，此时行为与整改前一致。
+ */
+export function selectLocalGlobalServices(
+  sourceServices: Pick<ServiceCollection, "getOptional"> | undefined,
+  fallback: {
+    createSettingService: () => ISettingService;
+    createBroadcastService: () => IBroadcastService;
+  },
+): { settingService: ISettingService; broadcastService: IBroadcastService } {
+  return {
+    settingService: sourceServices?.getOptional(ISettingService) ?? fallback.createSettingService(),
+    broadcastService:
+      sourceServices?.getOptional(IBroadcastService) ?? fallback.createBroadcastService(),
+  };
+}
+
 export function createRemoteWorkspaceServiceCollection(params: {
   clientConfigService: IClientConfigService;
   connectionServices: IServiceAccessor;
@@ -97,7 +122,11 @@ export function createRemoteWorkspaceServiceCollection(params: {
   };
 }): ServiceCollection {
   assertLegacyRemoteWorkspaceRpcContract(params.connectionServices);
-  const localSettingService = createSettingService();
+  const { settingService: localSettingService, broadcastService: localBroadcastService } =
+    selectLocalGlobalServices(params.sourceServices, {
+      createSettingService,
+      createBroadcastService: () => createBroadcastService(params.parentPort),
+    });
   const localCredentialService = createCredentialService();
   const localAccountProviderCredentialStore = createAccountProviderCredentialStore({
     credentialService: localCredentialService,
@@ -113,7 +142,6 @@ export function createRemoteWorkspaceServiceCollection(params: {
   const localApiClient = createNodeApiClient({
     fetchImpl: hostApiNetworkTransport.fetch,
   });
-  const localBroadcastService = createBroadcastService(params.parentPort);
   let handleOAuthProviderLogout: ReturnType<typeof createOAuthProviderLogoutHandler> | null = null;
   const localOAuthCredentialRepo = new OAuthCredentialRepo(localCredentialService, {
     onCorruptOAuthSessionCleared: async (providers) => {
@@ -268,6 +296,10 @@ export function createRemoteWorkspaceServiceCollection(params: {
                 settings.askUserQuestionAutoResolutionEnabled !== false,
               nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
               memoryEnabled: settings.memoryEnabled === true,
+              memoryExtractionEnabled:
+                settings.memoryEnabled === true && settings.memoryExtractionEnabled === true,
+              memoryReviewEnabled:
+                settings.memoryEnabled === true && settings.memoryReviewEnabled === true,
               modelContextBudgetStrategy,
               // remote workspace 与本地 Host 保持同一 scope 边界，首次执行不得再次等待 client config。
               ...(request.scope === "user-execution" && settings.integratedTerminalShell

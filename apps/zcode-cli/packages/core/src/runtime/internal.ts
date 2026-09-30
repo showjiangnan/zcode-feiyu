@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { PermissionService, ToolScheduler } from "./deps.js";
 import type {
   Logger,
@@ -54,6 +55,9 @@ import type { AgentRuntimeCoreMethods } from "./internal-methods.js";
 import type { AgentRuntimeTurnMethods } from "./internal-turn-methods.js";
 import type { AgentRuntimeHookMethods } from "./internal-hook-methods.js";
 import type { ProjectMemoryExtractionScheduler } from "./helpers/project-memory-extraction.js";
+import type { ProjectMemoryReviewOutcome } from "./helpers/project-memory-review.js";
+import type { OrchestrationState } from "@zcode/shared/zcode-protocol-v4";
+import type { TeamMessageLedger } from "./team-message-ledger.js";
 import type { RuntimeTelemetryFacade } from "../telemetry/runtime-telemetry.js";
 import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-runtime-admission.js";
 
@@ -82,6 +86,8 @@ export interface AgentRuntimeInternal
   providerRuntimeHeadersPort?: ProviderRuntimeHeadersPort;
   browserControlPort?: AgentRuntimeDeps["browserControlPort"];
   modelRequestAdmission?: AgentRuntimeDeps["modelRequestAdmission"];
+  continuityPolicySource?: AgentRuntimeDeps["continuityPolicySource"];
+  automationPort?: AgentRuntimeDeps["automationPort"];
   sessionModelSelection: ModelSelection | undefined;
   messageHistory: MessageHistory;
   readFileState: ReadFileStateMap;
@@ -93,6 +99,22 @@ export interface AgentRuntimeInternal
   memoryRoot?: string;
   memoryIndexContent?: string;
   memoryExtractionScheduler?: ProjectMemoryExtractionScheduler;
+  memoryRecoveryTask?: Promise<void>;
+  memoryRecoveryAbortController?: AbortController;
+  memoryReviewAbortController?: AbortController;
+  memoryReviewId?: string;
+  memoryReviewTrigger?: "automatic" | "manual";
+  memoryReviewTask?: Promise<ProjectMemoryReviewOutcome>;
+  orchestration: OrchestrationState;
+  orchestrationPersistedRevision: number;
+  orchestrationMutation?: Promise<void>;
+  /**
+   * 连续主动轮次计数（复审 GAP-02）。只统计由主动事件触发的轮次，用户显式输入清零。
+   * 只活在根 runtime 进程内：重启后重新计数，与「暂停本身已是持久事实」一致，
+   * 不会在没有用户输入的情况下把已暂停的订阅重新放行。
+   */
+  paidImageInputId?: string;
+  proactiveWork?: { controller: AbortController; settled: Promise<void> };
   contextSourcePort?: ContextSourcePort;
   skillPort?: SkillPort;
   mcpPort?: McpPort;
@@ -101,6 +123,8 @@ export interface AgentRuntimeInternal
   mcpInitialized: boolean;
   mcpToolsRegistered: boolean;
   subagentPort?: SubagentPort;
+  teamBoardPort?: import("@zcode/contracts").TeamBoardPort;
+  teamMessageLedger?: TeamMessageLedger;
   dynamicWorkflowRunPort?: DynamicWorkflowRunPort;
   modelCatalogPort?: ModelCatalogPort;
   runtimeTaskRegistry: RuntimeTaskRegistry;

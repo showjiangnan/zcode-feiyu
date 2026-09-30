@@ -1,4 +1,11 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { beginLocalTurnPreparation, type LocalTtftDetail } from "@zcode/contracts";
+import {
+  isProactiveCommandId,
+  admitConsecutiveProactiveTurn,
+  resetProactiveForUserInput,
+} from "../orchestration.js";
+import { isTrustedUserInput } from "../trusted-user-input.js";
 import { runtimeInputMetadata } from "../../agent/runtime-input-presentation.js";
 import {
   CoreErrorType,
@@ -60,10 +67,17 @@ import {
   openGoalStateChangeReminderDeferral,
 } from "./goal-state-reminder.js";
 import { scheduleProjectMemoryExtraction } from "../helpers/project-memory-extraction.js";
+import {
+  continuityBackgroundWorkTitle,
+  settleContinuityBackgroundWork,
+  startContinuityBackgroundWork,
+} from "../helpers/continuity-background-work.js";
+import { runProjectMemoryReview } from "../helpers/project-memory-review.js";
 import { appendBrowserTurnScreenshot } from "./browser-turn-screenshot.js";
 import { clearBrowserTurnState } from "../../repl/browser-turn-state.js";
 import { applySubmissionExecutionState, createTurnModel } from "./turn-model.js";
 import { rebuildContextPrefix } from "./context-refresh.js";
+import { recallProjectMemoryTopicSet } from "../../memory/recall/relevant.js";
 
 const TARGET_RUN_HEARTBEAT_MS = 15_000;
 
@@ -91,6 +105,79 @@ export async function executeTurn(
 }
 
 export async function executeTurnCommand(
+  this: AgentRuntimeInternal,
+  input: string,
+  attachments?: TurnState["attachments"],
+  options?: ExecuteTurnOptions,
+  startReservation?: ActiveTurnStartReservation,
+): Promise<TurnResult> {
+  const commandId = options?.intent?.sourceCommandId ?? options?.inputId;
+  if (!isProactiveCommandId(commandId)) {
+    if (isTrustedUserInput(this, options)) await resetProactiveForUserInput(this);
+    return executeTurnCommandOwned.call(this, input, attachments, options, startReservation);
+  }
+  const controller = new AbortController();
+  let finish!: () => void;
+  const work = {
+    controller,
+    settled: new Promise<void>((resolve) => {
+      finish = resolve;
+    }),
+  };
+  // 先登记取消目标再等待持久校验，消除“暂停已 ACK，旧代才开始执行”的异步空窗。
+  this.proactiveWork = work;
+  // 抽屉条目（复审 GAP-03）：workId 绑定这次触发，与 runtime.proactiveWork 同一份事实——不新建状态。
+  // 只在准入通过、确实要跑模型之后才开始，避免把「被拒绝的主动事件」显示成正在工作。
+  const workId = `${this.sessionId}:proactive:${commandId ?? createTurnId()}`;
+  const workTitle = () =>
+    continuityBackgroundWorkTitle({ kind: "proactive", language: this.config.language });
+  let workStarted = false;
+  try {
+    try {
+      await admitConsecutiveProactiveTurn(this, commandId!);
+      controller.signal.throwIfAborted();
+    } catch (error) {
+      if (startReservation) this.releaseTurnStart(startReservation.turnId);
+      throw error;
+    }
+    await startContinuityBackgroundWork(
+      this,
+      { kind: "proactive", title: workTitle(), workId },
+      options?.traceContext ?? this.rootTraceContext,
+    );
+    workStarted = true;
+    return await executeTurnCommandOwned.call(
+      this,
+      input,
+      attachments,
+      {
+        ...options,
+        abortSignal: options?.abortSignal
+          ? AbortSignal.any([options.abortSignal, controller.signal])
+          : controller.signal,
+      },
+      startReservation,
+    );
+  } finally {
+    finish();
+    if (this.proactiveWork === work) this.proactiveWork = undefined;
+    if (workStarted) {
+      // 取消与失败分开：停止入口/预算/轮次上限都中止 controller，那是取消，不是故障。
+      await settleContinuityBackgroundWork(
+        this,
+        {
+          kind: "proactive",
+          status: controller.signal.aborted ? "cancelled" : "completed",
+          title: workTitle(),
+          workId,
+        },
+        options?.traceContext ?? this.rootTraceContext,
+      );
+    }
+  }
+}
+
+async function executeTurnCommandOwned(
   this: AgentRuntimeInternal,
   input: string,
   attachments?: TurnState["attachments"],
@@ -213,14 +300,25 @@ export async function executeTurnCommand(
         throw coreError;
       }
       let phaseStartedAt = startTurnPhase("context_initialization");
-      if (this.contextInitialized) {
-        // 每个后续 model step 都按该步骤实际持有的 Model 重新投影 Context；
-        // Session Selection 只决定未来创建哪个 Model，不能充当执行事实。
-        rebuildContextPrefix(this, { model: admittedModel });
-      } else {
+      const contextWasInitialized = this.contextInitialized;
+      if (!contextWasInitialized) {
         // 首轮初始化已经用 admitted Model 构造并安装完整 Context，随后再 rebuild
         // 会把同一 Prefix 连续构造两次。未初始化与已初始化分支互斥，每个 model step 只构造一次。
         await this.ensureContextInitialized(turnTraceContext, admittedModel);
+      }
+      const turnMemoryRecall =
+        this.memoryRoot && this.fileSystemPort
+          ? await recallProjectMemoryTopicSet({
+              fileSystem: this.fileSystemPort,
+              query: input,
+              rootDir: this.memoryRoot,
+              signal: turnAbortSignal,
+            })
+          : undefined;
+      const memoryRelevantContent = turnMemoryRecall?.content ?? "";
+      if (contextWasInitialized || memoryRelevantContent) {
+        // 每轮只向当前请求注入相关主题；下一轮重新检索，避免旧主题常驻上下文。
+        rebuildContextPrefix(this, { memoryRelevantContent, model: admittedModel });
       }
       completeTurnPhase("context_initialization", phaseStartedAt);
       throwIfTurnAborted(turnAbortSignal);
@@ -268,6 +366,20 @@ export async function executeTurnCommand(
       activeTurn = this.beginActiveTurn(turnId, turnTraceContext, "regular", true, {
         ...(options?.inputId === undefined ? {} : { inputId: options.inputId }),
       });
+      // 前台输入绑定一次付费许可；内部续跑和主动触发不得制造新许可。
+      this.paidImageInputId =
+        (!options?.inputSource ||
+          (options.inputSource === "subagent" &&
+            String(this.config.taskType).endsWith("_child") &&
+            this.config.imageGeneration?.enabled === true &&
+            this.config.imageGeneration.allowSubagents === true)) &&
+        options?.inputVisibility !== "model-only" &&
+        !options?.skipInputRecord &&
+        !isProactiveCommandId(commandIdForImage(options)) &&
+        !options?.automationId &&
+        !options?.offPeakTaskId
+          ? (options?.intent?.sourceCommandId ?? options?.inputId ?? turnId)
+          : undefined;
       this.logger?.info("Turn started", {
         ...traceContextToLogContext(turnTraceContext),
         event: "turn.started",
@@ -520,7 +632,7 @@ export async function executeTurnCommand(
             {
               intent: options?.intent,
               inputPresentation: options?.inputPresentation,
-              sessionInputId: options?.intent?.queueItemId,
+              sessionInputId: options?.sessionInputId ?? options?.intent?.queueItemId,
               sourceCommandId: options?.inputId,
               ...(options?.epilogueStart === undefined
                 ? {}
@@ -585,6 +697,13 @@ export async function executeTurnCommand(
             : {}),
           modelStepCount: 0,
           historyRoundCount: 0,
+          // 回合起点已注入的主题与候选路径交给 loop，供回合内的后续请求去重与复用（GAP-01）。
+          ...(turnMemoryRecall
+            ? {
+                recalledMemoryTopics: [...turnMemoryRecall.topics],
+                memoryCandidatePaths: [...turnMemoryRecall.discoveredPaths],
+              }
+            : {}),
           reactiveCompactAttemptedInCurrentModelStep: false,
           repeatedToolCallSignature: undefined,
           repeatedToolCallStreakCount: 0,
@@ -700,6 +819,17 @@ export async function executeTurnCommand(
           scheduleProjectMemoryExtraction(this, {
             model: loopState.model,
             traceContext: turnTraceContext,
+          });
+        }
+        if (this.config.memory?.reviewEnabled === true) {
+          void runProjectMemoryReview(this, {
+            model: loopState.model,
+            traceContext: turnTraceContext,
+            trigger: "automatic",
+          }).catch((error) => {
+            this.logger?.warn("Project memory review failed before settlement", {
+              error: error instanceof Error ? error.message : String(error),
+            });
           });
         }
 
@@ -869,4 +999,8 @@ function injectReferencedSessionContextReminderIntoMessageHistory(
   const reminderBody = buildReferencedSessionContextReminderBody(input);
   if (!reminderBody) return;
   this.messageHistory.addAttachment("referenced_session_context", reminderBody);
+}
+
+function commandIdForImage(options?: ExecuteTurnOptions): string | undefined {
+  return options?.intent?.sourceCommandId ?? options?.inputId;
 }

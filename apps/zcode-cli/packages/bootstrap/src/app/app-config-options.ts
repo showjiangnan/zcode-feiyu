@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { ConfigResult } from "@zcode/adapters/config";
 import { detectLocale, resolveLocale } from "@zcode/i18n";
 import type { RuntimeConfigPatch, SupportedLocale, UiLocale } from "@zcode/contracts";

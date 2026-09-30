@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 import type { TraceContext, TurnId } from "@zcode/contracts";
 import { createDenyPermissionBroker } from "../../permission/broker.js";
 import type { ToolSchedule } from "../scheduler.js";
@@ -46,6 +46,8 @@ export class ToolExecutorImpl implements ToolExecutor {
       nativeSearchEnhancementsEnabled: options.nativeSearchEnhancementsEnabled,
       skillPort: options.skillPort,
       subagentPort: options.subagentPort,
+      teamBoardPort: options.teamBoardPort,
+      teamActorId: options.teamActorId,
       coordinatorResponsePort: options.coordinatorResponsePort,
       workflowSubmitPort: options.workflowSubmitPort,
       workflowEscalatePort: options.workflowEscalatePort,
@@ -54,6 +56,7 @@ export class ToolExecutorImpl implements ToolExecutor {
       offPeakPort: options.offPeakPort,
       taskMessagePort: options.taskMessagePort,
       imageGenerationPort: options.imageGenerationPort,
+      getPaidImageInputId: options.getPaidImageInputId,
       sessionStore: options.sessionStore,
       sessionModePort: options.sessionModePort,
       workflowPort: options.workflowPort,
@@ -80,6 +83,7 @@ export class ToolExecutorImpl implements ToolExecutor {
       clientMode: options.clientMode,
       deliveryKind: options.deliveryKind,
       getMemoryRoot: options.getMemoryRoot,
+      getMemoryOwnershipFence: options.getMemoryOwnershipFence,
       runtimeScope: options.runtimeScope ?? "main",
       traceContext: options.traceContext,
       getMode: options.getMode ?? (() => options.mode ?? "build"),

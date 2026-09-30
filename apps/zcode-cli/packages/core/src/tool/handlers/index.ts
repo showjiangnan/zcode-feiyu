@@ -1,4 +1,4 @@
-// Modified for ZCode Feiyu (2026): local task services, privacy controls and image generation.
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Built-in Tool Handlers
 // ============================================================
@@ -53,6 +53,7 @@ import {
 } from "./plan-mode.js";
 import { askUserQuestionToolEntry } from "./ask-user-question.js";
 import { sendMessageToolEntry } from "./send-message.js";
+import { teamTaskToolEntry } from "./team-task.js";
 import { listWorkspaceTasksToolEntry, sendTaskMessageToolEntry } from "./task-message.js";
 import { readWorkspaceTaskToolEntry, manageWorkspaceTaskToolEntry } from "./task-service.js";
 import { respondToCoordinatorToolEntry } from "./respond-to-coordinator.js";
@@ -101,6 +102,7 @@ export const builtInTools: ToolEntry[] = [
   exitPlanModeToolEntry,
   askUserQuestionToolEntry,
   sendMessageToolEntry,
+  teamTaskToolEntry,
   listWorkspaceTasksToolEntry,
   sendTaskMessageToolEntry,
   readWorkspaceTaskToolEntry,
@@ -171,6 +173,7 @@ interface RegisterBuiltInToolsOptions {
   includeSkill?: boolean;
   includeAgent?: boolean;
   includeSendMessage?: boolean;
+  includeTeamTask?: boolean;
   includeTaskMessaging?: boolean;
   includeImageGeneration?: boolean;
   includeImageRecovery?: boolean;
@@ -238,6 +241,9 @@ export function registerBuiltInTools(
       continue;
     }
     if (entry.metadata.name === "SendMessage" && options.includeSendMessage !== true) {
+      continue;
+    }
+    if (entry.metadata.name === "TeamTask" && options.includeTeamTask !== true) {
       continue;
     }
     if (

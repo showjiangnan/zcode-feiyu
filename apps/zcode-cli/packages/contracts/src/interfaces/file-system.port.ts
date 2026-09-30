@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // FileSystem Port - file I/O boundary
 // ============================================================
@@ -160,7 +161,30 @@ export interface FileSystemReadTextRangeResult {
   revision?: FileSystemRevision;
 }
 
+/**
+ * 调用方长期所有权的提交点断言。由会话存储提供实现，在写租约排他事务内同步调用，
+ * 读取调用方租约（如整理任务）的当前 epoch，失效时抛错。
+ */
+export interface MemoryCommitFence {
+  workspaceKey: string;
+  ownerId: string;
+  epoch: number;
+  assertHeld: () => void;
+}
+
 export interface FileSystemWriteTextRequest {
+  /** 内部记忆修改统一在最终文件提交时验证租约；不进入模型工具参数。 */
+  memoryCommit?: {
+    rootDir: string;
+    operationId: string;
+    sourceSessionId: string;
+    guard: <T>(commit: () => Promise<T>) => Promise<T>;
+    /**
+     * 调用方自身的长期所有权栅栏（如整理任务租约）。在写租约排他事务内、文件替换之前再次
+     * 断言，使调用方在租约被抢占后不能继续提交。断言失败必须抛错，禁止静默跳过。
+     */
+    fence?: MemoryCommitFence;
+  };
   /** Normalized absolute path. Relative paths are resolved by the tool layer. */
   path: string;
   content: string;
@@ -170,6 +194,8 @@ export interface FileSystemWriteTextRequest {
   createParents?: boolean;
   atomic?: boolean;
   expectedRevision?: FileSystemRevision;
+  /** Only commit a new file if the target still does not exist. */
+  expectedAbsent?: boolean;
   trace?: TraceContext;
 }
 
@@ -177,6 +203,30 @@ export interface FileSystemWriteTextResult {
   path: string;
   bytesWritten: number;
   revision?: FileSystemRevision;
+}
+
+export interface MemoryBatchInput {
+  operationId: string;
+  sessionId: string;
+  boundaryMessageId: string;
+  rootDir: string;
+}
+export interface MemoryBatchSettlement {
+  assertAllowed?: () => void;
+  commit: (
+    request: FileSystemWriteTextRequest,
+    source?: {
+      batch: MemoryBatchInput;
+      operationId: string;
+    },
+  ) => Promise<FileSystemWriteTextResult>;
+  settleCursor: (batch: MemoryBatchInput) => Promise<void>;
+  isCurrent: (batch: MemoryBatchInput) => Promise<boolean>;
+}
+
+export interface MemoryBatchRecoveryResult {
+  recovered: number;
+  failedOperationIds: string[];
 }
 
 export interface FileSystemRemoveFileRequest {
@@ -278,6 +328,17 @@ export interface FileSystemOperationOptions {
 }
 
 export interface FileSystemPort {
+  runMemoryBatch?<T>(
+    input: MemoryBatchInput,
+    operation: () => Promise<T>,
+    settlement: MemoryBatchSettlement,
+  ): Promise<T | undefined>;
+  recoverMemoryBatches?(sessionId: string, settlement: MemoryBatchSettlement): Promise<void>;
+  recoverWorkspaceMemoryBatches?(
+    rootDir: string,
+    settlement: MemoryBatchSettlement,
+  ): Promise<MemoryBatchRecoveryResult>;
+  recoverMemoryHistory?(rootDir: string): Promise<void>;
   createDirectory(
     request: FileSystemCreateDirectoryRequest,
     options?: FileSystemOperationOptions,

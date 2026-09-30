@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { ZCodeTaskMode } from "./zcode-task-types-core.js";
 import type { ZCodeAutomationBotDeliveryTarget } from "./bots.js";
 import type { ModelSelection } from "./model-selection.js";
@@ -20,6 +21,7 @@ export type ZCodeAutomationLifecycleStatus = "active" | "completed" | "failed" |
 
 /** 单条 automation 当前一轮的派发信息态（供 UI/诊断）。 */
 export type ZCodeAutomationDispatchStatus =
+  | "waiting_for_host"
   | "idle"
   | "claimed"
   | "dispatched"
@@ -53,6 +55,7 @@ export type ZCodeAutomationIntervalUnit = ZCodeAutomationScheduleRule["unit"];
 
 /** 单次 run 的派发结果（scheduler 权威，驱动重试）。skipped=错过触发窗口。 */
 export type ZCodeAutomationRunDispatchStatus =
+  | "waiting_for_host"
   | "claimed"
   | "dispatched"
   | "failed_to_dispatch"

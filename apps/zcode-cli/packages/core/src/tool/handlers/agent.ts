@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Agent Tool Handler
 // ============================================================
@@ -197,6 +198,7 @@ const agentHandler: ToolHandler = async (input, context) => {
     agentType,
     description: parsed.description,
     prompt: parsed.prompt,
+    ...(parsed.name ? { teamMemberName: parsed.name } : {}),
     callerCanReadOutputFile: canReadBackgroundOutputFile(context.providerVisibleToolNames),
     workingDirectory: context.workingDirectory,
     workspaceRoot: context.workspaceRoot,

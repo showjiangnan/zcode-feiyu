@@ -1,5 +1,6 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { Event } from "@zcode/rpc";
-import { ServiceChannels } from "@zcode/shared";
+import { ServiceChannels, type BroadcastDeliverySummary } from "@zcode/shared";
 import { createServiceDescriptor } from "../descriptors.js";
 
 /**
@@ -37,6 +38,8 @@ export type BroadcastClaimAcquireResult =
 export interface IBroadcastService {
   /** 发送广播消息 */
   send(message: BroadcastMessage): Promise<void>;
+  /** 发送后等待当前所有接收 Host 的处理回执；失败数量包括退出和超时。 */
+  sendWithAcknowledgements(message: BroadcastMessage): Promise<BroadcastDeliverySummary>;
   /** 申请带 token 的临时 reservation；busy 可在 retryAfterMs 后重试。 */
   acquireClaim(key: string): Promise<BroadcastClaimAcquireResult>;
   /** 把 reservation 提交为应用进程生命周期内的永久 claim。 */

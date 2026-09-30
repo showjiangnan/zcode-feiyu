@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { z } from "zod";
 import { toToolJsonSchema } from "./json-schema.js";
 

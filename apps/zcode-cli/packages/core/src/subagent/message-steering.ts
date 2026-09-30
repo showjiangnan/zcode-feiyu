@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { TraceContext, TurnSteerInput, TurnSteerResult } from "@zcode/contracts";
 import type { RuntimeTaskMessageSink } from "../runtime-task/registry.js";
 
@@ -32,6 +33,7 @@ async function steerSubagentMessage(
       inputPresentation: "coordinator_steer",
       input,
       inputId: message.id,
+      pendingInputId: message.id,
       traceContext: message.traceContext ?? request.traceContext,
     });
     if (result.kind !== "rejected" || result.reason !== "no_active_turn") {
@@ -44,6 +46,7 @@ async function steerSubagentMessage(
     inputPresentation: "coordinator_steer",
     input,
     inputId: message.id,
+    pendingInputId: message.id,
     traceContext: message.traceContext ?? request.traceContext,
   });
 }
