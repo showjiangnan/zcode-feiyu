@@ -241,6 +241,8 @@ export function ModelProviderSectionDetail({
   onAddPersonalModel,
   onSavePersonalModelDraft,
   onSetPersonalModelEnabled,
+  onSetPersonalModelFastMode,
+  onDiscoverModels,
   onDeletePersonalModel,
   onDelete,
   onReorderProviderModels,
@@ -280,6 +282,12 @@ export function ModelProviderSectionDetail({
     modelId: string,
     enabled: boolean,
   ) => Promise<unknown>;
+  onSetPersonalModelFastMode?: (
+    providerId: string,
+    modelId: string,
+    fastMode: boolean,
+  ) => Promise<unknown>;
+  onDiscoverModels?: (providerId: string) => Promise<number>;
   onDeletePersonalModel?: (providerId: string, modelId: string) => Promise<unknown>;
   onDelete: (provider: ProviderSettingsFormProvider) => Promise<void>;
   onReorderProviderModels?: (providerId: string, modelIds: string[]) => Promise<void>;
@@ -318,6 +326,8 @@ export function ModelProviderSectionDetail({
     onAddPersonalModel,
     onSavePersonalModelDraft,
     onSetPersonalModelEnabled,
+    onSetPersonalModelFastMode,
+    onDiscoverModels,
     onDeletePersonalModel,
     settingsRevision: providerSettingsView?.revision,
   };

@@ -365,6 +365,43 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
     });
   }
 
+  /** 发现目录整体提交；已有模型的精确配置与顺序不被重新初始化。 */
+  async importPersonalModels(
+    providerId: ProviderId,
+    modelIds: readonly ModelId[],
+    membership: ProviderModelMembership,
+  ): Promise<ProviderConfigLayerSnapshot> {
+    const id = normalizeId("providerId", providerId);
+    const ids = [...new Set(modelIds.map((model) => normalizeId("modelId", model)))];
+    const builtin = await this.#zcodeBuiltinSource.read();
+    return this.#updatePersonal((current) => {
+      assertMembershipCurrent(membership, id, current);
+      const provider = writableProviderOverlay(builtin, current, id);
+      const inherited = membership.inheritedModelIds;
+      const existing = new Set([...inherited, ...(provider.personalModelIds ?? [])]);
+      const added = ids.filter((model) => !existing.has(model));
+      const personalIds = [...(provider.personalModelIds ?? []), ...added];
+      let models = current.models;
+      for (const model of added)
+        models = models.setExact(
+          id,
+          model,
+          new ModelConfig({ enabled: true, fastMode: false }),
+          true,
+        );
+      return {
+        providers: current.providers.set(
+          id,
+          provider
+            .withPersonalModelIds(personalIds)
+            .withModelOrder(normalizeModelOrder(inherited, personalIds, provider.modelOrder ?? [])),
+        ),
+        models,
+        providerOrder: current.providerOrder,
+      };
+    });
+  }
+
   async renamePersonalModel(
     providerId: ProviderId,
     currentModelId: ModelId,
@@ -413,15 +450,34 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
     });
   }
 
-  async setPersonalModelEnabled(
+  setPersonalModelEnabled(
     providerId: ProviderId,
     modelId: ModelId,
     enabled: boolean,
     membership?: ProviderModelMembership,
   ): Promise<ProviderConfigLayerSnapshot> {
+    if (typeof enabled !== "boolean") throw new Error("Model enabled 必须是 boolean");
+    return this.#setPersonalModelPreference(providerId, modelId, { enabled }, membership);
+  }
+
+  setPersonalModelFastMode(
+    providerId: ProviderId,
+    modelId: ModelId,
+    fastMode: boolean,
+    membership?: ProviderModelMembership,
+  ): Promise<ProviderConfigLayerSnapshot> {
+    if (typeof fastMode !== "boolean") throw new Error("Model fastMode 必须是 boolean");
+    return this.#setPersonalModelPreference(providerId, modelId, { fastMode }, membership);
+  }
+
+  async #setPersonalModelPreference(
+    providerId: ProviderId,
+    modelId: ModelId,
+    patch: { enabled?: boolean; fastMode?: boolean },
+    membership?: ProviderModelMembership,
+  ): Promise<ProviderConfigLayerSnapshot> {
     const id = normalizeId("providerId", providerId);
     const model = normalizeId("modelId", modelId);
-    if (typeof enabled !== "boolean") throw new Error("Model enabled 必须是 boolean");
     const builtin = await this.#zcodeBuiltinSource.read();
     return this.#updatePersonal((current) => {
       assertMembershipCurrent(membership, id, current);
@@ -429,13 +485,11 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
       const inherited =
         membership?.inheritedModelIds ??
         resolveProviderBuiltinModelIds(builtin, current.providers, id);
-      if (!inherited.includes(model) && !provider?.personalModelIds?.includes(model)) {
+      if (!inherited.includes(model) && !provider?.personalModelIds?.includes(model))
         throw new Error(`Model 不存在: ${id}/${model}`);
-      }
-      // 启停曾复用完整草稿保存，可能覆盖其他编辑或被固定配置完整性阻挡。
-      // 在事务内只修改最新 enabled；不改变模式、成员和其他模型字段。
-      const config = (current.models.getExact(id, model) ?? new ModelConfig({})).overlay(
-        new ModelConfig({ enabled }),
+      // 独立偏好只能修改最新精确规则的对应字段，避免完整草稿覆盖并发修改或配置模式。
+      const config = (current.models.getExact(id, model) ?? new ModelConfig()).overlay(
+        new ModelConfig(patch),
       );
       return {
         providers: current.providers,
@@ -510,10 +564,16 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
         );
         models = models.renameExactModel(normalizedProviderId, originalId, nextId);
       }
+      // Fast 属于独立模型偏好，元数据弹窗没有该编辑字段；切换推荐模式也必须保留。
+      const savedConfig = config.overlay(
+        new ModelConfig({
+          fastMode: current.models.getExact(normalizedProviderId, originalId)?.fastMode,
+        }),
+      );
       models =
-        recommended && isStructurallyEmpty(config.toJSON())
+        recommended && isStructurallyEmpty(savedConfig.toJSON())
           ? models.deleteExact(normalizedProviderId, nextId)
-          : models.setExact(normalizedProviderId, nextId, config, recommended);
+          : models.setExact(normalizedProviderId, nextId, savedConfig, recommended);
       return { providers, models, providerOrder: current.providerOrder };
     });
   }

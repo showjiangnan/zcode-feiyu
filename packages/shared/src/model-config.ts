@@ -102,6 +102,7 @@ export const modelOptionSpecsDataSchema = z
 export const completeModelConfigDataSchema = z
   .object({
     enabled: z.boolean(),
+    fastMode: z.boolean().optional(),
     properties: completeModelPropertiesDataSchema,
     optionSpecs: completeModelOptionSpecsDataSchema,
   })

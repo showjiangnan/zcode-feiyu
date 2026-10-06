@@ -12,6 +12,7 @@
     "./model-selection": "./src/model-selection.ts",
     "./account-provider-state": "./src/account-provider-state.ts",
     "./model-config": "./src/model-config.ts",
+    "./teamorouter": "./src/teamorouter.ts",
     "./config-schema": "./src/config-schema.ts",
     "./node": "./src/node.ts",
     "./zcodeEndpoint": "./src/zcodeEndpoint.ts",

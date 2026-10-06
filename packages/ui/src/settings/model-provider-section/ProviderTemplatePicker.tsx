@@ -1,3 +1,4 @@
+import { isTeamorouterTemplate } from "@zcode/shared";
 import type { ProviderSettingsView } from "@zcode/services";
 import { ArrowLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
 import { resolveProviderTemplateName } from "@zcode/provider";
@@ -43,8 +44,15 @@ export function ProviderTemplatePicker({
       ),
     },
     {
+      id: "teamorouter",
+      templates: templates.filter((template) => isTeamorouterTemplate(template.templateId)),
+    },
+    {
       id: "other",
-      templates: templates.filter((template) => !zhipuIds.includes(template.templateId)),
+      templates: templates.filter(
+        (template) =>
+          !zhipuIds.includes(template.templateId) && !isTeamorouterTemplate(template.templateId),
+      ),
     },
   ] as const;
   const createWithFeedback = async (create: () => Promise<void>) => {

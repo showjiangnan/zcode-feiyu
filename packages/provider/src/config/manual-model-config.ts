@@ -7,6 +7,7 @@ export const manualModelConfigSchema = completeModelConfigDataSchema
   .pick({ enabled: true })
   .extend({
     enabled: modelConfigDataSchema.shape.enabled,
+    fastMode: modelConfigDataSchema.shape.fastMode,
     properties: complete.properties
       .pick({
         contextWindow: true,
@@ -36,7 +37,7 @@ export function extractManualModelConfig(input: unknown): ManualModelConfig {
 /** 保留独立 enabled 和系统叶子；恢复智能配置及规则合成都使用同一字段归属。 */
 export function clearManualModelConfig(input: z.infer<typeof modelConfigDataSchema>) {
   return modelConfigDataSchema.parse(
-    omitSchemaFields(manualModelConfigSchema.omit({ enabled: true }), input),
+    omitSchemaFields(manualModelConfigSchema.omit({ enabled: true, fastMode: true }), input),
   );
 }
 

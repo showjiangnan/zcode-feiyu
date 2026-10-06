@@ -292,6 +292,8 @@ export const RCS_SERVICE_MANIFEST: Record<
       "deletePersonalModel",
       "savePersonalModelDraft",
       "setPersonalModelEnabled",
+      "discoverModels",
+      "setPersonalModelFastMode",
       "testModelConnectivity",
     ],
     events: ["onDidChange"],

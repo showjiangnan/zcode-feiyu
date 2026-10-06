@@ -159,6 +159,9 @@ export const resolveBuildAliases = ({
   ),
   // 共享 Model Schema 新增的子路径不能被通用 alias 拼到 index.ts 后面。
   "@zcode/shared/model-config": resolve(rootDirectory, "../../packages/shared/src/model-config.ts"),
+  // 供应商能力使用独立子入口；通用前缀别名会拼成 index.ts/teamorouter，
+  // 类型检查虽通过，完整桌面 Agent 打包仍失败，因此必须声明精确映射。
+  "@zcode/shared/teamorouter": resolve(rootDirectory, "../../packages/shared/src/teamorouter.ts"),
   // 进程异常边界在 bootstrap 之前使用该轻量契约，不能落入 shared 的通用前缀 alias。
   "@zcode/shared/process-diagnostic": resolve(
     rootDirectory,

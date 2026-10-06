@@ -1,4 +1,3 @@
-// Modified by ZCode Feiyu contributors (2026).
 export * from "./taskAppServer.js";
 export * from "./rcs.js";
 export * from "./rcsServiceManifest.js";
@@ -315,3 +314,5 @@ export * from "./session-debug.js";
 export { redactFeedbackText } from "./feedbackPrivacy.js";
 export * from "./imageGeneration.js";
 export * from "./continuity-policy.js";
+
+export * from "./teamorouter.js";

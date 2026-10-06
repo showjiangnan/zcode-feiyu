@@ -1,3 +1,5 @@
+import { isTeamorouterTemplate } from "@zcode/shared/teamorouter";
+import { ProviderTemplateMap } from "@zcode/provider";
 import { watch, type FSWatcher } from "node:fs";
 import { createHash } from "node:crypto";
 import { mkdir, readFile } from "node:fs/promises";
@@ -58,7 +60,22 @@ export class NodeZCodeBuiltinProviderConfigSource implements ProviderSource<Prov
       release = selectReleaseCandidate(await readReleaseCandidate(this.#bundledFilePath), null);
     }
     this.#observedSignature ??= signatureOf(release);
-    return snapshotFromRelease(release, this.#sourceKey);
+    // 官方远程目录不会包含应用配套模板；从同一 Bundled 定义叠加，避免更新后个人实例失去模板。
+    // Active Release 仍保留原始远端事实，不能把配套模板写回远端版本或阻断其他供应商更新。
+    const bundled = await readReleaseCandidate(this.#bundledFilePath);
+    const companionTemplates = new ProviderTemplateMap(
+      (bundled?.release?.config.providerTemplates.entries() ?? []).filter(([id]) =>
+        isTeamorouterTemplate(id),
+      ),
+    );
+    const effective = {
+      ...release,
+      config: {
+        ...release.config,
+        providerTemplates: release.config.providerTemplates.overlay(companionTemplates),
+      },
+    };
+    return snapshotFromRelease(effective, this.#sourceKey);
   }
 
   async applyRemoteRelease(release: ZCodeBuiltinRelease): Promise<ApplyZCodeBuiltinReleaseResult> {

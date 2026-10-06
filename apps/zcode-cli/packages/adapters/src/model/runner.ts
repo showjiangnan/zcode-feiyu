@@ -1,4 +1,3 @@
-// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Vercel AI SDK model runner
 // ============================================================
@@ -142,6 +141,7 @@ export class AiSdkModelAdapter {
       modelId: options.modelId,
       providerConfig: options.providerConfig,
       supportsJsonSchemaOutput: options.modelConfig.properties.supportsJsonSchemaOutput,
+      fastMode: options.modelConfig.fastMode === true,
       optionSpecs: options.modelConfig.optionSpecs,
     });
     const properties = options.modelConfig.properties;

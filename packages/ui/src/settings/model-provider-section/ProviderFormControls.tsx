@@ -1,3 +1,4 @@
+import { ModelFastModeButton } from "./TeamorouterModelActions.js";
 import { useCallback, useRef, useState } from "react";
 import type { ProviderSettingsFormModel } from "@/lib/providerSettingsFormTypes.js";
 import type { ModelConnectivityResult } from "@zcode/shared";
@@ -26,6 +27,7 @@ export function ModelRowInput({
   settingsRevision = 0,
   onDelete,
   onEnabledChange,
+  onFastModeChange,
   onTest,
 }: {
   model: ProviderSettingsFormModel;
@@ -43,6 +45,7 @@ export function ModelRowInput({
   settingsRevision?: number;
   onDelete?: () => void;
   onEnabledChange?: (enabled: boolean) => void;
+  onFastModeChange?: (enabled: boolean) => Promise<void>;
   onTest?: (model: string) => Promise<ModelConnectivityResult>;
 }) {
   const { intl, locale } = useZCodeIntl();
@@ -332,6 +335,12 @@ export function ModelRowInput({
           >
             <Trash2 className="size-3.5" />
           </Button>
+        ) : null}
+        {onFastModeChange ? (
+          <ModelFastModeButton
+            enabled={model.config.fastMode === true}
+            onChange={onFastModeChange}
+          />
         ) : null}
         {onEnabledChange ? (
           <Switch

@@ -19,7 +19,7 @@ import {
   type ModelRequestAuth,
 } from "@zcode/contracts";
 import type { RegistryProviderConfig } from "@zcode/provider";
-import { withOpenRouterAttributionHeaders } from "@zcode/shared";
+import { supportsTeamorouterFast, withOpenRouterAttributionHeaders } from "@zcode/shared";
 import { createAnthropicCompatFetch } from "./anthropic-stream-compat.js";
 import { createOpenAIResponsesJsonCompatFetch } from "./openai-responses-json-compat.js";
 import { createModelOptionMapFetch, type RawRequestBodyCapture } from "./model-option-map-fetch.js";
@@ -178,6 +178,7 @@ export class AiSdkModelExecution {
     readonly modelId: string;
     readonly providerConfig: RegistryProviderConfig;
     readonly supportsJsonSchemaOutput: boolean;
+    readonly fastMode?: boolean;
     readonly optionSpecs: {
       readonly reasoningLevel: { readonly map: string };
       readonly maxOutputTokens: { readonly map: string };
@@ -198,6 +199,7 @@ export class AiSdkModelExecution {
     readonly modelId: string;
     readonly providerConfig: RegistryProviderConfig;
     readonly supportsJsonSchemaOutput: boolean;
+    readonly fastMode?: boolean;
   }): AiSdkModelSnapshot {
     const configuredProvider = toAiSdkProviderConfig(input.providerId, input.providerConfig);
     // 重构后模型 SDK 曾只接到用户 Header，漏掉版本和站点归因；在公共绑定边界恢复，
@@ -219,6 +221,7 @@ export class AiSdkModelExecution {
       providerId: input.providerId as ModelProviderId,
       modelId: input.modelId as ModelId,
       supportsJsonSchemaOutput: input.supportsJsonSchemaOutput,
+      fastMode: input.fastMode === true && supportsTeamorouterFast(input.providerConfig.api.type, input.providerConfig.api.baseUrl, input.modelId),
     };
   }
 
@@ -239,6 +242,7 @@ export class AiSdkModelExecution {
       optionValues,
       rawRequestBodyCapture,
       snapshot.supportsJsonSchemaOutput,
+      snapshot.fastMode,
     );
     return {
       baseURL: providerConfig.baseURL,
@@ -259,24 +263,18 @@ export class AiSdkModelExecution {
     optionValues: ModelOptionValues | undefined,
     rawRequestBodyCapture: RawRequestBodyCapture,
     supportsJsonSchemaOutput: boolean,
+    fastMode: boolean,
   ): LanguageModelFactory {
     const apiKey = this.resolveApiKey(providerConfig);
     const headers = providerConfig.headers;
     const providerTransport = this.resolveProviderTransport(providerId);
-    const fetch = createProviderBusinessErrorFetch({
-      fetch: providerTransport,
-      providerId,
-      providerKind: providerConfig.kind,
+    const mappedTransport = optionMaps && optionValues ? createModelOptionMapFetch({
+      capture: rawRequestBodyCapture, fetch: providerTransport,
+      maps: optionMaps, values: optionValues, fastMode,
+    }) : providerTransport;
+    const optionFetch = createProviderBusinessErrorFetch({
+      fetch: mappedTransport, providerId, providerKind: providerConfig.kind,
     });
-    const optionFetch =
-      optionMaps && optionValues
-        ? createModelOptionMapFetch({
-            capture: rawRequestBodyCapture,
-            fetch,
-            maps: optionMaps,
-            values: optionValues,
-          })
-        : fetch;
 
     switch (providerConfig.kind) {
       case "openai": {
@@ -341,6 +339,7 @@ export class AiSdkModelExecution {
 }
 
 interface AiSdkModelSnapshot {
+  readonly fastMode: boolean;
   readonly supportsJsonSchemaOutput: boolean;
   readonly providerConfig: AiSdkProviderConfig;
   readonly providerId: ModelProviderId;

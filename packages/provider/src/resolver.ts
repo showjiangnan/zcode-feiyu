@@ -78,6 +78,7 @@ export function serializeRegistryModelConfig(
 ): RegistryModelConfigObject {
   return {
     enabled: config.enabled,
+    ...(config.fastMode == null ? {} : { fastMode: config.fastMode }),
     properties: {
       requiresMfjsToolSchema: config.properties.requiresMfjsToolSchema,
       contextWindow: config.properties.contextWindow,

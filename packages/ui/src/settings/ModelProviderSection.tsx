@@ -262,6 +262,8 @@ export function ModelProviderSection({
     addPersonalModel,
     savePersonalModelDraft,
     setPersonalModelEnabled,
+    setPersonalModelFastMode,
+    discoverModels,
     deletePersonalModel,
     deleteProvider,
     reorderProviderModels,
@@ -1126,6 +1128,8 @@ export function ModelProviderSection({
           onAddPersonalModel={addPersonalModel}
           onSavePersonalModelDraft={savePersonalModelDraft}
           onSetPersonalModelEnabled={setPersonalModelEnabled}
+          onSetPersonalModelFastMode={setPersonalModelFastMode}
+          onDiscoverModels={discoverModels}
           onDeletePersonalModel={deletePersonalModel}
           onDelete={handleDelete}
           // Provider 的左栏排序权限被误复用成模型排序门禁，导致 Built-in / Account

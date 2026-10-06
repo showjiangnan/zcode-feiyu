@@ -141,6 +141,8 @@ export function InlineEditableProviderCard({
   onAddPersonalModel,
   onSavePersonalModelDraft,
   onSetPersonalModelEnabled,
+  onSetPersonalModelFastMode,
+  onDiscoverModels,
   onDeletePersonalModel,
   onDelete,
   onTestModel,
@@ -168,6 +170,12 @@ export function InlineEditableProviderCard({
     modelId: string,
     enabled: boolean,
   ) => Promise<unknown>;
+  onSetPersonalModelFastMode?: (
+    providerId: string,
+    modelId: string,
+    fastMode: boolean,
+  ) => Promise<unknown>;
+  onDiscoverModels?: (providerId: string) => Promise<number>;
   onDeletePersonalModel?: (providerId: string, modelId: string) => Promise<unknown>;
   onDelete?: () => void | Promise<void>;
   onTestModel?: (providerId: string, modelId: string) => Promise<ModelConnectivityResult>;
@@ -843,6 +851,19 @@ export function InlineEditableProviderCard({
           // 不同 Provider 可以有同名模型；不能复用上一供应商的打开中草稿和版本。
           key={provider.providerId}
           providerId={provider.providerId}
+          templateId={provider.templateId}
+          providerApi={provider.config.api}
+          onDiscoverModels={
+            onDiscoverModels ? () => onDiscoverModels(provider.providerId) : undefined
+          }
+          onModelFastModeChange={
+            onSetPersonalModelFastMode
+              ? (modelId, fastMode) =>
+                  onSetPersonalModelFastMode(provider.providerId, modelId, fastMode).then(
+                    () => undefined,
+                  )
+              : undefined
+          }
           providerName={getProviderFormLabel(provider)}
           providerEnabled={provider.enabled}
           providerAccess={provider.config.access}

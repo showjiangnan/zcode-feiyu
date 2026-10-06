@@ -1,8 +1,8 @@
-// Modified by ZCode Feiyu contributors (2026).
 /** 中文翻译 */
 const zhCN: Record<string, string> = {
   "remoteServices.web.title": "ZCode 远程访问",
-  "remoteServices.web.description": "连接你自己部署的桥接服务。桌面 ZCode 保持打开并允许工作区后，即可继续使用本机能力。",
+  "remoteServices.web.description":
+    "连接你自己部署的桥接服务。桌面 ZCode 保持打开并允许工作区后，即可继续使用本机能力。",
   "remoteServices.web.endpoint": "桥接端点",
   "remoteServices.web.key": "桥接密钥",
   "remoteServices.web.loading": "正在连接…",
@@ -21,9 +21,11 @@ const zhCN: Record<string, string> = {
   "remoteServices.rcs.title": "RCS服务",
   "remoteServices.ssh.title": "SSH",
   "remoteServices.bots.title": "移动聊天机器人",
-  "remoteServices.desktopOnly": "此设备级功能需在执行电脑的 ZCode 桌面端管理。Web 会话继续使用已授权工作区能力。",
+  "remoteServices.desktopOnly":
+    "此设备级功能需在执行电脑的 ZCode 桌面端管理。Web 会话继续使用已授权工作区能力。",
   "remoteServices.rcs.enabled": "开启 RCS 服务",
-  "remoteServices.rcs.description": "通过你自己部署的桥接连接电脑或手机 Web。本机执行任务，桥接只负责认证和转发。修改配置后请保存。",
+  "remoteServices.rcs.description":
+    "通过你自己部署的桥接连接电脑或手机 Web。本机执行任务，桥接只负责认证和转发。修改配置后请保存。",
   "remoteServices.rcs.status": "连接状态",
   "remoteServices.rcs.endpoint": "桥接端点",
   "remoteServices.rcs.endpointHint": "公网使用 HTTPS；仅本机开发测试允许 localhost HTTP。",
@@ -34,7 +36,8 @@ const zhCN: Record<string, string> = {
   "remoteServices.rcs.clearKey": "清除",
   "remoteServices.rcs.deviceName": "设备名称",
   "remoteServices.rcs.scope": "授权工作区",
-  "remoteServices.rcs.scopeHint": "仅选中的真实工作区可被远控。开启、停用或修改范围不会停止已接受的本地任务。",
+  "remoteServices.rcs.scopeHint":
+    "仅选中的真实工作区可被远控。开启、停用或修改范围不会停止已接受的本地任务。",
   "remoteServices.rcs.allow": "授权",
   "remoteServices.rcs.offlineScope": "当前不可用；保留授权记录，可手动取消",
   "remoteServices.rcs.save": "保存配置",
@@ -42,7 +45,8 @@ const zhCN: Record<string, string> = {
   "remoteServices.rcs.reconnect": "重新连接",
   "remoteServices.rcs.validated": "认证、协议与临时设备注册成功；验证连接已释放。",
   "remoteServices.rcs.web": "Web 界面",
-  "remoteServices.rcs.webHint": "电脑和手机使用同一响应式界面，输入相同端点和密钥认证。地址不包含凭据。",
+  "remoteServices.rcs.webHint":
+    "电脑和手机使用同一响应式界面，输入相同端点和密钥认证。地址不包含凭据。",
   "remoteServices.rcs.openWeb": "打开 Web",
   "remoteServices.rcs.copyWeb": "复制地址",
   "remoteServices.rcs.clients": "授权客户端",
@@ -2812,6 +2816,26 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.addProviderAction": "添加供应商",
   "settings.modelProvider.templatePickerTitle": "添加供应商",
   "settings.modelProvider.templateGroup.zhipu": "智谱",
+  "settings.modelProvider.templateGroup.teamorouter": "teamorouter",
+  "settings.modelProvider.discoverModels": "一键拉取模型",
+  "settings.modelProvider.discoveringModels": "正在拉取…",
+  "settings.modelProvider.modelsDiscovered": "已添加 {count} 个模型；保留已有模型配置。",
+  "settings.modelProvider.enableFast": "开启 Fast 模式",
+  "settings.modelProvider.disableFast": "关闭 Fast 模式",
+  "settings.modelProvider.fastHint":
+    "请求 Fast 优先处理；实际速度和服务等级由供应商决定，费用以实时价格为准。",
+  "settings.modelProvider.fastSaveFailed": "Fast 设置保存失败，请重试。",
+  "settings.modelProvider.discoveryError.missing-key": "请先保存 API Key，再拉取模型。",
+  "settings.modelProvider.discoveryError.unauthorized":
+    "鉴权失败，请检查已保存的 API Key 和账户权限。",
+  "settings.modelProvider.discoveryError.invalid-response":
+    "模型目录格式无效或过大，未导入任何模型。",
+  "settings.modelProvider.discoveryError.no-models": "目录中没有与当前协议匹配的文本模型。",
+  "settings.modelProvider.discoveryError.network-error": "模型拉取失败或超时，请检查网络后重试。",
+  "settings.modelProvider.discoveryError.server-error": "供应商暂时无法返回模型目录，请稍后重试。",
+  "settings.modelProvider.discoveryError.conflict": "配置已发生变化，未导入旧结果。请重新拉取。",
+  "settings.modelProvider.discoveryError.unsupported": "当前协议或端点不支持此模型拉取。",
+  "settings.modelProvider.discoveryError.failed": "模型导入失败，未完成写入。请重试。",
   "settings.modelProvider.templateGroup.other": "其他",
   "settings.modelProvider.templatePickerBack": "返回供应商详情",
   "settings.modelProvider.addProviderModelReminder": "添加供应商前，请至少添加一个模型。",

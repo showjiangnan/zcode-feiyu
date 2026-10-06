@@ -1,8 +1,8 @@
-// Modified by ZCode Feiyu contributors (2026).
 /** English translations */
 const enUS: Record<string, string> = {
   "remoteServices.web.title": "ZCode remote access",
-  "remoteServices.web.description": "Connect to your self-hosted bridge. Keep desktop ZCode open and allow workspaces to use your local capabilities.",
+  "remoteServices.web.description":
+    "Connect to your self-hosted bridge. Keep desktop ZCode open and allow workspaces to use your local capabilities.",
   "remoteServices.web.endpoint": "Bridge endpoint",
   "remoteServices.web.key": "Bridge key",
   "remoteServices.web.loading": "Connecting…",
@@ -15,38 +15,48 @@ const enUS: Record<string, string> = {
   "remoteServices.web.online": "Connected",
   "remoteServices.web.reconnecting": "Reconnecting…",
   "remoteServices.web.switchWorkspace": "Switch workspace",
-  "remoteServices.web.offlineHint": "Desktop state will be synchronized after reconnecting. Draft input is never submitted automatically.",
+  "remoteServices.web.offlineHint":
+    "Desktop state will be synchronized after reconnecting. Draft input is never submitted automatically.",
 
   "settings.sidebar.group.remoteServices": "Remote Services",
   "remoteServices.rcs.title": "RCS Service",
   "remoteServices.ssh.title": "SSH",
   "remoteServices.bots.title": "Mobile Chat Bots",
-  "remoteServices.desktopOnly": "Manage this device feature in ZCode on the execution computer. Web sessions retain the authorized workspace capabilities.",
+  "remoteServices.desktopOnly":
+    "Manage this device feature in ZCode on the execution computer. Web sessions retain the authorized workspace capabilities.",
   "remoteServices.rcs.enabled": "Enable RCS service",
-  "remoteServices.rcs.description": "Connect computer and mobile Web clients through your own bridge. Tasks execute locally; the bridge authenticates and forwards data. Save configuration changes to apply them.",
+  "remoteServices.rcs.description":
+    "Connect computer and mobile Web clients through your own bridge. Tasks execute locally; the bridge authenticates and forwards data. Save configuration changes to apply them.",
   "remoteServices.rcs.status": "Connection state",
   "remoteServices.rcs.endpoint": "Bridge endpoint",
-  "remoteServices.rcs.endpointHint": "Public endpoints require HTTPS. HTTP is allowed only for loopback development.",
+  "remoteServices.rcs.endpointHint":
+    "Public endpoints require HTTPS. HTTP is allowed only for loopback development.",
   "remoteServices.rcs.key": "Bridge key",
-  "remoteServices.rcs.keyHint": "Use the same key on your bridge and clients. An empty input retains the saved key; clearing is explicit.",
+  "remoteServices.rcs.keyHint":
+    "Use the same key on your bridge and clients. An empty input retains the saved key; clearing is explicit.",
   "remoteServices.rcs.keySaved": "Key saved",
   "remoteServices.rcs.keyMissing": "No key configured (at least 32 characters)",
   "remoteServices.rcs.clearKey": "Clear",
   "remoteServices.rcs.deviceName": "Device name",
   "remoteServices.rcs.scope": "Authorized workspaces",
-  "remoteServices.rcs.scopeHint": "Only selected workspaces are remotely accessible. Disabling or changing access does not stop accepted local tasks.",
+  "remoteServices.rcs.scopeHint":
+    "Only selected workspaces are remotely accessible. Disabling or changing access does not stop accepted local tasks.",
   "remoteServices.rcs.allow": "Allow",
-  "remoteServices.rcs.offlineScope": "Currently unavailable; authorization is retained until removed",
+  "remoteServices.rcs.offlineScope":
+    "Currently unavailable; authorization is retained until removed",
   "remoteServices.rcs.save": "Save configuration",
   "remoteServices.rcs.validate": "Validate connection",
   "remoteServices.rcs.reconnect": "Reconnect",
-  "remoteServices.rcs.validated": "Authentication, protocol and temporary device registration succeeded. The validation session was released.",
+  "remoteServices.rcs.validated":
+    "Authentication, protocol and temporary device registration succeeded. The validation session was released.",
   "remoteServices.rcs.web": "Web interface",
-  "remoteServices.rcs.webHint": "Computer and mobile browsers share a responsive interface and authenticate with the same endpoint and key. URLs contain no credentials.",
+  "remoteServices.rcs.webHint":
+    "Computer and mobile browsers share a responsive interface and authenticate with the same endpoint and key. URLs contain no credentials.",
   "remoteServices.rcs.openWeb": "Open Web",
   "remoteServices.rcs.copyWeb": "Copy URL",
   "remoteServices.rcs.clients": "Authorized clients",
-  "remoteServices.rcs.clientsHint": "Revocation immediately closes the client connections and attachments.",
+  "remoteServices.rcs.clientsHint":
+    "Revocation immediately closes the client connections and attachments.",
   "remoteServices.rcs.revoke": "Revoke",
   "remoteServices.rcs.docs": "Deployment and public API",
   "remoteServices.rcs.docsAction": "Open deployment and API documentation",
@@ -2996,6 +3006,31 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.addProviderAction": "Add provider",
   "settings.modelProvider.templatePickerTitle": "Add provider",
   "settings.modelProvider.templateGroup.zhipu": "Zhipu",
+  "settings.modelProvider.templateGroup.teamorouter": "teamorouter",
+  "settings.modelProvider.discoverModels": "Fetch models",
+  "settings.modelProvider.discoveringModels": "Fetching…",
+  "settings.modelProvider.modelsDiscovered":
+    "Added {count} models; existing configurations were preserved.",
+  "settings.modelProvider.enableFast": "Enable Fast mode",
+  "settings.modelProvider.disableFast": "Disable Fast mode",
+  "settings.modelProvider.fastHint":
+    "Request Fast processing. Actual speed and service tier depend on the provider; live pricing applies.",
+  "settings.modelProvider.fastSaveFailed": "Failed to save Fast settings. Please retry.",
+  "settings.modelProvider.discoveryError.missing-key": "Save an API key before fetching models.",
+  "settings.modelProvider.discoveryError.unauthorized":
+    "Authorization failed. Check the saved API key and account permissions.",
+  "settings.modelProvider.discoveryError.invalid-response":
+    "The model catalog is invalid or too large. No models were imported.",
+  "settings.modelProvider.discoveryError.no-models": "No text models match the selected protocol.",
+  "settings.modelProvider.discoveryError.network-error":
+    "Fetching models failed or timed out. Check your connection and retry.",
+  "settings.modelProvider.discoveryError.server-error":
+    "The provider could not return the model catalog. Please retry later.",
+  "settings.modelProvider.discoveryError.conflict":
+    "Settings changed. The old result was discarded; fetch again.",
+  "settings.modelProvider.discoveryError.unsupported":
+    "This protocol or endpoint does not support model discovery.",
+  "settings.modelProvider.discoveryError.failed": "Model import failed. Please retry.",
   "settings.modelProvider.templateGroup.other": "Other",
   "settings.modelProvider.templatePickerBack": "Back to provider details",
   "settings.modelProvider.addProviderModelReminder":

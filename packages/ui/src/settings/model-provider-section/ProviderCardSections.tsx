@@ -1,3 +1,9 @@
+import {
+  isTeamorouterTemplate,
+  isTeamorouterEndpoint,
+  supportsTeamorouterFast,
+} from "@zcode/shared";
+import { DiscoverModelsButton } from "./TeamorouterModelActions.js";
 /* eslint-disable max-lines -- 模型供应商卡片仍在迁移期集中维护多个紧耦合区块，后续拆分时再移除。 */
 import {
   useCallback,
@@ -346,6 +352,10 @@ function createEmptyModel(): ProviderSettingsFormModel {
 export function ProviderModelsSection({
   providerId,
   providerName,
+  templateId,
+  providerApi,
+  onDiscoverModels,
+  onModelFastModeChange,
   providerEnabled = true,
   providerAccess,
   models,
@@ -359,6 +369,10 @@ export function ProviderModelsSection({
 }: {
   providerId: string;
   providerName?: string;
+  templateId?: string | null;
+  providerApi?: ProviderConfigObject["api"];
+  onDiscoverModels?: () => Promise<number>;
+  onModelFastModeChange?: (modelId: string, fastMode: boolean) => Promise<void>;
   providerEnabled?: boolean;
   providerAccess?: ProviderConfigObject["access"];
   models: ProviderSettingsFormModel[];
@@ -470,17 +484,24 @@ export function ProviderModelsSection({
         <span className="text-ui-base text-foreground-subtle">
           {intl.formatMessage({ id: "settings.modelProvider.models" })}
         </span>
-        <Button
-          type="button"
-          variant="secondary"
-          size="default"
-          className="rounded-lg"
-          data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
-          onClick={openAddDialog}
-        >
-          <Plus data-icon="inline-start" aria-hidden="true" />
-          {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onDiscoverModels &&
+          isTeamorouterTemplate(templateId) &&
+          isTeamorouterEndpoint(providerApi?.baseUrl) ? (
+            <DiscoverModelsButton onDiscover={onDiscoverModels} />
+          ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            size="default"
+            className="rounded-lg"
+            data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
+            onClick={openAddDialog}
+          >
+            <Plus data-icon="inline-start" aria-hidden="true" />
+            {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
+          </Button>
+        </div>
       </div>
       {models.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-input-border bg-input">
@@ -529,6 +550,17 @@ export function ProviderModelsSection({
                         () => undefined,
                       );
                     }}
+                    onFastModeChange={
+                      onModelFastModeChange &&
+                      isTeamorouterTemplate(templateId) &&
+                      supportsTeamorouterFast(
+                        providerApi?.type,
+                        providerApi?.baseUrl,
+                        model.modelId,
+                      )
+                        ? (fastMode) => onModelFastModeChange(model.modelId, fastMode)
+                        : undefined
+                    }
                     onTest={onTestModel}
                   />
                   {!completeProperties && (

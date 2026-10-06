@@ -9,7 +9,7 @@ ZCode Feiyu 是基于 [zai-org/ZCode](https://github.com/zai-org/ZCode) 的社�
 
 本仓库由飞鱼同学维护，与官方发行版独立。界面和交互复用 ZCode 现有组件；应用内部名称及本地包名称仍为 ZCode / ZCode Preview。上游基线为 **v3.14.3，提交 `29628c9acdb81b703bbd4080c207a0e7ce5e276e`**。以下对比以该公开源码为准，不代表上游未来版本。
 
-提升部分模型供应能力。
+优化模型供应商的操作便捷性。
 
 ## 下载安装包
 

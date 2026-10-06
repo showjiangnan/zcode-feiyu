@@ -1,3 +1,9 @@
+import {
+  isTeamorouterTemplate,
+  supportsTeamorouterFast,
+  filterTeamorouterModels,
+  isTeamorouterEndpoint,
+} from "@zcode/shared/teamorouter";
 /* oxlint-disable eslint(max-lines) -- Settings/Selection Facade 共享同一套 Registry 投影与写入边界。 */
 import type { ConfigValidationIssue } from "./config-overlay.js";
 import type { ProviderModelMembership } from "./config-service.js";
@@ -71,6 +77,17 @@ export interface ProviderSettingsMutationTarget {
     config: ModelConfig,
     membership?: ProviderModelMembership,
     useRecommendedConfig?: boolean,
+  ): Promise<unknown>;
+  importPersonalModels?(
+    providerId: ProviderId,
+    modelIds: readonly ModelId[],
+    membership: ProviderModelMembership,
+  ): Promise<unknown>;
+  setPersonalModelFastMode?(
+    providerId: ProviderId,
+    modelId: ModelId,
+    fastMode: boolean,
+    membership?: ProviderModelMembership,
   ): Promise<unknown>;
   renamePersonalModel(
     providerId: ProviderId,
@@ -370,6 +387,60 @@ export class ProviderSettingsFacade {
         useRecommendedConfig,
       ),
     );
+  }
+
+  importPersonalModels(
+    providerId: ProviderId,
+    modelIds: readonly ModelId[],
+    basedOnRevision: number,
+  ): Promise<ProviderSettingsView> {
+    return this.#mutateProvider(providerId, "import-models", (target) => {
+      const snapshot = requireSnapshot(this.#source);
+      if (snapshot.registry.revision !== basedOnRevision) throw new Error("teamorouter:conflict");
+      const provider = requireEffectiveProvider(snapshot, providerId);
+      if (
+        !isTeamorouterTemplate(provider.templateId) ||
+        !isTeamorouterEndpoint(provider.config.api?.baseUrl) ||
+        !modelIds.length ||
+        filterTeamorouterModels(modelIds, provider.config.api?.type ?? "").length !==
+          modelIds.length
+      )
+        throw new Error("teamorouter:unsupported");
+      if (!target.importPersonalModels) throw new Error("teamorouter:unsupported");
+      return target.importPersonalModels(
+        providerId,
+        modelIds,
+        this.#modelMembership(providerId, snapshot),
+      );
+    });
+  }
+
+  setPersonalModelFastMode(
+    providerId: ProviderId,
+    modelId: ModelId,
+    fastMode: boolean,
+  ): Promise<ProviderSettingsView> {
+    return this.#mutateProvider(providerId, "model-fast-mode", (target) => {
+      const snapshot = requireSnapshot(this.#source);
+      const provider = requireEffectiveProvider(snapshot, providerId);
+      if (
+        !isTeamorouterTemplate(provider.templateId) ||
+        !supportsTeamorouterFast(
+          provider.config.api?.type,
+          provider.config.api?.baseUrl,
+          modelId,
+        ) ||
+        typeof fastMode !== "boolean" ||
+        !target.setPersonalModelFastMode
+      )
+        throw new Error("teamorouter:unsupported");
+      return target.setPersonalModelFastMode(
+        providerId,
+        modelId,
+        fastMode,
+        this.#modelMembership(providerId, snapshot),
+      );
+    });
   }
 
   renamePersonalModel(

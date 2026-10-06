@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": 30,
+  "revision": 31,
   "config": {
     "providerConfigRules": {
       "templateRules": [
@@ -519,6 +519,50 @@
             "logo": {
               "type": "builtin",
               "key": "opencode"
+            }
+          }
+        },
+        {
+          "templateId": "teamorouter-messages",
+          "templateNameMap": {
+            "zh-CN": "teamorouter (Anthropic)",
+            "en-US": "teamorouter (Anthropic)"
+          },
+          "config": {
+            "access": {
+              "type": "api-key",
+              "apiKeyManagementUrl": "https://teamorouter.com/dashboard"
+            },
+            "api": {
+              "type": "anthropic-messages",
+              "baseUrl": "https://api.teamorouter.com/v1"
+            },
+            "builtinModelIds": [],
+            "logo": {
+              "type": "builtin",
+              "key": "anthropic"
+            }
+          }
+        },
+        {
+          "templateId": "teamorouter-responses",
+          "templateNameMap": {
+            "zh-CN": "teamorouter (Responses)",
+            "en-US": "teamorouter (Responses)"
+          },
+          "config": {
+            "access": {
+              "type": "api-key",
+              "apiKeyManagementUrl": "https://teamorouter.com/dashboard"
+            },
+            "api": {
+              "type": "openai-responses",
+              "baseUrl": "https://api.teamorouter.com/v1"
+            },
+            "builtinModelIds": [],
+            "logo": {
+              "type": "builtin",
+              "key": "openai"
             }
           }
         },

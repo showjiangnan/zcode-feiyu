@@ -110,6 +110,27 @@ export function useModelProviders(target: {
     [commitProviderSettingsView, providerSettingsService],
   );
 
+  const discoverModels = useCallback(
+    async (providerId: string) => {
+      const result = await providerSettingsService.discoverModels(providerId);
+      commitProviderSettingsView(result.view);
+      return result.addedCount;
+    },
+    [commitProviderSettingsView, providerSettingsService],
+  );
+
+  const setPersonalModelFastMode = useCallback(
+    async (providerId: string, modelId: string, fastMode: boolean) => {
+      const view = await providerSettingsService.setPersonalModelFastMode(
+        providerId,
+        modelId,
+        fastMode,
+      );
+      commitProviderSettingsView(view);
+    },
+    [commitProviderSettingsView, providerSettingsService],
+  );
+
   const savePersonalModelDraft = useCallback(
     async (input: Parameters<typeof providerSettingsService.savePersonalModelDraft>[0]) => {
       const view = await providerSettingsService.savePersonalModelDraft(input);
@@ -227,6 +248,8 @@ export function useModelProviders(target: {
     addPersonalModel,
     savePersonalModelDraft,
     setPersonalModelEnabled,
+    setPersonalModelFastMode,
+    discoverModels,
     deletePersonalModel,
     deleteProvider,
     reorderProviderModels,

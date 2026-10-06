@@ -1,5 +1,6 @@
+import { discoverTeamorouterModels } from "./teamorouterModels.js";
 import type { Event } from "@zcode/rpc";
-import { ServiceChannels } from "@zcode/shared";
+import { isTeamorouterTemplate, ServiceChannels } from "@zcode/shared";
 import {
   type ModelConfigObject,
   type ModelId,
@@ -51,6 +52,14 @@ export interface IProviderSettingsService {
     modelId: ModelId,
     config: ModelConfigObject,
     useRecommendedConfig?: boolean,
+  ): Promise<ProviderSettingsView>;
+  discoverModels(
+    providerId: ProviderId,
+  ): Promise<{ readonly view: ProviderSettingsView; readonly addedCount: number }>;
+  setPersonalModelFastMode(
+    providerId: ProviderId,
+    modelId: ModelId,
+    fastMode: boolean,
   ): Promise<ProviderSettingsView>;
   renamePersonalModel(
     providerId: ProviderId,
@@ -148,6 +157,27 @@ export function createProviderSettingsService(
     addPersonalModel: async (providerId, modelId, config, useRecommendedConfig) => {
       await ensureReady();
       return facade.addPersonalModel(providerId, modelId, config, useRecommendedConfig);
+    },
+    discoverModels: async (providerId) => {
+      await ensureReady();
+      await facade.waitForProviderOperations(providerId);
+      const initial = facade.getView();
+      const provider = initial.providers.find((item) => item.providerId === providerId);
+      if (!provider || !isTeamorouterTemplate(provider.templateId))
+        throw new Error("teamorouter:unsupported");
+      const config = provider.effectiveConfig;
+      const ids = await discoverTeamorouterModels({
+        apiType: config.api?.type,
+        baseUrl: config.api?.baseUrl,
+        apiKey: config.access && "apiKey" in config.access ? config.access.apiKey : undefined,
+      });
+      const previous = new Set(provider.models.map((model) => model.modelId));
+      const view = await facade.importPersonalModels(providerId, ids, initial.revision);
+      return { view, addedCount: ids.filter((id) => !previous.has(id)).length };
+    },
+    setPersonalModelFastMode: async (providerId, modelId, fastMode) => {
+      await ensureReady();
+      return facade.setPersonalModelFastMode(providerId, modelId, fastMode);
     },
     renamePersonalModel: async (providerId, currentModelId, nextModelId) => {
       await ensureReady();
