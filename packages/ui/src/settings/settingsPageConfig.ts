@@ -32,7 +32,7 @@ export const THEME_MODES: Array<{
   { mode: "zai-light", icon: Sun },
 ];
 
-type SettingsSectionGroupId = "basics" | "agentCapabilities" | "dataAndStats";
+type SettingsSectionGroupId = "basics" | "agentCapabilities" | "remoteServices" | "dataAndStats";
 
 interface SettingsSectionDefinition {
   id: SettingsSectionId;
@@ -52,10 +52,14 @@ const BASE_SETTINGS_SECTION_GROUPS: Array<{
     id: "agentCapabilities",
     titleId: "settings.sidebar.group.agentCapabilities",
   },
+  { id: "remoteServices", titleId: "settings.sidebar.group.remoteServices" },
   { id: "dataAndStats", titleId: "settings.sidebar.group.dataAndStats" },
 ];
 
 const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
+  { id: "remoteRcs", icon: Globe2, titleId: "remoteServices.rcs.title", groupId: "remoteServices" },
+  { id: "remoteSsh", icon: Terminal, titleId: "remoteServices.ssh.title", groupId: "remoteServices" },
+  { id: "remoteBots", icon: Bot, titleId: "remoteServices.bots.title", groupId: "remoteServices" },
   {
     id: "imageGeneration",
     icon: WandSparkles,

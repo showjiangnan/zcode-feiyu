@@ -23,7 +23,7 @@ export function WorkspaceAccessCard({
 }: {
   bot: BotConfig;
   workspaceRefs: BotWorkspaceRef[];
-  currentWorkspace: BotWorkspaceRef;
+  currentWorkspace?: BotWorkspaceRef;
   loading: boolean;
   onPatchAllowedWorkspaces: (allowedWorkspaces: string[]) => Promise<void>;
   onToggleWorkspaceAccess: (
@@ -59,7 +59,7 @@ export function WorkspaceAccessCard({
             value={allAllowed ? "all" : "selected"}
             onValueChange={(value) => {
               void onPatchAllowedWorkspaces(
-                value === "all" ? [ALL_BOT_WORKSPACES] : [currentWorkspace.id],
+                value === "all" ? [ALL_BOT_WORKSPACES] : currentWorkspace ? [currentWorkspace.id] : workspaceRefs[0] ? [workspaceRefs[0].id] : [],
               );
             }}
             disabled={loading}

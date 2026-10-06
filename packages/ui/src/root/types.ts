@@ -6,6 +6,10 @@ import type { CreateTaskRequest } from "@/app-shell/types.js";
 export interface RootProps {
   services: IServiceAccessor;
   platform: IPlatformService;
+  /** 已认证 Host attachment 不依赖厂商账号登录，不改变原生平台能力。 */
+  authenticationSource?: "device" | "host-attachment";
+  /** 嵌入连接栏等上层容器时使用父容器高度。 */
+  fillContainer?: boolean;
   /** 如果从 main 进程传入则跳过项目选择页 */
   initialWorkspaceAbsPath?: string;
   /** app-owned workspace 展示分类；缺省为真实项目。 */
@@ -41,6 +45,8 @@ export interface RootProps {
 }
 
 export interface WorkspaceSettingsLayerProps {
+  deviceServices?: IServiceAccessor;
+  onSshSettingsMount?: (element: HTMLElement | null) => void;
   workspaceScopedServices?: IServiceAccessor;
   isDesktop?: boolean;
   isMacDesktop?: boolean;

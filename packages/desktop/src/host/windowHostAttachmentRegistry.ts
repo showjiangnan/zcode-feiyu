@@ -1,4 +1,4 @@
-import type { WindowHostAttachmentScope } from "@zcode/shared";
+import type { WindowHostAttachmentScope, RcsGrant } from "@zcode/shared";
 import type { ZCodeAgentV4ClientMode } from "@zcode/services";
 
 interface WindowHostAttachmentPort {
@@ -16,6 +16,7 @@ interface WindowHostResolvedAttachmentScope<TServices, TCapabilities = never> {
 }
 
 interface WindowHostExposeAttachmentParams<TServices, TPort, TCapabilities = never> {
+  rcsGrant?: RcsGrant;
   requestId: string;
   attachmentId: string;
   clientMode: ZCodeAgentV4ClientMode;
@@ -55,6 +56,7 @@ export function createWindowHostAttachmentRegistry<
   }
 
   function attach(params: {
+    rcsGrant?: RcsGrant;
     requestId: string;
     attachmentId: string;
     clientMode: ZCodeAgentV4ClientMode;

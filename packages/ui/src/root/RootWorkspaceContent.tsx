@@ -12,6 +12,8 @@ import { ConversationTelemetryWorkspaceAttachment } from "@/v4/telemetry/Convers
 const StableWorkspaceApp = memo(App);
 
 interface RootWorkspaceContentProps {
+  deviceServices: IServiceAccessor;
+  onSshSettingsMount?: (element: HTMLElement | null) => void;
   workspaceScopedServices: IServiceAccessor;
   baseFeedbackService: IFeedbackService;
   workspaceShellPath: string;
@@ -50,6 +52,8 @@ interface RootWorkspaceContentProps {
 }
 
 export function RootWorkspaceContent({
+  deviceServices,
+  onSshSettingsMount,
   workspaceScopedServices,
   baseFeedbackService,
   workspaceShellPath,
@@ -186,6 +190,8 @@ export function RootWorkspaceContent({
           className="absolute inset-0 z-10"
         >
           <WorkspaceSettingsLayer
+            deviceServices={deviceServices}
+            onSshSettingsMount={onSshSettingsMount}
             workspaceScopedServices={workspaceScopedServices}
             isDesktop={isDesktop}
             isMacDesktop={isMacDesktop}

@@ -13,6 +13,7 @@
 // 仅 SidePaneTerminalPane 通过 TerminalSession 的 persistentKey prop 接入；下侧不传 persistentKey，
 // 走 TerminalSession 原 effect 路径，与 registry 完全无关。
 
+import type { ITerminalService } from "@zcode/services";
 import type { FitAddon } from "@xterm/addon-fit";
 import type { ITheme, Terminal as XTerm } from "@xterm/xterm";
 import { uiMemoryDiagnosticsRegistry } from "@/lib/memoryDiagnostics.js";
@@ -29,6 +30,7 @@ import { uiMemoryDiagnosticsRegistry } from "@/lib/memoryDiagnostics.js";
  */
 export interface SidePaneTerminalSessionEntry {
   key: string;
+  service?: ITerminalService;
   term: XTerm;
   fitAddon: FitAddon;
   terminalId: string;

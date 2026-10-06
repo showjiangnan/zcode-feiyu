@@ -674,6 +674,7 @@ export function createWindowHostControllerRuntime(options: {
   const service = createAttachmentService();
   return {
     service,
+    listRegisteredScopes: () => Array.from(registeredScopes.values()),
     createAttachmentService,
     replaceDisconnectedSource,
     async resolveTaskAddress(params: {

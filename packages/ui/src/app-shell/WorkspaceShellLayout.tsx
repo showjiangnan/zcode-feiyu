@@ -34,6 +34,7 @@ import { ChatEmptyWorkspacePreviewMenu } from "@/ChatEmptyState.js";
 import { DesktopTopOverlay } from "@/DesktopTopOverlay.js";
 import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
 import { WorkspacePluginPreview } from "@/WorkspacePluginPreview.js";
+import { useNarrowWebLayout } from "@/hooks/useNarrowWebLayout.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { GitBranchSwitcher } from "@/GitBranchSwitcher.js";
 import { ScopedErrorBoundary } from "@/ErrorBoundary.js";
@@ -335,6 +336,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
 }: WorkspaceShellLayoutProps) {
   const { intl } = useZCodeIntl();
   const isOfficeMode = useIsOfficeMode();
+  const isNarrowWebLayout = useNarrowWebLayout(isDesktop);
   const baseServices = useBaseWorkspaceServices();
   const tabStoreApi = useTabStoreApi();
   const isLinuxDesktop = Boolean(isDesktop && !isMacDesktop && !isWindowsDesktop);
@@ -352,6 +354,14 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
     workspaceShellRadiusOptions,
   );
   const collapsedSidebarWidthPx = hasDesktopPanelInset ? 4 : 0;
+  useEffect(() => {
+    if (!isNarrowWebLayout || !isSidebarVisible) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) handleToggleSidebar();
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [isNarrowWebLayout, isSidebarVisible, handleToggleSidebar]);
   const [draftHeaderDropTargetController, setDraftHeaderDropTargetController] =
     useState<ConversationDropTargetController | null>(null);
   const fileTreeOpenRequestIdRef = useRef(0);
@@ -1527,13 +1537,24 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
           // CSS 变量驱动的专用 split，普通窗口 resize 只走浏览器布局，不触发 React 状态。
         )}
       >
+        {isNarrowWebLayout && isSidebarVisible ? (
+          <button
+            type="button"
+            aria-label={intl.formatMessage({ id: "workspaceSidebar.toggleSidebar" })}
+            className="absolute inset-0 z-20 bg-foreground/20"
+            onClick={handleToggleSidebar}
+          />
+        ) : null}
         <div
           ref={workspaceSidebarPanelElementRef}
           data-panel=""
           data-workspace-sidebar-panel="true"
           id="sidebar"
           className={cn(
-            "w-[var(--workspace-sidebar-panel-width)] max-w-[50%] flex-none overflow-hidden duration-200 ease-out transition-[width,opacity] data-[workspace-sidebar-resizing=true]:transition-opacity",
+            "flex-none overflow-hidden duration-200 ease-out transition-[width,opacity] data-[workspace-sidebar-resizing=true]:transition-opacity",
+            isNarrowWebLayout
+              ? "absolute inset-y-0 left-0 z-30 w-[min(var(--workspace-sidebar-width),calc(100%-48px))] bg-sidebar shadow-lg"
+              : "w-[var(--workspace-sidebar-panel-width)] max-w-[50%]",
             // 拖动侧栏宽度时如果继续过渡 width，会让指针移动和实际宽度之间产生滞后。
             // 拖拽 active 通过 DOM 标记切 transition，避免 pointerdown/up 为了切 class 重渲染整棵 workspace。
             isSidebarPanelVisible ? "opacity-100" : "pointer-events-none opacity-0",
@@ -1543,6 +1564,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
             ref={sidebarContainerRef}
             className="h-full overflow-hidden select-none"
             aria-hidden={!isSidebarPanelVisible}
+            inert={!isSidebarPanelVisible}
           >
             <ScopedErrorBoundary
               scope="workspace-sidebar"
@@ -1561,12 +1583,18 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
                     workspacePath={workspaceAbsPath}
                     workspaceRemoteSessionId={workspaceRemoteSessionId}
                     activePreviewPath={activePreviewPath}
-                    onSelectTask={handleSelectTaskInChat}
+                    onSelectTask={(...args) => {
+                      handleSelectTaskInChat(...args);
+                      if (isNarrowWebLayout && isSidebarVisible) handleToggleSidebar();
+                    }}
                     onStartDraftInWorkspace={handleCreateProjectDraft}
                     onOpenCodeViewer={handleOpenCodeViewer}
                     onOpenBrowserUrl={handleOpenBrowserUrl}
                     fileTreeOpenRequest={fileTreeOpenRequest}
-                    onCreateTask={handleCreateTaskInChat}
+                    onCreateTask={() => {
+                      handleCreateTaskInChat();
+                      if (isNarrowWebLayout && isSidebarVisible) handleToggleSidebar();
+                    }}
                     onCreateConversationTask={onCreateConversationTask ?? handleCreateTaskInChat}
                     onOpenFolderFromWorkspaceMenu={onOpenFolderFromWorkspaceMenu}
                     onOpenRemoteWorkspace={onOpenRemoteWorkspace}
@@ -1608,7 +1636,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
           </aside>
         </div>
 
-        {isSidebarVisible ? (
+        {isSidebarVisible && !isNarrowWebLayout ? (
           <div
             role="separator"
             tabIndex={0}
@@ -1636,7 +1664,8 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
           data-panel=""
           id="content"
           className={cn(
-            "flex min-w-[320px] flex-1 flex-col",
+            "flex flex-1 flex-col",
+            isNarrowWebLayout ? "min-w-0" : "min-w-[320px]",
             hasDesktopPanelInset ? "p-1 pl-0 pt-0" : "p-0",
           )}
         >
@@ -1646,6 +1675,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
             ) /* 修复 macOS 顶部窗口控制按钮被 header 遮挡无法点击的问题 */
           }
           <ResizablePanelGroup
+            orientation={isNarrowWebLayout ? "vertical" : "horizontal"}
             layoutId="workspace-body-layout"
             panelIds={WORKSPACE_BODY_PANEL_IDS}
             className="min-h-0 flex-1"
@@ -1949,6 +1979,7 @@ export const WorkspaceShellLayout = memo(function WorkspaceShellLayoutComponent(
             isWindowsDesktop={isWindowsDesktop}
             isDesktop={isDesktop}
             isSidebarVisible={isSidebarVisible}
+            hideTaskNavigationButtons={isNarrowWebLayout}
             updateReadyVersion={updateReadyVersion}
             updateState={updateState}
             toggleSidebarShortcutLabel={toggleSidebarShortcutLabel}

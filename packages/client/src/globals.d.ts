@@ -56,6 +56,7 @@ import type {
 declare global {
   interface Window {
     zcode: {
+      rcs?: import("@zcode/shared").RcsPlatform;
       connectRemote(
         options: RemoteTarget,
         requestId?: string,

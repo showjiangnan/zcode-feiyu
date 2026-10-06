@@ -32,7 +32,13 @@ async function appendOnboardingRecord(
   ]);
 }
 
-export function OccupationOnboarding({
+export function OccupationOnboarding(
+  props: Parameters<typeof OccupationOnboardingContent>[0] & { disabled?: boolean },
+) {
+  return props.disabled ? props.children : <OccupationOnboardingContent {...props} />;
+}
+
+function OccupationOnboardingContent({
   children,
   showWindowControls = false,
   showChildrenWhileLoading = false,

@@ -271,6 +271,11 @@ export const hostAttachServicePortMessageSchema = z
     attachmentId: nonEmptyStringSchema,
     clientMode: z.enum(["desktop-continuous", "web-remote-replayable"]),
     scope: windowHostAttachmentScopeSchema,
+    rcsGrant: z.object({
+      workspacePath: nonEmptyStringSchema,
+      workspaceIdentity: nonEmptyStringSchema.optional(),
+      remoteSessionId: nonEmptyStringSchema.optional(),
+    }).strict().optional(),
   })
   .strict();
 
@@ -510,6 +515,7 @@ export type HostResourceUsageSnapshotRequestMessage = z.infer<
 >;
 
 export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("rcs-directory") }).strict(),
   z
     .object({ type: z.literal("database-startup-control"), control: databaseStartupControlSchema })
     .strict(),

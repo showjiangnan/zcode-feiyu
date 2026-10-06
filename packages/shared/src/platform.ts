@@ -529,6 +529,10 @@ export type CuaOsSupport =
  * 业务服务（文件、终端、凭据等）走 IServiceAccessor 的 RPC 通道。
  */
 export interface IPlatformService {
+  /** 设备级远程服务；Web 不提供根凭据配置面。 */
+  rcs?: import("./rcs.js").RcsPlatform;
+  /** 受 Host 授权的远程能力，不改变 Web 平台身份。 */
+  remoteCapabilities?: import("./rcs.js").RcsCapabilities;
   /** 当前平台的文件选择框是否能返回 agent 可访问的本地绝对路径 */
   canSelectFilePath?: boolean;
 

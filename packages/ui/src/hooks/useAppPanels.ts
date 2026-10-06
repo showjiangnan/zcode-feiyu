@@ -79,6 +79,7 @@ import { getPathLeaf, joinFilePath, toFileUrl } from "@/lib/path.js";
 import { shouldOpenWorkflowArtifactInBrowser } from "@/lib/workflowArtifactOpen.js";
 import { useWhiteboardStore } from "@/store/whiteboardStore.js";
 import { useModelTrajectoryOpenBridge } from "@/hooks/useModelTrajectoryOpenBridge.js";
+import { useNarrowWebLayout } from "@/hooks/useNarrowWebLayout.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { clearSelectionSideChat } from "@/lib/selectionSideChatRuntime.js";
@@ -202,7 +203,12 @@ export function useAppPanels(options: {
   // 交互说明：侧栏显隐按钮放在 App 外层，而不是 Sidebar 内部。
   // 这样即使侧栏被隐藏，入口也仍然留在左上角，不会出现"收起后没有地方再展开"的问题；
   // 同时这里统一处理 macOS 红绿灯安全区，避免按钮和系统窗口控件重叠。
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const isNarrowWebLayout = useNarrowWebLayout(isDesktop);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(!isNarrowWebLayout);
+  useEffect(() => {
+    // 手机初次进入或跨越断点时收起侧栏；之后手动展开不被 resize 策略反复关闭。
+    if (isNarrowWebLayout) setIsSidebarVisible(false);
+  }, [isNarrowWebLayout]);
   const [browserNavigationRequest, setBrowserNavigationRequest] =
     useState<BrowserNavigationRequest | null>(null);
   const [allRecentClosedSidePaneTabs, setAllRecentClosedSidePaneTabs] = useState<

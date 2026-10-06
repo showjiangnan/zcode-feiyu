@@ -336,7 +336,11 @@ export function TerminalSession({
     // 原路径（下侧 terminal，不传 persistentKey）字节级不变。
     if (persistentKey) {
       terminalProfileThemeRef.current = undefined;
-      const existingEntry = sidePaneTerminalSessionRegistry.get(persistentKey);
+      let existingEntry = sidePaneTerminalSessionRegistry.get(persistentKey);
+      // RCS 重连更换服务代理后，旧订阅已经失效；重新 attach Host PTY 并回放。
+      if (existingEntry?.service && existingEntry.service !== services.terminalService) {
+        sidePaneTerminalSessionRegistry.release(persistentKey); existingEntry = undefined;
+      }
 
       // --- 复用快路径：切回 workspace / 重挂，entry 已在 registry ---
       if (existingEntry) {
@@ -513,6 +517,7 @@ export function TerminalSession({
       // entry 先占位存入 registry（terminalId 异步填），重挂/回收据此判断
       const entry: SidePaneTerminalSessionEntry = {
         key: persistentKey,
+        service: services.terminalService,
         term,
         fitAddon,
         terminalId: "",

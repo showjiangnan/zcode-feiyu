@@ -66,9 +66,18 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
   }
 
   private onRawMessage(message: VSBuffer): void {
+    try {
+      this.processRawMessage(message);
+    } catch {
+      // 不可信连接的坏包或拒绝不能退出共享 Host；只丢弃当前请求。
+    }
+  }
+
+  private processRawMessage(message: VSBuffer): void {
     const reader = new BufferReader(message);
     const header = deserialize(reader);
     const body = deserialize(reader);
+    if (!Array.isArray(header) || !Number.isInteger(header[0])) return;
     const type = header[0] as RequestType;
 
     switch (type) {
@@ -203,18 +212,23 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
       return;
     }
 
-    const disposable = channel.listen(
-      this.ctx,
-      request.name,
-      request.arg,
-    )((data) => {
-      this.sendResponse({
-        id: request.id,
-        data,
-        type: ResponseType.EventFire,
+    try {
+      this.disposeActiveRequest(request.id);
+      const disposable = channel.listen(
+        this.ctx,
+        request.name,
+        request.arg,
+      )((data) => {
+        this.sendResponse({
+          id: request.id,
+          data,
+          type: ResponseType.EventFire,
+        });
       });
-    });
-    this.activeRequests.set(request.id, disposable);
+      this.activeRequests.set(request.id, disposable);
+    } catch {
+      // codec 1 没有事件拒绝帧；授权失败保持无订阅，不传播为进程异常。
+    }
   }
 
   private disposeActiveRequest(id: number): void {
@@ -227,13 +241,28 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
   }
 
   private collectPendingRequest(request: any): void {
+    const count = [...this.pendingRequests.values()].reduce((sum, items) => sum + items.length, 0);
+    if (count >= 256) {
+      if (request.type === RequestType.Promise)
+        this.sendResponse({
+          id: request.id,
+          type: ResponseType.PromiseError,
+          data: { name: "RpcOverloaded", message: "RPC_PENDING_LIMIT", stack: undefined },
+        });
+      return;
+    }
     const pendingRequests = this.pendingRequests.get(request.channelName) ?? [];
     if (pendingRequests.length === 0) {
       this.pendingRequests.set(request.channelName, pendingRequests);
     }
 
     const timer = setTimeout(() => {
-      console.error(`Unknown channel: ${request.channelName}`);
+      const pending = this.pendingRequests.get(request.channelName);
+      if (pending) {
+        const index = pending.findIndex((item) => item.timer === timer);
+        if (index >= 0) pending.splice(index, 1);
+        if (!pending.length) this.pendingRequests.delete(request.channelName);
+      }
       if (request.type !== RequestType.Promise) {
         return;
       }
@@ -279,5 +308,8 @@ export class ChannelServer<TContext = string> implements IChannelServer<TContext
       disposable.dispose();
     }
     this.activeRequests.clear();
+    for (const items of this.pendingRequests.values())
+      for (const item of items) clearTimeout(item.timer);
+    this.pendingRequests.clear();
   }
 }

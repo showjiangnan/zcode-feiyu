@@ -92,6 +92,7 @@ async function handleOAuthCallbackSuccess(params: {
 }
 
 export function useRootOAuthEffects({
+  enabled = true,
   accountIntentKey,
   platform,
   services,
@@ -105,6 +106,7 @@ export function useRootOAuthEffects({
   markOAuthSuccess,
   onReauthenticationRequired,
 }: {
+  enabled?: boolean;
   accountIntentKey: string;
   platform: IPlatformService;
   services: IServiceAccessor;
@@ -118,7 +120,7 @@ export function useRootOAuthEffects({
   markOAuthSuccess: (provider?: OAuthProviderId) => void;
   onReauthenticationRequired: () => void;
 }) {
-  useAccountConnectionLossNotification(services, accountIntentKey, refreshAppSettings);
+  useAccountConnectionLossNotification(services, accountIntentKey, refreshAppSettings, enabled);
   const requestAlert = useAlertDialog();
   const { intl } = useZCodeIntl();
   const oauthLoginSucceededRef = useRef(false);
@@ -126,6 +128,10 @@ export function useRootOAuthEffects({
   const oauthLoginSuccessOwnerRef = useRef<"polling" | "deep-link" | null>(null);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsRestoringOAuthSession(false);
+      return;
+    }
     let disposed = false;
     async function restoreOAuthSessionInBackground() {
       logger.info("[Root] 后台启动 OAuth 本地会话恢复");
@@ -190,6 +196,7 @@ export function useRootOAuthEffects({
       disposed = true;
     };
   }, [
+    enabled,
     intl,
     onReauthenticationRequired,
     refreshAppSettings,
@@ -201,6 +208,10 @@ export function useRootOAuthEffects({
   ]);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsRestoringOAuthSession(false);
+      return;
+    }
     let disposed = false;
     const disposable = services.broadcastService.onMessage((message) => {
       if (message.channel !== ZCODE_JWT_INVALID_BROADCAST_CHANNEL || disposed) {
@@ -232,9 +243,20 @@ export function useRootOAuthEffects({
       disposed = true;
       disposable.dispose();
     };
-  }, [intl, onReauthenticationRequired, platform, requestAlert, services.broadcastService]);
+  }, [
+    enabled,
+    intl,
+    onReauthenticationRequired,
+    platform,
+    requestAlert,
+    services.broadcastService,
+  ]);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsRestoringOAuthSession(false);
+      return;
+    }
     if (!oauthPollingActive) {
       return;
     }
@@ -307,6 +329,7 @@ export function useRootOAuthEffects({
       window.clearInterval(pollTimer);
     };
   }, [
+    enabled,
     intl,
     markOAuthSuccess,
     oauthPollingActive,
@@ -320,6 +343,10 @@ export function useRootOAuthEffects({
   ]);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsRestoringOAuthSession(false);
+      return;
+    }
     const disposeOAuth = platform.onOAuthCallback(async (url) => {
       try {
         const result = await services.oauthService.handleCallback(url);
@@ -396,6 +423,7 @@ export function useRootOAuthEffects({
       disposeOAuth();
     };
   }, [
+    enabled,
     intl,
     platform,
     refreshAppSettings,

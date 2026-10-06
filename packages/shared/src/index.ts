@@ -1,5 +1,7 @@
 // Modified by ZCode Feiyu contributors (2026).
 export * from "./taskAppServer.js";
+export * from "./rcs.js";
+export * from "./rcsServiceManifest.js";
 export type {
   FileBinaryPreview,
   FileEntry,

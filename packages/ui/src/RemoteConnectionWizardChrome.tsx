@@ -136,11 +136,13 @@ export function RemoteConnectionWizardSidebar({ currentStep }: { currentStep: Re
 }
 
 export function RemoteConnectionWizardHeader({
+  inline = false,
   title,
   description,
   onMinimize,
   onClose,
 }: {
+  inline?: boolean;
   title: string;
   description: string;
   onMinimize?: () => void;
@@ -151,7 +153,11 @@ export function RemoteConnectionWizardHeader({
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-4">
-        <DialogTitle className="text-lg font-medium">{title}</DialogTitle>
+        {inline ? (
+          <h3 className="text-ui-base font-medium">{title}</h3>
+        ) : (
+          <DialogTitle className="text-ui-base font-medium">{title}</DialogTitle>
+        )}
         <div className="flex shrink-0 items-center gap-1">
           {onMinimize ? (
             <Button
@@ -174,12 +180,18 @@ export function RemoteConnectionWizardHeader({
               onClick={onClose}
             >
               <XIcon className="size-4" />
-              <span className="sr-only">{intl.formatMessage({ id: "common.close" })}</span>
+              <span className="sr-only">
+                {intl.formatMessage({ id: inline ? "common.cancel" : "common.close" })}
+              </span>
             </Button>
           ) : null}
         </div>
       </div>
-      <DialogDescription>{description}</DialogDescription>
+      {inline ? (
+        <p className="text-ui-sm text-foreground-subtle">{description}</p>
+      ) : (
+        <DialogDescription>{description}</DialogDescription>
+      )}
     </div>
   );
 }

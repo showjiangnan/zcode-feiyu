@@ -1,0 +1,35 @@
+export interface RcsGrant { workspacePath: string; workspaceIdentity?: string; remoteSessionId?: string }
+export interface RcsWorkspace { handle:string; name:string; workspacePath:string; workspaceIdentity?:string|null; remoteSessionId?:string|null }
+export interface RcsHost { id:string; generation:string; name:string; workspaces:RcsWorkspace[] }
+export interface RcsDevice { id:string; name:string; incarnation:string; online:boolean }
+export interface RcsClient { id:string; name:string; expiresAt:number; createdAt:number }
+export interface RcsCapabilities { bridgeVersion:1; rpcCodec:1; agentWire:3; services:Record<string,{methods:readonly string[];events:readonly string[]}>; workspace:RcsGrant; nativeDesktop:false }
+export interface RcsAttachment { id:string; deviceId:string; hostId:string; hostGeneration:string; workspaceHandle:string; capabilities:RcsCapabilities; state:'ready'|'connected' }
+export interface RcsHttpOptions { endpoint:string; request?:typeof fetch; cookieAuthentication?:boolean; now?:()=>number; timeoutMs?:number; signal?:AbortSignal }
+export declare class RcsHttpClient {
+ constructor(options:RcsHttpOptions); readonly endpoint:string;
+ login(key:string,name?:string):Promise<void>; restore():Promise<void>; checkCompatibility():Promise<void>; refreshIfNeeded():Promise<void>; logout():Promise<void>;
+ call<T>(path:string,method?:string,body?:unknown):Promise<T>;
+ listDevices():Promise<RcsDevice[]>; listHosts(deviceId:string):Promise<RcsHost[]>;
+ attach(input:{deviceId:string;hostId:string;hostGeneration:string;workspaceHandle:string}):Promise<RcsAttachment>;
+ detach(id:string):Promise<void>; socketTicket(id:string):Promise<{ticket:string}>;
+ listClients():Promise<RcsClient[]>; revokeClient(id:string):Promise<void>;
+ resourceUrl(attachmentId:string,path:string):string; readResource(attachmentId:string,path:string,range?:string):Promise<Response>;
+}
+export interface RcsSocket { readyState:number; bufferedAmount:number; binaryType:string; send(value:string|Uint8Array<ArrayBuffer>):void; close(code?:number,reason?:string):void; addEventListener(type:string,callback:(event:{data?:unknown;code?:number;reason?:string})=>void):void; removeEventListener(type:string,callback:(event:{data?:unknown;code?:number;reason?:string})=>void):void }
+export type RcsSocketFactory=(url:string)=>RcsSocket;
+export type RcsPublicRequest=PUBLIC_REQUEST_UNION;
+export type RcsPublicSubscription=PUBLIC_EVENT_UNION;
+export declare class RcsRpcConnection {
+ constructor(attachment:RcsAttachment,socket:RcsSocket,http?:RcsHttpClient);
+ readonly attachment:RcsAttachment; readonly ready:Promise<void>;
+ readonly closed:(listener:(event:{code:number;reason:string})=>void)=>{dispose():void};
+ static connect(http:RcsHttpClient,attachment:RcsAttachment,socketFactory?:RcsSocketFactory):Promise<RcsRpcConnection>;
+ call<T=unknown>(request:RcsPublicRequest):Promise<T>;
+ subscribe<T=unknown>(request:RcsPublicSubscription,listener:(event:T)=>void):{dispose():void};
+ dispose(closeSocket?:boolean,outcome?:{code:number;reason:string}):void;
+}
+export declare const RCS_SERVICE_MANIFEST:Record<string,{methods:readonly string[];events:readonly string[]}>;
+export declare const RCS_BRIDGE_VERSION:1, RCS_RPC_CODEC_VERSION:1, RCS_AGENT_WIRE_VERSION:3;
+export declare function encodeRcsFrame(id:string,payload:Uint8Array):Uint8Array;
+export declare function decodeRcsFrame(bytes:Uint8Array):{attachmentId:string;payload:Uint8Array};

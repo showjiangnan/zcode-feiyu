@@ -145,6 +145,8 @@ export function Root(props: RootProps) {
 function RootInner({
   services,
   platform,
+  authenticationSource = "device",
+  fillContainer,
   initialWorkspaceAbsPath,
   unavailableWorkspacePath,
   initialWorkspaceIdentity,
@@ -230,6 +232,7 @@ function RootInner({
     [services.modelSelectionService],
   );
   const [remoteConnectionDialogOpen, setRemoteConnectionDialogOpen] = useState(false);
+  const [sshSettingsContainer, setSshSettingsContainer] = useState<HTMLElement | null>(null);
   const [remoteConnectionOpenPreference, setRemoteConnectionOpenPreference] =
     useState<RemoteConnectionOpenPreference | null>(null);
   const [directoryBrowserOpen, setDirectoryBrowserOpen] = useState(false);
@@ -390,7 +393,8 @@ function RootInner({
 
   const shouldPreferDirectoryBrowser = Boolean(preferDirectoryBrowser);
   const supportsEmbeddedBrowser = explicitSupportsEmbeddedBrowser ?? Boolean(isDesktop);
-  const isResolvingStartupAuthState = isRestoringOAuthSession;
+  const isResolvingStartupAuthState =
+    authenticationSource !== "host-attachment" && isRestoringOAuthSession;
   const rootProviderAvailability = resolveProviderAvailabilityState({
     modelSelectionView: rootModelSelectionView,
   });
@@ -400,7 +404,7 @@ function RootInner({
       rootProviderAvailability.hydrated || rootModelSelectionRead.state.status === "error",
   });
   const providerAvailabilityLoginEntryGuardEnabled =
-    shouldEnableProviderAvailabilityLoginEntryGuard();
+    authenticationSource !== "host-attachment" && shouldEnableProviderAvailabilityLoginEntryGuard();
   const { startupCheckCompleted: providerAvailabilityStartupCheckCompleted } =
     useProviderAvailabilityLoginEntryGuard({
       enabled: providerAvailabilityLoginEntryGuardEnabled,
@@ -666,6 +670,7 @@ function RootInner({
   }, [platform]);
 
   useRootOAuthEffects({
+    enabled: authenticationSource !== "host-attachment",
     accountIntentKey: JSON.stringify([
       user?.id,
       appSettings?.providerFamilyDomain,
@@ -881,6 +886,7 @@ function RootInner({
 
   const remoteConnectionDialog = allowRemoteWorkspace ? (
     <SSHDialog
+      inlineContainer={sshSettingsContainer}
       onConnect={handleConnectRemote}
       onSelectProject={handleSelectRemoteProject}
       onCancelSession={handleCancelRemoteProject}
@@ -922,6 +928,8 @@ function RootInner({
   }, [remoteConnectionInProgress, resetRemoteConnectionLogs]);
 
   const settingsLayerProps = {
+    deviceServices: services,
+    onSshSettingsMount: allowRemoteWorkspace ? setSshSettingsContainer : undefined,
     isDesktop,
     isMacDesktop,
     isWindowsDesktop,
@@ -930,15 +938,15 @@ function RootInner({
     onCreateTask: handleCreateTask,
     onOpenWorkspace: handleOpenWorkspace,
     allowOpenWorkspace,
-    onLogin: !user ? handleOpenLoginEntry : undefined,
-    onLogout: user ? handleLogout : undefined,
+    onLogin: authenticationSource !== "host-attachment" && !user ? handleOpenLoginEntry : undefined,
+    onLogout: authenticationSource !== "host-attachment" && user ? handleLogout : undefined,
     user,
   };
 
   if (isStartupRenderBlocked) {
     const loadingLabel = intl.formatMessage({ id: "common.loading" });
     return (
-      <RootShell>
+      <RootShell fillContainer={fillContainer}>
         {rootModelSelectionErrorNode}
         {remoteConnectionDialog}
         {directoryBrowserDialog}
@@ -952,7 +960,7 @@ function RootInner({
 
   if (welcomeScreenOpenReason) {
     return (
-      <RootShell>
+      <RootShell fillContainer={fillContainer}>
         {rootModelSelectionErrorNode}
         {remoteConnectionDialog}
         {directoryBrowserDialog}
@@ -970,7 +978,7 @@ function RootInner({
     // 非桌面入口的 workspace tab 由 effect 注入，首帧不能返回 null。
     // 这里延续入口 loading，等任务列表有 workspaceShellPath 后再切换，避免露出浏览器白底。
     return (
-      <RootShell>
+      <RootShell fillContainer={fillContainer}>
         {rootModelSelectionErrorNode}
         {initialWorkspaceLoadingFallback}
         {directoryBrowserDialog}
@@ -979,11 +987,12 @@ function RootInner({
   }
 
   return (
-    <RootShell>
+    <RootShell fillContainer={fillContainer}>
       {rootModelSelectionErrorNode}
       {remoteConnectionDialog}
       {directoryBrowserDialog}
       <OccupationOnboarding
+        disabled={authenticationSource === "host-attachment"}
         showWindowControls={Boolean(isWindowsDesktop || (isDesktop && !isMacDesktop))}
         showChildrenWhileLoading={!workspaceShellPath && isSettingsTabActive}
         isMacDesktop={isMacDesktop}
@@ -1003,6 +1012,9 @@ function RootInner({
           ) : null
         ) : (
           <RootWorkspaceContent
+            // 已有工作区也必须传递设备 owner 和同一个 SSH 挂载回调，否则桌面设置误判为 Web。
+            deviceServices={services}
+            onSshSettingsMount={settingsLayerProps.onSshSettingsMount}
             workspaceScopedServices={workspaceScopedServices}
             baseFeedbackService={services.feedbackService}
             workspaceShellPath={workspaceShellPath}
@@ -1027,8 +1039,12 @@ function RootInner({
             remoteWorkspaceSessions={remoteWorkspaceSessions}
             allowRemoteWorkspace={allowRemoteWorkspace}
             handleBackFromSettings={handleBackFromSettings}
-            handleLogout={user ? handleLogout : undefined}
-            onLogin={!user ? handleOpenLoginEntry : undefined}
+            handleLogout={
+              authenticationSource !== "host-attachment" && user ? handleLogout : undefined
+            }
+            onLogin={
+              authenticationSource !== "host-attachment" && !user ? handleOpenLoginEntry : undefined
+            }
             user={user}
             reconnectingRemoteWorkspaceKeys={reconnectingRemoteWorkspaceKeys}
             remoteWorkspaceErrorByWorkspaceKey={remoteWorkspaceErrorByWorkspaceKey}
@@ -1048,11 +1064,13 @@ function RootInner({
           resetKeys={[workspaceShellIdentity?.trim() || workspaceShellPath]}
           variant="silent"
         >
-          <OnboardingDialog
-            workspacePath={workspaceShellPath || undefined}
-            workspaceIdentity={workspaceShellIdentity}
-            isDesktop={isDesktop}
-          />
+          {authenticationSource !== "host-attachment" ? (
+            <OnboardingDialog
+              workspacePath={workspaceShellPath || undefined}
+              workspaceIdentity={workspaceShellIdentity}
+              isDesktop={isDesktop}
+            />
+          ) : null}
         </ScopedErrorBoundary>
       </OccupationOnboarding>
     </RootShell>

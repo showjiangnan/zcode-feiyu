@@ -5,6 +5,8 @@ import { logger } from "@/logger.js";
 import type { WorkspaceSettingsLayerProps } from "@/root/types.js";
 
 export function WorkspaceSettingsLayer({
+  deviceServices,
+  onSshSettingsMount,
   workspaceScopedServices,
   isDesktop,
   isMacDesktop,
@@ -31,6 +33,8 @@ export function WorkspaceSettingsLayer({
       {workspaceScopedServices ? (
         <ServiceProvider services={workspaceScopedServices}>
           <SettingsPage
+            deviceServices={deviceServices}
+            onSshSettingsMount={onSshSettingsMount}
             isDesktop={isDesktop}
             isMacDesktop={isMacDesktop}
             isWindowsDesktop={isWindowsDesktop}
@@ -47,6 +51,8 @@ export function WorkspaceSettingsLayer({
         </ServiceProvider>
       ) : (
         <SettingsPage
+          deviceServices={deviceServices}
+          onSshSettingsMount={onSshSettingsMount}
           isDesktop={isDesktop}
           isMacDesktop={isMacDesktop}
           isWindowsDesktop={isWindowsDesktop}

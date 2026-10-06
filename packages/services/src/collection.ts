@@ -1,4 +1,4 @@
-import { ProxyChannel, type IChannelServer } from "@zcode/rpc";
+import { ProxyChannel, type IChannelServer, type IServerChannel } from "@zcode/rpc";
 import type { ServiceDescriptor } from "./descriptors.js";
 
 /**
@@ -30,13 +30,13 @@ export class ServiceCollection {
   exposeOnChannelServer(
     server: IChannelServer,
     overrides: ReadonlyMap<string, unknown> = new Map(),
+    authorize?: (name: string, channel: IServerChannel) => IServerChannel | undefined,
   ): void {
     for (const [channelName, instance] of this._services) {
       const exposed = overrides.get(channelName) ?? instance;
-      server.registerChannel(
-        channelName,
-        ProxyChannel.fromService(exposed as Record<string, unknown>),
-      );
+      const channel = ProxyChannel.fromService(exposed as Record<string, unknown>);
+      const authorized = authorize ? authorize(channelName, channel) : channel;
+      if (authorized) server.registerChannel(channelName, authorized);
     }
   }
 }

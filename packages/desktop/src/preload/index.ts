@@ -246,6 +246,16 @@ window.addEventListener("DOMContentLoaded", updateRendererProcessTitle, {
  * 通过 MessagePort RPC 访问，不再经过此 bridge。
  */
 contextBridge.exposeInMainWorld("zcode", {
+  rcs: {
+    getSettings: () => ipcRenderer.invoke(PlatformChannels.Rcs, "getSettings"),
+    saveSettings: (input: import("@zcode/shared").RcsSave) => ipcRenderer.invoke(PlatformChannels.Rcs, "saveSettings", input),
+    getStatus: () => ipcRenderer.invoke(PlatformChannels.Rcs, "getStatus"),
+    validate: (input: { endpoint: string; key?: string }) => ipcRenderer.invoke(PlatformChannels.Rcs, "validate", input),
+    reconnect: () => ipcRenderer.invoke(PlatformChannels.Rcs, "reconnect"),
+    listHosts: () => ipcRenderer.invoke(PlatformChannels.Rcs, "listHosts"),
+    listClients: () => ipcRenderer.invoke(PlatformChannels.Rcs, "listClients"),
+    revokeClient: (id: string) => ipcRenderer.invoke(PlatformChannels.Rcs, "revokeClient", id),
+  },
   connectRemote: (
     options: RemoteTarget,
     requestId?: string,

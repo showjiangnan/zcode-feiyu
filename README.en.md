@@ -5,7 +5,7 @@
 </div>
 <p align="center"><a href="README.md">简体中文</a> | English</p>
 
-ZCode Feiyu is a community fork of [zai-org/ZCode](https://github.com/zai-org/ZCode). It retains the desktop application, Web interface, terminal Agent, and shared runtime, and adds local top-level task collaboration, standard/coordinator/swarm orchestration, persistent project memory and review, controlled proactive work, unified telemetry controls, and built-in image generation through fal.
+ZCode Feiyu is a community fork of [zai-org/ZCode](https://github.com/zai-org/ZCode). It retains the desktop application, Web interface, terminal Agent, and shared runtime, and adds local top-level task collaboration, standard/coordinator/swarm orchestration, persistent project memory and review, controlled proactive work, unified telemetry controls, built-in image generation through fal, and self-hosted RCS remote access with a responsive shared Web interface.
 
 Maintained independently by Feiyu, this repository is separate from official releases. Existing ZCode UI components and interactions are reused; application names remain ZCode / ZCode Preview. The upstream baseline is **v3.14.3, commit `29628c9acdb81b703bbd4080c207a0e7ce5e276e`**. Comparisons refer to that public source revision, not future upstream versions.
 
@@ -13,7 +13,7 @@ Maintained independently by Feiyu, this repository is separate from official rel
 
 Get Feiyu builds from [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases). The first release is [v3.14.3-feiyu.1 (prerelease)](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.3-feiyu.1). The in-app version remains **3.14.3**, and the installed application is named **ZCode Preview**.
 
-The capabilities described below refer to **current `main` source**. The older `v3.14.3-feiyu.1` downloads do not include the subsequent memory, orchestration, proactive-work, budget-removal, or swarm fixes. Build current source with the instructions below to obtain these changes; publishing source does not replace older Release packages.
+The capabilities described below refer to **current `main` source (3.14.4)**. The older `v3.14.3-feiyu.1` downloads do not include the subsequent memory, orchestration, proactive-work, budget-removal, swarm fixes, or RCS remote services. Build current source with the instructions below to obtain these changes; publishing source does not replace older Release packages.
 
 | Platform                    | Download                                                                                                                                                                                                                                                        | Verification in this release                                                                                                                                                         |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -44,6 +44,8 @@ The capabilities described below refer to **current `main` source**. The older `
 | Local Session Mailbox                    | Requires `ZCODE_MESSAGE_ENABLED=1/true`                                      | Enabled by default, with an explicit opt-out                                                     |
 | Workspace search settings                | Implemented page with hidden navigation                                      | Visible entry for the existing `.zcodeignore` feature                                            |
 | Built-in fal image generation            | No settings/tools/image-job pipeline introduced here                         | Provider key, generation/edit models, loading, storage, preview, resume, and cancellation        |
+| Self-hosted RCS                          | Existing remote and SSH foundations                                          | Python bridge, responsive shared Web, existing Host attachment, public API/SDK                   |
+| Remote Services settings                 | Existing SSH / bot entries                                                   | RCS Service, SSH, Mobile Chat Bots in a third settings group                                     |
 | Subagent image spending                  | Not applicable                                                               | Separate permission switch, off by default                                                       |
 | Image parameters                         | Not applicable                                                               | One PNG by default; explicit dimensions/count/format validated against model capabilities        |
 
@@ -101,6 +103,31 @@ The Agent uses `ListWorkspaceTasks`, `SendTaskMessage`, and task reading/waiting
 - **Dynamic workflows:** enabled in packaged builds; use the workflow entry in the automation interface. For source development, set `ZCODE_DYNAMIC_WORKFLOW_MODE=alwaysOn` when needed.
 - **Mailbox:** enabled by default. Set `ZCODE_MESSAGE_ENABLED=0` (or `false/off/disabled`) when starting the process to disable the automatically assembled local adapter.
 - **Search:** Settings → **Workspace search scope**. Edit ignore rules or sync from `.gitignore`, retaining existing `.zcodeignore` semantics.
+
+### Self-hosted RCS and Remote Services
+
+The companion [showjiangnan/zcode-rcs](https://github.com/showjiangnan/zcode-rcs) project provides a Python 3.12+ bridge, the responsive shared ZCode Web UI, deployment files, protocol schemas, a standalone JavaScript/TypeScript SDK, and an integration example. The bridge authenticates and forwards traffic; your existing desktop Host owns model execution, tools, sessions, memory, and terminals.
+
+1. Deploy the bridge on your own trusted server with a dedicated HTTPS origin, generate your own bridge key, and configure its reverse proxy and persistent volume as described in that repository.
+2. In **Settings → Remote Services → RCS Service**, enter the endpoint and key, select allowed workspaces, validate, save, and enable the service. Electron safeStorage protects the saved key. Unselected workspaces cannot be attached.
+3. Open that endpoint in another computer or phone browser, enter the same key, and select an online device, window, and workspace. The shared interface attaches to the existing desktop Host.
+4. Conversations, orchestration, task messages, memory, images, files/Git, and terminals retain their existing runtime. Refresh and reconnect restore state; Host terminals can resume with the same ID. Offline drafts are never automatically submitted. Keep the desktop app open and the computer reachable.
+5. The same settings group includes **SSH**, using the existing native connection wizard, and **Mobile Chat Bots**, now a full settings page. Existing bot records use the original service and persistence; the former conversation sidebar shortcut has been removed.
+
+Remote model settings do not reveal saved API keys or HTTP header values; blank credential edits retain existing secrets. Device-root RCS configuration, OS actions, new SSH connections, and bot device setup remain desktop operations. Remote access does not grant additional embedded-browser or computer-control permissions.
+
+Future mini-programs and native apps can implement clients against the same REST/WebSocket/SDK contract without a platform login. No mini-program or mobile app product is included. See `docs/API.md` in the companion repository for identity, Host generation, capabilities, admission, and recovery contracts.
+
+**Trust boundary:** the relay can see forwarded traffic. HTTPS/WSS protects transport; this version does not provide end-to-end encryption. Deploy on a trusted server. There is no developer-operated device directory, default administrator, or hidden support access. Public deployment requires valid TLS; plaintext HTTP is restricted to explicitly enabled loopback testing. Disabling the service or revoking sessions/keys closes the affected attachments without deleting local sessions.
+
+Export compatible production assets together when updating the companion project:
+
+```bash
+pnpm --filter @zcode/web build
+node scripts/build-rcs-assets.mjs ../zcode-rcs
+```
+
+The exported `web/`, `sdk/`, and `protocol/` directories are shipped runtime assets. The cloud server does not need Node.js or Electron.
 
 ### Image generation with fal.ai
 
@@ -234,6 +261,8 @@ This repository includes production sources, required build assets, and Chinese/
 
 ### Verification status
 
+RCS was tested against the installed 3.14.4 application on macOS arm64 with a local Python relay and a real desktop Host: browser model round trips, standard/coordinator/swarm modes, refresh/recovery, the standalone SDK, same-command reconciliation, scope/credential denials, HTTP Range, and same-ID PTY resume. Desktop and 320/390/430px browser interactions passed. Root typecheck, Lint (zero errors, existing warnings), and architecture checks passed. A local model fixture was used. Public cloud TLS, physical-phone keyboards, real SSH hosts, bot platforms, and all third-party models were not validated. Docker deployment files are supplied; no Docker engine was available for a container runtime test.
+
 The current update runs root and CLI type checks, root lint, architecture checks, real Agent/SQLite/stdio integration, and production UI-component checks. Swarm requests cover OpenAI Chat Completions and Anthropic Messages formats, the local board, and both recovery profiles. A local HTTP fixture is not proof that every real model has been tested. Full CLI lint still has existing file-length violations and must not be reported as fully passing.
 
 The macOS arm64 package and local startup have actual verification. Earlier image fixes also verified **real fal connectivity without paid generation**. Paid image output, real CDN failures, and real Windows devices require separate validation. Test sources and test records are excluded from publication.
@@ -243,3 +272,5 @@ The macOS arm64 package and local startup have actual verification. Earlier imag
 Distributed under [Apache License 2.0](LICENSE), retaining upstream and third-party notices in [NOTICE.md](NOTICE.md) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Fork changes cover task collaboration, memory, orchestration, proactive work, execution policy, telemetry controls, feature activation, and fal image support; modified files identify ZCode Feiyu as the modification source. Existing names and marks belong to their respective owners and do not imply official endorsement.
 
 Thanks to upstream ZCode and its open-source dependencies. Report issues through [this repository's issue tracker](https://github.com/showjiangnan/zcode-feiyu/issues).
+
+The supplementary standalone Desktop Main tsconfig still reports existing repository type errors; passing the defined root typecheck does not imply that every independent TypeScript project passes.

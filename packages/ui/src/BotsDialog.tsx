@@ -92,12 +92,14 @@ function createDraftBot(params: { provider: BotProvider }): BotConfig {
 }
 
 export function BotsDialog({
+  inline = false,
   open,
   onOpenChange,
   workspacePath,
   workspaceIdentity,
   entryProvider,
 }: {
+  inline?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspacePath: string;
@@ -115,6 +117,10 @@ export function BotsDialog({
   const [status, setStatus] = useState<BotServiceStatus | null>(null);
   const [botStates, setBotStates] = useState<BotState[]>([]);
   const [selectedBotId, setSelectedBotId] = useState<string | null>(null);
+  const [mobileDetail, setMobileDetail] = useState(false);
+  const pageOwner = useRef({ service: botsService, open });
+  pageOwner.current = { service: botsService, open };
+  const refreshGeneration = useRef(0);
   const [creatingBot, setCreatingBot] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [creatingProvider, setCreatingProvider] = useState<BotProvider | null>(
@@ -148,13 +154,13 @@ export function BotsDialog({
     [workspaceIdentity, workspacePath],
   );
   const currentWorkspace = useMemo(
-    () => ({
+    () => workspacePath ? ({
       id: currentWorkspaceId,
       label:
         workspacePath.split(/[\\/]/u).filter(Boolean).at(-1) ?? workspacePath,
       workspacePath,
       workspaceIdentity,
-    }),
+    }) : undefined,
     [currentWorkspaceId, workspaceIdentity, workspacePath],
   );
   const selectedBot =
@@ -269,6 +275,7 @@ export function BotsDialog({
   }, [botsService, open]);
 
   const refresh = useCallback(async () => {
+    const generation = ++refreshGeneration.current;
     try {
       const [nextConfig, nextStatus, nextWorkspaces, nextBotStates] =
         await Promise.all([
@@ -277,6 +284,7 @@ export function BotsDialog({
           botsService.listWorkspaceRefs({ currentWorkspace }),
           botsService.getBotStates(),
         ]);
+      if (!pageOwner.current.open || pageOwner.current.service !== botsService || generation !== refreshGeneration.current) return;
       setConfig(nextConfig);
       setStatus(nextStatus);
       setWorkspaceRefs(nextWorkspaces);
@@ -1113,16 +1121,12 @@ export function BotsDialog({
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex h-[calc(100vh-6rem)] max-h-168 max-w-4xl flex-col overflow-hidden rounded-2xl"
-        onEscapeKeyDown={handleDialogEscapeKeyDown}
-      >
+  const content = <div className="flex min-h-0 flex-col gap-3">
+{inline ? <p className="text-ui-sm text-foreground-subtle">{intl.formatMessage({ id: "bots.description" })}</p> : (
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Bot className="size-5 text-foreground" />
-            <DialogTitle className="text-lg font-medium text-foreground">
+            <DialogTitle className="text-ui-base font-medium text-foreground">
               {intl.formatMessage({ id: "bots.title" })}
             </DialogTitle>
             <DialogDescription className="ml-3">
@@ -1130,15 +1134,17 @@ export function BotsDialog({
             </DialogDescription>
           </div>
         </DialogHeader>
+)}
 
-        <div className="flex min-h-0 flex-1 gap-3">
-          <aside className="flex w-64 shrink-0 flex-col">
+
+        <div className="flex min-h-120 flex-1 flex-col gap-3 md:flex-row">
+          <aside className={cn("w-full shrink-0 flex-col md:w-64", inline && mobileDetail ? "hidden md:flex" : "flex")}>
             <div className="min-h-0 flex-1 overflow-y-auto">
               <Button
                 type="button"
                 variant="outline"
                 size="lg"
-                onClick={handleBeginAddBot}
+                onClick={() => { setMobileDetail(true); handleBeginAddBot(); }}
                 className="mb-3 w-full justify-start gap-2 rounded-xl"
               >
                 <Plus className="size-4" />
@@ -1166,6 +1172,7 @@ export function BotsDialog({
                       type="button"
                       onClick={() => {
                         setCreatingBot(false);
+                        setMobileDetail(true);
                         setSelectedBotId(bot.id);
                       }}
                       className={cn(
@@ -1202,7 +1209,8 @@ export function BotsDialog({
             </div>
           </aside>
 
-          <section className="min-w-0 flex-1 overflow-y-auto rounded-xl border border-border bg-background p-4">
+          <section className={cn("min-w-0 flex-1 overflow-y-auto", inline ? "space-y-3" : "rounded-xl border border-border bg-background p-4", inline && !mobileDetail ? "hidden md:block" : "block")} >
+            {inline ? <Button variant="ghost" className="md:hidden" onClick={() => setMobileDetail(false)}>{intl.formatMessage({ id: "common.back" })}</Button> : null}
             {creatingBot ? (
               <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-start gap-6">
                 <div className="space-y-2">
@@ -1358,7 +1366,10 @@ export function BotsDialog({
             )}
           </section>
         </div>
-      </DialogContent>
-    </Dialog>
-  );
+
+</div>;
+  if (inline) return content;
+  return <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="flex h-[calc(100vh-6rem)] max-h-168 max-w-4xl flex-col overflow-hidden rounded-2xl" onEscapeKeyDown={handleDialogEscapeKeyDown}>{content}</DialogContent>
+  </Dialog>;
 }

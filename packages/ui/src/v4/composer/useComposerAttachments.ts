@@ -759,6 +759,11 @@ export function useComposerAttachments(
       if (!shouldCreateClipboardTextAttachment(text)) return;
       event.preventDefault();
       event.stopPropagation?.();
+      // 浏览器不具备本地临时路径；通过同一附件上传通道传输文本字节。
+      if (!platform.canSelectFilePath) {
+        addAttachmentFiles([new File([text], createClipboardTextAttachmentFilenameForDate(), { type: "text/plain" })]);
+        return;
+      }
       void (async () => {
         try {
           const attachment = await platform.createTempTextAttachment?.({

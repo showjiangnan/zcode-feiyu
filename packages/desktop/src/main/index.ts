@@ -1,5 +1,6 @@
 // Modified by ZCode Feiyu contributors (2026).
 import { createLocalTtftExporter } from "./localTtftExporter.js";
+import { installRcsMain } from "./rcsMain.js";
 import {
   canDispatchToBackgroundWindow,
   createBackgroundContinuityController,
@@ -2184,6 +2185,8 @@ app.on("second-instance", (_event, argv, _workingDirectory, additionalData) => {
 });
 
 app.whenReady().then(async () => {
+  const rcsMain = installRcsMain(windowHostProcessMap);
+  app.once("will-quit", () => rcsMain.dispose());
   markMainLaunchAppReady();
   installLocalMediaPreviewProtocol(session.defaultSession.protocol, {
     isPathAuthorized: localMediaPreviewPathRegistry.isAuthorized,

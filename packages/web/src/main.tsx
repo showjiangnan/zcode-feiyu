@@ -423,6 +423,13 @@ function renderWebBootstrapError(error: unknown): void {
 }
 
 async function bootstrapWebApp() {
+  const rcsProbe = await fetch("/api/rcs/v1/meta", { cache: "no-store", signal: AbortSignal.timeout(5000) }).catch(() => null);
+  if (rcsProbe?.ok) {
+    const { RcsApp } = await import("./rcs/RcsApp.js");
+    document.title = "ZCode - RCS";
+    root.render(<AppErrorBoundary><RcsApp platform={createWebPlatform()} /></AppErrorBoundary>);
+    return;
+  }
   const params = new URLSearchParams(window.location.search);
   if (isWebOAuthCallback(params)) {
     renderWebAuthCallbackPage();

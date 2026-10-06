@@ -1,3 +1,5 @@
+export { Input } from "./components/ui/input.js";
+export { Alert, AlertDescription } from "./components/ui/alert.js";
 export { App } from "./App.js";
 export { AppErrorBoundary, ScopedErrorBoundary } from "./ErrorBoundary.js";
 export type { ScopedErrorBoundaryVariant } from "./ErrorBoundary.js";

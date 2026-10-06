@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- 远程连接向导的状态编排暂集中在同一组件，后续有独立拆分计划。 */
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createUuid, type RemoteTarget, type RemoteWorkspaceSessionEntry } from "@zcode/shared";
 import {
@@ -45,6 +46,7 @@ import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import type { VariantProps } from "class-variance-authority";
 
 interface RemoteConnectionDialogProps {
+  inlineContainer?: HTMLElement | null;
   onConnect: (options: RemoteTarget, requestId?: string) => Promise<string>;
   onSelectProject: (sessionId: string, path: string, localWorkspacePath?: string) => Promise<void>;
   onCancelSession: (sessionId: string) => Promise<void>;
@@ -65,6 +67,7 @@ interface RemoteConnectionDialogProps {
 }
 
 export function RemoteConnectionDialog({
+  inlineContainer,
   onConnect,
   onSelectProject,
   onCancelSession,
@@ -97,7 +100,7 @@ export function RemoteConnectionDialog({
   const [selectingDirectory, setSelectingDirectory] = useState(false);
   const selectingDirectoryRef = useRef(false);
   const { connectionLogs, resetConnectionLogs } = useRemoteConnectionLogs(connectingRequestId);
-  const open = controlledOpen ?? uncontrolledOpen;
+  const open = Boolean(inlineContainer) || (controlledOpen ?? uncontrolledOpen);
   const {
     kind,
     host,
@@ -141,7 +144,7 @@ export function RemoteConnectionDialog({
   } = useRemoteConnectionForm({
     open,
     isWindowsDesktop,
-    preferredKind,
+    preferredKind: inlineContainer ? "ssh" : preferredKind,
     preferredWslDistro,
   });
   const directoryBrowserServices = useRemoteWorkspaceSessionStore((state) =>
@@ -430,6 +433,199 @@ export function RemoteConnectionDialog({
 
   const stepCopy = getRemoteWizardStepCopy(intl, currentStep, kind);
 
+  useEffect(() => {
+    if (inlineContainer && !flowActive && currentStep === "kind") {
+      setKind("ssh");
+      setCurrentStep("settings");
+    }
+  }, [inlineContainer, flowActive, currentStep, setKind]);
+
+  const content = (
+    <div
+      data-testid={TID_SSH_DIALOG}
+      className="flex h-full min-h-120 flex-col overflow-hidden md:flex-row"
+    >
+      <RemoteConnectionWizardSidebar currentStep={currentStep} />
+
+      <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden p-4 sm:gap-4 sm:p-6">
+        <DialogHeader className="space-y-2">
+          <RemoteConnectionWizardHeader
+            inline={Boolean(inlineContainer)}
+            title={stepCopy.title}
+            description={stepCopy.description}
+            onMinimize={
+              flowActive && !inlineContainer
+                ? () => {
+                    // 连接慢时用户只能关闭弹窗，关闭会取消 pending 连接并丢失当前步骤。
+                    // 这里把“收起”明确拆成仅隐藏 dialog，不重置状态、不取消后台连接，后续入口可恢复到当前步骤。
+                    applyOpenState(false);
+                  }
+                : undefined
+            }
+            onClose={
+              !inlineContainer || flowActive
+                ? () => {
+                    // 页内只在有活动连接时显示取消，复用原 owner 回收未完成的会话。
+                    void handleCloseRequest();
+                  }
+                : undefined
+            }
+          />
+        </DialogHeader>
+
+        {error && currentStep !== "connecting" ? (
+          <div
+            data-testid={TID_SSH_ERROR}
+            // 远程连接的错误提示以前直接拼接颜色 token，和全局状态反馈样式不一致。
+            // 这里统一改成 destructive 语义色对，避免 SSH/Docker 两种模式出现不同的错误视觉。
+            className="flex items-start gap-3 rounded-xl bg-destructive px-4 py-3 text-ui-base text-destructive-foreground"
+          >
+            <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
+            {error}
+          </div>
+        ) : null}
+
+        <div className="w-full min-h-0 flex-1">
+          {currentStep === "kind" ? (
+            <RemoteConnectionKindStep
+              kind={kind}
+              availableKinds={availableKinds}
+              onKindChange={setKind}
+              onCancel={() => closeDialog()}
+              onNext={() => {
+                resetFeedback();
+                setCurrentStep("settings");
+              }}
+            />
+          ) : null}
+
+          {currentStep === "settings" ? (
+            <RemoteConnectionSettingsStep
+              kind={kind}
+              host={host}
+              port={port}
+              username={username}
+              sshAuthMethod={sshAuthMethod}
+              assetInstallMode={assetInstallMode}
+              password={password}
+              privateKeyPath={privateKeyPath}
+              privateKeyPassphrase={privateKeyPassphrase}
+              wslDistro={wslDistro}
+              wslUser={wslUser}
+              wslDistros={wslDistros}
+              dockerContainer={dockerContainer}
+              manualDockerContainer={manualDockerContainer}
+              dockerContainers={dockerContainers}
+              dockerAvailable={dockerAvailable}
+              sshConfigAliases={sshConfigAliases}
+              sshConfigAliasesLoading={sshConfigAliasesLoading}
+              sshConfigAliasesError={sshConfigAliasesError}
+              selectedSshConfigAlias={selectedSshConfigAlias}
+              currentRuntimeOptionsLoading={currentRuntimeOptionsLoading}
+              currentRuntimeOptionsError={currentRuntimeOptionsError}
+              remoteWorkspaceSessions={remoteWorkspaceSessions}
+              validationMessage={validationMessage}
+              loading={loading}
+              onBack={
+                inlineContainer
+                  ? undefined
+                  : () => {
+                      resetFeedback();
+                      setCurrentStep("kind");
+                    }
+              }
+              onHostChange={setHost}
+              onPortChange={setPort}
+              onUsernameChange={setUsername}
+              onSshAuthMethodChange={setSshAuthMethod}
+              onAssetInstallModeChange={setAssetInstallMode}
+              onPasswordChange={setPassword}
+              onPrivateKeyPathChange={setPrivateKeyPath}
+              onPrivateKeyPassphraseChange={setPrivateKeyPassphrase}
+              onWslDistroChange={setWslDistro}
+              onWslUserChange={setWslUser}
+              onDockerContainerChange={setDockerContainer}
+              onManualDockerContainerChange={setManualDockerContainer}
+              onDockerContainersRefresh={refreshDockerContainers}
+              onApplySshConfigAlias={applySshConfigAlias}
+              onClearSelectedSshConfigAlias={clearSelectedSshConfigAlias}
+              onConnect={() => {
+                void handleConnect();
+              }}
+            />
+          ) : null}
+
+          {currentStep === "connecting" ? (
+            <RemoteConnectionConnectingStep
+              kind={kind}
+              logs={connectionLogs}
+              errorMessage={error}
+              loading={loading}
+              onBack={() => {
+                void (async () => {
+                  const confirmed = await confirmRemoteFlowDiscard();
+                  if (!confirmed) {
+                    return;
+                  }
+
+                  if (loading) {
+                    await cancelPendingRemoteConnection(connectingRequestId ?? undefined);
+                    setLoading(false);
+                  }
+                  resetFeedback();
+                  updateConnectingRequestId(null);
+                  setCurrentStep("settings");
+                })();
+              }}
+              onRetry={() => {
+                handleStartPendingRemoteConnection();
+              }}
+            />
+          ) : null}
+
+          {currentStep === "directory" ? (
+            <div data-testid={TID_SSH_SUCCESS} className="h-full">
+              <RemoteConnectionDirectoryStep
+                services={directoryBrowserServices}
+                remoteTarget={pendingRemoteTarget}
+                localSkillSyncService={baseServices.skillSyncService}
+                remoteSkillSyncService={directoryBrowserServices?.skillSyncService ?? null}
+                localMcpSyncService={baseServices.mcpSyncService}
+                remoteMcpSyncService={directoryBrowserServices?.mcpSyncService ?? null}
+                localPluginSyncService={baseServices.pluginSyncService}
+                remotePluginSyncService={directoryBrowserServices?.pluginSyncService ?? null}
+                localZCodeAgentService={baseServices.zcodeAgentService}
+                remoteZCodeAgentService={directoryBrowserServices?.zcodeAgentService ?? null}
+                localWorkspacePath={localWorkspacePath}
+                selecting={selectingDirectory}
+                onSelect={(path) => {
+                  void handleSelectDirectory(path);
+                }}
+                onBack={() => {
+                  void (async () => {
+                    const confirmed = await confirmRemoteFlowDiscard();
+                    if (!confirmed) {
+                      return;
+                    }
+
+                    await handleBackToConnection();
+                  })();
+                }}
+                onCancel={() => {
+                  void handleCloseRequest();
+                }}
+                onSkillsSynced={async () => undefined}
+                onMcpSynced={async () => undefined}
+                onPluginsSynced={async () => undefined}
+              />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+  if (inlineContainer) return createPortal(content, inlineContainer);
+
   return (
     <>
       {!hideTriggerWhenClosed ? (
@@ -457,179 +653,7 @@ export function RemoteConnectionDialog({
           showCloseButton={false}
           className="h-[calc(100dvh-1rem)] max-h-168 w-[calc(100vw-1rem)] max-w-4xl overflow-hidden rounded-2xl p-0 md:h-[calc(100vh-6rem)]"
         >
-          <div
-            data-testid={TID_SSH_DIALOG}
-            className="flex h-full min-h-0 flex-col overflow-hidden md:flex-row"
-          >
-            <RemoteConnectionWizardSidebar currentStep={currentStep} />
-
-            <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden p-4 sm:gap-4 sm:p-6">
-              <DialogHeader className="space-y-2">
-                <RemoteConnectionWizardHeader
-                  title={stepCopy.title}
-                  description={stepCopy.description}
-                  onMinimize={
-                    flowActive
-                      ? () => {
-                          // 连接慢时用户只能关闭弹窗，关闭会取消 pending 连接并丢失当前步骤。
-                          // 这里把“收起”明确拆成仅隐藏 dialog，不重置状态、不取消后台连接，后续入口可恢复到当前步骤。
-                          applyOpenState(false);
-                        }
-                      : undefined
-                  }
-                  onClose={() => {
-                    // 关闭和收起的语义不同。关闭仍走确认和取消逻辑，避免已连接但未选目录的 session 泄漏。
-                    void handleCloseRequest();
-                  }}
-                />
-              </DialogHeader>
-
-              {error && currentStep !== "connecting" ? (
-                <div
-                  data-testid={TID_SSH_ERROR}
-                  // 远程连接的错误提示以前直接拼接颜色 token，和全局状态反馈样式不一致。
-                  // 这里统一改成 destructive 语义色对，避免 SSH/Docker 两种模式出现不同的错误视觉。
-                  className="flex items-start gap-3 rounded-xl bg-destructive px-4 py-3 text-ui-base text-destructive-foreground"
-                >
-                  <AlertTriangleIcon className="mt-0.5 size-4 shrink-0" />
-                  {error}
-                </div>
-              ) : null}
-
-              <div className="w-full min-h-0 flex-1">
-                {currentStep === "kind" ? (
-                  <RemoteConnectionKindStep
-                    kind={kind}
-                    availableKinds={availableKinds}
-                    onKindChange={setKind}
-                    onCancel={() => closeDialog()}
-                    onNext={() => {
-                      resetFeedback();
-                      setCurrentStep("settings");
-                    }}
-                  />
-                ) : null}
-
-                {currentStep === "settings" ? (
-                  <RemoteConnectionSettingsStep
-                    kind={kind}
-                    host={host}
-                    port={port}
-                    username={username}
-                    sshAuthMethod={sshAuthMethod}
-                    assetInstallMode={assetInstallMode}
-                    password={password}
-                    privateKeyPath={privateKeyPath}
-                    privateKeyPassphrase={privateKeyPassphrase}
-                    wslDistro={wslDistro}
-                    wslUser={wslUser}
-                    wslDistros={wslDistros}
-                    dockerContainer={dockerContainer}
-                    manualDockerContainer={manualDockerContainer}
-                    dockerContainers={dockerContainers}
-                    dockerAvailable={dockerAvailable}
-                    sshConfigAliases={sshConfigAliases}
-                    sshConfigAliasesLoading={sshConfigAliasesLoading}
-                    sshConfigAliasesError={sshConfigAliasesError}
-                    selectedSshConfigAlias={selectedSshConfigAlias}
-                    currentRuntimeOptionsLoading={currentRuntimeOptionsLoading}
-                    currentRuntimeOptionsError={currentRuntimeOptionsError}
-                    remoteWorkspaceSessions={remoteWorkspaceSessions}
-                    validationMessage={validationMessage}
-                    loading={loading}
-                    onBack={() => {
-                      resetFeedback();
-                      setCurrentStep("kind");
-                    }}
-                    onHostChange={setHost}
-                    onPortChange={setPort}
-                    onUsernameChange={setUsername}
-                    onSshAuthMethodChange={setSshAuthMethod}
-                    onAssetInstallModeChange={setAssetInstallMode}
-                    onPasswordChange={setPassword}
-                    onPrivateKeyPathChange={setPrivateKeyPath}
-                    onPrivateKeyPassphraseChange={setPrivateKeyPassphrase}
-                    onWslDistroChange={setWslDistro}
-                    onWslUserChange={setWslUser}
-                    onDockerContainerChange={setDockerContainer}
-                    onManualDockerContainerChange={setManualDockerContainer}
-                    onDockerContainersRefresh={refreshDockerContainers}
-                    onApplySshConfigAlias={applySshConfigAlias}
-                    onClearSelectedSshConfigAlias={clearSelectedSshConfigAlias}
-                    onConnect={() => {
-                      void handleConnect();
-                    }}
-                  />
-                ) : null}
-
-                {currentStep === "connecting" ? (
-                  <RemoteConnectionConnectingStep
-                    kind={kind}
-                    logs={connectionLogs}
-                    errorMessage={error}
-                    loading={loading}
-                    onBack={() => {
-                      void (async () => {
-                        const confirmed = await confirmRemoteFlowDiscard();
-                        if (!confirmed) {
-                          return;
-                        }
-
-                        if (loading) {
-                          await cancelPendingRemoteConnection(connectingRequestId ?? undefined);
-                          setLoading(false);
-                        }
-                        resetFeedback();
-                        updateConnectingRequestId(null);
-                        setCurrentStep("settings");
-                      })();
-                    }}
-                    onRetry={() => {
-                      handleStartPendingRemoteConnection();
-                    }}
-                  />
-                ) : null}
-
-                {currentStep === "directory" ? (
-                  <div data-testid={TID_SSH_SUCCESS} className="h-full">
-                    <RemoteConnectionDirectoryStep
-                      services={directoryBrowserServices}
-                      remoteTarget={pendingRemoteTarget}
-                      localSkillSyncService={baseServices.skillSyncService}
-                      remoteSkillSyncService={directoryBrowserServices?.skillSyncService ?? null}
-                      localMcpSyncService={baseServices.mcpSyncService}
-                      remoteMcpSyncService={directoryBrowserServices?.mcpSyncService ?? null}
-                      localPluginSyncService={baseServices.pluginSyncService}
-                      remotePluginSyncService={directoryBrowserServices?.pluginSyncService ?? null}
-                      localZCodeAgentService={baseServices.zcodeAgentService}
-                      remoteZCodeAgentService={directoryBrowserServices?.zcodeAgentService ?? null}
-                      localWorkspacePath={localWorkspacePath}
-                      selecting={selectingDirectory}
-                      onSelect={(path) => {
-                        void handleSelectDirectory(path);
-                      }}
-                      onBack={() => {
-                        void (async () => {
-                          const confirmed = await confirmRemoteFlowDiscard();
-                          if (!confirmed) {
-                            return;
-                          }
-
-                          await handleBackToConnection();
-                        })();
-                      }}
-                      onCancel={() => {
-                        void handleCloseRequest();
-                      }}
-                      onSkillsSynced={async () => undefined}
-                      onMcpSynced={async () => undefined}
-                      onPluginsSynced={async () => undefined}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
+          {content}
         </DialogContent>
       </Dialog>
     </>

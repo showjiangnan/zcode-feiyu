@@ -8,7 +8,29 @@ export interface TerminalWindowsPtyInfo {
   buildNumber?: number;
 }
 
+export interface TerminalProfile {
+  id: string;
+  cwd: string;
+  shell: string;
+  fontFamily: string;
+  fontSize?: number;
+  theme?: TerminalThemeProfile;
+  fontFamilySource: TerminalFontFamilySource;
+  windowsPty?: TerminalWindowsPtyInfo;
+}
+export interface TerminalChunk {
+  sequence: number;
+  data: string;
+}
+
 export interface ITerminalService {
+  list?(): Promise<TerminalProfile[]>;
+  attach?(params: {
+    id: string;
+    afterSequence?: number;
+  }): Promise<TerminalProfile & { chunks: TerminalChunk[]; truncated: boolean; sequence: number }>;
+  detach?(params: { id: string }): Promise<void>;
+  onDynamicReplayData?(id: string): Event<TerminalChunk>;
   create(params: { cols: number; rows: number; cwd?: string }): Promise<{
     id: string;
     shell: string;

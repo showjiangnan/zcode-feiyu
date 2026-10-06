@@ -469,110 +469,112 @@ export function GeneralSectionContent({
         />
       </SettingsGroupCard>
 
-      <SettingsGroupCard>
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.httpProxy" })}
-          description={intl.formatMessage({ id: "settings.httpProxyDescription" })}
-          control={
-            <Button
-              type="button"
-              size="lg"
-              disabled={!isHttpProxyDirty}
-              onClick={() => void handleHttpProxySave()}
-            >
-              {intl.formatMessage({ id: "settings.dataBaseDirSave" })}
-            </Button>
-          }
-          detail={
-            <Input
-              size="lg"
-              value={localHttpProxy}
-              placeholder={intl.formatMessage({
-                id: "settings.httpProxyPlaceholder",
-              })}
-              onChange={(event) => {
-                setLocalHttpProxy(event.currentTarget.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && isHttpProxyDirty) {
-                  void handleHttpProxySave();
-                }
-              }}
-              className="max-w-[520px] font-mono"
-            />
-          }
-        />
-        {/* No Proxy 与 HTTP 代理共同决定同一出口策略，必须贴在代理地址下面。*/}
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.httpProxyNoProxy" })}
-          description={intl.formatMessage({
-            id: "settings.httpProxyNoProxyDescription",
-          })}
-          control={
-            <Button
-              type="button"
-              size="lg"
-              disabled={!isHttpProxyNoProxyDirty}
-              onClick={() => void handleHttpProxyNoProxySave()}
-            >
-              {intl.formatMessage({ id: "settings.dataBaseDirSave" })}
-            </Button>
-          }
-          detail={
-            <Input
-              size="lg"
-              value={localHttpProxyNoProxy}
-              placeholder={intl.formatMessage({
-                id: "settings.httpProxyNoProxyPlaceholder",
-              })}
-              onChange={(event) => {
-                setLocalHttpProxyNoProxy(event.currentTarget.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && isHttpProxyNoProxyDirty) {
-                  void handleHttpProxyNoProxySave();
-                }
-              }}
-              className="max-w-[520px] font-mono"
-            />
-          }
-        />
-        {/* 自定义 CA 属于 HTTP 代理的同一网络出口策略，必须跟代理输入放在同一卡片里。*/}
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.httpProxyCaCertPath" })}
-          description={intl.formatMessage({
-            id: "settings.httpProxyCaCertPathDescription",
-          })}
-          control={
-            <Button
-              type="button"
-              size="lg"
-              disabled={!isHttpProxyCaCertPathDirty}
-              onClick={() => void handleHttpProxyCaCertPathSave()}
-            >
-              {intl.formatMessage({ id: "settings.dataBaseDirSave" })}
-            </Button>
-          }
-          detail={
-            <Input
-              size="lg"
-              value={localHttpProxyCaCertPath}
-              placeholder={intl.formatMessage({
-                id: "settings.httpProxyCaCertPathPlaceholder",
-              })}
-              onChange={(event) => {
-                setLocalHttpProxyCaCertPath(event.currentTarget.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && isHttpProxyCaCertPathDirty) {
-                  void handleHttpProxyCaCertPathSave();
-                }
-              }}
-              className="max-w-[520px] font-mono"
-            />
-          }
-        />
-      </SettingsGroupCard>
+      {isDesktop ? (
+        <SettingsGroupCard>
+          <SettingsRow
+            label={intl.formatMessage({ id: "settings.httpProxy" })}
+            description={intl.formatMessage({ id: "settings.httpProxyDescription" })}
+            control={
+              <Button
+                type="button"
+                size="lg"
+                disabled={!isHttpProxyDirty}
+                onClick={() => void handleHttpProxySave()}
+              >
+                {intl.formatMessage({ id: "settings.dataBaseDirSave" })}
+              </Button>
+            }
+            detail={
+              <Input
+                size="lg"
+                value={localHttpProxy}
+                placeholder={intl.formatMessage({
+                  id: "settings.httpProxyPlaceholder",
+                })}
+                onChange={(event) => {
+                  setLocalHttpProxy(event.currentTarget.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && isHttpProxyDirty) {
+                    void handleHttpProxySave();
+                  }
+                }}
+                className="max-w-[520px] font-mono"
+              />
+            }
+          />
+          {/* No Proxy 与 HTTP 代理共同决定同一出口策略，必须贴在代理地址下面。*/}
+          <SettingsRow
+            label={intl.formatMessage({ id: "settings.httpProxyNoProxy" })}
+            description={intl.formatMessage({
+              id: "settings.httpProxyNoProxyDescription",
+            })}
+            control={
+              <Button
+                type="button"
+                size="lg"
+                disabled={!isHttpProxyNoProxyDirty}
+                onClick={() => void handleHttpProxyNoProxySave()}
+              >
+                {intl.formatMessage({ id: "settings.dataBaseDirSave" })}
+              </Button>
+            }
+            detail={
+              <Input
+                size="lg"
+                value={localHttpProxyNoProxy}
+                placeholder={intl.formatMessage({
+                  id: "settings.httpProxyNoProxyPlaceholder",
+                })}
+                onChange={(event) => {
+                  setLocalHttpProxyNoProxy(event.currentTarget.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && isHttpProxyNoProxyDirty) {
+                    void handleHttpProxyNoProxySave();
+                  }
+                }}
+                className="max-w-[520px] font-mono"
+              />
+            }
+          />
+          {/* 自定义 CA 属于 HTTP 代理的同一网络出口策略，必须跟代理输入放在同一卡片里。*/}
+          <SettingsRow
+            label={intl.formatMessage({ id: "settings.httpProxyCaCertPath" })}
+            description={intl.formatMessage({
+              id: "settings.httpProxyCaCertPathDescription",
+            })}
+            control={
+              <Button
+                type="button"
+                size="lg"
+                disabled={!isHttpProxyCaCertPathDirty}
+                onClick={() => void handleHttpProxyCaCertPathSave()}
+              >
+                {intl.formatMessage({ id: "settings.dataBaseDirSave" })}
+              </Button>
+            }
+            detail={
+              <Input
+                size="lg"
+                value={localHttpProxyCaCertPath}
+                placeholder={intl.formatMessage({
+                  id: "settings.httpProxyCaCertPathPlaceholder",
+                })}
+                onChange={(event) => {
+                  setLocalHttpProxyCaCertPath(event.currentTarget.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && isHttpProxyCaCertPathDirty) {
+                    void handleHttpProxyCaCertPathSave();
+                  }
+                }}
+                className="max-w-[520px] font-mono"
+              />
+            }
+          />
+        </SettingsGroupCard>
+      ) : null}
 
       <SettingsGroupCard>
         {isDesktop ? (
@@ -930,36 +932,40 @@ export function GeneralSectionContent({
         />
       </SettingsGroupCard>
 
-      <SettingsGroupCard>
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.dataBaseDir" })}
-          description={intl.formatMessage({
-            id: "settings.dataBaseDirDescription",
-          })}
-          control={
-            <DataBaseDirControl
-              dataBaseDir={dataBaseDir}
-              defaultHomeDir={defaultHomeDir}
-              onDataBaseDirChange={onDataBaseDirChange}
-              onSelectDataBaseDir={onSelectDataBaseDir}
-            />
-          }
-        />
-      </SettingsGroupCard>
+      {isDesktop ? (
+        <SettingsGroupCard>
+          <SettingsRow
+            label={intl.formatMessage({ id: "settings.dataBaseDir" })}
+            description={intl.formatMessage({
+              id: "settings.dataBaseDirDescription",
+            })}
+            control={
+              <DataBaseDirControl
+                dataBaseDir={dataBaseDir}
+                defaultHomeDir={defaultHomeDir}
+                onDataBaseDirChange={onDataBaseDirChange}
+                onSelectDataBaseDir={onSelectDataBaseDir}
+              />
+            }
+          />
+        </SettingsGroupCard>
+      ) : null}
 
-      <SettingsGroupCard>
-        <SettingsRow
-          label={intl.formatMessage({ id: "settings.onboarding" })}
-          description={intl.formatMessage({
-            id: "settings.onboardingDescription",
-          })}
-          control={
-            <Button type="button" size="lg" variant="outline" onClick={onOpenOnboardingDialog}>
-              {intl.formatMessage({ id: "settings.onboardingOpen" })}
-            </Button>
-          }
-        />
-      </SettingsGroupCard>
+      {isDesktop ? (
+        <SettingsGroupCard>
+          <SettingsRow
+            label={intl.formatMessage({ id: "settings.onboarding" })}
+            description={intl.formatMessage({
+              id: "settings.onboardingDescription",
+            })}
+            control={
+              <Button type="button" size="lg" variant="outline" onClick={onOpenOnboardingDialog}>
+                {intl.formatMessage({ id: "settings.onboardingOpen" })}
+              </Button>
+            }
+          />
+        </SettingsGroupCard>
+      ) : null}
     </div>
   );
 }

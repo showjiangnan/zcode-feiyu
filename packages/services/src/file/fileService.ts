@@ -1,4 +1,6 @@
 /* eslint-disable max-lines */
+import { createHash } from "node:crypto";
+import { atomicWriteText } from "../fs/atomicFileUtils.js";
 import type { Dirent } from "node:fs";
 import { mkdir, open, readFile, readdir, realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -368,6 +370,19 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
   };
 
   return {
+    async writeTextFile({ path, content, expectedSha256 }) {
+      if (!/^[a-f0-9]{64}$/.test(expectedSha256) || Buffer.byteLength(content) > 1024 * 1024)
+        throw new Error("FILE_EDIT_INVALID");
+      const check = async () => {
+        const info = await stat(path);
+        if (!info.isFile() || info.size > 1024 * 1024) throw new Error("FILE_EDIT_TOO_LARGE");
+        const bytes = await readFile(path);
+        if (createHash("sha256").update(bytes).digest("hex") !== expectedSha256)
+          throw new Error("FILE_EDIT_CONFLICT");
+      };
+      await atomicWriteText(path, content, { useFileLock: true, beforeRename: check });
+      return { sha256: createHash("sha256").update(content).digest("hex") };
+    },
     async readdir(params: { path: string; includeHidden?: boolean }): Promise<FileEntry[]> {
       const entries = await readdir(params.path, { withFileTypes: true });
       const visibleEntries = await Promise.all(
@@ -500,8 +515,15 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
       const readLength = Math.min(targetLength, remainingBytes);
       const handle = await open(params.path, "r");
       try {
+        const before = await handle.stat();
+        if (before.size !== fileStat.size || before.mtimeMs !== fileStat.mtimeMs)
+          throw new Error("RESOURCE_CHANGED");
         const buffer = Buffer.allocUnsafe(readLength);
         const { bytesRead } = await handle.read(buffer, 0, readLength, offset);
+        const after = await handle.stat();
+        // 分块播放期间外部写入不能拼接成一个貌似完整的不同版本文件。
+        if (after.size !== before.size || after.mtimeMs !== before.mtimeMs)
+          throw new Error("RESOURCE_CHANGED");
         const chunk = buffer.subarray(0, bytesRead);
         const isBinary = isProbablyBinary(chunk);
         // 性能说明：文本读取始终受 256KB 硬上限约束，调用方可据 truncated 决定是否展示，
@@ -523,6 +545,8 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
       path: string;
       offset: number;
       length: number;
+      expectedSize?: number;
+      expectedMtimeMs?: number;
     }): Promise<Uint8Array> {
       const fileStat = await stat(params.path);
       if (!fileStat.isFile()) {
@@ -532,12 +556,24 @@ export function createFileService(options: CreateFileServiceOptions = {}): IFile
       if (offset >= fileStat.size) {
         return new Uint8Array(0);
       }
+      if (
+        (params.expectedSize !== undefined && params.expectedSize !== fileStat.size) ||
+        (params.expectedMtimeMs !== undefined && params.expectedMtimeMs !== fileStat.mtimeMs)
+      )
+        throw new Error("RESOURCE_CHANGED");
       const targetLength = clampBinaryReadLength(params.length);
       const readLength = Math.min(targetLength, fileStat.size - offset);
       const handle = await open(params.path, "r");
       try {
+        const before = await handle.stat();
+        if (before.size !== fileStat.size || before.mtimeMs !== fileStat.mtimeMs)
+          throw new Error("RESOURCE_CHANGED");
         const buffer = Buffer.allocUnsafe(readLength);
         const { bytesRead } = await handle.read(buffer, 0, readLength, offset);
+        const after = await handle.stat();
+        // 分块播放期间外部写入不能拼接成一个貌似完整的不同版本文件。
+        if (after.size !== before.size || after.mtimeMs !== before.mtimeMs)
+          throw new Error("RESOURCE_CHANGED");
         // 返回顶层 Uint8Array：RPC 序列化只有顶层二进制走原始字节通道，
         // 包成对象字段会退化成 JSON+base64，大文件分段加载的体积收益就没了。
         // 这里拷贝成独立 buffer，避免 allocUnsafe 共享池的无关字节被一起克隆出去。

@@ -150,6 +150,10 @@ import {
   type WindowRemoteConnectionHandle,
 } from "./windowRemoteConnectionRegistry.js";
 import { createWindowHostControllerRuntime } from "./windowHostControllerService.js";
+import { createRcsAuthorization } from "./rcsAuthorization.js";
+import { ITerminalService, IFileWatcherService } from "@zcode/services";
+import { readRcsWorkspaces, assertRcsGrantCurrent } from "./rcsDirectory.js";
+import { RCS_SERVICE_MANIFEST, type RcsGrant, type RcsCapabilities } from "@zcode/shared";
 import { resolveAutomationSubmissionModelSelection } from "./automationModelSelection.js";
 import { createRemoteConnectionProgressContext } from "@zcode/server/remote/remoteConnectionProgressContext.js";
 import { startHostSelfResourceTelemetry } from "./hostSelfResourceTelemetry.js";
@@ -2028,6 +2032,7 @@ function exposeServicesOnMessagePort(
   clientMode: ZCodeAgentV4ClientMode = "desktop-continuous",
   attachmentScope: WindowHostAttachmentScope = { kind: "local" },
   capabilities?: HostRemoteConnectionCapabilities,
+  rcsGrant?: RcsGrant,
 ): ExposedServicePortHandle {
   const wrappedPort = wrapElectronPort(port);
   const protocol = new MessagePortProtocol(wrappedPort);
@@ -2081,7 +2086,15 @@ function exposeServicesOnMessagePort(
       ),
     );
   }
-  services.exposeOnChannelServer(server, overrides);
+  const rcsAuthorization = rcsGrant ? createRcsAuthorization({
+    grant: rcsGrant, file: services.get(IFileService), task: services.get(IZCodeTaskService),
+    terminal: services.get(ITerminalService), watcher: services.getOptional(IFileWatcherService),
+  }) : undefined;
+  services.exposeOnChannelServer(server, overrides, rcsAuthorization?.authorize);
+  if (rcsGrant) {
+    const manifest: RcsCapabilities = { bridgeVersion: 1, rpcCodec: 1, agentWire: 3, services: RCS_SERVICE_MANIFEST, workspace: rcsGrant, nativeDesktop: false };
+    port.postMessage({ type: "rcs-ready", capabilities: manifest });
+  }
   let disposed = false;
   let flowUpdateChain = Promise.resolve();
   const forwardFlowState = (state: "saturated" | "drained" | "closed") => {
@@ -2108,6 +2121,7 @@ function exposeServicesOnMessagePort(
       disposed = true;
       flowStateDisposable.dispose();
       controllerAttachment.dispose();
+      void rcsAuthorization?.dispose();
       void remoteMediaPreviewProxy?.dispose().catch((error: unknown) => {
         logger.warn("failed to dispose remote media preview proxy", error);
       });
@@ -2147,9 +2161,18 @@ const windowHostAttachmentRegistry = createWindowHostAttachmentRegistry<
       capabilities: windowRemoteConnectionRegistry.resolveScopedCapabilities(scope),
     };
   },
-  expose: ({ port, services, clientMode, scope, capabilities }) =>
-    exposeServicesOnMessagePort(port, services, false, clientMode, scope, capabilities),
+  expose: ({ port, services, clientMode, scope, capabilities, rcsGrant }) =>
+    exposeServicesOnMessagePort(port, services, false, clientMode, scope, capabilities, rcsGrant),
 });
+
+async function getRcsDirectory() {
+  if (!activeServices || databaseStartup?.coordinator.snapshot.phase !== "ready") throw new Error("HOST_NOT_READY");
+  return readRcsWorkspaces({
+    settings: () => activeServices!.get(ISettingService).get(),
+    registered: windowHostControllerRuntime.listRegisteredScopes,
+    remotes: () => windowRemoteConnectionRegistry.listSessions(),
+  });
+}
 
 function logWindowHostTopology(reason: string): void {
   const stats = windowRemoteConnectionRegistry.getStats();
@@ -2339,6 +2362,12 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
 
   const msg = result.data;
   const port = e.ports[0];
+  if (msg.type === "rcs-directory") {
+    if (!port) return;
+    try { port.postMessage({ ok: true, workspaces: await getRcsDirectory() }); }
+    catch { port.postMessage({ ok: false, error: "HOST_NOT_READY" }); }
+    return;
+  }
   if (msg.type === HostMessageTypes.DatabaseStartupControl) {
     if (msg.control.action === "snapshot") databaseStartup?.coordinator.publish();
     else if (msg.control.action === "retry")
@@ -2859,37 +2888,33 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
       logger.error("attach-service-port message missing MessagePort");
       return;
     }
+    let closed = false;
+    port.once("close", () => { closed = true; });
+    const attach = async () => {
+      try {
+        if (msg.scope.kind === "remote") await windowRemoteConnectionRegistry.waitForScopedServices(msg.scope);
+        if (msg.rcsGrant) {
+          if (msg.clientMode !== "web-remote-replayable" || Boolean(msg.rcsGrant.remoteSessionId) !== (msg.scope.kind === "remote") || msg.scope.kind === "remote" && (msg.scope.remoteSessionId !== msg.rcsGrant.remoteSessionId || msg.scope.workspaceIdentity !== msg.rcsGrant.workspaceIdentity || msg.scope.workspacePath !== msg.rcsGrant.workspacePath)) throw new Error("CAPABILITY_DENIED");
+          assertRcsGrantCurrent(msg.rcsGrant, await getRcsDirectory());
+        }
+        if (closed) return;
+        windowHostAttachmentRegistry.attach({ ...msg, port });
+        logWindowHostTopology("attachment-added");
+      } catch (error) {
+        if (msg.rcsGrant) { port.postMessage({ type: "rcs-error", error: "WORKSPACE_SCOPE_STALE" }); port.close(); }
+        else rejectUnavailableAttachedServicePort(port, false);
+        logger.warn(`failed to attach scoped service port, attachmentId=${msg.attachmentId}`, error);
+      }
+    };
     if (msg.scope.kind === "local" && databaseStartup?.coordinator.snapshot.phase !== "ready") {
       // 刷新/手机 attachment 复用同一 Host，等待现有准备，不启动第二个执行者。
       pendingStartupAttachments.set(msg.attachmentId, () => {
-        windowHostAttachmentRegistry.attach({ ...msg, port });
+        void attach();
       });
       port.once("close", () => pendingStartupAttachments.delete(msg.attachmentId));
       return;
     }
-    try {
-      if (msg.scope.kind === "remote") {
-        // Bind 与 Attach 共用 parentPort，但 WSL 上一代 workspace release 可能仍在途。
-        // 持有已转移 port 等待 Host 内 generation barrier，避免新 attachment 踩过旧 runtime 清理。
-        await windowRemoteConnectionRegistry.waitForScopedServices(msg.scope);
-      }
-      windowHostAttachmentRegistry.attach({
-        requestId: msg.requestId,
-        attachmentId: msg.attachmentId,
-        clientMode: msg.clientMode,
-        scope: msg.scope,
-        port,
-      });
-      logger.info(
-        `attached scoped service port, attachmentId=${msg.attachmentId}, scope=${msg.scope.kind}, clientMode=${msg.clientMode}`,
-      );
-      logWindowHostTopology("attachment-added");
-    } catch (error) {
-      // 跨 logical session 或旧 identity 的 port 若继续暴露，会把远端请求路由到错误 source。
-      // scope 校验失败必须关闭已转移端口并明确记录，禁止回退 active local services。
-      rejectUnavailableAttachedServicePort(port, false);
-      logger.warn(`failed to attach scoped service port, attachmentId=${msg.attachmentId}`, error);
-    }
+    await attach();
     return;
   }
 

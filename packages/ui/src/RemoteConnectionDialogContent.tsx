@@ -202,7 +202,7 @@ export function RemoteConnectionSettingsStep({
   remoteWorkspaceSessions?: RemoteWorkspaceSessionEntry[];
   validationMessage: string;
   loading: boolean;
-  onBack: () => void;
+  onBack?: () => void;
   onHostChange: (value: string) => void;
   onPortChange: (value: string) => void;
   onUsernameChange: (value: string) => void;
@@ -286,16 +286,18 @@ export function RemoteConnectionSettingsStep({
           </div>
         ) : null}
         <div className="flex shrink-0 justify-end gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            size="lg"
-            className="h-10 min-w-0 px-5"
-            onClick={onBack}
-            disabled={loading}
-          >
-            {intl.formatMessage({ id: "common.back" })}
-          </Button>
+          {onBack ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              className="h-10 min-w-0 px-5"
+              onClick={onBack}
+              disabled={loading}
+            >
+              {intl.formatMessage({ id: "common.back" })}
+            </Button>
+          ) : null}
           <Button
             type="button"
             size="lg"

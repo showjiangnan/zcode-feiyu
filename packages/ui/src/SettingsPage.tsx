@@ -96,6 +96,10 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
 import { useSelectDirectory } from "@/hooks/usePlatform.js";
 import { ServiceProvider, useServices } from "@/hooks/useServices.js";
+import type { IServiceAccessor } from "@zcode/services";
+import { RcsSettingsSection } from "@/settings/RcsSettingsSection.js";
+import { SshSettingsSection } from "@/settings/SshSettingsSection.js";
+import { BotsSettingsSection } from "@/settings/BotsSettingsSection.js";
 import { useSettings } from "@/hooks/useSettingService.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
@@ -271,6 +275,8 @@ function SettingsSidebarButton({
 }
 
 export function SettingsPage({
+  deviceServices,
+  onSshSettingsMount,
   isDesktop,
   isWindowsDesktop,
   isMacDesktop,
@@ -284,6 +290,8 @@ export function SettingsPage({
   onLogout,
   user,
 }: {
+  deviceServices?: IServiceAccessor;
+  onSshSettingsMount?: (element: HTMLElement | null) => void;
   isDesktop?: boolean;
   isWindowsDesktop?: boolean;
   isMacDesktop?: boolean;
@@ -1469,7 +1477,7 @@ export function SettingsPage({
           data-active-section={activeSection}
           // 隐式 auto 行会按 Memory viewer 的内容高度撑出窗口，随后被 DesktopWindowFrame 裁切且没有滚动条。
           // 固定为单个 minmax(0, 1fr) 行，让普通设置页和内部滚动 viewer 都以窗口剩余高度为边界。
-          className="relative grid h-screen min-h-full w-full grid-cols-[68px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] lg:grid-cols-[268px_minmax(0,1fr)]"
+          className="relative grid h-full min-h-0 w-full grid-cols-[68px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] lg:grid-cols-[268px_minmax(0,1fr)]"
         >
           {isWindowsDesktop ? <WindowsTopLeftLogo /> : null}
 
@@ -1943,7 +1951,12 @@ export function SettingsPage({
                               onMemoryExtractionEnabledChange={handleMemoryExtractionEnabledChange}
                               onMemoryReviewEnabledChange={handleMemoryReviewEnabledChange}
                               maintenanceWorkspacePaths={memoryMaintenanceWorkspacePaths}
-                              projectMemoryViewerAvailable={Boolean(isDesktop)}
+                              projectMemoryViewerAvailable={Boolean(
+                                isDesktop ||
+                                platform.remoteCapabilities?.services.memory?.methods.includes(
+                                  "listProjectMemories",
+                                ),
+                              )}
                               workspaceDisplayNames={memoryWorkspaceDisplayNames}
                             />
                           </ServiceProvider>
@@ -2043,6 +2056,18 @@ export function SettingsPage({
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                           />
+                        ) : activeSection === "remoteRcs" ? (
+                          <RcsSettingsSection />
+                        ) : activeSection === "remoteSsh" ? (
+                          <SshSettingsSection onMount={onSshSettingsMount} />
+                        ) : activeSection === "remoteBots" ? (
+                          <ServiceProvider services={deviceServices ?? services}>
+                            <BotsSettingsSection
+                              workspacePath={captionWorkspacePath}
+                              workspaceIdentity={activeWorkspaceIdentity}
+                              available={Boolean(isDesktop)}
+                            />
+                          </ServiceProvider>
                         ) : activeSection === "browser" ? (
                           <BrowserSettingsSection
                             isDesktop={Boolean(isDesktop)}

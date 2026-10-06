@@ -19,6 +19,12 @@ export interface WorkspaceFileSearchParams {
 }
 
 export interface IFileService {
+  /** 有界文本编辑；expectedSha256 由读取的完整字节计算，冲突不会覆盖外部修改。 */
+  writeTextFile?(params: {
+    path: string;
+    content: string;
+    expectedSha256: string;
+  }): Promise<{ sha256: string }>;
   /** Host 匹配并返回有界候选，避免 Renderer 下载完整文件索引。 */
   searchWorkspaceFiles(params: WorkspaceFileSearchParams): Promise<WorkspaceFileEntry[]>;
   readdir(params: { path: string; includeHidden?: boolean }): Promise<FileEntry[]>;
@@ -39,7 +45,13 @@ export interface IFileService {
    * 返回值必须保持顶层 Uint8Array：RPC 序列化只对顶层二进制走原始字节通道，
    * 嵌套在对象字段里会退化成 JSON+base64。EOF 时返回短数组。
    */
-  readFileRange(params: { path: string; offset: number; length: number }): Promise<Uint8Array>;
+  readFileRange(params: {
+    path: string;
+    offset: number;
+    length: number;
+    expectedSize?: number;
+    expectedMtimeMs?: number;
+  }): Promise<Uint8Array>;
   readBinaryPreview(params: { path: string; maxBytes?: number }): Promise<FileBinaryPreview>;
   /**
    * workspace 文件索引的列式打包长度（字符数）。与 listWorkspaceFilesRange 配对，
