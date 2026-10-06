@@ -68,7 +68,7 @@ function shouldShowModelProviderGroupLoadingIndicator(params: {
   if (params.groupId === "preset") {
     return params.presetLoading;
   }
-  return params.customLoading;
+  return params.groupId === "custom" && params.customLoading;
 }
 
 function resolveModelProviderSideNavLabel(item: ModelProviderNavItem): string {
@@ -407,6 +407,18 @@ export function ModelProviderSectionNavigation({
                   selectedNodeKey={selectedNodeKey}
                   onSelectNavItem={onSelectNavItem}
                 />
+              ) : group.id === "sponsored" ? (
+                <div className="flex flex-col gap-1 max-md:items-center">
+                  {group.items.map((item) => (
+                    <ModelProviderNavigationButton
+                      key={item.key}
+                      item={item}
+                      label={item.label}
+                      selectedNodeKey={selectedNodeKey}
+                      onSelectNavItem={onSelectNavItem}
+                    />
+                  ))}
+                </div>
               ) : (
                 <SortableProviderNavigationGroup
                   group={group}

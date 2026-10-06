@@ -3429,6 +3429,28 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.modelsPlaceholder": "每行一个模型名称",
   "settings.modelProvider.modelsCount": "{count} 个模型",
   "settings.modelProvider.presetTitle": "智谱",
+  "settings.modelProvider.sponsoredTitle": "优质中转站",
+  "settings.modelProvider.sponsored.badge": "合作推广",
+  "settings.modelProvider.sponsored.login": "登录",
+  "settings.modelProvider.sponsored.loginDescription":
+    "登录 teamorouter，获取 API Key，探索多模型服务与实时价格。",
+  "settings.modelProvider.sponsored.models.title": "一把 Key，多模型",
+  "settings.modelProvider.sponsored.models.description":
+    "统一接入主流模型，兼容常用 API 协议，按任务选择合适的模型。",
+  "settings.modelProvider.sponsored.value.title": "按量付费，低至 1 折",
+  "settings.modelProvider.sponsored.value.description":
+    "无需月费或订阅，随用随付。实时折扣随上游成本变化，充值余额持续保留。",
+  "settings.modelProvider.sponsored.routing.title": "多通道，自动兜底",
+  "settings.modelProvider.sponsored.routing.description":
+    "智能调度、质量监控与故障切换，为持续运行的 Agent 任务提供路由支持。",
+  "settings.modelProvider.sponsored.billing.title": "消费透明，缓存省钱",
+  "settings.modelProvider.sponsored.billing.description":
+    "统一账单、逐条消费追踪，配合提示缓存减少重复上下文的调用成本。",
+  "settings.modelProvider.sponsored.pricingNote":
+    "服务介绍来自官网；折扣因模型与上游成本而异，实际费用以请求时的实时价格为准。",
+  "settings.modelProvider.sponsored.setupHint":
+    "登录将在浏览器中继续。获取 API Key 后，可通过「自定义供应商」配置并使用模型。",
+  "settings.modelProvider.sponsored.openFailed": "无法打开浏览器，请重试。",
   "settings.modelProvider.presetDescription":
     "内置 Z.ai 与 BigModel 供应商，支持通过 OAuth 辅助完成配置。",
   "settings.modelProvider.presetEmpty": "尚未同步，请先完成 OAuth 登录。",

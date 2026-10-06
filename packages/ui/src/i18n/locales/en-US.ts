@@ -3659,6 +3659,28 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.modelsPlaceholder": "One model name per line",
   "settings.modelProvider.modelsCount": "{count} models",
   "settings.modelProvider.presetTitle": "Providers",
+  "settings.modelProvider.sponsoredTitle": "Featured gateways",
+  "settings.modelProvider.sponsored.badge": "Sponsored",
+  "settings.modelProvider.sponsored.login": "Sign in",
+  "settings.modelProvider.sponsored.loginDescription":
+    "Sign in to teamorouter to get an API key and explore models and live pricing.",
+  "settings.modelProvider.sponsored.models.title": "One key, multiple models",
+  "settings.modelProvider.sponsored.models.description":
+    "Access major models through familiar APIs and choose a model for each task.",
+  "settings.modelProvider.sponsored.value.title": "Pay as you go, up to 90% off",
+  "settings.modelProvider.sponsored.value.description":
+    "No monthly fee or subscription. Discounts vary with upstream costs; prepaid credit stays in your account.",
+  "settings.modelProvider.sponsored.routing.title": "Routing with automatic fallback",
+  "settings.modelProvider.sponsored.routing.description":
+    "Smart routing, quality monitoring and failover support ongoing agent work.",
+  "settings.modelProvider.sponsored.billing.title": "Clear billing, cache savings",
+  "settings.modelProvider.sponsored.billing.description":
+    "Track individual charges on one bill and reduce repeated context costs with prompt caching.",
+  "settings.modelProvider.sponsored.pricingNote":
+    "Based on the provider's website. Discounts vary by model and upstream costs; the live price at request time applies.",
+  "settings.modelProvider.sponsored.setupHint":
+    "Sign-in continues in your browser. Then add your API key through Custom providers to use the models.",
+  "settings.modelProvider.sponsored.openFailed": "Could not open the browser. Please try again.",
   "settings.usage.sectionTitle": "Usage stats",
   "settings.usage.sectionDescription": "Built from local app session history.",
   "settings.usage.tab.appUsage": "App usage",

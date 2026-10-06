@@ -14,6 +14,7 @@ import {
 } from "@zcode/shared";
 import type { ProviderSettingsFormProvider } from "@/lib/providerSettingsFormTypes.js";
 import { getProviderFormLabel } from "@/lib/providerSettingsFormTypes.js";
+import type { SponsoredProviderId } from "./sponsoredProviders.js";
 
 export function generateId(): string {
   return createUuid();
@@ -135,6 +136,12 @@ export function resolveModelProviderDisplayName(
 export type ModelProviderNavItem =
   | {
       key: string;
+      type: "sponsored";
+      sponsorId: SponsoredProviderId;
+      label: string;
+    }
+  | {
+      key: string;
       type: "preset";
       /** 品牌入口图标独立于其历史 Start 导航身份。 */
       logo?: ProviderSettingsFormProvider["config"]["logo"];
@@ -220,7 +227,7 @@ export type ModelProviderNavItem =
       statusActive: boolean;
     };
 
-export type ModelProviderNavGroupId = "preset" | "custom";
+export type ModelProviderNavGroupId = "preset" | "sponsored" | "custom";
 
 export interface ModelProviderNavGroup {
   id: ModelProviderNavGroupId;

@@ -36,6 +36,7 @@ import {
   buildVisibleFamilyConnectionItems,
   resolveCodingPlanEntitlementState,
 } from "@/settings/model-provider-section/providerFamilyConnectionVisibility.js";
+import { SPONSORED_PROVIDER_SPECS } from "./sponsoredProviders.js";
 
 interface PresetProviderWithConfig extends PresetProviderSpec {
   provider: ProviderSettingsFormProvider | null;
@@ -209,6 +210,16 @@ export function useModelProviderNavigation({
           }),
           ...codingPlanItems.filter((item) => isStartPlanModelProviderId(item.presetId)),
         ],
+      },
+      {
+        id: "sponsored",
+        title: intl.formatMessage({ id: "settings.modelProvider.sponsoredTitle" }),
+        items: SPONSORED_PROVIDER_SPECS.map((sponsor) => ({
+          key: sponsor.nodeKey,
+          type: "sponsored" as const,
+          sponsorId: sponsor.id,
+          label: sponsor.label,
+        })),
       },
       {
         id: "custom",
@@ -524,7 +535,9 @@ export function connectionSelectionMatchesNavigationItem(
   selection: ProviderFamilyConnectionSelection,
   item: Exclude<ModelProviderNavGroup["items"][number], { type: "codingPlanLoading" }>,
 ): boolean {
-  if (item.type === "custom") return false;
+  // 合作推广节点没有执行身份，不能参与账号连接匹配或读取 presetId。
+  if (item.type !== "preset" && item.type !== "codingPlan" && item.type !== "teamPlan")
+    return false;
   const familySpec = resolveModelProviderFamilySpecByProviderId(item.presetId ?? "");
   if (familySpec?.id !== family) return false;
   if (selection.kind === "start-plan") {

@@ -60,7 +60,7 @@ const CODING_PLAN_USAGE_SUMMARY_COLORS = [
   "var(--color-usage-chart-4)",
 ] as const;
 
-function PlanStatusCardSurface({
+export function PlanStatusCardSurface({
   planTitle,
   titleAccessory,
   statusMeta,

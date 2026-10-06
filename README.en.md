@@ -9,6 +9,8 @@ ZCode Feiyu is a community fork of [zai-org/ZCode](https://github.com/zai-org/ZC
 
 Maintained independently by Feiyu, this repository is separate from official releases. Existing ZCode UI components and interactions are reused; application names remain ZCode / ZCode Preview. The upstream baseline is **v3.14.3, commit `29628c9acdb81b703bbd4080c207a0e7ce5e276e`**. Comparisons refer to that public source revision, not future upstream versions.
 
+Improved support for selected model providers.
+
 ## Download installers
 
 Get Feiyu builds from [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases). The first release is [v3.14.3-feiyu.1 (prerelease)](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.3-feiyu.1). The in-app version remains **3.14.3**, and the installed application is named **ZCode Preview**.
