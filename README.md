@@ -13,16 +13,16 @@ ZCode Feiyu 是基于 [zai-org/ZCode](https://github.com/zai-org/ZCode) 的社�
 
 ## 下载安装包
 
-在 [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases) 下载飞鱼版。首个版本为 [v3.14.3-feiyu.1（预发布）](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.3-feiyu.1)，应用内版本仍为 **3.14.3**，安装后名称为 **ZCode Preview**。
+在 [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases) 下载飞鱼版。最新版为 [v3.14.4-feiyu.1（预发布）](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.4-feiyu.1)，应用内版本为 **3.14.4**，安装后名称为 **ZCode Preview**。
 
-**源码与安装包版本区别：** 当前 `main`（3.14.4）已加入下文的记忆、编排、主动工作、执行预算移除、swarm 请求修复和 RCS 远程服务；`v3.14.3-feiyu.1` 是较早的安装包，不包含这些后续更新。使用当前源码能力请按下文构建；现有下载链接不会自动变成新构建。
+本次安装包基于生产源码提交 [2ed7386](https://github.com/showjiangnan/zcode-feiyu/commit/2ed7386f28ad4d680ced5ebdb2a093b857e0e6b2) 构建，包含下文的记忆、编排、主动工作、执行预算移除、swarm 请求修复和 RCS 远程服务。Release 标签固定实际构建提交；后续 README 更新不会改变安装包内容。较早版本仍可在 Releases 中下载。
 
-| 平台                         | 下载                                                                                                                                                                                                                                                        | 本次验证范围                                                                                                     |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| macOS Apple Silicon（arm64） | [DMG 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/ZCode-Feiyu-3.14.3-mac-arm64.dmg) · [ZIP 压缩包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/ZCode-Feiyu-3.14.3-mac-arm64.zip) | 在 Apple Silicon Mac 构建；最终归档内容、ad-hoc 签名、内置 Agent 启动及终端原生模块冒烟通过                      |
-| Windows x64                  | [EXE 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/ZCode-Feiyu-3.14.3-win-x64.exe)                                                                                                                                  | 在同一 Mac 交叉构建；NSIS 安装器、运行时依赖、x64 主程序/PTY 及归档内容检查通过；**尚未在 Windows 实机安装运行** |
+| 平台                         | 下载                                                                                                                                                                                                                                                        | 本次验证范围                                                                                                                                |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS Apple Silicon（arm64） | [DMG 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.4-feiyu.1/ZCode-Feiyu-3.14.4-mac-arm64.dmg) · [ZIP 压缩包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.4-feiyu.1/ZCode-Feiyu-3.14.4-mac-arm64.zip) | 在 Apple Silicon Mac 构建；DMG/ZIP 内容一致，严格 ad-hoc 签名核验、内置 Agent 启动通过；测试副本按现有 helper 权限准备步骤完成原生 PTY 冒烟 |
+| Windows x64                  | [EXE 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.4-feiyu.1/ZCode-Feiyu-3.14.4-win-x64.exe)                                                                                                                                  | 在同一 Mac 交叉构建；NSIS 安装器、运行时依赖、x64 主程序/PTY/Koffi 及归档内容检查通过；**尚未在 Windows 实机安装运行**                      |
 
-[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.3-feiyu.1/SHA256SUMS.txt) 提供三个安装包的 SHA-256 摘要。macOS 可用 `shasum -a 256 <文件>`，Windows PowerShell 可用 `Get-FileHash <文件> -Algorithm SHA256`，与校验文件比对。
+[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.4-feiyu.1/SHA256SUMS.txt) 提供三个安装包的 SHA-256 摘要。macOS 可用 `shasum -a 256 <文件>`，Windows PowerShell 可用 `Get-FileHash <文件> -Algorithm SHA256`，与校验文件比对。
 
 - **Mac 安装**：打开 DMG，将 ZCode Preview 拖入“应用程序”，再从“应用程序”启动；ZIP 用户先解压再复制。此包为 ad-hoc 签名，未使用 Apple Developer ID，也未经 Apple 公证；若系统拦截，确认下载来源及摘要后按“系统设置 → 隐私与安全性”的提示处理。
 - **Windows 安装**：运行 EXE，按向导选择安装目录。安装器没有 Authenticode 发布者签名，系统可能显示未知发布者或 SmartScreen 提示。
