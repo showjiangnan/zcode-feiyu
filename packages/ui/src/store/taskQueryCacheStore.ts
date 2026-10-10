@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- task query cache 的 descriptor、membership 与 mutation 必须在同一 Zustand 事务里维护，拆散会增加缓存一致性风险。 */
 import { create } from "zustand";
 import type { ZCodeTaskListItem } from "@zcode/services";
@@ -16,6 +17,7 @@ import {
 } from "@/lib/taskQueryCache.js";
 import { notifyTaskLifecycle } from "@/lib/taskLifecycleEvents.js";
 import { uiMemoryDiagnosticsRegistry } from "@/lib/memoryDiagnostics.js";
+import { useSidebarPresentationStore } from "./sidebarPresentationStore.js";
 
 export interface TaskListMembershipState {
   pinned: boolean;
@@ -963,8 +965,15 @@ export function applyTaskQueryCacheMutation(params: {
   nextTask: ZCodeTaskMeta;
   previousState: TaskListMembershipState;
   nextState: TaskListMembershipState;
+  committedPin?: boolean;
 }): void {
   useTaskQueryCacheStore.getState().applyTaskMutation(params);
+  if (typeof params.committedPin === "boolean") {
+    // 乐观切换和失败回滚不能修改历史置顶顺序；只接受成功的置顶命令结果。
+    useSidebarPresentationStore.getState().recordTaskPin(params.nextTask, params.committedPin);
+  } else if (params.nextState.archived && params.previousState.pinned) {
+    useSidebarPresentationStore.getState().recordTaskPin(params.nextTask, false);
+  }
   if (!params.previousState.archived && params.nextState.archived) {
     notifyTaskLifecycle({
       type: "archived",

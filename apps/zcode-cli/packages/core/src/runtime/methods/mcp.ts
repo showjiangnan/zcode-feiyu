@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   getCapturedZCodeCuaBrokerCredentials,
   ZCODE_CUA_OFFICIAL_PLUGIN_ID,
@@ -142,6 +143,13 @@ export async function initializeMcp(
         this.config.mcp?.servers ?? {},
         new Set(this.config.mcp?.trustedOfficialCuaServerNames ?? []),
       ),
+      workspaceCuaApproval: {
+        serverNames: computeOfficialCuaServerNames(
+          this.config.mcp?.servers ?? {},
+          new Set(this.config.mcp?.trustedWorkspaceCuaServerNames ?? []),
+        ),
+        isEnabled: () => this.config.runtimeFeatures?.computerUse === true,
+      },
     });
     if (registered.length > 0) {
       this.invalidateToolCache();

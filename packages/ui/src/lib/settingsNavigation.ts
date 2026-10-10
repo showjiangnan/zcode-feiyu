@@ -44,7 +44,6 @@ const HIDDEN_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "automations",
   // 旧插件市场已迁出设置页；保留 id 只用于迁移历史偏好和旧调用。
   "plugins",
-  "computerUse",
 ]);
 
 interface SettingsSectionIntentEventDetail {
@@ -62,7 +61,9 @@ export interface SettingsModelProviderTarget {
 
 function isSettingsSectionId(value: string): value is SettingsSectionId {
   return (
-    value === "remoteRcs" || value === "remoteSsh" || value === "remoteBots" ||
+    value === "remoteRcs" ||
+    value === "remoteSsh" ||
+    value === "remoteBots" ||
     value === "general" ||
     value === "appearance" ||
     value === "migration" ||

@@ -17,6 +17,9 @@ import {
 // UI 旧投影（zcodeSessionProjection 等读路径）。
 // 上述旧协议 client/server 组删除时，本文件整体删除。
 // 注：外部零消费 schema 多为存活 schema 联合的内部依赖，随宿主文件一起处理，勿单删。
+import { nodeReplImageDisplaySchema } from "../node-repl-display.js";
+import { toolResultDisplaySchema } from "../zcode-protocol-v4/toolDisplay.js";
+import { proactiveCausalContextSchema } from "../zcode-protocol-v4/orchestration.js";
 import { bashOutputDisplaySchema } from "../bash-output-display.js";
 // 后台详情共享精简的只读响应 schema，不携带命令或计时元数据。
 export * from "../background-bash-output.js";
@@ -97,27 +100,7 @@ const protocolInstantSchema = z.union([timestampMsSchema, nonEmptyString, z.date
 
 // Tool result display 不受模型文本 budget 约束；Node REPL 图片必须在 Agent/App 协议边界
 // 做严格限长，避免截图把 continuous 或 replayable 消息扩成无界载荷。
-export const zcodeNodeReplImageToolResultDisplaySchema = z
-  .object({
-    kind: z.literal("node_repl_images"),
-    images: z
-      .array(
-        z
-          .object({
-            base64: z
-              .string()
-              .min(1)
-              .max(200 * 1024),
-            mimeType: z.string().regex(/^image\/[a-z0-9.+-]+$/iu),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(2),
-    truncated: z.boolean().optional(),
-    source: z.literal("browser_turn_end").optional(),
-  })
-  .strict();
+export const zcodeNodeReplImageToolResultDisplaySchema = nodeReplImageDisplaySchema;
 
 // 同理：CreateWorkflow 的类型检查诊断也是 display 通道，必须在协议边界限长，
 // 避免大量诊断把 continuous/replayable 消息扩成无界载荷。
@@ -1240,6 +1223,8 @@ export const zcodeTurnSteerDrainedEventPayloadSchema = z
   .strict();
 export const zcodeTurnCompletedEventPayloadSchema = z
   .object({
+    // 与 CLI 终态一致；遗漏会让已完成的任务被 Host 当无效事件丢弃。
+    causalContext: proactiveCausalContextSchema.optional(),
     response: z.string(),
     tokenCount: z.number().int().nonnegative(),
     usage: z.unknown().optional(),
@@ -1344,12 +1329,19 @@ export const zcodeToolUpdatedEventPayloadSchema = z.discriminatedUnion("kind", [
       parallelGroupIndex: z.number().int().nonnegative().optional(),
       canRunParallel: z.boolean().optional(),
       schedule: jsonObjectSchema.optional(),
+      // CLI 已携带启动展示；缺字段会使严格校验丢弃整条工具事件。
+      display: toolResultDisplaySchema.optional(),
     })
     .strict(),
   zcodeToolCallBasePayloadSchema
     .extend({
       kind: z.literal("started"),
       startedAt: protocolInstantSchema,
+      display: toolResultDisplaySchema.optional(),
+      readOnly: z.boolean().optional(),
+      sideEffectScope: z
+        .enum(["none", "workspace", "git", "network", "system", "session", "userInteraction"])
+        .optional(),
     })
     .strict(),
   zcodeToolCallBasePayloadSchema
@@ -2774,6 +2766,9 @@ export const zcodePluginInfoSchema = z
     enabled: z.boolean(),
     source: nonEmptyString,
     marketplace: nonEmptyString,
+    // CLI 生命周期 owner 决定能力，optional 保留旧 Host 的协议兼容。
+    systemManaged: z.boolean().optional(),
+    canUninstall: z.boolean().optional(),
     // manifest（plugin.json）的作者/主页回退字段；商店 listing 缺失时详情页信息区用它兜底。
     author: z.string().optional(),
     authorUrl: z.string().optional(),

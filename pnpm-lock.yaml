@@ -1111,6 +1111,9 @@ importers:
       '@zcode/shared':
         specifier: workspace:*
         version: link:../shared
+      '@zcode/zcode-cua':
+        specifier: workspace:*
+        version: link:../zcode-cua
       ai:
         specifier: ^6.0.138
         version: 6.0.159(zod@4.6.5)
@@ -1289,6 +1292,8 @@ importers:
         version: 8.20.0
 
   packages/zcode-cua: {}
+
+  packages/zcode-cua-plugin: {}
 
   packages/zcode-server-cli:
     dependencies:
@@ -16172,11 +16177,11 @@ snapshots:
 
   lodash.merge@4.6.2: {}
 
+  lodash.pickby@4.6.0: {}
+
   lodash.uniqby@4.7.0: {}
 
   lodash@4.18.1: {}
-
-  lodash.pickby@4.6.0: {}
 
   log-symbols@4.1.0:
     dependencies:

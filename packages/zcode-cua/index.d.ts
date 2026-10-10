@@ -1,6 +1,8 @@
+// Modified by ZCode Feiyu contributors (2026).
 export interface ComputerUseRuntimeContext {
   sessionId: string;
   runtimeScope: "main" | "subagent";
+  taskType?: string;
   workspaceKey: string;
   workspacePath?: string;
   workspaceIdentity?: string;
@@ -25,6 +27,7 @@ export interface ComputerUseRuntime {
 }
 
 export interface ComputerUseRuntimeOptions {
+  brokerToken?: string;
   brokerSocketPath?: string;
   refreshMarkerPath?: string;
   ensureBrokerAvailable?: () => Promise<void>;

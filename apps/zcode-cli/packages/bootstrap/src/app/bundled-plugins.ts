@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -11,7 +12,7 @@ import {
 import { dirname, join, resolve, sep } from "node:path";
 import { writeBundledOfficialMarketplacePartitionSync } from "@zcode/adapters";
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE, type Logger } from "@zcode/contracts";
-import { isZCodeCuaInternalFeatureEnabled, ZCODE_CUA_OFFICIAL_PLUGIN_ID } from "@zcode/shared";
+import { ZCODE_CUA_OFFICIAL_PLUGIN_ID } from "@zcode/shared";
 import {
   createOfficialPluginCacheRetryBudget,
   getOfficialPluginCacheRetryAttempts,
@@ -232,11 +233,9 @@ export function resolveOfficialPluginRoots(input: {
   suppressedBuiltins?: ReadonlySet<string>;
 }): string[] {
   const suppressedBuiltins = new Set(input.suppressedBuiltins ?? []);
-  // zcode-cua 内置 plugin 默认不启用，由 feature flag 控制加载。在 seed/discovery 层门控
-  // （而非只隐藏某个 UI 面），这样开关关闭时用户无法经 plugin 列表/marketplace/MCP 设置/CLI 命令看到它。
-  if (!isZCodeCuaInternalFeatureEnabled(input.env ?? process.env)) {
-    suppressedBuiltins.add(ZCODE_CUA_OFFICIAL_PLUGIN_ID);
-  }
+  // 系统插件始终在本机清单中；开关仅控制能力准入，不再用历史抑制态隐藏入口。
+  if (["darwin", "win32"].includes(process.platform)) suppressedBuiltins.delete(ZCODE_CUA_OFFICIAL_PLUGIN_ID);
+  else suppressedBuiltins.add(ZCODE_CUA_OFFICIAL_PLUGIN_ID);
   const failedSeeds = seedBundledOfficialPlugins({
     logger: input.logger,
     storageRoot: input.storageRoot,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { PipSessionEvent } from "./pip-session.d.ts";
 
 export interface PipSessionApplyResult {
@@ -7,6 +8,7 @@ export interface PipSessionApplyResult {
 
 export interface PipSessionClientOptions {
   socketPath?: string;
+  token?: string;
   timeoutMs?: number;
   reconnectAttempts?: number;
   reconnectDelayMs?: number;

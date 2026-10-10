@@ -1,14 +1,6 @@
-const UNAVAILABLE_TEXT = "Computer Use is not available in this build.";
-
-export function createComputerUseRuntime(_options) {
-  return {
-    async execute() {
-      return {
-        content: [{ type: "text", text: UNAVAILABLE_TEXT }],
-        isError: true,
-      };
-    },
-    async closeSession() {},
-    async dispose() {},
-  };
+// Modified by ZCode Feiyu contributors (2026).
+import { createRuntime } from "./src/app/runtime.js";
+import { request } from "./src/adapters/ipc-client.js";
+export function createComputerUseRuntime(options = {}) {
+  return createRuntime({ env: process.env, ...options, request });
 }

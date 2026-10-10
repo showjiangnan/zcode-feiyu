@@ -34,6 +34,7 @@ import {
   createSessionEvent,
   type ExecutionShellSelection,
   type MessageId,
+  type SkillRoot,
 } from "@zcode/contracts";
 import { isRemoteWorkspaceIdentity, resolveZCodeRuntimeEnv } from "@zcode/shared";
 import {
@@ -68,6 +69,7 @@ import { createWorkflowFacade } from "./workflow-facade.js";
 import { createInputFacade } from "./input-facade.js";
 import { createPluginFacadeForApp } from "./plugin-facade.js";
 import { resolvePluginRuntimeFeatures } from "./plugin-runtime-features.js";
+import { createComputerUseRefresh } from "./computer-use-refresh.js";
 import { createSessionFacade } from "./session-facade.js";
 import { resolveAppRuntimeConfig, runtimeConfigLogContext } from "./runtime-config.js";
 import { restoreImageGenerationPort } from "./image-generation-snapshot.js";
@@ -269,10 +271,11 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       stage: "resolve_runtime_config",
     });
     // Plugin 对话引用：身份 catalog 在 App（Session runtime）
-    // 创建时冻结一次。冷恢复会重建 App，天然拿到新 catalog；已有 Session 不热加载新 Plugin。
-    const pluginReferenceCatalog = buildPluginReferenceCatalog(pluginOutcome.plugins);
+    // 普通插件创建时冻结；官方电脑控制在合法任务边界定向刷新，不重建会话历史。
+    let pluginReferenceCatalog = buildPluginReferenceCatalog(pluginOutcome.plugins);
     runtimeConfig.pluginReferenceCatalog = pluginReferenceCatalog;
     let runtime: AgentRuntime | undefined;
+    let refreshComputerUseCapabilities: ((trace: TraceContext) => Promise<void>) | undefined;
     const workspaceHookRuntimeSecurity = createWorkspaceHookRuntimeSecurity({
       appVersion,
       logger,
@@ -502,6 +505,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       // 初始化前落定一次，避免模型看到的 Shell 与 Bash 执行 shell 分叉。
       await initializeSessionShellEnvironment();
       await prepareResume(boundaryOptions?.traceContext, boundaryOptions?.abortSignal);
+      await refreshComputerUseCapabilities?.(boundaryOptions?.traceContext ?? traceContext);
     };
 
     const modelExecutionConfig = createRuntimeAiSdkModelExecutionConfig(options.env, {
@@ -707,6 +711,23 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       registry: options.providerRegistry,
       currentSelection: () => getRuntime().getSessionModelSelection(),
     });
+    const createSessionSkillPort = (roots: SkillRoot[]) =>
+      configResult.config.features.skill && configResult.config.skills.enabled
+        ? (options.skillPort ??
+          createNodeSkillAdapter({
+            extraRoots: configResult.config.skills.roots,
+            extraResolvedRoots: [...roots, ...bundledSkillRoots],
+            disabledPaths: [
+              ...collectDisabledPaths(configResult.config.skillOverrides),
+              ...(!options.imageGenerationPort?.config.enabled
+                ? bundledSkillRoots.map((root) => join(root.path, "image-generation", "SKILL.md"))
+                : []),
+              ...(runtimeConfig.dynamicWorkflowEnabled === false
+                ? collectDynamicWorkflowDisabledSkillPaths(bundledSkillRoots)
+                : []),
+            ],
+          }))
+        : undefined;
     runtime = new AgentRuntime(sessionId, runtimeConfig, {
       agentTelemetry: modelTelemetry.agentExecution,
       // 主代理的模型请求过治理器的 observer：立即放行，但让治理器看见它的 429 / 成功。
@@ -726,25 +747,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       artifactStore,
       contextSourcePort:
         options.contextSourcePort ?? createNodeContextSourceAdapter({ env: options.env }),
-      skillPort:
-        configResult.config.features.skill && configResult.config.skills.enabled
-          ? (options.skillPort ??
-            createNodeSkillAdapter({
-              extraRoots: configResult.config.skills.roots,
-              extraResolvedRoots: [...pluginOutcome.skillRoots, ...bundledSkillRoots],
-              disabledPaths: [
-                ...collectDisabledPaths(configResult.config.skillOverrides),
-                ...(!options.imageGenerationPort?.config.enabled
-                  ? bundledSkillRoots.map((root) => join(root.path, "image-generation", "SKILL.md"))
-                  : []),
-                // 动态工作流关闭时不提供 dynamic-workflows 技能：
-                // 十个工具都不在场，再让模型读到「怎么写工作流脚本」只会诱导它去调不存在的工具。
-                ...(runtimeConfig.dynamicWorkflowEnabled === false
-                  ? collectDynamicWorkflowDisabledSkillPaths(bundledSkillRoots)
-                  : []),
-              ],
-            }))
-          : undefined,
+      skillPort: createSessionSkillPort(pluginOutcome.skillRoots),
       mcpPort,
       eventSink: options.eventSink,
       modelFactory,
@@ -767,6 +770,23 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       traceContext,
     });
     await runtime.recoverProjectMemory();
+    refreshComputerUseCapabilities = createComputerUseRefresh({
+      initial: pluginOutcome,
+      options,
+      workingDirectory,
+      getRuntime,
+      logger,
+      createSkillPort: createSessionSkillPort,
+      decorateServers: (servers) =>
+        nodeReplBrowserBroker
+          ? injectNodeReplBrowserBroker(servers, nodeReplBrowserBroker)
+          : servers,
+      onApplied: (server, catalog) => {
+        if (server) configuredMcpServers.node_repl = server;
+        else delete configuredMcpServers.node_repl;
+        pluginReferenceCatalog = catalog;
+      },
+    });
     markRuntimeConstructed({
       hasInjectedModelAdapter: options.modelAdapter !== undefined,
       sessionId,

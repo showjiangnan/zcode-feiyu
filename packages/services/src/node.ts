@@ -1,7 +1,11 @@
 // Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- host process 服务注册和启动装配需要集中维护，拆散后会更难追踪依赖注入顺序 */
 // Node.js service implementations — NOT safe to import in browser code
-import { randomBytes } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
+import { discoverWorkspaceHookConfigPaths } from "@zcode/shared/workspace-hook-discovery";
+
+const localComputerControlUiToken = process.env.ZCODE_CUA_LOCAL_UI_TOKEN;
+delete process.env.ZCODE_CUA_LOCAL_UI_TOKEN;
 import { IImageGenerationService } from "./image-generation/contract.js";
 import { createImageGenerationService } from "./image-generation/imageGenerationService.js";
 import { readFileSync } from "node:fs";
@@ -14,6 +18,7 @@ import {
 } from "@zcode/provider-node";
 import { getAppConfigDir as resolveAppConfigDir, getZCodeDataRootDir } from "./paths.js";
 import {
+  isRemoteWorkspaceIdentity,
   APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
   appRuntimePreferencesChangedBroadcastPayloadSchema,
   buildLocalMediaPreviewUrl,
@@ -304,6 +309,7 @@ import { IBroadcastService } from "./broadcast/broadcast.js";
 import { IZCodeTaskService } from "./session/zcodeTaskService.js";
 import { IZCodeAgentService } from "./zcode-agent/zcodeAgent.js";
 import type { CuaOperationStateReporter } from "./zcode-agent/cuaOperationTurnTracker.js";
+import { createCuaTurnQualification } from "./zcode-agent/cuaTurnQualification.js";
 import { IZCodeSessionService } from "./zcode-session/zcodeSession.js";
 import {
   createUnsupportedConversationShareService,
@@ -449,6 +455,7 @@ import {
 } from "./runtime-tools/agentProxyEnv.js";
 import { ensureAppCaCert } from "./runtime-tools/appCaCert.js";
 import { buildHelperOpenArgs, isCuaLocalDevelopmentRuntime } from "@zcode/zcode-cua/broker/server";
+import { validateControlPresentation } from "@zcode/zcode-cua/control-contract";
 import { createServiceLogger, type ServiceLogger } from "#src/logger/serviceLogger.js";
 import { IOffPeakTaskService } from "./session/offPeakTask.js";
 import { OffPeakTaskService } from "./session/offPeakTaskService.js";
@@ -498,7 +505,6 @@ import {
   type CuaProductMcpServerResolverContext,
   type CuaPermissionRestartOptions,
   type CuaPermissionRestartResult,
-  type CuaPermissionState,
   type CuaPermissionStatusQueryOptions,
   type CuaPermissionStatusResult,
 } from "#src/cua-permission-broker/index.js";
@@ -528,7 +534,6 @@ import {
   type BrowserCommand,
   isZCodeCuaMcpCommand,
   isZCodeCuaMcpPackageArg,
-  isZCodeCuaInternalFeatureEnabled,
   ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
   type ZCodeAutomation,
   type ZCodeAutomationRun,
@@ -538,7 +543,6 @@ import {
   zcodeAccountAccessSchema,
   zcodeProviderAccountAccessSchema,
   ZCODE_VERSION,
-  ZCODE_ENV,
   buildRuntimeZCodeApiUrl,
 } from "@zcode/shared";
 
@@ -717,8 +721,7 @@ export function shouldEnableDefaultCuaProductHelper(
 ): boolean {
   // CUA 已随正式版默认开启（isZCodeCuaInternalFeatureEnabled 默认 ON，仅显式 0/false/off 关闭；2026-08 注释更正——旧注释称默认关闭已过期）。显式开启后 macOS 使用既有产品 Helper，Windows 使用安装包内 runtime；
   // 两端都保持按需启动。关闭时不创建 host、不探测资源、不产生子进程或权限提示。
-  const env = options.env ?? process.env;
-  if (!isZCodeCuaInternalFeatureEnabled(env)) return false;
+
   const platform = options.platform ?? process.platform;
   return platform === "darwin" || platform === "win32";
 }
@@ -748,7 +751,7 @@ export function shouldUseCuaPermissionService(opts: {
   platform?: NodeJS.Platform;
   cuaEnabled: boolean;
 }): boolean {
-  return (opts.platform ?? process.platform) === "darwin" && opts.cuaEnabled;
+  return ["darwin", "win32"].includes(opts.platform ?? process.platform) && opts.cuaEnabled;
 }
 
 export function shouldRetainDefaultCuaProductHelper(): boolean {
@@ -799,14 +802,14 @@ export async function resolveCuaScreenRecordingState(
   // 换个进程也只会得到 unknown，不值得花一次 LaunchServices 冷启。
   if (reported === "unknown") return reported;
   try {
-    return (await host.queryScreenRecordingPreflight()) ?? reported;
+    return (await host.queryScreenRecordingPreflight()) ?? "unknown";
   } catch {
-    return reported;
+    return "unknown";
   }
 }
 
 export function createDynamicCuaProductMcpServerResolver(options: {
-  isPluginEnabled: (context?: CuaProductMcpServerResolverContext) => boolean;
+  isPluginEnabled: (context?: CuaProductMcpServerResolverContext) => boolean | Promise<boolean>;
   getResolver: (
     context?: CuaProductMcpServerResolverContext,
   ) => CuaProductMcpServerResolver | undefined | Promise<CuaProductMcpServerResolver | undefined>;
@@ -817,7 +820,7 @@ export function createDynamicCuaProductMcpServerResolver(options: {
 }): CuaProductMcpServerResolver {
   return {
     async resolveMcpServers(servers, context) {
-      if (!options.isPluginEnabled(context)) return servers;
+      if (!(await options.isPluginEnabled(context))) return servers;
       const resolver = await options.getResolver(context);
       if (!resolver) return servers;
       const resolved = await resolver.resolveMcpServers(servers, context);
@@ -852,6 +855,10 @@ type CreateDefaultCuaProductHelperOptions = {
   // 转发给 resolver，restart 前用来判断是否有活跃 turn（见 cuaProductMcpResolver.ts）。
   // desktop-local agent service 会提供真实的 CUA turn 状态；其他调用方没有该状态时才回退为 false。
   hasActiveTurn?: () => boolean;
+  isEnabled?: (context: CuaProductMcpServerResolverContext) => Promise<boolean>;
+  isTurnActive?: (
+    context: import("@zcode/zcode-cua").ComputerUseRuntimeContext,
+  ) => Promise<boolean>;
   platform?: NodeJS.Platform;
   env?: NodeJS.ProcessEnv;
   resourcesPath?: string;
@@ -1024,6 +1031,8 @@ export function createDefaultCuaProductHelper(
       createProductCuaHelperHost({
         logger,
         env: process.env,
+        isEnabled: options.isEnabled,
+        isTurnActive: options.isTurnActive,
         helperInstaller: createCanonicalCuaHelperInstaller({
           logger,
           env: process.env,
@@ -1037,6 +1046,26 @@ export function createDefaultCuaProductHelper(
         // producer product factory 统一固定 ghost cursor/PiP=true、background=false。
         // consumer 不再传伪动态 getter，避免两个仓库各保存一份产品策略。
       });
+    host = macPermissionHost;
+  } else if (!options.resolveWindowsRuntime && !options.createWindowsHost) {
+    const resources =
+      options.resourcesPath ||
+      (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+    const bundledHelperAppPath =
+      env.ZCODE_CUA_BUNDLED_HELPER_DIR || (resources ? join(resources, "cua-helper") : undefined);
+    if (!bundledHelperAppPath) return undefined;
+    macPermissionHost = createProductCuaHelperHost({
+      env,
+      logger,
+      isEnabled: options.isEnabled,
+      isTurnActive: options.isTurnActive,
+      bundledHelperAppPath,
+      helperInstaller: createCanonicalCuaHelperInstaller({
+        bundledAppPath: bundledHelperAppPath,
+        env,
+        logger,
+      }),
+    });
     host = macPermissionHost;
   } else {
     host = createWindowsCuaHelperHost({
@@ -1208,6 +1237,7 @@ export async function buildCuaProductHelperAgentEnv(
       cuaProductHelperAgentEnvRetryAt.delete(host);
       return {
         [BROKER_SOCKET_ENV]: transport.socketPath,
+        ...(transport.brokerToken ? { ZCODE_CUA_BROKER_TOKEN: transport.brokerToken } : {}),
         [ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY]: transport.pluginAuthority,
       };
     }
@@ -1217,10 +1247,10 @@ export async function buildCuaProductHelperAgentEnv(
     if (reserved && !hasCuaProductHelperAgentEnvUnavailable(host)) {
       cuaProductHelperReservedSpawns.add(host);
       cuaProductHelperAgentEnvRetryAt.delete(host);
-      // 这条 reserved 分支不再下发 BROKER_TOKEN_ENV：broker
-      // token 鉴权已整体删除（连接门是代码签名身份）。凭据只剩 socket + authority。
+      // 预留 transport 仍传完整认证组；CLI 捕获后仅定向恢复给官方 shared Node REPL。
       return {
         [BROKER_SOCKET_ENV]: reserved.socketPath,
+        ...(reserved.brokerToken ? { ZCODE_CUA_BROKER_TOKEN: reserved.brokerToken } : {}),
         [ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY]: reserved.pluginAuthority,
       };
     }
@@ -1241,6 +1271,7 @@ export async function buildCuaProductHelperAgentEnv(
     cuaProductHelperAgentEnvRetryAt.delete(host);
     return {
       [BROKER_SOCKET_ENV]: handle.socketPath,
+      ...(handle.brokerToken ? { ZCODE_CUA_BROKER_TOKEN: handle.brokerToken } : {}),
       [ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY]: handle.pluginAuthority,
     };
   } catch (error) {
@@ -1262,6 +1293,7 @@ export async function buildCuaProductHelperAgentEnv(
         cuaProductHelperAgentEnvRetryAt.delete(host);
         return {
           [BROKER_SOCKET_ENV]: reserved.socketPath,
+          ...(reserved.brokerToken ? { ZCODE_CUA_BROKER_TOKEN: reserved.brokerToken } : {}),
           [ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY]: reserved.pluginAuthority,
         };
       }
@@ -1740,17 +1772,26 @@ export function createLocalServices(options: {
   // 调用 hasActiveTurn() 发生在后续某次 resolveMcpServers（异步），那时 hasActiveTurnRef 早已被赋值。
   // 先用前向引用连接 agent service 的 CUA turn tracker，避免在活跃 CUA 请求中途重启 Helper；
   // service 创建完成后再赋值。Helper recovery 始终不能回收 Agent。
+  let isCuaTurnActiveRef:
+    | ((context: import("@zcode/zcode-cua").ComputerUseRuntimeContext) => Promise<boolean>)
+    | undefined;
   let hasActiveTurnRef: (() => boolean) | undefined;
-  const isCuaEnabledForContext = (context?: CuaProductMcpServerResolverContext): boolean =>
-    // 保留 main 原有 gate 行为（避免回归）：dev/internal 特性开启时（ZCODE_CUA_DEV_MODE=1 或
-    // ZCODE_CUA_PRODUCT_HELPER=1）即视为启用，不依赖 config.json 显式 enable——main 的 bootstrap
-    // 用 isZCodeCuaInternalFeatureEnabled 门控 bundled plugin，与 feat 的 workspace enablement 不同。
-    // 生产路径（dev mode off）回落到官方插件 workspace enablement 判定（与 feat 一致）。
-    isZCodeCuaInternalFeatureEnabled(process.env) ||
+  let nativeControlPresentation:
+    | import("@zcode/zcode-cua/control-contract").ControlPresentation
+    | undefined;
+  const isCuaEnabledForContext = async (
+    context?: CuaProductMcpServerResolverContext,
+  ): Promise<boolean> =>
     isOfficialCuaPluginEnabledForWorkspace({
       env: process.env,
       workingDirectory: context?.workspacePath,
+      configPaths: context?.workspacePath
+        ? discoverWorkspaceHookConfigPaths({ workingDirectory: context.workspacePath }).map(
+            (ref) => ref.path,
+          )
+        : [],
     });
+
   const defaultCuaProductHelperLifecycle =
     new CuaHelperLifecycleManager<ManagedDefaultCuaProductHelper>(async (managed) => {
       await managed.helper.host.stop();
@@ -1761,8 +1802,12 @@ export function createLocalServices(options: {
     const helper = createDefaultCuaProductHelper({
       // 转发活跃-turn 查询（前向引用，zcodeAgentService 建好后赋值）。
       hasActiveTurn: () => hasActiveTurnRef?.() ?? false,
+      isEnabled: isCuaEnabledForContext,
+      isTurnActive: (context) => isCuaTurnActiveRef?.(context) || Promise.resolve(false),
     });
     if (!helper) return undefined;
+    if (nativeControlPresentation)
+      helper.macPermissionHost?.setControlPresentation(nativeControlPresentation);
 
     // 历史默认装配启动 10 秒周期 watchdog；空闲期一次 broker_info 超时就会在后台
     // 调用 resolver.restart()。Helper 不是 Agent runtime owner，且无需在没有 CUA 需求时自愈；
@@ -1774,14 +1819,18 @@ export function createLocalServices(options: {
   };
   const getOrCreateDefaultCuaProductHelper = async (
     context?: CuaProductMcpServerResolverContext,
+    reserveTransport = false,
   ): Promise<DefaultCuaProductHelper | undefined> => {
+    const enabled = reserveTransport || (await isCuaEnabledForContext(context));
     const managed = await defaultCuaProductHelperLifecycle.acquire({
       isAdmitted: () =>
         shouldCreateDefaultCuaProductHelper({
           serviceAuthorityMode: options?.serviceAuthorityMode,
-          hasRemoteWorkspaceIdentity: Boolean(context?.workspaceIdentity?.trim()),
+          hasRemoteWorkspaceIdentity: context?.workspaceIdentity
+            ? isRemoteWorkspaceIdentity(context.workspaceIdentity)
+            : false,
           hasInjectedResolver: Boolean(options?.cuaProductMcpServerResolver),
-          hasBuiltInCuaPlugin: isCuaEnabledForContext(context),
+          hasBuiltInCuaPlugin: enabled,
         }),
       shouldRetainCurrent: shouldRetainDefaultCuaProductHelper,
       create: () => createManagedDefaultCuaProductHelper(context),
@@ -1899,7 +1948,8 @@ export function createLocalServices(options: {
   // enabled 与 onCuaPipSessionLifecycle 是否挂上，都由 serviceAuthorityMode 单点决定；
   // 提出来命名，避免下面的启动期诊断与真实取值漂移。
   const cuaPipSessionEnabled =
-    process.platform === "darwin" && options?.serviceAuthorityMode === "desktop-local";
+    ["darwin", "win32"].includes(process.platform) &&
+    options?.serviceAuthorityMode === "desktop-local";
   const cuaPipSessionService = createCuaPipSessionService({
     enabled: cuaPipSessionEnabled,
     resolveCredentials: async () => {
@@ -1908,11 +1958,11 @@ export function createLocalServices(options: {
       if (host?.running && host.socketPath) {
         return {
           socketPath: host.socketPath,
+          token: host.reservedTransport?.brokerToken,
         };
       }
       // 懒启动：无托管 host 时探测稳定 socket 上自启动的 Helper（probe-only，不拉起）。
-      const stable = await probeStableCuaHelperSocket();
-      return stable ? { socketPath: stable } : undefined;
+      return undefined;
     },
   });
   // 启动期就把 PiP 投递链的接线状态写出来。dev 实测 PiP 事件一条都没投，而
@@ -1930,12 +1980,62 @@ export function createLocalServices(options: {
   // 因为 resolver 优先复用既有 socket/token；裸 host.restart() 可能 fresh 新凭据，使已有 Agent
   // 继续持有旧 transport，无法连接新的 broker。
   const cuaPermissionService: ICuaPermissionService = {
+    async controlUi(request) {
+      const actual =
+        typeof request?.credential === "string" ? Buffer.from(request.credential) : Buffer.alloc(0);
+      const expected = Buffer.from(localComputerControlUiToken || "");
+      if (
+        options?.serviceAuthorityMode !== "desktop-local" ||
+        !expected.length ||
+        actual.length !== expected.length ||
+        !timingSafeEqual(actual, expected)
+      )
+        throw new Error("Computer control requires the local desktop UI");
+      const key = request.workspaceIdentity?.trim() || request.workspacePath;
+      if (!key) throw new Error("Computer control requires a workspace");
+      const helper = defaultCuaProductHelperLifecycle.peek()?.helper;
+      const host = helper?.macPermissionHost;
+      const empty = { schemaVersion: 1 as const, revision: 0, sources: [], approvals: [] };
+      if (request.action === "presentation") {
+        // Host 保存可信 UI 投影并在创建 Helper 时种入，不为主题同步启动原生进程。
+        nativeControlPresentation = validateControlPresentation(request.presentation);
+        host?.setControlPresentation(nativeControlPresentation);
+        return host?.getControlSnapshot(key) || empty;
+      }
+      if (!host) {
+        return empty;
+      }
+      const snapshot = host.getControlSnapshot(key);
+      if (request.action === "approve") {
+        const approval = snapshot.approvals.find((item) => item.id === request.approvalId);
+        if (!approval || typeof request.allowed !== "boolean")
+          throw new Error("Application approval expired");
+        await host.respondToControlApproval(approval.id, request.allowed, request.scope);
+      } else if (request.action === "stop" || request.action === "resume") {
+        const source = snapshot.sources.find((item) => item.id === request.sourceId);
+        if (!source) throw new Error("Control source expired");
+        if (request.action === "stop") await host.stopControl(source.context);
+        else {
+          if (!Number.isSafeInteger(request.stopRevision))
+            throw new Error("Stop revision required");
+          await host.resumeControl(source.context, request.stopRevision!);
+        }
+      } else if (request.action === "visibility") {
+        const ids = request.sourceIds || [];
+        if (ids.some((id) => !snapshot.sources.some((source) => source.id === id)))
+          throw new Error("Control source does not belong to this workspace");
+        host.setControlVisibility(ids, request.subscriber);
+      } else if (request.action === "revoke-grants") await host.revokeControlGrants(key);
+      else if (request.action !== "snapshot")
+        throw new Error("Unsupported computer control UI action");
+      return host.getControlSnapshot(key);
+    },
     async getStatus(
       workspacePath: string,
       workspaceIdentity?: string,
       queryOptions?: CuaPermissionStatusQueryOptions,
     ): Promise<CuaPermissionStatusResult> {
-      if (process.platform !== "darwin") {
+      if (!["darwin", "win32"].includes(process.platform)) {
         return {
           available: false,
           reason: "CUA permissions are only available on macOS.",
@@ -1945,7 +2045,7 @@ export function createLocalServices(options: {
       // 插件关闭只门控后续 Agent；权限页刷新不得进入 acquire，否则会把仍被已有 Agent 使用的 Helper 停掉。
       if (
         !shouldUseCuaPermissionService({
-          cuaEnabled: isCuaEnabledForContext(context),
+          cuaEnabled: await isCuaEnabledForContext(context),
         })
       ) {
         return {
@@ -1955,54 +2055,10 @@ export function createLocalServices(options: {
       }
       // 懒启动：状态查询绝不拉起 Helper。托管 host 在（如刚完成授权流）→ 全量查询；
       // 否则探测稳定 socket 上自启动的 Helper（probe-only）；都没有 → 未运行（首次使用时自动启动）。
-      const peeked = defaultCuaProductHelperLifecycle.peek()?.helper;
-      const helper = peeked && isDefaultCuaProductHelperCurrent(peeked) ? peeked : undefined;
-      const host = helper ? helper.macPermissionHost : undefined;
-      if (!host || !host.running) {
-        // Helper 按需启动：设置页查询 = 拉起 standalone Helper（稳定 socket、
-        // 无 launcher-pid → 300s 无访问自动休眠，不进托管体系）。拉起后经稳定 socket 查真值。
-        let stable = await probeStableCuaHelperSocket();
-        if (!stable) {
-          stable = await launchStandaloneCuaHelperForStatus();
-        }
-        if (!stable) {
-          return {
-            available: false,
-            reason:
-              "ZCode Computer Use is not running; it will start automatically on first Computer Use use.",
-            idle: true,
-          } satisfies { available: false; reason: string; idle: true };
-        }
-        // standalone Helper 上直接查权限真值（身份模式，无 token）。
-        try {
-          const { callBrokerMethod } = await import("@zcode/zcode-cua/broker/helperHealth");
-          const report = await callBrokerMethod<{
-            grant_owner: string;
-            owner?: { display_name?: string };
-            accessibility: CuaPermissionState;
-            accessibility_probe_ok?: boolean;
-            screen_recording: CuaPermissionState;
-          }>({
-            socketPath: stable,
-            method: "permission_status",
-            timeoutMs: 3000,
-          });
-          return {
-            grantOwner: report.grant_owner,
-            grantOwnerDisplayName: report.owner?.display_name ?? report.grant_owner,
-            accessibility: report.accessibility,
-            accessibilityProbeOk: report.accessibility_probe_ok === true,
-            screenRecording: report.screen_recording,
-            screenCaptureProbeOk: false,
-          };
-        } catch {
-          return {
-            available: false,
-            reason: "ZCode Computer Use is starting up; retry in a moment.",
-            idle: true,
-          } satisfies { available: false; reason: string; idle: true };
-        }
-      }
+      const helper = await getOrCreateDefaultCuaProductHelper(context);
+      const host = helper?.macPermissionHost;
+      if (!host)
+        return { available: false, reason: "Computer control is not available on this Host" };
       try {
         const report = await host.queryPermissionStatus();
         if (!helper || !isDefaultCuaProductHelperCurrent(helper)) {
@@ -2071,7 +2127,7 @@ export function createLocalServices(options: {
       // 与 getStatus 一致：插件关闭时不触碰现有 Helper，避免设置页动作改变已有 Agent runtime。
       if (
         !shouldUseCuaPermissionService({
-          cuaEnabled: isCuaEnabledForContext(context),
+          cuaEnabled: await isCuaEnabledForContext(context),
         })
       ) {
         return {
@@ -2293,8 +2349,11 @@ export function createLocalServices(options: {
     // ZCode 只发布 turn/session 事实；面板 terminal policy 由 producer coordinator 决定。
     ...(options?.serviceAuthorityMode === "desktop-local"
       ? {
-          onCuaPipSessionLifecycle: (_workspace, event) => {
-            void cuaPipSessionService.publishLifecycle(event);
+          onCuaPipSessionLifecycle: (workspace, event) => {
+            void cuaPipSessionService.publishLifecycle({
+              ...event,
+              workspaceKey: workspace.workspaceIdentity?.trim() || workspace.workspacePath,
+            });
           },
         }
       : {}),
@@ -2311,20 +2370,10 @@ export function createLocalServices(options: {
               httpProxy: settings.httpProxy,
               noProxy: settings.httpProxyNoProxy,
             };
-      // 与 helper 创建同一个门控（isCuaEnabledForContext：dev/internal 特性 OR 官方插件 enablement），
-      // 避免 dev mode 下 helper 建了但 resolveSpawnEnv 漏注入 broker env 的割裂。
-      const cuaPluginEnabled = isCuaEnabledForContext(context);
-      // 懒启动：darwin 上 spawn 绝不 acquire 拉起 Helper——已有 host（peek，比如刚走过
-      // 授权流）则复用其 tuple；否则只注入稳定 socket，SDK 首次 CUA 调用自行拉起
-      // （宿主启动/spawn 均不使 Helper 常驻）。win32 保留 acquire（token 模式）。
-      const peekedHelper = defaultCuaProductHelperLifecycle.peek()?.helper;
-      const helper = !cuaPluginEnabled
-        ? undefined
-        : peekedHelper && isDefaultCuaProductHelperCurrent(peekedHelper)
-          ? peekedHelper
-          : process.platform === "darwin"
-            ? undefined
-            : await getOrCreateDefaultCuaProductHelper(context);
+      // 配置资格由同一个插件 owner 决定；关闭时只预留经过认证的 Node 运输接口。
+      const cuaPluginEnabled = await isCuaEnabledForContext(context);
+      // 两平台均预留 broker tuple，使已有线程开启后可以直接使用；native 直到合法调用才启动。
+      const helper = await getOrCreateDefaultCuaProductHelper(context, true);
       // setting.get / 生命周期队列都可能跨过 host dispose。仅凭调用前的 enabled 会让延迟恢复的
       // resolveSpawnEnv 在 terminal fence 后重新启动 Helper；必须在真正构造 env 前校验代际。
       const cuaProductHelperHost =
@@ -2333,18 +2382,7 @@ export function createLocalServices(options: {
       // 供后续配置/生命周期 bookkeeping 使用；recovery 只清理 marker，不回收已有 Agent。
       cuaProductHelperWorkspaceRegistry.setEnabled(context, Boolean(cuaProductHelperHost));
       let cuaProductHelperEnv: Record<string, string> = {};
-      if (!helper && cuaPluginEnabled && process.platform === "darwin") {
-        // 懒启动：无托管 host 时注入稳定 socket；无 token（身份模式）、无 pluginAuthority
-        // （其校验方就是 host，host 缺席时无意义）。SDK ensureBrokerAvailable 负责拉起。
-        // pluginAuthority 是 agent 进程内的 config-provenance 随机数（bootstrap 捕获后写进
-        // node_repl 配置 env，core 比对两者证明该配置出自本 bootstrap 而非用户配置文件）；
-        // 它不需要 host——托管态由 host 铸造，懒启动态在此按 spawn 铸造，语义与校验完全一致。
-        cuaProductHelperEnv = {
-          [BROKER_SOCKET_ENV]: resolveBrokerSocketPath(),
-          [ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY]: randomBytes(16).toString("hex"),
-        };
-        cuaProductHelperWorkspaceRegistry.setEnabled(context, false);
-      } else if (cuaProductHelperHost && helper) {
+      if (cuaProductHelperHost && helper) {
         const candidateEnv = await buildCuaProductHelperAgentEnv(
           cuaProductHelperHost,
           createServiceLogger("cua-product-helper"),
@@ -2439,6 +2477,10 @@ export function createLocalServices(options: {
   providerConnectivityAgentService = zcodeAgentService;
   // Helper health probe 短暂超时不应在 Computer Use turn 中途回收 Agent。resolver 会把 restart
   // 推迟到下一个 request/turn 边界；若 broker 确实已失效，当前 turn 会自然失败并由下一次请求恢复。
+  isCuaTurnActiveRef = createCuaTurnQualification(
+    (params) => zcodeAgentService.readSession(params),
+    createServiceLogger("cua-turn-owner"),
+  );
   hasActiveTurnRef = () => zcodeAgentService.hasActiveCuaOperationTurn();
   // desktop-continuous UI 直接订阅 zcodeSessionService，绕开 ZCode task adapter 的
   // mapServiceEvent 路径，导致 task_complete 永远不会写回 sqlite，侧边栏 spinner 不停。

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -693,7 +694,11 @@ class NodeMcpAdapter implements McpPort {
         {
           name: request.toolName,
           arguments: request.arguments ?? {},
-          ...((request.trace || request.runtimeScope || request.workspaceKey || request.workspacePath)
+          ...(request.trace ||
+          request.runtimeScope ||
+          request.taskType ||
+          request.workspaceKey ||
+          request.workspacePath
             ? { _meta: mcpRequestMeta(request) }
             : {}),
         },
@@ -1756,6 +1761,7 @@ function mcpRequestMeta(request: McpCallToolRequest): Record<string, unknown> {
     ...(request.trace?.sessionId ? { session_id: request.trace.sessionId } : {}),
     ...(request.trace?.turnId ? { turn_id: request.trace.turnId } : {}),
     ...(request.runtimeScope ? { runtime_scope: request.runtimeScope } : {}),
+    ...(request.taskType ? { task_type: request.taskType } : {}),
     ...(request.workspacePath ? { workspace_path: request.workspacePath } : {}),
     ...(request.workspaceIdentity ? { workspace_identity: request.workspaceIdentity } : {}),
     ...(request.workspaceKey ? { workspace_key: request.workspaceKey } : {}),

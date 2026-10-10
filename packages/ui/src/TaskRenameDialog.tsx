@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { useRef } from "react";
 import type { RefObject } from "react";
 import { Button } from "@/components/ui/button.js";
@@ -17,6 +18,8 @@ export function TaskRenameDialog({
   value,
   inputRef,
   intl,
+  title,
+  placeholder,
   onOpenChange,
   onChange,
   onCancel,
@@ -28,6 +31,8 @@ export function TaskRenameDialog({
   intl: {
     formatMessage: (desc: { id: string }, values?: Record<string, string>) => string;
   };
+  title?: string;
+  placeholder?: string;
   onOpenChange: (open: boolean) => void;
   onChange: (value: string) => void;
   onCancel: () => void;
@@ -40,14 +45,14 @@ export function TaskRenameDialog({
       <DialogContent className="max-w-xl overflow-hidden rounded-2xl p-0">
         <div className="flex min-w-0 flex-col gap-6 p-6">
           <DialogHeader className="space-y-2">
-            <DialogTitle>{intl.formatMessage({ id: "taskList.rename" })}</DialogTitle>
+            <DialogTitle>{title ?? intl.formatMessage({ id: "taskList.rename" })}</DialogTitle>
           </DialogHeader>
           <div className="flex min-w-0 flex-col space-y-4">
             <Input
               ref={inputRef}
               value={value}
               size="lg"
-              placeholder={intl.formatMessage({ id: "taskList.renamePlaceholder" })}
+              placeholder={placeholder ?? intl.formatMessage({ id: "taskList.renamePlaceholder" })}
               onChange={(event) => {
                 onChange(event.target.value);
               }}

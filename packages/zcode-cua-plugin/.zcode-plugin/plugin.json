@@ -1,0 +1,10 @@
+{
+  "name": "computer-use",
+  "version": "0.7.13",
+  "description": "Control approved desktop applications with observation-bound input, native stop and live session previews.",
+  "author": {
+    "name": "feiyu",
+    "url": "https://github.com/showjiangnan/zcode-feiyu"
+  },
+  "license": "Apache-2.0"
+}

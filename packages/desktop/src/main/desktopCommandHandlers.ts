@@ -1,4 +1,6 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 桌面命令分发需要共享窗口与平台上下文，集中维护更便于一致性 */
+import { readComputerControlUiCredential } from "./computerControlUiCredential.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { app, BrowserWindow, dialog, session, shell } from "electron";
@@ -682,6 +684,12 @@ export async function executeDesktopCommand(options: {
     case DesktopCommandIds.ClearCodingPlanWebviewStorage:
       await clearCodingPlanWebviewStorage({ logger: options.logger });
       return;
+    case DesktopCommandIds.GetComputerControlUi:
+      return {
+        platform: process.platform,
+        arch: process.arch,
+        credential: readComputerControlUiCredential(options.senderWindow),
+      };
     case DesktopCommandIds.GetCuaOsSupport:
       return resolveCuaOsSupport();
   }

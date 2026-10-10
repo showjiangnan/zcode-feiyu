@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 export declare const BROKER_SOCKET_ENV: string;
 export declare const BROKER_UNAVAILABLE_ENV: string;
 
@@ -27,6 +28,8 @@ export interface HelperHealth {
 }
 
 export interface CallBrokerMethodArgs {
+  token?: string;
+  signal?: AbortSignal;
   socketPath: string;
   method: string;
   params?: unknown;
@@ -137,6 +140,9 @@ export interface CuaPermissionRestartOptions {
 }
 
 export interface ICuaPermissionService {
+  controlUi(
+    request: import("./control-contract.js").ControlUiRequest,
+  ): Promise<import("./control-contract.js").ControlSnapshot>;
   getStatus(
     workspacePath: string,
     workspaceIdentity?: string,

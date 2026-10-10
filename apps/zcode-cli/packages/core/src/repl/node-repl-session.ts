@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { createContext, runInContext, type Context } from "node:vm";
 import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
@@ -52,7 +53,7 @@ export interface NodeReplRunResult {
   /** 本次 run 期间 nodeRepl.write + console 收集的输出。 */
   logs: string;
   /** 抛错时的结构化错误（不崩进程）。 */
-  error?: { name: string; message: string; stack?: string };
+  error?: { name: string; message: string; stack?: string; code?: string };
   /** 本次 run 期间 nodeRepl.emitImage 收集的图片（如截图）。 */
   images?: NodeReplImage[];
   /** images 中确认来自本次显式 tab.screenshot() 的索引。 */
@@ -312,7 +313,11 @@ export class NodeReplSession {
       throw new TypeError("nodeRepl.emitStructuredResult requires a content array");
     }
     for (const block of candidate.content) {
-      if (!block || typeof block !== "object" || typeof (block as { type?: unknown }).type !== "string") {
+      if (
+        !block ||
+        typeof block !== "object" ||
+        typeof (block as { type?: unknown }).type !== "string"
+      ) {
         throw new TypeError("nodeRepl.emitStructuredResult content blocks require a type");
       }
     }
@@ -362,6 +367,11 @@ export class NodeReplSession {
   recordCuaAppIdentity(app: NodeReplCuaAppIdentity): void {
     if (!this.currentSink) return;
     this.currentSink.cuaApps.push(app);
+  }
+
+  /** 可信控制桥接直接投影原生结果；无需让模型转抄图像或元数据。 */
+  publishComputerControlResult(result: unknown): void {
+    this.emitStructuredResult(result);
   }
 
   /** 执行一段代码；signal 支持取消（超时/停止）。 */

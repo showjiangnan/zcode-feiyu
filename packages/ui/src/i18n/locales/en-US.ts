@@ -1,5 +1,65 @@
+// Modified by ZCode Feiyu contributors (2026).
 /** English translations */
 const enUS: Record<string, string> = {
+  "computerControl.native.observing": "Observing",
+  "computerControl.native.active": "Controlling",
+  "computerControl.native.waiting": "Waiting",
+  "computerControl.native.paused": "Paused",
+  "computerControl.phase.paused": "Paused",
+  "computerControl.reason.target-escape": "Stopped by Escape in the controlled window",
+  "computerControl.reason.target-closed": "Stopped because the controlled window closed",
+  "computerControl.reason.target-keyboard":
+    "Paused after other keyboard input in the controlled window",
+  "computerControl.reason.target-pointer":
+    "Paused after other pointer input in the controlled window",
+  "computerControl.reason.foreground-changed": "Paused after foreground focus changed",
+  "computerControl.reason.locked": "Stopped because the desktop is locked",
+  "computerControl.reason.input-cleanup-unconfirmed": "Stopped; input release is unconfirmed",
+  "computerControl.reason.trusted-ui-stop": "Stopped from the local UI",
+  "computerControl.reason.model-stop": "Task stopped computer control",
+  "computerControl.reason.qualification-lost": "Stopped after control qualification changed",
+  "computerControl.reason.turn-ended": "This turn has ended",
+  "computerControl.reason.unknown-stop": "Stopped; the trigger is unavailable",
+  "computerControl.reason.device_quarantined": "Input device needs recovery",
+  "computerControl.phase.busy": "Waiting for device input",
+  "computerControl.sources": "Control sources",
+  "computerControl.currentTask": "Current task",
+  "computerControl.returnTask": "Return to task",
+  "computerControl.resize": "Preview size",
+  "computerControl.smaller": "Smaller preview",
+  "computerControl.larger": "Larger preview",
+  "computerControl.title": "Computer control",
+  "computerControl.move": "Move preview",
+  "computerControl.collapse": "Collapse preview",
+  "computerControl.expand": "Expand preview",
+  "computerControl.loading": "Waiting for a window frame…",
+  "computerControl.selfPreview": "Preview paused to prevent capturing itself",
+  "computerControl.window": "Window",
+  "computerControl.continue": "Continue computer control",
+  "computerControl.deviceQuarantined":
+    "Previous input cleanup was not confirmed. Release all keys and mouse buttons, then continue.",
+  "computerControl.stop": "Stop computer control",
+  "computerControl.phase.ready": "Preparing",
+  "computerControl.phase.observing": "Controlling",
+  "computerControl.phase.stopping": "Stopping…",
+  "computerControl.phase.stopped": "Stopped",
+  "computerControl.phase.unknown": "Control state unknown",
+  "computerControl.phase.unavailable": "Preview unavailable",
+  "computerControl.approval.title": "Allow application control",
+  "computerControl.approval.description":
+    "This main task requests access to the selected application. Stop from the preview or press Escape in the controlled foreground window. Workspace approval is tied to this application identity.",
+  "computerControl.deny": "Deny",
+  "computerControl.allowWorkspace": "Allow in workspace",
+  "computerControl.allowTurn": "Allow this turn",
+  "computerControl.revoke": "Clear saved application approvals",
+  "computerControl.revokeDescription":
+    "Remove workspace approvals and stop its current computer control.",
+  "computerControl.windowsStatus": "Windows core capabilities",
+  "computerControl.windowsReady": "Core capabilities available",
+  "computerControl.windowsUnavailable": "Core capabilities unavailable",
+  "computerControl.windowsUnknown": "Status unconfirmed",
+  "computerControl.windowsDescription":
+    "Checks the local interactive desktop, UI Automation and window capture APIs. Application input compatibility is verified per operation; elevated apps, UAC and the locked desktop require manual interaction.",
   "remoteServices.web.title": "ZCode remote access",
   "remoteServices.web.description":
     "Connect to your self-hosted bridge. Keep desktop ZCode open and allow workspaces to use your local capabilities.",
@@ -258,7 +318,7 @@ const enUS: Record<string, string> = {
   "offPeak.chatCreated.queuedAt": "#{position} in queue",
   "offPeak.chatCreated.open": "Go to idle-time tasks",
   "settings.computerUse.disabledToast":
-    "Computer Use is disabled. Existing conversations require a ZCode restart to take effect.",
+    "Computer Control is disabled. Current computer control will stop; other task tools can continue.",
   "settings.modelProvider.connectionUnavailableNotice": "The current plan is unavailable.",
   "settings.modelProvider.switchConnection": "Switch to “{connection}”",
   "settings.modelProvider.connectionSuggestionStale":
@@ -1751,7 +1811,15 @@ const enUS: Record<string, string> = {
   "workspaceSidebar.toggleSidebar": "Toggle sidebar",
   "workspaceSidebar.resizeSidebar": "Resize sidebar",
   "workspaceSidebar.toggleArchivedTasks": "Archived",
-  "workspaceSidebar.showFileTree": "Show files",
+  "workspaceSidebar.showFileTree": "Show file tree",
+  "workspaceSidebar.renameProject": "Rename project",
+  "workspaceSidebar.pinProject": "Pin project",
+  "workspaceSidebar.unpinProject": "Unpin project",
+  "workspaceSidebar.projectNamePlaceholder": "Enter a new project name",
+  "workspaceSidebar.searchProjects": "Search projects",
+  "workspaceSidebar.searchProjectsDescription":
+    "Search project names and select a project to move it to the top of all projects.",
+  "workspaceSidebar.noMatchingProjects": "No matching projects",
   "workspaceSidebar.sshConnectionTitle": "SSH connection",
   "workspaceSidebar.sshConnectionAlias": "Alias",
   "workspaceSidebar.sshConnectionHost": "Host",
@@ -5183,8 +5251,10 @@ const enUS: Record<string, string> = {
   "chat.toolbar.computerUse.tooltip.idle":
     "Computer Use is idle — it will start automatically on first use",
   "chat.toolbar.computerUse.tooltip.starting": "Enabling Computer Use plugin…",
-  "chat.toolbar.computerUse.tooltip.ready":
-    "Computer Use ready — just describe what you want ZCode to do",
+  "chat.toolbar.computerUse.tooltip.permissionsGranted":
+    "Permissions granted · Describe a computer control task in chat",
+  "chat.toolbar.computerUse.tooltip.enabled":
+    "Computer control enabled · Describe your task in chat",
   "chat.toolbar.computerUse.tooltip.permissionRequired":
     "Missing macOS permissions — click to grant",
   "chat.toolbar.computerUse.tooltip.error":
@@ -7143,6 +7213,8 @@ const enUS: Record<string, string> = {
   "cuaPermission.ready.sessionValidationHint":
     "ZCode will verify the Computer Use tools against the exact session when your first session starts.",
   "settings.computerUse.title": "Computer Use",
+  "settings.computerUse.workspaceAuthorizationHint":
+    "Enabling ZCode's built-in CUA (feiyu edition) grants access to all applications on this computer for this workspace.",
   "settings.computerUse.toggleLabel": "Enable Computer Use",
   "settings.computerUse.toggleDescription":
     "Turning this on enables Computer Use — its MCP server and skills.",

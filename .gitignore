@@ -90,3 +90,4 @@ AGENTS.md
 **/dist-types/
 packages/desktop/src/shared/armsRumShared.js
 packages/desktop/src/shared/armsRumShared.d.ts
+*.browser.*

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type {
   McpPort,
   McpServerConfig,
@@ -9,6 +10,7 @@ import {
   isZCodeCuaMcpCommand,
   isZCodeCuaMcpPackageArg,
   ZCODE_CUA_BROKER_SOCKET_ENV_KEY,
+  ZCODE_CUA_BROKER_TOKEN_ENV_KEY,
   ZCODE_CUA_NODE_REPL_HOST_ENV_KEY,
   ZCODE_CUA_OFFICIAL_PLUGIN_ID,
   ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
@@ -26,7 +28,7 @@ function resolveZCodeCuaBrokerSocket(): string | undefined {
 }
 
 function resolveZCodeCuaBrokerToken(): string | undefined {
-  return undefined;
+  return getCapturedZCodeCuaBrokerCredentials().token;
 }
 
 const NODE_REPL_SERVER_NAME = "node_repl";
@@ -149,6 +151,9 @@ function injectCuaCredentialsIntoNodeRepl(
   if (config.type !== "stdio") return config;
   const captured = getCapturedZCodeCuaBrokerCredentials();
   const pluginAuthority = captured.pluginAuthority;
+  // 安装版初始化失败的根因是 socket/authority 定向恢复时漏掉 token；下一个 CLI 入口
+  // 会拒绝半组并清空全部连接材料。只恢复同一可信快照的完整组，不能拼接旧凭据。
+  if (!token || !pluginAuthority) return config;
   // CLI runtime env 会在 bootstrap 前被清理。marker 必须和 socket/token 一样取自私有凭据快照，
   // 否则 SDK 迁移后 broker 虽然存活，权限刷新仍会静默停止。
   const refreshMarker = captured.refreshMarker || process.env[REFRESH_MARKER_ENV]?.trim();
@@ -157,6 +162,7 @@ function injectCuaCredentialsIntoNodeRepl(
     env: {
       ...config.env,
       [ZCODE_CUA_BROKER_SOCKET_ENV_KEY]: socketPath,
+      [ZCODE_CUA_BROKER_TOKEN_ENV_KEY]: token,
       ...(refreshMarker ? { [REFRESH_MARKER_ENV]: refreshMarker } : {}),
       ...(pluginAuthority ? { [ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY]: pluginAuthority } : {}),
       [ZCODE_CUA_NODE_REPL_HOST_ENV_KEY]: "1",

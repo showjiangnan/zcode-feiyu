@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { ModelToolSideEffectScope } from "@zcode/contracts";
 import type { PermissionToolCapability } from "../../permission/service.js";
 import type { ToolEntry, ToolRuntimePermissionCapabilityContext } from "../types.js";
@@ -14,6 +15,7 @@ export function resolveRuntimePermissionCapability(
     ...runtimeCapability,
     // capability group is provenance, not a runtime/model-controlled override.
     permissionCapabilityGroup: entry.permissionCapabilityGroup,
+    workspacePreapproved: entry.isWorkspacePreapproved?.() === true,
     permission: {
       ...entry.permission,
       ...runtimeCapability?.permission,

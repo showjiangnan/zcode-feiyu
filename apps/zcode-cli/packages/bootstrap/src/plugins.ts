@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { rm } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, win32 } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -49,7 +50,11 @@ import type {
   PluginStoreListing,
 } from "@zcode/contracts";
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE, isOfficialMarketplaceId } from "@zcode/contracts";
-import { ZCODE_CUA_OFFICIAL_PLUGIN_ID, isZCodeCuaInternalFeatureEnabled } from "@zcode/shared";
+import {
+  ZCODE_CUA_OFFICIAL_PLUGIN_ID,
+  isZCodeCuaInternalFeatureEnabled,
+  isSystemManagedDesktopPlugin,
+} from "@zcode/shared";
 import { resolveOfficialPluginRoots } from "./app/bundled-plugins.js";
 import {
   DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS,
@@ -756,6 +761,8 @@ export async function uninstallZCodeMarketplacePlugin(
   const { configResult, pluginStorageRoot, workingDirectory } = resolvePluginContext(options);
   return withPluginStorageLock(pluginStorageRoot, async () => {
     const pluginId = resolvePluginIdForMutation(options);
+    if (isSystemManagedDesktopPlugin(pluginId))
+      throw new Error("Computer Control is a system plugin; disable it in Settings instead");
 
     // 官方 CDN marketplace 与内置插件共享 zcode-plugins-official id 空间，且其缓存
     // 也位于 official cache 下。若先看 runtime source="official"，会把已有

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { inspect } from "node:util";
 
 export const PROCESS_MODULE_IDS = new Set(["process", "node:process"]);
@@ -60,13 +61,16 @@ export function normalizeReplError(error: unknown): {
   name: string;
   message: string;
   stack?: string;
+  code?: string;
 } {
   if (error && typeof error === "object") {
-    const value = error as { name?: unknown; message?: unknown; stack?: unknown };
+    const value = error as { name?: unknown; message?: unknown; stack?: unknown; code?: unknown };
     const name = typeof value.name === "string" ? value.name : "Error";
     const message = typeof value.message === "string" ? value.message : String(error);
     const stack = typeof value.stack === "string" ? value.stack : undefined;
-    return { name, message, stack };
+    // CUA SDK 的原生/绑定错误跨 vm realm 后仍须保留 code，UI 与恢复不能匹配英文文本。
+    const code = typeof value.code === "string" ? value.code : undefined;
+    return { name, message, stack, ...(code ? { code } : {}) };
   }
   return { name: "Error", message: String(error) };
 }

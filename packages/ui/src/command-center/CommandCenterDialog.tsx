@@ -1,8 +1,8 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 聚合命令、任务、文件三类搜索结果，后续可按 result section 拆分。 */
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { unpackWorkspaceFileEntries } from "@zcode/shared/workspaceFileEntriesCodec";
 import { fetchWorkspaceFileEntriesPacked } from "@/workspace-file-search/fetchWorkspaceFileEntries.js";
-import { Command as CommandPrimitive } from "cmdk";
 import {
   ChevronDownIcon,
   FileIcon,
@@ -10,7 +10,6 @@ import {
   MessageSquareIcon,
   MessagesSquareIcon,
   RocketIcon,
-  SearchIcon,
   Trash2Icon,
 } from "lucide-react";
 import type { WorkspaceFileEntry, ZCodeTaskChangeSummary, ZCodeTaskMeta } from "@zcode/shared";
@@ -38,12 +37,14 @@ import { QUICK_PICK_SECTION_ORDER, type QuickPickCommand } from "@/quickpick/qui
 import { QUICK_PICK_ICON_BY_KIND } from "@/quickpick/quickPickCommandIcons.js";
 import {
   quickPickCommandClassName,
-  quickPickDialogClassName,
+  quickPickSearchDialogClassName as commandCenterDialogClassName,
   quickPickItemClassName,
-  quickPickListClassName,
+  quickPickSearchListClassName as commandCenterListClassName,
+  quickPickSearchHeaderClassName,
   quickPickMetadataClassName,
   quickPickShortcutPillClassName,
 } from "@/quickpick/quickPickStyles.js";
+import { QuickPickSearchField } from "@/quickpick/QuickPickSearchField.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import type { ChatSearchResultHighlightRequest } from "@/v4/legacyChatViewTypes.js";
@@ -61,18 +62,6 @@ const COMMAND_CENTER_SECTION_LIMIT = 3;
 const COMMAND_CENTER_CONTEXT_SECTION_LIMIT = 3;
 const COMMAND_CENTER_FILE_RESULT_LIMIT = 80;
 const COMMAND_CENTER_TASK_RESULT_LIMIT = 80;
-const commandCenterDialogClassName = cn(
-  quickPickDialogClassName,
-  // Linux 桌面端的通用 DialogContent 会给居中弹窗补偿自绘标题栏高度。
-  // Command Center 是顶部搜索浮层，必须在 Linux variant 下重新声明 top，
-  // 否则平台补偿会覆盖 top-16/sm:top-20，导致弹层掉到窗口中部。
-  "top-16 max-h-[calc(100dvh-4.5rem)] -translate-y-0 sm:top-20 sm:max-h-[calc(100dvh-6rem)]",
-  "platform-linux-desktop:top-16 sm:platform-linux-desktop:top-20",
-);
-const commandCenterListClassName = cn(
-  quickPickListClassName,
-  "max-h-[min(440px,calc(100dvh-15rem))]",
-);
 
 type CommandCenterSectionId = "commands" | "conversations" | "files";
 type TaskSearchResultItem = ZCodeTaskMeta & {
@@ -986,16 +975,12 @@ export const CommandCenterDialog = memo(function CommandCenterDialogComponent({
       className={commandCenterDialogClassName}
     >
       <Command shouldFilter={false} loop className={quickPickCommandClassName}>
-        <div className="border-b border-border px-2 pt-2 pb-2">
-          <div className="flex h-8 items-center gap-2 rounded-full border border-input-border bg-input px-2.5 transition-colors hover:border-input-border-hover focus-within:border-input-border-focused focus-within:bg-input-focused">
-            <SearchIcon className="size-4 shrink-0 text-foreground-subtlest" />
-            <CommandPrimitive.Input
-              value={rawQuery}
-              onValueChange={setRawQuery}
-              placeholder={intl.formatMessage({ id: "commandCenter.placeholder" })}
-              className="min-w-0 flex-1 bg-transparent text-ui-base leading-5 text-foreground outline-none placeholder:text-foreground-subtlest"
-            />
-          </div>
+        <div className={quickPickSearchHeaderClassName}>
+          <QuickPickSearchField
+            value={rawQuery}
+            onValueChange={setRawQuery}
+            placeholder={intl.formatMessage({ id: "commandCenter.placeholder" })}
+          />
           <div
             role="tablist"
             aria-label={intl.formatMessage({ id: "commandCenter.scopeTabs" })}

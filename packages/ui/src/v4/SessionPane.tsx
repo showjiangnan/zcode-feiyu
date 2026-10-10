@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu contributors (2026).
+import { ComputerControlPreview } from "@/components/computer-control/ComputerControlPreview.js";
 import { resolveSelectionSideInheritedModel } from "@/lib/selectionSideInheritedModel.js";
 import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
 import type { SessionCreateSource } from "@zcode/shared";
@@ -4663,6 +4664,14 @@ export function SessionPane({
             </span>
           </div>
         </div>
+      ) : null}
+      {sessionId && !readOnly && !selectionSideChat ? (
+        <ComputerControlPreview
+          workspacePath={workspacePath}
+          workspaceIdentity={workspaceIdentity}
+          sessionId={sessionId}
+          taskTitle={snapshot?.meta.title || ""}
+        />
       ) : null}
       <ConversationHeader
         title={snapshot?.meta.title ?? ""}

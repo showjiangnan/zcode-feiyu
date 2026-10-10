@@ -1,0 +1,7 @@
+{
+  "name": "@zcode/zcode-cua-plugin",
+  "version": "0.7.13",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module"
+}

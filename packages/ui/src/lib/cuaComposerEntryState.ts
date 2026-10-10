@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /**
  * CUA 输入框常驻入口按钮的状态推导（零依赖纯函数）。
  *
@@ -10,7 +11,7 @@ import { isCuaPermissionTccGranted } from "@/lib/cuaPermissionStatusStore.js";
 import type { StatusDotTone } from "@/settings/StatusDot.js";
 
 /**
- * 对外 4 个 UI 态；内部细分状态只用于日志，不直接暴露给用户。
+ * 权限事实与实际任务工具绑定分开；入口状态只描述其已经观察到的事实。
  *
  * 无 "disabled"（插件未启用）态：电脑控制默认关闭后，未启用
  * 不再渲染成灰点拉新按钮，而是整个不渲染（见 isEntryVisible 的插件门），该态因此不可达。
@@ -20,7 +21,8 @@ export type CuaComposerEntryUiState =
   /** 懒启动：Helper 未运行（正常空闲，首次使用自动启动）——中性灰点，不是错误。 */
   | "idle"
   | "permission-required"
-  | "ready"
+  | "permissions-granted"
+  | "enabled"
   | "error";
 
 interface CuaComposerEntryInputs {
@@ -38,7 +40,7 @@ interface CuaComposerEntryInputs {
   pluginToggling: boolean;
   /** 最近一次 zcode-cua 插件操作失败。 */
   pluginError: boolean;
-  /** Helper 权限状态。入口不查询权限，恒为 null（idle 中性态）；真值只在设置页读。 */
+  /** 当前工作区已确认的共享权限状态；入口只订阅，不查询，未确认时为 null。 */
   permissionStatus: CuaPermissionStatusResult | null;
   /** 当前 workspace 内任一 task 的 turn 正在运行。 */
   sessionBusy: boolean;
@@ -65,7 +67,8 @@ const TOOLTIP_MESSAGE_ID: Record<CuaComposerEntryUiState, string> = {
   idle: "chat.toolbar.computerUse.tooltip.idle",
   starting: "chat.toolbar.computerUse.tooltip.starting",
   "permission-required": "chat.toolbar.computerUse.tooltip.permissionRequired",
-  ready: "chat.toolbar.computerUse.tooltip.ready",
+  "permissions-granted": "chat.toolbar.computerUse.tooltip.permissionsGranted",
+  enabled: "chat.toolbar.computerUse.tooltip.enabled",
   error: "chat.toolbar.computerUse.tooltip.error",
 };
 
@@ -103,12 +106,11 @@ function resolveUiState(inputs: CuaComposerEntryInputs): CuaComposerEntryUiState
   if (inputs.pluginToggling) return "starting";
   if (inputs.pluginError) return "error";
 
-  // Windows 无 TCC：插件启用即就绪，不参与权限判定。
-  if (!inputs.macLocalDesktop) return "ready";
+  // Windows 插件启用只能说明能力开启，不能证明当前任务已连接 Node REPL。
+  if (!inputs.macLocalDesktop) return "enabled";
 
-  // 懒启动入口不承载状态展示，permissionStatus 恒为 null——
-  // 不存在「冷启动查询中」的中间态（查询会按需启动 Helper，挂载即查等于打开 app
-  // 就拉起 Helper）。null 归入 idle 中性态；真值只在设置页（打开时查询）读取。
+  // 入口只订阅设置页/授权流程确认的共享状态，不能因挂载启动 Helper。
+  // 未确认的启动缓存和查询中间态为 null，使用中性文案，不推断用户缺权。
   if (inputs.permissionStatus === null) return "idle";
 
   // Helper 不健康（状态里没有 accessibility 字段）→ 错误态，对应「Helper 启动失败」。
@@ -124,7 +126,10 @@ function resolveUiState(inputs: CuaComposerEntryInputs): CuaComposerEntryUiState
   // 后台刷新拿到的 screenCaptureProbeOk 恒为 false。若拿它判就绪，已完成授权的用户会永远
   // 停在「缺少 macOS 权限」黄点。这里与设置页权限行同源改用 TCC 口径；真正不可用时工具
   // 返回普通错误，由模型按原始原因恢复，Renderer 不自动触发权限引导。
-  return isCuaPermissionTccGranted(inputs.permissionStatus) ? "ready" : "permission-required";
+  // 真实会话曾在 TCC granted 后因 broker 丢失而失败；授权成功不再冒充工具已就绪。
+  return isCuaPermissionTccGranted(inputs.permissionStatus)
+    ? "permissions-granted"
+    : "permission-required";
 }
 
 export function resolveCuaComposerEntryView(inputs: CuaComposerEntryInputs): CuaComposerEntryView {

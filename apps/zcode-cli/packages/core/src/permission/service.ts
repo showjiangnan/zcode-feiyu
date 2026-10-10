@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // ============================================================
 // Permission Service - Permission checking and decision making
 // ============================================================
@@ -54,6 +55,8 @@ export interface PermissionToolCapability {
   riskLevel?: RiskLevel;
   needsApproval?: boolean;
   permissionCapabilityGroup?: PermissionCapabilityGroupType;
+  /** 已验证的宿主工具从工作区配置动态派生，不能落普通工具持久授权。 */
+  workspacePreapproved?: boolean;
   permission?: ToolPermissionSpec;
 }
 
@@ -192,6 +195,17 @@ export class PermissionService {
         capability,
         "tool.webfetch.preapproved",
         "WebFetch URL is preapproved",
+      );
+    }
+
+    // 开启电脑控制已经批准工作区工具执行；保留计划模式和显式 deny/ask 的优先级。
+    // 不降低 system/high 元数据，也不按工具名推导这个资格。
+    if (capability.workspacePreapproved) {
+      return this.allow(
+        context,
+        capability,
+        "tool.workspace.preapproved",
+        "Computer Control is approved by the workspace setting",
       );
     }
 
@@ -603,6 +617,7 @@ export class PermissionService {
         toolCapability?.needsApproval ??
         !this.isReadOnlyTool(context.toolName),
       permissionCapabilityGroup: toolCapability?.permissionCapabilityGroup,
+      workspacePreapproved: toolCapability?.workspacePreapproved === true,
       permissionName: toolCapability?.permission?.permission,
     };
   }
@@ -665,6 +680,7 @@ interface ResolvedPermissionCapability {
   riskLevel: RiskLevel;
   needsApproval: boolean;
   permissionCapabilityGroup?: PermissionCapabilityGroupType;
+  workspacePreapproved: boolean;
   permissionName?: string;
 }
 

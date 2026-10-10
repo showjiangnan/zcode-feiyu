@@ -13,6 +13,7 @@ import {
 import {
   OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION,
   attestOfficialCuaFrameContent,
+  preserveOfficialCuaFrameResult,
 } from "@zcode/zcode-cua/frame-contract";
 import {
   normalizeToolExecutionInput,
@@ -28,7 +29,6 @@ import {
   createPermissionErrorResult,
   createToolHandlerFailureError,
   isToolHandlerFailure,
-  isToolHandlerFailureError,
 } from "./errors.js";
 import { emitToolCallError, emitToolCallResult, emitToolCallStarted } from "./events.js";
 import {
@@ -402,7 +402,8 @@ async function executeToolCallImpl(
         enabled: embeddedSearchDecision?.useEmbeddedSearchBranch ?? false,
         ...(deps.nativeSearchEnhancementsEnabled === false ? { findAndGrepEnabled: false } : {}),
       },
-      skillPort: deps.skillPort,
+      // getter 存在但返回空意味着已关闭；不能回退到启动时的旧技能端口。
+      skillPort: deps.getSkillPort ? deps.getSkillPort() : deps.skillPort,
       subagentPort: deps.subagentPort,
       teamBoardPort: deps.teamBoardPort,
       teamActorId: deps.teamActorId,
@@ -440,6 +441,7 @@ async function executeToolCallImpl(
       memoryRoot: deps.getMemoryRoot?.(),
       memoryOwnershipFence: deps.getMemoryOwnershipFence?.(),
       runtimeScope: deps.runtimeScope,
+      taskType: deps.taskType,
       providerVisibleToolNames: deps.registry
         .list()
         .filter((name) => deps.registry.getMetadata(name)?.providerVisible !== false),
@@ -502,9 +504,18 @@ async function executeToolCallImpl(
     });
 
     const finalModelContent = serialization.modelContent ?? serialization.content;
-    const modelContentProtection = modelOutputEntry.modelContentProtection
-      ? attestOfficialCuaFrameContent(finalModelContent, modelOutputEntry.modelContentProtection)
-      : undefined;
+    // MCP 的 PNG 已校验，进入模型层后仍要核对 dataUrl 原字节；后置 hook 不能替换图像却沿用旧引用。
+    const checkedFrame =
+      modelOutputEntry.modelContentProtection && Array.isArray(finalModelContent)
+        ? await preserveOfficialCuaFrameResult(
+            { content: finalModelContent },
+            { signal: executionAbortController.signal },
+          )
+        : undefined;
+    const modelContentProtection =
+      modelOutputEntry.modelContentProtection && !checkedFrame?.isError
+        ? attestOfficialCuaFrameContent(finalModelContent, modelOutputEntry.modelContentProtection)
+        : undefined;
     if (
       modelOutputEntry.modelContentProtection &&
       Array.isArray(finalModelContent) &&
@@ -579,24 +590,22 @@ async function executeToolCallImpl(
       error instanceof Error ? error : new Error(String(error)),
       durationMs,
     );
-    const baseModelContent = result.error
-      ? isToolHandlerFailureError(error) && typeof result.modelContent === "string"
-        ? result.modelContent
-        : result.error.message
-      : undefined;
+    const baseModelContent = result.modelContent ?? result.error?.message;
     if (failureHookResult.additionalContexts.length > 0 && baseModelContent) {
-      result.modelContent = [
-        baseModelContent,
-        formatHookAdditionalContexts([
-          ...preToolHookResult.additionalContexts,
-          ...failureHookResult.additionalContexts,
-        ]),
-      ].join("\n\n");
+      const additionalContent = formatHookAdditionalContexts([
+        ...preToolHookResult.additionalContexts,
+        ...failureHookResult.additionalContexts,
+      ]);
+      result.modelContent =
+        typeof baseModelContent === "string"
+          ? [baseModelContent, additionalContent].join("\n\n")
+          : [...baseModelContent, { type: "text", text: additionalContent }];
     } else if (preToolHookResult.additionalContexts.length > 0 && baseModelContent) {
-      result.modelContent = [
-        baseModelContent,
-        formatHookAdditionalContexts(preToolHookResult.additionalContexts),
-      ].join("\n\n");
+      const additionalContent = formatHookAdditionalContexts(preToolHookResult.additionalContexts);
+      result.modelContent =
+        typeof baseModelContent === "string"
+          ? [baseModelContent, additionalContent].join("\n\n")
+          : [...baseModelContent, { type: "text", text: additionalContent }];
     }
     result = withAutomationCreateLimitTurnStop(result, {
       error,

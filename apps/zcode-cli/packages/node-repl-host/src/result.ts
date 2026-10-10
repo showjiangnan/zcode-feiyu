@@ -1,8 +1,12 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   ZCODE_MCP_BROWSER_SCREENSHOT_CONTENT_INDICES_META_KEY,
   ZCODE_MCP_NODE_REPL_CUA_APP_META_KEY,
 } from "@zcode/contracts/mcp";
-import { isOfficialCuaImageRefText } from "@zcode/zcode-cua/frame-contract";
+import {
+  isOfficialCuaImageRefText,
+  readRasterEnvelopeIdentity,
+} from "@zcode/zcode-cua/frame-contract";
 import { CUA_APP_ASSOCIATIONS_META_KEY } from "@zcode/zcode-cua/host-display-contract";
 import type { NodeReplRunResult } from "@zcode/core/repl";
 import type { CallToolResult } from "@modelcontextprotocol/server";
@@ -27,7 +31,10 @@ function parseEmbeddedMcpResult(value: string): EmbeddedMcpResult | undefined {
     if (!Array.isArray(candidate.content)) return undefined;
     if (
       candidate.content.some(
-        (block) => !block || typeof block !== "object" || typeof (block as { type?: unknown }).type !== "string",
+        (block) =>
+          !block ||
+          typeof block !== "object" ||
+          typeof (block as { type?: unknown }).type !== "string",
       )
     ) {
       return undefined;
@@ -47,29 +54,35 @@ function parseEmbeddedMcpResult(value: string): EmbeddedMcpResult | undefined {
   }
 }
 
-/**
- * 一个 cell 里多次带截图的观察，只把**最后一张** raster 交给模型。
- *
- * 模型在一个 cell 里调了两次带截图的观察，结果里就有两张图，
- * 被 exact-raster 门按「每个结果只允许一张最终 raster」把整帧原子否决 —— 模型一张都没拿到。
- *
- * 「最新者胜」本来就是 producer 的既定语义：坐标只对最新那张 raster 有效
- * （zcode-cua 的 frame-pixel-latest-only 测试即此契约），旧帧对模型没有使用价值。
- * 所以这里保留最后一对 image/authority、丢掉更早的，与契约一致，不是放宽门禁 ——
- * 真正的两张不同 raster 同时有效仍然不被允许。
- *
- * 只处理 CUA 的「图 + 紧邻权威」原子对；不带权威的图片（如 Browser Use 截图）不受影响。
- */
+/** 同一目标仅保留最新原图；不同窗口的观察引用分别有效，不能互相覆盖。 */
 function keepLatestCuaFrame(blocks: EmbeddedContentBlock[]): EmbeddedContentBlock[] {
-  const pairStarts: number[] = [];
+  const latest = new Map<string, number>();
+  const dropped = new Set<number>();
   blocks.forEach((block, index) => {
-    if (block.type !== "image") return;
     const next = blocks[index + 1];
-    if (next?.type === "text" && isOfficialCuaImageRefText(next.text)) pairStarts.push(index);
+    if (block.type !== "image" || next?.type !== "text" || !isOfficialCuaImageRefText(next.text))
+      return;
+    const target = readRasterEnvelopeIdentity(next.text)?.targetId;
+    if (!target) return;
+    const previous = latest.get(target);
+    if (previous !== undefined) {
+      dropped.add(previous);
+      dropped.add(previous + 1);
+    }
+    latest.set(target, index);
   });
-  if (pairStarts.length <= 1) return blocks;
-  const dropped = new Set(pairStarts.slice(0, -1).flatMap((start) => [start, start + 1]));
-  return blocks.filter((_, index) => !dropped.has(index));
+  const kept = blocks.filter((_, index) => !dropped.has(index));
+  const pairs = new Set<number>();
+  const frames: EmbeddedContentBlock[] = [];
+  kept.forEach((block, index) => {
+    const next = kept[index + 1];
+    if (block.type === "image" && next?.type === "text" && isOfficialCuaImageRefText(next.text)) {
+      pairs.add(index);
+      pairs.add(index + 1);
+      frames.push(block, next);
+    }
+  });
+  return [...frames, ...kept.filter((_, index) => !pairs.has(index))];
 }
 
 export function toMcpRunResult(run: NodeReplRunResult): CallToolResult {
@@ -108,6 +121,14 @@ export function toMcpRunResult(run: NodeReplRunResult): CallToolResult {
   const structuredContentResult = [...structuredResults]
     .reverse()
     .find((structured) => structured.structuredContent !== undefined);
+  const structuredError = structuredContentResult?.structuredContent?.error;
+  const nativeError =
+    structuredError && typeof structuredError === "object" && !Array.isArray(structuredError)
+      ? (structuredError as Record<string, unknown>)
+      : undefined;
+  // 原生取消可能已经投递了部分输入；只保留同一次失败的详情，不能用无关旧错误补齐新失败。
+  const nativeErrorDetails =
+    run.error?.code && nativeError?.code === run.error.code ? nativeError.details : undefined;
   const structuredIsError = structuredResults.some((structured) => structured.isError === true);
   if (run.error) {
     // node_repl 若用 message-only 隐藏通用 MCP 失败前缀，只消费
@@ -139,8 +160,7 @@ export function toMcpRunResult(run: NodeReplRunResult): CallToolResult {
             (image) =>
               !structuredContent.some(
                 (block) =>
-                  block.type === "image" &&
-                  (block as { data?: string }).data === image.base64,
+                  block.type === "image" && (block as { data?: string }).data === image.base64,
               ),
           )
           .map((image) => ({
@@ -156,18 +176,29 @@ export function toMcpRunResult(run: NodeReplRunResult): CallToolResult {
   return {
     content: content.length > 0 ? content : [{ type: "text" as const, text: "(no output)" }],
     ...(run.error || embedded?.isError || structuredIsError ? { isError: true } : {}),
-    ...(structuredContentResult?.structuredContent !== undefined
-      ? { structuredContent: structuredContentResult.structuredContent }
-      : embedded?.structuredContent !== undefined
-        ? { structuredContent: embedded.structuredContent }
-        : {}),
+    ...(run.error?.code
+      ? {
+          structuredContent: {
+            error: {
+              code: run.error.code,
+              message: run.error.message,
+              ...(nativeErrorDetails !== undefined ? { details: nativeErrorDetails } : {}),
+            },
+          },
+        }
+      : structuredContentResult?.structuredContent !== undefined
+        ? { structuredContent: structuredContentResult.structuredContent }
+        : embedded?.structuredContent !== undefined
+          ? { structuredContent: embedded.structuredContent }
+          : {}),
     ...(Object.keys(responseMeta).length > 0 ||
     (run.images?.length ?? 0) > 0 ||
     structuredContent.some((block) => block.type === "image")
       ? {
           _meta: {
             ...responseMeta,
-            ...((run.images?.length ?? 0) > 0 || structuredContent.some((block) => block.type === "image")
+            ...((run.images?.length ?? 0) > 0 ||
+            structuredContent.some((block) => block.type === "image")
               ? { "zcode/nodeReplEmittedImage": true }
               : {}),
             ...(browserScreenshotContentIndices && browserScreenshotContentIndices.length > 0

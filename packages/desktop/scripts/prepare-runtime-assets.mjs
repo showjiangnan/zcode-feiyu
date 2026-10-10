@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Modified by ZCode Feiyu contributors (2026).
 
 import process from "node:process";
 import { dirname, resolve } from "node:path";
@@ -27,6 +28,7 @@ const shouldPrepareMacosWindowBounds = target.os === "darwin";
 // 远端跨平台原生二进制仍由上面的 prepare:remote-assets 提供。
 // native-search 归档随仓库分发，准备步骤只做本地解包校验，不需要任何下载源配置。
 const localRuntimeScripts = [
+  ...(["darwin", "win32"].includes(target.os) ? ["prepare:computer-control"] : []),
   "prepare:agent-bundle",
   ...(nativeSearchReleasePlan.enabled ? ["prepare:native-search"] : []),
   ...(shouldPrepareWindowsBrowserImportHelper ? ["prepare:browser-import-helper"] : []),

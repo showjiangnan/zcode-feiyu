@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 export const ZCODE_RUNTIME_ENV_KEY = "ZCODE_RUNTIME_ENV";
 export const ZCODE_HTTP_PROXY_ENV_KEY = "ZCODE_HTTP_PROXY";
 export const ZCODE_NO_PROXY_ENV_KEY = "ZCODE_NO_PROXY";
@@ -11,6 +12,7 @@ export const ZCODE_TOOL_ENV_PASSTHROUGH_ENV_KEY = "ZCODE_TOOL_ENV_PASSTHROUGH_JS
 /** Desktop Main 将服务端裁决的单功能灰度结果传给 Local/Remote Host。 */
 export const ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV = "ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED";
 export const ZCODE_CUA_PRODUCT_HELPER_ENV_KEY = "ZCODE_CUA_PRODUCT_HELPER";
+export const ZCODE_CUA_BROKER_TOKEN_ENV_KEY = "ZCODE_CUA_BROKER_TOKEN";
 export const ZCODE_CUA_BROKER_SOCKET_ENV_KEY = "ZCODE_CUA_PERMISSION_BROKER_SOCKET";
 /** Shared node_repl host marker; unlike the broker bearer values it is not a secret. */
 export const ZCODE_CUA_NODE_REPL_HOST_ENV_KEY = "ZCODE_CUA_NODE_REPL_HOST";
@@ -63,10 +65,10 @@ const SANITIZED_RUNTIME_ENV_KEYS = [
   // 已授权 Helper（confused-deputy）。这里统一从所有子进程 env 剔除；zcode-cua server 的定向
   // env 注入在 buildMcpStdioEnv 之后 spread，因此仍能拿到（见 adapters/mcp StdioClientTransport）。
   ZCODE_CUA_BROKER_SOCKET_ENV_KEY,
-  // 遗留 bearer token：当前 broker 是 identity 模式（socket + authority，无口令，见
-  // captureZCodeCuaBrokerCredentials），本进程不再产生也不再消费它。仍然剔除，因为用户机上
-  // 可能装着旧版 Helper —— 那些版本认 bearer token，一旦这个变量随 agent 全局 env 漏给别的
-  // MCP server / Bash 子进程，同一个 confused-deputy 又成立。剔除一个已不用的键是零成本的。
+  ZCODE_CUA_BROKER_TOKEN_ENV_KEY,
+  "ZCODE_CUA_LOCAL_UI_TOKEN",
+  // 历史命名的 bearer 也必须剔除；当前可信宿主使用 ZCODE_CUA_BROKER_TOKEN，
+  // 不允许旧版连接凭据随通用工具环境传播。
   "ZCODE_CUA_PERMISSION_BROKER_TOKEN",
   "ZCODE_CUA_PERMISSION_BROKER_REFRESH_MARKER",
   "ZCODE_CUA_PLUGIN_AUTHORITY",
@@ -99,6 +101,8 @@ const NON_TOOL_PASSTHROUGH_RUNTIME_ENV_KEYS = [
   "NODE_NO_WARNINGS",
   // CUA broker 凭据不得经 tool-env-passthrough 恢复到 Bash/tool 子进程（否则等于绕过上面的剔除）。
   ZCODE_CUA_BROKER_SOCKET_ENV_KEY,
+  ZCODE_CUA_BROKER_TOKEN_ENV_KEY,
+  "ZCODE_CUA_LOCAL_UI_TOKEN",
   "ZCODE_CUA_PERMISSION_BROKER_REFRESH_MARKER",
   "ZCODE_CUA_PLUGIN_AUTHORITY",
   ZCODE_REMOTE_RUNTIME_NETWORK_AUTHORITY_ENV_KEY,
@@ -129,12 +133,14 @@ export function resolveZCodeRuntimeEnv(
 export const ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY = "ZCODE_CUA_PLUGIN_AUTHORITY";
 
 interface CapturedCuaBrokerCredentials {
+  token: string;
   socket: string;
   pluginAuthority: string;
   refreshMarker?: string;
 }
 
 let capturedCuaBrokerCredentials: Readonly<CapturedCuaBrokerCredentials> | undefined;
+let capturedCuaBrokerCredentialState: "missing" | "complete" | "incomplete" = "missing";
 const capturedZCodeAgentTelemetryEnv: Record<string, string> = {};
 
 // CUA broker socket 会被上面的 sanitize 从子进程 env 中剔除（confused-deputy 防护 —— 不能让
@@ -142,25 +148,29 @@ const capturedZCodeAgentTelemetryEnv: Record<string, string> = {};
 // 解析全局 ~/.zcode/cli/config.json 里的 `zcode-cua` server 之前就会先 sanitize process.env，导致
 // 定向注入时已经读不到凭据 → 全局 zcode-cua 回退 `--backend auto`，让 Python/uvx 成为 TCC 主体
 // （fail-open，违反 "Python/uvx must never become the implicit permission owner"）。因此在剔除前把
-// 凭据捕获进本进程私有存储，只经 getCapturedZCodeCuaBrokerCredentials() 暴露给 bootstrap 的定向
-// 注入路径，绝不写回任何子进程 env。
+// 凭据捕获进本进程私有存储，只经 getCapturedZCodeCuaBrokerCredentials() 暴露给 bootstrap，
+// 仅定向恢复给已验证来源的 shared node_repl；其他 MCP/Bash/Worker 不继承原始组。
 function captureZCodeCuaBrokerCredentials(env: Record<string, string | undefined>): void {
+  const token = env[ZCODE_CUA_BROKER_TOKEN_ENV_KEY]?.trim();
   const socket = env[ZCODE_CUA_BROKER_SOCKET_ENV_KEY]?.trim();
   const pluginAuthority = env[ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY]?.trim();
   const refreshMarker = env["ZCODE_CUA_PERMISSION_BROKER_REFRESH_MARKER"]?.trim();
-  // 连接没有口令：socket + authority（config-provenance 随机数）同批出现才构成有效凭据组；
-  // 半组说明上游注入不完整或正在轮换。
-  if (socket && pluginAuthority) {
+  // socket、bearer token、来源 authority 同批出现才构成有效凭据组；
+  // 半组说明上游注入不完整或正在轮换，不能静默混用旧快照。
+  if (socket && pluginAuthority && token) {
+    capturedCuaBrokerCredentialState = "complete";
     capturedCuaBrokerCredentials = Object.freeze({
       socket,
+      token,
       pluginAuthority,
       ...(refreshMarker ? { refreshMarker } : {}),
     });
     return;
   }
-  if (socket || pluginAuthority) {
+  if (socket || pluginAuthority || token) {
     // 发现半组凭据说明上游注入不完整或正在轮换；清掉旧快照并 fail-closed，不能复用另一半。
     capturedCuaBrokerCredentials = undefined;
+    capturedCuaBrokerCredentialState = "incomplete";
   }
 }
 
@@ -188,19 +198,26 @@ export function getCapturedZCodeAgentTelemetryEnv(): Record<string, string> {
   return { ...capturedZCodeAgentTelemetryEnv };
 }
 
+/** 清理后的诊断只公开完整性；半组值不能进入日志或插件模块。 */
+export function getCapturedZCodeCuaBrokerCredentialState(): "missing" | "complete" | "incomplete" {
+  return capturedCuaBrokerCredentialState;
+}
+
 export function getCapturedZCodeCuaBrokerCredentials(): {
   socket: string | undefined;
+  token: string | undefined;
   pluginAuthority: string | undefined;
   refreshMarker?: string;
 } {
   return capturedCuaBrokerCredentials
     ? { ...capturedCuaBrokerCredentials }
-    : { socket: undefined, pluginAuthority: undefined };
+    : { socket: undefined, token: undefined, pluginAuthority: undefined };
 }
 
 // 仅供测试重置进程内捕获状态。
 export function resetCapturedZCodeCuaBrokerCredentialsForTest(): void {
   capturedCuaBrokerCredentials = undefined;
+  capturedCuaBrokerCredentialState = "missing";
 }
 
 export function resetCapturedZCodeAgentTelemetryEnvForTest(): void {

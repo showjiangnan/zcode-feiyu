@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 商店详情页把 hero/示例提示词/组件分区/信息区/高级折叠组织为一个连贯页面，与截图 1:1 对齐。 */
 import { useState, type ReactNode } from "react";
 import {
@@ -366,6 +367,11 @@ function InfoSection({
   const platform = useOptionalPlatform();
   const listing = item.listing;
   const developer = listing?.author ?? item.info?.author ?? describeMetadata?.author;
+  const developerGitHub = pickGitHubUrl(
+    listing?.authorUrl,
+    item.info?.authorUrl,
+    describeMetadata?.authorUrl,
+  );
   const category = resolveStoreCategory(listing?.category);
   const categoryLabelId = category ? KNOWN_CATEGORY_LABEL_IDS[category] : undefined;
   const categoryLabel = category
@@ -387,7 +393,25 @@ function InfoSection({
     rows.push({
       key: "developer",
       label: intl.formatMessage({ id: "settings.plugins.store.info.developer" }),
-      value: developer,
+      value: (
+        <span className="inline-flex max-w-full items-center gap-1.5">
+          <span className="truncate">{developer}</span>
+          {developerGitHub ? (
+            <button
+              type="button"
+              data-testid="plugin-store-developer-github"
+              title="GitHub"
+              aria-label={`GitHub: ${developer}`}
+              className="inline-flex shrink-0 items-center rounded-md text-foreground transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused"
+              onClick={() => platform?.openExternal(developerGitHub)}
+            >
+              <svg className="size-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 .297a12 12 0 0 0-3.793 23.385c.6.111.82-.261.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.071 1.835 2.809 1.305 3.495.998.108-.776.419-1.305.762-1.605-2.665-.305-5.467-1.333-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.536-1.524.117-3.176 0 0 1.008-.322 3.301 1.23a11.49 11.49 0 0 1 6.006 0c2.291-1.552 3.297-1.23 3.297-1.23.655 1.652.243 2.873.119 3.176.769.84 1.235 1.91 1.235 3.221 0 4.61-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.216.694.825.576A12 12 0 0 0 12 .297Z" />
+              </svg>
+            </button>
+          ) : null}
+        </span>
+      ),
     });
   }
   if (categoryLabel) {
@@ -461,6 +485,21 @@ function InfoSection({
       </dl>
     </section>
   );
+}
+
+/** 作者链接沿用协议字段，准确核对站点，避免把普通网站误标成 GitHub。 */
+function pickGitHubUrl(...candidates: Array<string | undefined>): string | undefined {
+  return candidates.find((candidate) => {
+    if (!candidate) return false;
+    try {
+      const url = new URL(candidate);
+      return (
+        url.protocol === "https:" && url.hostname === "github.com" && !url.username && !url.password
+      );
+    } catch {
+      return false;
+    }
+  });
 }
 
 /** 外链只放行 https（信息区渲染层统一收口，schema 不做校验）。 */

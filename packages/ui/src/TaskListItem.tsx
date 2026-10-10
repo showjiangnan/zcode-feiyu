@@ -1,11 +1,14 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- task item 同时承载默认列表和 timeline 两行布局的共享交互，先保持动作链路集中避免归档/置顶回归。 */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   Clock,
   CloudUpload,
+  Ellipsis,
   ListTree,
   LoaderIcon,
+  MessageCircle,
   Moon,
   Pin,
   Smartphone,
@@ -14,6 +17,7 @@ import { isCronTask, isOffPeakTask, type ZCodeTaskMeta } from "@zcode/shared";
 import { TID_TASK_ARCHIVE, TID_TASK_ITEM, testId } from "@zcode/shared";
 import { Badge } from "@/components/ui/badge.js";
 import { Button } from "@/components/ui/button.js";
+import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { getPathLeaf } from "@/lib/path.js";
@@ -71,6 +75,7 @@ interface TaskListItemProps {
   onOpenFileTree?: (task: ZCodeTaskMeta) => void;
   variant?: "default" | "timeline";
   showPinAction?: boolean;
+  showConversationIcon?: boolean;
   intl: TaskListItemIntl;
   actionsDisabled?: boolean;
   actionsDisabledReason?: string;
@@ -117,6 +122,7 @@ function areTaskListItemPropsEqual(left: TaskListItemProps, right: TaskListItemP
     left.isArchiveConfirming === right.isArchiveConfirming &&
     left.variant === right.variant &&
     left.showPinAction === right.showPinAction &&
+    left.showConversationIcon === right.showConversationIcon &&
     left.intl === right.intl &&
     left.actionsDisabled === right.actionsDisabled &&
     left.actionsDisabledReason === right.actionsDisabledReason &&
@@ -144,16 +150,21 @@ export const MemoTaskItem = memo(function TaskListItem({
   onCancelArchiveConfirm,
   isArchiveConfirming,
   onTogglePinTask,
+  onStartRenameTask,
+  onArchiveTask,
+  onMarkTaskAsUnread,
   onOpenTaskContextMenu,
   onOpenFileTree,
   variant = "default",
   showPinAction = true,
+  showConversationIcon = false,
   intl,
   actionsDisabled = false,
   actionsDisabledReason,
 }: TaskListItemProps) {
   const [hoverActionsVisible, setHoverActionsVisible] = useState(false);
   const [focusActionsVisible, setFocusActionsVisible] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [isHoverNone] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -371,10 +382,12 @@ export const MemoTaskItem = memo(function TaskListItem({
   // 手机远控标记和置顶状态共用左侧 leading 槽。
   // 已置顶任务如果继续常显 Pin，会和绝对定位的手机图标重叠；手机激活态默认让手机图标优先，hover 时再显示 Pin 操作。
   const showPinnedState = isPinned && leadingIndicator === "none" && !isMobileActive;
-  const shouldMountWorkspaceTaskActions = hoverActionsVisible || focusActionsVisible || isHoverNone;
+  const shouldMountWorkspaceTaskActions =
+    hoverActionsVisible || focusActionsVisible || moreMenuOpen || isHoverNone;
   // hover:none 只代表触屏端需要常驻 action，不代表应永久隐藏时间、状态和变更摘要。
   // 元信息仅在真实 hover / focus 交互时让位，保持旧触屏布局的“元信息 + action”语义。
-  const shouldSuppressWorkspaceTaskMetadata = hoverActionsVisible || focusActionsVisible;
+  const shouldSuppressWorkspaceTaskMetadata =
+    hoverActionsVisible || focusActionsVisible || moreMenuOpen;
   const taskTimeLabel = formatTaskRelativeTime(task.updatedAt, intl);
   const taskChangeSummary = getTaskChangeSummary(task);
   const isRemoteTask = Boolean(task.workspaceIdentity?.trim());
@@ -479,11 +492,49 @@ export const MemoTaskItem = memo(function TaskListItem({
         </TaskRowActionButton>
       </span>
     ) : null;
+  const moreActionNode =
+    showConversationIcon && shouldMountWorkspaceTaskActions ? (
+      <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
+        <ControlHintTooltip title={intl.formatMessage({ id: "common.more" })} side="top">
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={intl.formatMessage({ id: "common.more" })}
+              onClick={(event) => event.stopPropagation()}
+              onMouseDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              <Ellipsis className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+        </ControlHintTooltip>
+        {/* 更多与右键共享原操作链路；仅打开时探测路径，不增加空闲会话订阅。 */}
+        {moreMenuOpen ? (
+          <TaskListItemContextMenuContent
+            menuKind="dropdown"
+            workspacePath={workspacePath}
+            remoteSessionId={remoteSessionId}
+            task={task}
+            isPinned={isPinned}
+            intl={intl}
+            onTogglePinTask={onTogglePinTask}
+            onStartRenameTask={onStartRenameTask}
+            onArchiveTask={onArchiveTask}
+            onMarkTaskAsUnread={onMarkTaskAsUnread}
+            disableTaskActions={workspaceActionsDisabled}
+            disabledReason={workspaceActionsDisabledReason}
+          />
+        ) : null}
+      </DropdownMenu>
+    ) : null;
   const taskActionGroupNode =
-    fileTreeActionNode || archiveActionNode ? (
+    fileTreeActionNode || archiveActionNode || moreActionNode ? (
       <span data-task-row-actions="true" className="flex shrink-0 items-center gap-0.5">
         {fileTreeActionNode}
         {archiveActionNode}
+        {moreActionNode}
       </span>
     ) : null;
   const pinActionButton = (
@@ -502,13 +553,18 @@ export const MemoTaskItem = memo(function TaskListItem({
         id: isPinned ? "taskList.unpin" : "taskList.pin",
       })}
     >
-      <Pin className="size-4" />
+      {showConversationIcon ? (
+        <MessageCircle aria-hidden="true" data-pinned-conversation-icon="true" className="size-4" />
+      ) : (
+        <Pin className="size-4" />
+      )}
     </Button>
   );
   // hover:none 只让右侧 task actions 常驻；如果也用它接管 leading 槽，
   // 触屏端的错误、未读和 loading 状态会被 Pin 永久替换。
   const shouldRenderPinAction =
-    showPinAction && (showPinnedState || shouldSuppressWorkspaceTaskMetadata);
+    showPinAction &&
+    (showConversationIcon || showPinnedState || shouldSuppressWorkspaceTaskMetadata);
   return (
     <li
       ref={itemRef}
@@ -595,6 +651,20 @@ export const MemoTaskItem = memo(function TaskListItem({
           >
             {pinActionButton}
           </ControlHintTooltip>
+        ) : null}
+        {showConversationIcon && leadingIndicator !== "none" ? (
+          <span aria-hidden="true" className="pointer-events-none absolute -right-0.5 -bottom-0.5">
+            {leadingIndicator === "loading" ? (
+              <LoaderIcon className="size-2.5 animate-spin text-foreground-subtle" />
+            ) : (
+              <span
+                className={cn(
+                  "block size-1.5 rounded-full",
+                  leadingIndicator === "error" ? "bg-destructive" : "bg-sky-500 dark:bg-sky-400",
+                )}
+              />
+            )}
+          </span>
         ) : null}
       </div>
 
@@ -795,6 +865,7 @@ export function TaskListItemContextMenuContent({
   onMarkTaskAsUnread,
   disableTaskActions = false,
   disabledReason,
+  menuKind = "context",
 }: {
   workspacePath: string;
   remoteSessionId?: string;
@@ -807,6 +878,7 @@ export function TaskListItemContextMenuContent({
   onMarkTaskAsUnread: (taskId: string) => void;
   disableTaskActions?: boolean;
   disabledReason?: string;
+  menuKind?: "context" | "dropdown";
 }) {
   const workspaceActionsDisabled = useOptionalTabStore(
     (state) =>
@@ -892,6 +964,7 @@ export function TaskListItemContextMenuContent({
 
   return (
     <TaskListItemContextMenu
+      menuKind={menuKind}
       intl={intl}
       isPinned={isPinned}
       fileManagerLabel={fileManagerLabel}

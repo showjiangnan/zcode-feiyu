@@ -271,11 +271,14 @@ export const hostAttachServicePortMessageSchema = z
     attachmentId: nonEmptyStringSchema,
     clientMode: z.enum(["desktop-continuous", "web-remote-replayable"]),
     scope: windowHostAttachmentScopeSchema,
-    rcsGrant: z.object({
-      workspacePath: nonEmptyStringSchema,
-      workspaceIdentity: nonEmptyStringSchema.optional(),
-      remoteSessionId: nonEmptyStringSchema.optional(),
-    }).strict().optional(),
+    rcsGrant: z
+      .object({
+        workspacePath: nonEmptyStringSchema,
+        workspaceIdentity: nonEmptyStringSchema.optional(),
+        remoteSessionId: nonEmptyStringSchema.optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

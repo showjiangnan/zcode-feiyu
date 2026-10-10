@@ -1,6 +1,9 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { request } from "./src/adapters/ipc-client.js";
+import { METHODS, READ_ONLY } from "./src/domain/protocol.js";
 
 export const BROKER_SOCKET_ENV = "ZCODE_CUA_PERMISSION_BROKER_SOCKET";
 export const BROKER_UNAVAILABLE_ENV = "ZCODE_CUA_PERMISSION_BROKER_UNAVAILABLE";
@@ -36,12 +39,12 @@ export const elementUnavailable = brokerErrorFactory("element_unavailable");
 export const actionUnavailable = brokerErrorFactory("action_unavailable");
 export const foregroundRequired = brokerErrorFactory("foreground_required");
 
-export async function callBrokerMethod(_args) {
-  throw new BrokerError("Computer Use is not available in this build.");
+export async function callBrokerMethod(args) {
+  return request(args);
 }
 
-export async function probeHelperHealth(_socketPath, _options) {
-  return { bundleId: null, pid: null };
+export async function probeHelperHealth(socketPath, options = {}) {
+  return request({ socketPath, method: "ping", timeoutMs: options.timeoutMs || 3000 });
 }
 
 export function mintBrokerSocketPath(options = {}) {
@@ -56,8 +59,13 @@ export function resolveBrokerSocketPath(options = {}) {
   return mintBrokerSocketPath(options);
 }
 
-export function parseRequestLine(_line) {
-  return undefined;
+export function parseRequestLine(line) {
+  try {
+    const input = JSON.parse(line);
+    return input && typeof input.method === "string" && !Array.isArray(input) ? input : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function okResponse(result) {
@@ -79,18 +87,27 @@ export function serializeResponse(response) {
   return `${JSON.stringify(response)}\n`;
 }
 
-export async function dispatchRequest(_backend, _request) {
-  throw new CuaHelperError("Computer Use is not available in this build.");
+export async function dispatchRequest(backend, input) {
+  if (!isBrokerMethod(input.method) || typeof backend[input.method] !== "function")
+    return errorResponse("Unknown Computer Use method", { code: "unknown_method" });
+  try {
+    return okResponse(await backend[input.method](input.params));
+  } catch (error) {
+    return errorResponseFromException(error);
+  }
 }
 
-export async function handleRequestLine(_backend, _line) {
-  throw new CuaHelperError("Computer Use is not available in this build.");
+export async function handleRequestLine(backend, line) {
+  const input = parseRequestLine(line);
+  return input
+    ? dispatchRequest(backend, input)
+    : errorResponse("Invalid request", { code: "invalid_request" });
 }
 
-export function isBrokerMethod(_method) {
-  return false;
+export function isBrokerMethod(method) {
+  return METHODS.has(method);
 }
 
-export function isReadOnlyBrokerMethod(_method) {
-  return false;
+export function isReadOnlyBrokerMethod(method) {
+  return READ_ONLY.has(method);
 }

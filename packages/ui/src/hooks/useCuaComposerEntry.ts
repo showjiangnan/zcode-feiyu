@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /**
  * CUA 输入框常驻入口按钮的数据编排。
  *
@@ -103,12 +104,17 @@ export function useCuaComposerEntry({
     workspacePath,
   ]);
 
-  // 输入框入口不承载状态展示（无色点、固定跳设置页），因此**完全不再查询权限**——权限查询
-  // 会按需启动 Helper（getStatus 拉起链），挂载即查等于「打开 app 就启动 Helper」，违背懒
-  // 启动语义。哪怕加上「按钮可见 + mac + 插件已启用」的门禁也不改变这一点：用户开了插件不
-  // 等于此刻要付 Helper 启动的代价。权限真值只在两处读：设置页（打开时查询）与显式授权流。
-  // permissionStatus 恒为 null；resolveUiState 把 null 归入 idle 中性态（非 error）。
-  const { status: permissionStatus } = useCuaPermissionStatus(null, workspaceIdentity);
+  // 根因：传 null 虽不会查询，却仍读取被冻结的启动缓存，设置页发布 granted 后入口仍显示
+  // 缺权。改为只订阅当前工作区槽位；observe 不发起 RPC、不监听焦点查询，保留 Helper 懒启动。
+  // 未确认的启动缓存与查询中间态只显示中性入口，不能据此宣称系统缺权。
+  const { status: observedPermissionStatus, fresh: permissionFresh } = useCuaPermissionStatus(
+    macLocalDesktop && isLocalWorkspace && !hiddenBySettings && pluginEnabled
+      ? workspacePath
+      : null,
+    workspaceIdentity,
+    "observe",
+  );
+  const permissionStatus = permissionFresh ? observedPermissionStatus : null;
 
   // session-busy 判定粒度是 workspace：切换插件会让该 workspace 全部会话的
   // 工具集变化、prompt 缓存失效，影响面与禁用面必须一致，因此不能只看当前 task。

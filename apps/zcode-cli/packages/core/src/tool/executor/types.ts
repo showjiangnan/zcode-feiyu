@@ -100,6 +100,8 @@ export interface ToolExecutorOptions {
   embeddedSearchBackend?: EmbeddedSearchBackend;
   nativeSearchEnhancementsEnabled?: boolean;
   skillPort?: SkillPort;
+  /** Runtime 是唯一 owner；热刷新后每次调用从当前端口读取。 */
+  getSkillPort?: () => SkillPort | undefined;
   subagentPort?: SubagentPort;
   teamBoardPort?: import("@zcode/contracts").TeamBoardPort;
   teamActorId?: string;
@@ -135,6 +137,7 @@ export interface ToolExecutorOptions {
   clientMode?: "desktop-continuous" | "web-remote-replayable";
   deliveryKind?: "desktop-continuous" | "web-remote-replayable";
   runtimeScope?: ToolRuntimeScope;
+  taskType?: string;
   getWorkingDirectory?: () => string;
   setWorkingDirectory?: (cwd: string) => Promise<void> | void;
   getWorkspaceRoot?: () => string;
@@ -218,6 +221,7 @@ export interface ToolExecutorDeps {
   embeddedSearchBackend?: EmbeddedSearchBackend;
   nativeSearchEnhancementsEnabled?: boolean;
   skillPort?: SkillPort;
+  getSkillPort?: () => SkillPort | undefined;
   subagentPort?: SubagentPort;
   teamBoardPort?: import("@zcode/contracts").TeamBoardPort;
   teamActorId?: string;
@@ -254,6 +258,7 @@ export interface ToolExecutorDeps {
   /** 见 ToolExecutionDeps.getMemoryOwnershipFence。 */
   getMemoryOwnershipFence?: () => import("@zcode/contracts").MemoryCommitFence | undefined;
   runtimeScope: ToolRuntimeScope;
+  taskType?: string;
   traceContext?: TraceContext;
   getMode: () => CollaborationMode;
   maxConcurrency: number;

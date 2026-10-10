@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- CUA 设置页同时编排插件总开关、双权限状态与授权返回恢复链；后续单独拆分组件。 */
 // 设置页「电脑控制 (Computer Use)」分区：
 //  - 顶部一个总开关：开/关 zcode-cua 插件（连带其 MCP server 与 skill 一起启用/禁用）。
@@ -7,6 +8,7 @@
 // Helper 权限状态走 useCuaPermissionStatus：事件驱动（进入页面 / 窗口重获焦点 / 显式 refresh）
 // 各查一次，不再定时轮询；状态存在共享缓存里，与输入框常驻入口读同一份。
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useComputerControl } from "@/hooks/useComputerControl.js";
 import { useSettings } from "@/hooks/useSettingService.js";
 import type { CuaOsSupport, CuaPermissionKind, RemoteTarget } from "@zcode/shared";
 import {
@@ -71,6 +73,10 @@ export function ComputerUseSection({
   const { intl } = useZCodeIntl();
   const services = useServices();
   const platform = usePlatform();
+  const controlUi = useComputerControl(
+    localWorkspacePath || workspacePath || "",
+    workspaceIdentity,
+  );
   const pluginManagementService = services.pluginManagementService;
   // cuaPermissionService 在 main 是可选字段（远端 host 无 CUA）；下方各 handler 在缺失时早退。
   const cuaPermissionService = services.cuaPermissionService;
@@ -80,10 +86,10 @@ export function ComputerUseSection({
     !(workspaceIdentity?.trim() && isRemoteWorkspaceIdentity(workspaceIdentity.trim()));
   // Windows 只复用插件总开关；macOS 才具备 TCC 权限、Helper 状态和附加设置能力。
   const supportsLocalMacWorkspace =
-    !isWindowsDesktop &&
+    controlUi.nativePlatform === "darwin" &&
     (isMacDesktop ?? supportsLocalMacCuaPermissionOnboarding(platform)) &&
     isLocalWorkspace;
-  const supportsLocalWindowsWorkspace = isWindowsDesktop && isLocalWorkspace;
+  const supportsLocalWindowsWorkspace = controlUi.nativePlatform === "win32" && isLocalWorkspace;
   const supportsComputerUseSettings = supportsLocalMacWorkspace || supportsLocalWindowsWorkspace;
   const availability = resolveComputerUseAvailability({
     isDesktop: isDesktop || isWindowsDesktop || supportsLocalMacWorkspace,
@@ -94,7 +100,7 @@ export function ComputerUseSection({
     workspaceIdentity,
   });
   // CUA 权限是 macOS 本机属性：仅完整 macOS 设置需要 Helper workspace 路径。
-  const path = supportsLocalMacWorkspace ? (localWorkspacePath ?? workspacePath) : null;
+  const path = supportsComputerUseSettings ? (localWorkspacePath ?? workspacePath) : null;
   // 展示只跟 settled：fresh 每次查询开始都会落回 false，跟着它渲染会让授权按钮的文案
   // 在「验证中…」与终态之间切换、宽度随之跳变。
   const { status, settled, refresh } = useCuaPermissionStatus(path ?? null, workspaceIdentity);
@@ -246,10 +252,12 @@ export function ComputerUseSection({
           }
           if (!result.ok) return false;
 
-          // Helper socket 已健康不代表 tccd 状态已经传播完成；短轮询确认 stale 是否消失。
-          const stillStale = await waitForAccessibilityNotStale(() =>
-            cuaPermissionService.getStatus(targetPath, targetWorkspaceIdentity),
-          );
+          // Windows 重启真实服务即可，不等待 macOS TCC；Mac socket 健康之后仍需确认 stale 消失。
+          const stillStale =
+            supportsLocalMacWorkspace &&
+            (await waitForAccessibilityNotStale(() =>
+              cuaPermissionService.getStatus(targetPath, targetWorkspaceIdentity),
+            ));
           // 授权过程中可能切换 workspace；旧操作仍完成必要副作用，但不能污染新页面的升级提示。
           if (mountedRef.current && helperContextKeyRef.current === targetContextKey) {
             setVerifyTimedOut(stillStale);
@@ -284,7 +292,15 @@ export function ComputerUseSection({
       restartPromiseRef.current = operation;
       return operation;
     },
-    [path, workspaceIdentity, services, refresh, intl],
+    [
+      path,
+      workspaceIdentity,
+      services,
+      cuaPermissionService,
+      supportsLocalMacWorkspace,
+      refresh,
+      intl,
+    ],
   );
 
   const applyPendingGrant = useCallback(
@@ -608,6 +624,13 @@ export function ComputerUseSection({
   // 两项权限的状态视图（圆点 tone + 文案），与圆点同源，避免文案/颜色不同步。
   const acc = statusView(availableStatus?.accessibility);
   const screenPerm = statusView(availableStatus?.screenRecording);
+  // Windows 基础能力同时依赖 UIA 和 WGC；不能只看 accessibility 就误报全部就绪。
+  const windowsStatusId =
+    availableStatus?.accessibility === "granted" && availableStatus?.screenRecording === "granted"
+      ? "computerControl.windowsReady"
+      : availableStatus?.accessibility === "denied" || availableStatus?.screenRecording === "denied"
+        ? "computerControl.windowsUnavailable"
+        : "computerControl.windowsUnknown";
 
   // 输入框常驻入口的显隐。隐藏开关用 useSettings().update 写入
   // （直连 settingService 只落盘不刷新共享 snapshot，输入框按钮读不到新值）。
@@ -703,6 +726,12 @@ export function ComputerUseSection({
 
   return (
     <div className="space-y-4">
+      <p
+        className="text-ui-caption text-foreground-subtlest"
+        data-testid="cua-workspace-authorization-hint"
+      >
+        {intl.formatMessage({ id: "settings.computerUse.workspaceAuthorizationHint" })}
+      </p>
       {/* 总开关：开/关 zcode-cua 插件（同步其 MCP + skill） */}
       <SettingsGroupCard>
         <SettingsRow
@@ -745,6 +774,36 @@ export function ComputerUseSection({
         />
       </SettingsGroupCard>
 
+      {cuaEnabled && supportsLocalWindowsWorkspace ? (
+        <SettingsGroupCard>
+          <SettingsRow
+            label={intl.formatMessage({ id: "computerControl.windowsStatus" })}
+            description={intl.formatMessage({ id: "computerControl.windowsDescription" })}
+            control={
+              <SettingsBadge>
+                <span data-testid="cua-windows-status">
+                  {intl.formatMessage({ id: windowsStatusId })}
+                </span>
+              </SettingsBadge>
+            }
+            detail={
+              <Button
+                data-testid="cua-windows-restart"
+                variant="outline"
+                size="sm"
+                disabled={restarting}
+                onClick={() => void onRestart()}
+              >
+                {intl.formatMessage({
+                  id: restarting
+                    ? "cuaPermission.modal.restarting"
+                    : "cuaPermission.modal.restartButton",
+                })}
+              </Button>
+            }
+          />
+        </SettingsGroupCard>
+      ) : null}
       {/* CUA 未启用时隐藏下方权限配置，只留总开关，避免一堆禁用项。 */}
       {cuaEnabled && supportsLocalMacWorkspace ? (
         <>
@@ -756,8 +815,8 @@ export function ComputerUseSection({
                 {intl.formatMessage(
                   { id: "cuaPermission.osFloorTitle" },
                   {
-                    minimum: osSupport?.minimumMacOs ?? "12.0",
-                    current: osSupport?.currentMacOs ?? "12 以下",
+                    minimum: osSupport?.minimumMacOs ?? "14.4",
+                    current: osSupport?.currentMacOs ?? "14.4 以下",
                   },
                 )}
               </p>

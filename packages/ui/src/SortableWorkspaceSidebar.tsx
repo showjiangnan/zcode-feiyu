@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { memo, useCallback, useMemo, type CSSProperties } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -32,8 +33,10 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
   reconnectingRemoteWorkspaceLogsByWorkspaceKey,
   onReconnectRemoteWorkspace,
   onOpenFileTree,
+  automaticOrder = false,
 }: {
   tab: WorkspaceTabState;
+  automaticOrder?: boolean;
   isActiveWorkspace: boolean;
   isExpanded: boolean;
   activateTab: (tabId: string) => void;
@@ -65,6 +68,7 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tab.id,
+    disabled: automaticOrder,
   });
   // 流式 task 事件会让父级 sidebar 高频刷新；dnd-kit 即使位移值不变，
   // 也可能给出新的 transform 对象。这里按 primitive 值派生稳定 props，避免打穿行级 memo。
@@ -127,7 +131,7 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
       onOpenFileTree={onOpenFileTree}
       itemRef={setNodeRef}
       itemStyle={style}
-      sortableBindings={sortableBindings}
+      sortableBindings={automaticOrder ? undefined : sortableBindings}
       isDragging={isDragging}
     />
   );

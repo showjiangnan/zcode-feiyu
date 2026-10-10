@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- shared node_repl host 的 worker、CUA bridge 和生命周期必须保持同一边界。 */
 import { resolve } from "node:path";
 import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
@@ -44,10 +45,7 @@ const pluginRoot = process.env.ZCODE_PLUGIN_ROOT ?? process.cwd();
 // CUA 与 Browser Use 共用 node_repl host，但文档和 native 依赖必须按领域隔离；
 // 否则 CUA skill 会因为 host root 恰好来自 Browser Use 而再次产生隐式依赖。
 const browserDocumentationRoot = resolve(pluginRoot, "docs");
-const cuaDocumentationRoot = resolve(
-  process.env.ZCODE_CUA_PLUGIN_ROOT ?? pluginRoot,
-  "docs",
-);
+const cuaDocumentationRoot = resolve(process.env.ZCODE_CUA_PLUGIN_ROOT ?? pluginRoot, "docs");
 const jsInputSchema = z
   .object({
     code: z.string(),
@@ -59,7 +57,8 @@ const jsInputSchema = z
 const requestContextSchema = z
   .object({
     parent_span_id: z.string().optional(),
-    runtime_scope: z.enum(["main", "subagent"]).default("main"),
+    runtime_scope: z.enum(["main", "subagent"]).optional(),
+    task_type: z.string().optional(),
     session_id: z.string().trim().min(1).optional(),
     span_id: z.string().optional(),
     trace_id: z.string().optional(),
@@ -114,50 +113,48 @@ export function setNodeReplMcpProcessTitle(target: { title: string } = process):
  * 从而连 Node 的模块缓存也随调用一起销毁。
  */
 export function createInProcessNodeReplExecutor(): NodeReplExecutor {
+  let activeCall: ActiveNodeReplCall | undefined;
+  let activeCuaCall: ActiveCuaNodeReplCall | undefined;
+  let session: NodeReplSession | undefined;
+  let generation = Date.now();
   return async (input) => {
-    let activeCall: ActiveNodeReplCall | undefined;
-    let activeCuaCall: ActiveCuaNodeReplCall | undefined;
-    let session: NodeReplSession;
-    const generation = 1;
-    session = new NodeReplSession({
-      injectedGlobals: () =>
-        ({
+    if (!session) {
+      generation++;
+      session = new NodeReplSession({
+        injectedGlobals: () => ({
           ...createBrowserBridgeGlobals({
             documentationRoot: browserDocumentationRoot,
             generation,
             getActiveCall: () => activeCall,
-            session: () => session,
+            session: () => session!,
           }),
           ...createComputerUseBridgeGlobals({
-            broker: input.cuaBroker,
             generation,
             getActiveCall: () => activeCuaCall,
-            session: () => session,
+            session: () => session!,
             documentationRoot: cuaDocumentationRoot,
           }),
         }),
-      restrictProcess: true,
-    });
-    activeCall = {
-      generation,
-      requestMeta: input.requestMeta,
-      signal: input.signal,
-    };
-    activeCuaCall = {
-      generation,
-      requestMeta: input.requestMeta,
-      signal: input.signal,
-    };
+        restrictProcess: true,
+      });
+    }
+    // NodeReplApi 的公开 metadata 副本不能改写控制桥接的可信 admission。
+    const requestMeta = Object.freeze(structuredClone(input.requestMeta));
+    activeCall = { generation, requestMeta, signal: input.signal };
+    activeCuaCall = { generation, requestMeta, signal: input.signal, broker: input.cuaBroker };
     try {
       return await session.run(input.code, {
-        requestMeta: input.requestMeta,
+        requestMeta: { ...requestMeta },
         signal: input.signal,
         syncTimeoutMs: input.syncTimeoutMs,
       });
     } finally {
       activeCall = undefined;
       activeCuaCall = undefined;
-      session.dispose();
+      if (input.signal.aborted) {
+        session.dispose();
+        session = undefined;
+      }
     }
   };
 }
@@ -165,9 +162,9 @@ export function createInProcessNodeReplExecutor(): NodeReplExecutor {
 export function createNodeReplMcpRuntime(
   input: { executeJs?: NodeReplExecutor; cuaRuntime?: ComputerUseRuntime } = {},
 ): NodeReplMcpRuntime {
-  const executeJs = input.executeJs ?? executeJsInWorker;
-  const cuaRuntime =
-    input.cuaRuntime ?? captureComputerUseRuntimeFromEnvironment();
+  const kernels = new Map<string, { worker: Worker; busy: boolean; touched: number }>();
+  const executeJs = input.executeJs ?? ((call) => executeJsInWorker(call, kernels));
+  const cuaRuntime = input.cuaRuntime ?? captureComputerUseRuntimeFromEnvironment();
   const cuaBroker = cuaRuntime
     ? createNodeReplCuaBroker({ runtime: cuaRuntime, platform: process.platform })
     : undefined;
@@ -214,22 +211,42 @@ export function createNodeReplMcpRuntime(
         const callController = new AbortController();
         activeCalls.add(callController);
         const timeoutMs = args.timeout_ms ?? NODE_REPL_DEFAULT_TIMEOUT_MS;
-        const callMeta = { ...requestMeta, ...(args.title ? { title: args.title } : {}) };
+        const callMeta: NodeReplRequestMeta = {
+          ...requestMeta,
+          ...(args.title ? { title: args.title } : {}),
+        };
+        let admission: ReturnType<NodeReplCuaBroker["admit"]> | undefined;
         try {
           const signal = AbortSignal.any([
             extra.mcpReq.signal,
             callController.signal,
             AbortSignal.timeout(timeoutMs),
           ]);
+          if (cuaBroker && callMeta.session_id && callMeta.turn_id) {
+            await cuaBroker.ready;
+            admission = cuaBroker.admit(callMeta);
+          }
           const run = await executeJs({
             code: args.code,
             requestMeta: callMeta,
             signal,
             syncTimeoutMs: Math.min(timeoutMs, MAX_SYNC_TIMEOUT_MS),
-            cuaBroker: cuaBroker?.connection,
+            cuaBroker: admission?.connection,
           });
-          return toMcpRunResult(run);
+          return toMcpRunResult(admission ? admission.project(run) : run);
+        } catch (error) {
+          // 宿主/执行异常也必须成为结构化失败工具结果，不能被框架转成无 code 的 internal error。
+          const value = error as { name?: unknown; message?: unknown; code?: unknown };
+          return toMcpRunResult({
+            logs: "",
+            error: {
+              name: typeof value?.name === "string" ? value.name : "Error",
+              message: typeof value?.message === "string" ? value.message : String(error),
+              ...(typeof value?.code === "string" ? { code: value.code } : {}),
+            },
+          });
         } finally {
+          admission?.release();
           activeCalls.delete(callController);
         }
       });
@@ -244,44 +261,89 @@ export function createNodeReplMcpRuntime(
       for (const controller of activeCalls) controller.abort();
       activeCalls.clear();
       queues.clear();
+      for (const kernel of kernels.values()) void kernel.worker.terminate();
+      kernels.clear();
       void cuaBroker?.close();
       void cuaRuntime?.dispose();
     },
   };
 }
 
-async function executeJsInWorker(input: NodeReplExecuteInput): Promise<NodeReplRunResult> {
+async function executeJsInWorker(
+  input: NodeReplExecuteInput,
+  kernels: Map<string, { worker: Worker; busy: boolean; touched: number }>,
+): Promise<NodeReplRunResult> {
   if (input.signal.aborted) throw input.signal.reason;
-  const data: WorkerCallData = {
-    code: input.code,
-    kind: WORKER_KIND,
-    requestMeta: input.requestMeta,
-    syncTimeoutMs: input.syncTimeoutMs,
-    cuaBroker: input.cuaBroker,
-  };
-  const worker = new Worker(new URL(import.meta.url), { workerData: data });
+  const key = requestSessionKey(input.requestMeta);
+  let kernel = kernels.get(key);
+  if (!kernel) {
+    if (kernels.size >= 16) {
+      const idle = [...kernels.entries()]
+        .filter(([, value]) => !value.busy)
+        .sort((a, b) => a[1].touched - b[1].touched)[0];
+      if (!idle) throw new Error("All node_repl kernels are busy");
+      kernels.delete(idle[0]);
+      await idle[1].worker.terminate();
+    }
+    const env = { ...process.env };
+    for (const name of Object.keys(env))
+      if (
+        /^ZCODE_CUA_(BROKER_TOKEN|PLUGIN_AUTHORITY|PERMISSION_BROKER_SOCKET|LOCAL_UI_TOKEN)$/.test(
+          name,
+        )
+      )
+        delete env[name];
+    const worker = new Worker(new URL(import.meta.url), { workerData: { kind: WORKER_KIND }, env });
+    kernel = { worker, busy: false, touched: Date.now() };
+    kernels.set(key, kernel);
+    worker.on("error", () => {
+      if (kernels.get(key)?.worker === worker) kernels.delete(key);
+    });
+    worker.on("exit", () => {
+      if (kernels.get(key)?.worker === worker) kernels.delete(key);
+    });
+  }
+  const selected = kernel;
+  const worker = selected.worker;
+  const id = crypto.randomUUID();
+  selected.busy = true;
   return await new Promise<NodeReplRunResult>((resolveRun, rejectRun) => {
     let settled = false;
     const cleanup = () => {
       input.signal.removeEventListener("abort", onAbort);
-      worker.removeAllListeners();
+      worker.off("message", onMessage);
+      worker.off("error", onError);
+      worker.off("exit", onExit);
+      selected.busy = false;
+      selected.touched = Date.now();
     };
     const finish = (error?: unknown, result?: NodeReplRunResult) => {
       if (settled) return;
       settled = true;
       cleanup();
-      void worker.terminate().catch(() => undefined);
-      if (error !== undefined) rejectRun(error);
-      else if (result) resolveRun(result);
+      if (error !== undefined) {
+        kernels.delete(key);
+        void worker.terminate();
+        rejectRun(error);
+      } else if (result) resolveRun(result);
       else rejectRun(new Error("node_repl worker returned no result"));
     };
     const onAbort = () => finish(input.signal.reason ?? new DOMException("aborted", "AbortError"));
+    const onMessage = (message: { id?: string; result?: NodeReplRunResult }) => {
+      if (message.id === id) finish(undefined, message.result);
+    };
+    const onError = (error: Error) => finish(error);
+    const onExit = (code: number) => finish(new Error(`node_repl worker exited (${code})`));
     input.signal.addEventListener("abort", onAbort, { once: true });
-    worker.once("message", (message: unknown) => finish(undefined, message as NodeReplRunResult));
-    worker.once("error", finish);
-    worker.once("exit", (code) => {
-      if (!settled)
-        finish(new Error(`node_repl worker exited before returning a result (${code})`));
+    worker.on("message", onMessage);
+    worker.once("error", onError);
+    worker.once("exit", onExit);
+    worker.postMessage({
+      id,
+      code: input.code,
+      requestMeta: input.requestMeta,
+      syncTimeoutMs: input.syncTimeoutMs,
+      cuaBroker: input.cuaBroker,
     });
     if (input.signal.aborted) onAbort();
   });
@@ -307,7 +369,15 @@ function buildRequestMeta(meta: Record<string, unknown> | undefined): NodeReplRe
 
 function requestSessionKey(meta: NodeReplRequestMeta): string {
   const sessionId = meta.session_id;
-  return typeof sessionId === "string" && sessionId.trim() ? sessionId : UNTRUSTED_SESSION_KEY;
+  const identity =
+    typeof meta.workspace_identity === "string" ? meta.workspace_identity.trim() : "";
+  return typeof sessionId === "string" && sessionId.trim()
+    ? JSON.stringify([
+        identity || meta.workspace_path || meta.workspace_key || "",
+        sessionId,
+        meta.runtime_scope || "main",
+      ])
+    : UNTRUSTED_SESSION_KEY;
 }
 
 export { installNodeReplProcessGuards, installNodeReplShutdownTriggers };
@@ -349,24 +419,28 @@ export async function main(): Promise<void> {
 
 if (!isMainThread && isWorkerCallData(workerData)) {
   const execute = createInProcessNodeReplExecutor();
-  const controller = new AbortController();
-  void execute({
-    code: workerData.code,
-    requestMeta: workerData.requestMeta,
-    signal: controller.signal,
-    syncTimeoutMs: workerData.syncTimeoutMs,
-    cuaBroker: workerData.cuaBroker,
-  })
-    .then((result) => parentPort?.postMessage(result))
-    .catch((error) => {
-      parentPort?.postMessage({
-        logs: "",
-        error: {
-          name: error instanceof Error ? error.name : "Error",
-          message: error instanceof Error ? error.message : String(error),
-        },
-      } satisfies NodeReplRunResult);
-    });
+  parentPort?.on("message", (cell: WorkerCallData & { id: string }) => {
+    void execute({
+      code: cell.code,
+      requestMeta: cell.requestMeta,
+      signal: new AbortController().signal,
+      syncTimeoutMs: cell.syncTimeoutMs,
+      cuaBroker: cell.cuaBroker,
+    })
+      .then((result) => parentPort?.postMessage({ id: cell.id, result }))
+      .catch((error) =>
+        parentPort?.postMessage({
+          id: cell.id,
+          result: {
+            logs: "",
+            error: {
+              name: error instanceof Error ? error.name : "Error",
+              message: error instanceof Error ? error.message : String(error),
+            },
+          } satisfies NodeReplRunResult,
+        }),
+      );
+  });
 }
 
 export function captureComputerUseRuntimeFromEnvironment(
@@ -376,6 +450,7 @@ export function captureComputerUseRuntimeFromEnvironment(
   if (!socketPath) return undefined;
   return createComputerUseRuntime({
     brokerSocketPath: socketPath,
+    brokerToken: env.ZCODE_CUA_BROKER_TOKEN,
     refreshMarkerPath: env.ZCODE_CUA_PERMISSION_BROKER_REFRESH_MARKER?.trim(),
   });
 }

@@ -16,6 +16,8 @@ export const AgentType = {
 
 export type AgentType = string;
 
+const agentMemberNamePattern = /^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u;
+
 export const AgentInputSchema = z.object({
   description: z.string().describe("A short (3-5 word) description of the task"),
   prompt: z.string().describe("The task for the agent to perform"),
@@ -24,9 +26,16 @@ export const AgentInputSchema = z.object({
     .trim()
     .min(1)
     .max(32)
-    .regex(/^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u)
+    // JSON Schema 不携带 Unicode 模式标志；供应商会拒绝 \p 字符类别。
+    // refinement 保留本地完整校验，同时避免把该表达式导出到模型请求。
+    .refine((name) => agentMemberNamePattern.test(name), {
+      message:
+        "Member name must start with a letter or number and contain only letters, numbers, underscores or hyphens",
+    })
     .optional()
-    .describe("Stable member name when swarm mode is active"),
+    .describe(
+      "Stable member name when swarm mode is active. Use 1-32 characters, starting with a letter or number; Unicode letters and numbers, underscores and hyphens are allowed.",
+    ),
   subagent_type: z
     .string()
     .optional()

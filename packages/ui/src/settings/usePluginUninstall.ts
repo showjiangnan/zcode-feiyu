@@ -1,5 +1,7 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { useCallback, useMemo, useState } from "react";
 import type { ZCodeInstalledPluginSummary, ZCodePluginInfo } from "@zcode/shared";
+import { isSystemManagedDesktopPlugin } from "@zcode/shared";
 import type { IPluginManagementService } from "@zcode/services";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
 
@@ -45,9 +47,17 @@ export function usePluginUninstall({
 
   const uninstalling = pendingId !== null && operationId === `plugin:uninstall:${pendingId}`;
 
-  const requestUninstall = useCallback((pluginId: string) => {
-    setPendingId(pluginId);
-  }, []);
+  const requestUninstall = useCallback(
+    (pluginId: string) => {
+      if (
+        isSystemManagedDesktopPlugin(pluginId) ||
+        plugins.find((plugin) => plugin.id === pluginId)?.canUninstall === false
+      )
+        return;
+      setPendingId(pluginId);
+    },
+    [plugins],
+  );
 
   const cancelUninstall = useCallback(() => {
     setPendingId(null);

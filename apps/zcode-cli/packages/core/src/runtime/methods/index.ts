@@ -1,4 +1,6 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { grantPermissionFullAccess } from "../permission-full-access.js";
+import { refreshComputerUse } from "./computer-use-refresh.js";
 import {
   getSessionShellSelection,
   initializeSessionShellEnvironmentIfNeeded,
@@ -283,6 +285,7 @@ export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void 
   proto.injectPluginReferenceReminderFromTurn = injectPluginReferenceReminderFromTurn;
   proto.initializeMcp = initializeMcp;
   proto.startMcpStartup = startMcpStartup;
+  proto.refreshComputerUse = refreshComputerUse;
   proto.discoverSkillsForContext = discoverSkillsForContext;
   proto.createConfigOnlyContextSnapshot = createConfigOnlyContextSnapshot;
   proto.initializeMessageHistoryFromContext = initializeMessageHistoryFromContext;

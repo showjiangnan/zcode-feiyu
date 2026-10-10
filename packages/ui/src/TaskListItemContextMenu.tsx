@@ -1,8 +1,14 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
 } from "@/components/ui/context-menu.js";
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu.js";
 import { TaskActionMenuContent } from "@/TaskActionMenuContent.js";
 
 export function TaskListItemContextMenu({
@@ -27,6 +33,7 @@ export function TaskListItemContextMenu({
   onViewModelTrajectory,
   disableTaskActions = false,
   disabledReason,
+  menuKind = "context",
 }: {
   intl: {
     formatMessage: (desc: { id: string }, values?: Record<string, string>) => string;
@@ -57,9 +64,18 @@ export function TaskListItemContextMenu({
   onViewModelTrajectory?: () => void;
   disableTaskActions?: boolean;
   disabledReason?: string;
+  menuKind?: "context" | "dropdown";
 }) {
+  // 两个入口共享操作内容和禁用规则，仅切换 Radix 菜单容器，避免复制右键业务动作。
+  const Content = menuKind === "dropdown" ? DropdownMenuContent : ContextMenuContent;
+  const Item = menuKind === "dropdown" ? DropdownMenuItem : ContextMenuItem;
+  const Separator = menuKind === "dropdown" ? DropdownMenuSeparator : ContextMenuSeparator;
   return (
-    <ContextMenuContent className="w-52">
+    <Content
+      className="w-52"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
       <TaskActionMenuContent
         intl={intl}
         isPinned={isPinned}
@@ -67,8 +83,8 @@ export function TaskListItemContextMenu({
         taskSessionFile={taskSessionFile}
         activeSessionId={activeSessionId}
         taskNativeSessionLogFile={taskNativeSessionLogFile}
-        Item={ContextMenuItem}
-        Separator={ContextMenuSeparator}
+        Item={Item}
+        Separator={Separator}
         onTogglePinTask={onTogglePinTask}
         onStartRenameTask={onStartRenameTask}
         onArchiveTask={onArchiveTask}
@@ -85,6 +101,6 @@ export function TaskListItemContextMenu({
         disableTaskActions={disableTaskActions}
         disabledReason={disabledReason}
       />
-    </ContextMenuContent>
+    </Content>
   );
 }

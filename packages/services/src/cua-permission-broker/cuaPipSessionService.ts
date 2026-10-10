@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { PipSessionEvent } from "@zcode/zcode-cua/pip-session";
 import {
   createPipSessionClient,
@@ -9,6 +10,7 @@ import type { CuaPipSessionService } from "./cuaPipSession.js";
 
 export interface CuaPipPresentationCredentials {
   socketPath: string;
+  token?: string;
 }
 
 type PipSessionClientResolution =
@@ -105,7 +107,7 @@ export function createCuaPipSessionService(options: {
     if (disposed) return { client: null, skipReason: "service-disposed" };
     const credentials = await options.resolveCredentials();
     if (!credentials) return { client: null, skipReason: "credentials-unavailable" };
-    const key = credentials.socketPath;
+    const key = `${credentials.socketPath}:${credentials.token || ""}`;
     if (disabledTransportKey === key) {
       return { client: null, skipReason: "transport-disabled" };
     }
@@ -113,6 +115,7 @@ export function createCuaPipSessionService(options: {
     current?.client.close();
     const client = clientFactory({
       socketPath: credentials.socketPath,
+      token: credentials.token,
       onDiagnostic: (diagnostic) => {
         const message = `[cua-pip-session] ${diagnostic.code}: ${diagnostic.message}`;
         if (diagnostic.code === "version_mismatch") logger.warn(undefined, message);

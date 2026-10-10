@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- workspace 行同时承载折叠、远端状态和快捷操作，先保持同文件收口。 */
 import {
   memo,
@@ -22,6 +23,9 @@ import {
   LoaderCircle,
   RefreshCwIcon,
   MessageCirclePlus,
+  Pencil,
+  Pin,
+  PinOff,
   XIcon,
 } from "lucide-react";
 import type { useSortable } from "@dnd-kit/sortable";
@@ -89,6 +93,9 @@ import {
 } from "@/lib/workspaceRemovalSafety.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { toast } from "@/components/ui/toast.js";
+import { TaskRenameDialog } from "@/TaskRenameDialog.js";
+import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
+import { useSidebarPresentationStore } from "@/store/sidebarPresentationStore.js";
 
 export type SortableBindings = Pick<ReturnType<typeof useSortable>, "attributes" | "listeners">;
 
@@ -151,6 +158,8 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   itemStyle,
   sortableBindings,
   isDragging = false,
+  pinnedShortcut = false,
+  onPinnedExpandedChange,
 }: {
   tab: WorkspaceTabState;
   isActiveWorkspace: boolean;
@@ -185,8 +194,17 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   itemStyle?: CSSProperties;
   sortableBindings?: SortableBindings;
   isDragging?: boolean;
+  pinnedShortcut?: boolean;
+  onPinnedExpandedChange?: (workspaceKey: string, expanded: boolean) => void;
 }) {
   const { intl } = useZCodeIntl();
+  const presentationKey = buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity);
+  const projectPreference = useSidebarPresentationStore(
+    (state) => state.preferences.projects[presentationKey],
+  );
+  const [projectRenameOpen, setProjectRenameOpen] = useState(false);
+  const [projectRenameDraft, setProjectRenameDraft] = useState("");
+  const projectRenameInputRef = useRef<HTMLInputElement | null>(null);
   const workspaceZCodeState = useZCodeSessionStore((state) =>
     selectWorkspaceZCodeState(state, tab.workspacePath, tab.workspaceIdentity),
   );
@@ -232,7 +250,8 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     isDisconnectedRemoteWorkspace && reconnectingRemoteWorkspaceKeys.includes(remoteWorkspaceKey),
   );
   const remoteWorkspaceError = remoteWorkspaceErrorByWorkspaceKey[remoteWorkspaceKey];
-  const workspaceSidebarLabel = formatRemoteWorkspaceDisplayLabel(tab.label, tab.remoteTarget);
+  const workspaceSidebarLabel =
+    projectPreference?.label ?? formatRemoteWorkspaceDisplayLabel(tab.label, tab.remoteTarget);
   const sshWorkspaceTooltipDetails = getSshWorkspaceTooltipDetails(tab);
   const reconnectRuntimeLogs =
     reconnectingRemoteWorkspaceLogsByWorkspaceKey[remoteWorkspaceKey] ?? [];
@@ -287,6 +306,12 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
       if (isDisconnectedRemoteWorkspace) {
         return;
       }
+      if (pinnedShortcut) {
+        // 置顶项只是独立的 UI 投影，不能把默认折叠实现成永久不可展开。
+        onPinnedExpandedChange?.(presentationKey, nextOpen);
+        if (nextOpen) onStartDraftInWorkspace(tab.workspacePath, tab.workspaceIdentity);
+        return;
+      }
 
       // workspace 草稿导航本身会把 workspace 标记为展开。
       // 之前在 Collapsible 的 onOpenChange 里无论展开/收起都先激活 workspace，
@@ -307,6 +332,9 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
       isDisconnectedRemoteWorkspace,
       isExpanded,
       onStartDraftInWorkspace,
+      onPinnedExpandedChange,
+      pinnedShortcut,
+      presentationKey,
       tab.workspaceIdentity,
       tab.workspacePath,
       toggleWorkspaceExpanded,
@@ -375,6 +403,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     }
 
     closeTab(tab.id);
+    useSidebarPresentationStore.getState().forgetProject(presentationKey);
     releaseWorkspaceRuntimeAfterProjectRemoval({
       tab: {
         workspacePath: tab.workspacePath,
@@ -421,6 +450,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     intl,
     isExpanded,
     isRemoteWorkspace,
+    presentationKey,
     tab.id,
     tab.workspaceIdentity,
     tab.workspacePath,
@@ -455,7 +485,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
 
       onOpenFileTree({
         workspacePath: tab.workspacePath,
-        workspaceName: tab.label,
+        workspaceName: workspaceSidebarLabel,
         workspaceIdentity: tab.workspaceIdentity,
         workspaceRemoteSessionId: tab.remoteSessionId,
       });
@@ -468,6 +498,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
       tab.remoteSessionId,
       tab.workspaceIdentity,
       tab.workspacePath,
+      workspaceSidebarLabel,
     ],
   );
 
@@ -589,6 +620,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
           nextTask: meta,
           previousState: { pinned, archived: false },
           nextState: { pinned, archived: false },
+          committedPin: pinned,
         });
         return meta;
       } catch (error) {
@@ -716,6 +748,12 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
     });
   }, [remoteWorkspaceError]);
   const renderWorkspaceIcon = () => {
+    if (pinnedShortcut)
+      return isExpanded ? (
+        <FolderOpen aria-hidden="true" className="h-4 w-4 text-foreground-subtle" />
+      ) : (
+        <Folder aria-hidden="true" className="h-4 w-4 text-foreground-subtle" />
+      );
     // workspace 行之前在 hover/展开时会把目录图标切成箭头，
     // 视觉上会多出一层“树形展开控件”的暗示；当前交互只需要保留项目图标本身，
     // 这样能减少噪音，也避免用户把它理解成独立的箭头开关。
@@ -785,7 +823,12 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
   );
 
   return (
-    <li ref={itemRef} style={itemStyle} className="space-y-2">
+    <li
+      ref={itemRef}
+      style={itemStyle}
+      className="space-y-2"
+      data-pinned-project={pinnedShortcut ? presentationKey : undefined}
+    >
       <Collapsible
         className="flex flex-col gap-1"
         open={isExpanded && !isDisconnectedRemoteWorkspace}
@@ -834,6 +877,16 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                 onMouseEnter={() => setWorkspaceRowHovered(true)}
                 onMouseLeave={() => setWorkspaceRowHovered(false)}
                 onFocusCapture={() => setWorkspaceRowFocusWithin(true)}
+                onKeyDown={(event) => {
+                  // asChild 使用 div 时不会自动把 Enter/空格转换成 click，显式保留按钮的键盘语义。
+                  if (
+                    event.target !== event.currentTarget ||
+                    (event.key !== "Enter" && event.key !== " ")
+                  )
+                    return;
+                  event.preventDefault();
+                  handleWorkspaceOpenChange(!isExpanded);
+                }}
                 onBlurCapture={(event) => {
                   if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
                     setWorkspaceRowFocusWithin(false);
@@ -914,6 +967,7 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                               size="icon-sm"
                               className="shrink-0 text-foreground-subtle hover:bg-surface-hover hover:text-foreground"
                               onMouseDown={handleActionMouseDown}
+                              onClick={handleActionMenuClick}
                               aria-label={intl.formatMessage({ id: "common.more" })}
                             >
                               <Ellipsis className="h-3.5 w-3.5" />
@@ -921,6 +975,33 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
                           </DropdownMenuTrigger>
                         </ControlHintTooltip>
                         <DropdownMenuContent align="end" onClick={handleActionMenuClick}>
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setProjectRenameDraft(workspaceSidebarLabel);
+                              setProjectRenameOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            {intl.formatMessage({ id: "workspaceSidebar.renameProject" })}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              useSidebarPresentationStore
+                                .getState()
+                                .pinProject(presentationKey, !projectPreference?.pinnedAt);
+                            }}
+                          >
+                            {projectPreference?.pinnedAt ? (
+                              <PinOff className="h-3.5 w-3.5" />
+                            ) : (
+                              <Pin className="h-3.5 w-3.5" />
+                            )}
+                            {intl.formatMessage({
+                              id: projectPreference?.pinnedAt
+                                ? "workspaceSidebar.unpinProject"
+                                : "workspaceSidebar.pinProject",
+                            })}
+                          </DropdownMenuItem>
                           <RemoteSyncMenuItems
                             canSyncSkills={showRemoteSkillSyncAction}
                             canSyncMcp={showRemoteSkillSyncAction}
@@ -1136,6 +1217,22 @@ export const WorkspaceSidebarItem = memo(function WorkspaceSidebarItem({
           />
         </CollapsibleContent>
       </Collapsible>
+      <TaskRenameDialog
+        open={projectRenameOpen}
+        value={projectRenameDraft}
+        inputRef={projectRenameInputRef}
+        intl={intl}
+        title={intl.formatMessage({ id: "workspaceSidebar.renameProject" })}
+        placeholder={intl.formatMessage({ id: "workspaceSidebar.projectNamePlaceholder" })}
+        onOpenChange={setProjectRenameOpen}
+        onChange={setProjectRenameDraft}
+        onCancel={() => setProjectRenameOpen(false)}
+        onConfirm={() => {
+          if (!projectRenameDraft.trim()) return;
+          useSidebarPresentationStore.getState().renameProject(presentationKey, projectRenameDraft);
+          setProjectRenameOpen(false);
+        }}
+      />
       <RemoteSyncDialogs
         canSyncSkills={showRemoteSkillSyncAction}
         canSyncMcp={showRemoteSkillSyncAction}

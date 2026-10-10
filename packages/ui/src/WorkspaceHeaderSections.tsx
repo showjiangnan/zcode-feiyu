@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { WorkspaceContextPath } from "@/WorkspaceHeaderSections/WorkspaceContextPath.js";
 import { WorkspaceLastActivity } from "@/WorkspaceHeaderSections/WorkspaceLastActivity.js";
 /* eslint-disable max-lines -- Header 标题区当前同时承载 task 菜单、路径上下文和 workspace 级状态提示，先保持单文件收口，避免菜单链路迁移时再引入回归。 */
@@ -597,6 +598,7 @@ export function WorkspaceHeaderTitleSection({
                         nextTask: meta,
                         previousState: { pinned: !isPinned, archived: false },
                         nextState: { pinned: !isPinned, archived: false },
+                        committedPin: !isPinned,
                       });
                     })
                     .catch(() => {

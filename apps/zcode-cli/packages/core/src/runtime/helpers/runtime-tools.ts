@@ -213,7 +213,8 @@ function createRuntimeToolExecutor(
     pdfDocumentPort: deps.pdfDocumentPort,
     embeddedSearchBackend: runtime.config.embeddedSearchBackend,
     nativeSearchEnhancementsEnabled: runtime.config.nativeSearchEnhancementsEnabled,
-    skillPort: deps.skillPort,
+    // 技能目录与实际 Skill handler 共用 runtime owner，不能只热更新目录而继续加载旧根。
+    getSkillPort: () => runtime.skillPort,
     subagentPort: runtime.subagentPort,
     teamBoardPort: runtime.teamBoardPort,
     teamActorId: deps.teamActorId ?? "coordinator",
@@ -224,7 +225,7 @@ function createRuntimeToolExecutor(
     automationPort: deps.automationPort,
     offPeakPort: deps.offPeakPort,
     taskMessagePort: deps.taskMessagePort,
-    getPaidImageInputId: () => runtime.activeTurn ? runtime.paidImageInputId : undefined,
+    getPaidImageInputId: () => (runtime.activeTurn ? runtime.paidImageInputId : undefined),
     imageGenerationPort: deps.imageGenerationPort
       ? {
           ...deps.imageGenerationPort,
@@ -290,6 +291,8 @@ function createRuntimeToolExecutor(
       };
     },
     runtimeScope: runtime.config.taskType === "subagent_child" ? "subagent" : "main",
+    // 工作流 actor 的通用 scope 保持 main，但高权限 CUA 还必须验证真实任务类别。
+    taskType: runtime.config.taskType,
     permissionTimeoutMs: runtime.config.permissionTimeoutMs,
     sessionId: runtime.sessionId,
     traceContext: runtime.rootTraceContext,

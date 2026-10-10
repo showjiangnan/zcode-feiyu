@@ -586,6 +586,9 @@ export default {
     }
   },
   extraResources: [
+    ...(["darwin", "win32"].includes(targetPlatform.os)
+      ? [{ from: "dist-cua-helper", to: "cua-helper", filter: ["**/*"] }]
+      : []),
     { from: resolve(workspaceRoot, noticesFileName), to: noticesFileName },
     ...(targetPlatform.os === "darwin"
       ? [
@@ -692,11 +695,12 @@ export default {
     // electron-builder 在签主 app 时若继续深度扫描这些目录，会显著拉长 macOS codesign 时长。
     // 这里按“任意前缀 + Contents/Resources”匹配绝对路径，避免 ^Contents/... 在 CI 中无法命中。
     // 命中后可跳过已预签名目录的重复签名/遍历，同时保留主 app 与框架签名。
-    // CUA Helper 在独立 job 中已完成 Developer ID 签名和 notarization staple；
-    // electron-builder 若再次签名嵌套 Helper 会改变 CDHash，使最终用户包中的 staple 失效。
+    // 电脑控制 helper 在 prepare 阶段签名并计算 manifest hash；重复签名会改变
+    // 可执行文件字节，使安装版完整性校验失败，因此原生资产也保持预签名结果。
     signIgnore: [
       "[/\\\\]Contents[/\\\\]Resources[/\\\\]glm([/\\\\]|$)",
       "[/\\\\]Contents[/\\\\]Resources[/\\\\]tools([/\\\\]|$)",
+      "[/\\\\]Contents[/\\\\]Resources[/\\\\]cua-helper([/\\\\]|$)",
     ],
   },
   win: {

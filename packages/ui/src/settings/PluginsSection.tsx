@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 共享能力外壳聚合 Scope，并承载 Plugin tabs 与独立 Commands 入口。 */
 import { PluginAddMenu } from "@/settings/PluginAddMenu.js";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -22,7 +23,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { Switch } from "@/components/ui/switch.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { TID_PLUGIN_STORE_BROWSE } from "@zcode/shared";
+import { TID_PLUGIN_STORE_BROWSE, isSystemManagedDesktopPlugin } from "@zcode/shared";
 import type { ZCodePluginInfo, ZCodePluginScope, ZCodePluginUserConfigOption } from "@zcode/shared";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import {
@@ -541,7 +542,10 @@ function PluginList({
               </div>
             </button>
             <PluginStoreUpdateButton item={storeItemById.get(plugin.id)} actions={actions} />
-            {plugin.packageStatus === "missing" ? null : (
+            {plugin.packageStatus === "missing" ||
+            ((plugin.canUninstall === false || isSystemManagedDesktopPlugin(plugin.id)) &&
+              !canUpdatePluginItem(storeItemById.get(plugin.id)) &&
+              !(configScope === "workspace" && plugin.enabledSource === "workspace")) ? null : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -577,16 +581,19 @@ function PluginList({
                       })}
                     </DropdownMenuItem>
                   ) : null}
-                  <DropdownMenuItem
-                    variant="destructive"
-                    disabled={operationId !== null}
-                    onSelect={() => uninstall.requestUninstall(plugin.id)}
-                  >
-                    <Trash2 className="size-4" aria-hidden="true" />
-                    {intl.formatMessage({
-                      id: "settings.plugins.detail.uninstall",
-                    })}
-                  </DropdownMenuItem>
+                  {/* 系统电脑控制随安装包交付：不能留下灰色卸载项或空菜单。 */}
+                  {plugin.canUninstall !== false && !isSystemManagedDesktopPlugin(plugin.id) ? (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={operationId !== null}
+                      onSelect={() => uninstall.requestUninstall(plugin.id)}
+                    >
+                      <Trash2 className="size-4" aria-hidden="true" />
+                      {intl.formatMessage({
+                        id: "settings.plugins.detail.uninstall",
+                      })}
+                    </DropdownMenuItem>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

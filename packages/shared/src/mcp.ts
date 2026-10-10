@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /**
  * MCP (Model Context Protocol) types for ZCode
  * Based on the original Tauri implementation
@@ -8,6 +9,12 @@ import type { McpServerFailureKind } from "./zcode-protocol/index.js";
 
 // CUA official plugin 身份常量（port 自 feat；UI 设置面板 + bootstrap 复用以避免字面量漂移）。
 export const ZCODE_CUA_OFFICIAL_PLUGIN_ID = "computer-use@zcode-plugins-official";
+/** 系统插件身份由规范 ID 决定，旧名称仍受保护；不能按显示名或 builtin 来源扩大范围。 */
+export function isSystemManagedDesktopPlugin(pluginId: string): boolean {
+  return (
+    pluginId === ZCODE_CUA_OFFICIAL_PLUGIN_ID || pluginId === "zcode-cua@zcode-plugins-official"
+  );
+}
 // CUA server 身份串（port 自 feat mcp.ts）：server key = 模型可见工具前缀段（刻意不带 zcode-）；
 // namespace name = official plugin 运行时命名空间 plugin:<pluginId>:<serverKey>。
 export const ZCODE_CUA_OFFICIAL_MCP_NAMESPACE_NAME = "plugin:computer-use:computer-use";

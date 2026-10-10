@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // MCP tool bridge - projects MCP descriptors into core tool entries
 
 import {
@@ -25,6 +26,7 @@ import {
   normalizeMcpToolResultForModel,
 } from "./image-normalization.js";
 import { toMcpToolName, toModelVisibleMcpNamePart } from "./name.js";
+import { toMcpToolHandlerFailure } from "./handler-failure.js";
 
 export { toMcpToolName } from "./name.js";
 
@@ -55,6 +57,11 @@ export interface RegisterMcpToolsOptions {
    * 不投影官方 CUA 规范名，也不挂载 provider 拼写别名。
    */
   officialCuaServerNames?: ReadonlySet<string>;
+  /** 与图片 authority 分离，只接收 runtime 验证的内置执行宿主及当前配置 owner。 */
+  workspaceCuaApproval?: {
+    serverNames: ReadonlySet<string>;
+    isEnabled: () => boolean;
+  };
 }
 
 export function registerMcpTools(
@@ -76,7 +83,18 @@ export function registerMcpTools(
     // denylist 会静默失效并放行。新旧名称任一命中 deny 即拒绝，任一命中 allow 即接受。
     if (allowed && !allowed.has(name) && !allowed.has(descriptorName)) continue;
     if (disallowed?.has(name) || disallowed?.has(descriptorName)) continue;
-    registry.register(createMcpToolEntry(name, descriptor, mcpPort, officialCuaAuthorityVerified));
+    const workspaceApproval = options.workspaceCuaApproval?.serverNames.has(descriptor.serverName)
+      ? options.workspaceCuaApproval.isEnabled
+      : undefined;
+    registry.register(
+      createMcpToolEntry(
+        name,
+        descriptor,
+        mcpPort,
+        officialCuaAuthorityVerified,
+        workspaceApproval,
+      ),
+    );
     registered.push(name);
   }
 
@@ -104,6 +122,7 @@ function createMcpToolEntry(
   descriptor: McpToolDescriptor,
   mcpPort: McpPort,
   officialCuaAuthorityVerified: boolean,
+  workspaceApproval?: () => boolean,
 ): ToolEntry {
   const readOnly = descriptor.annotations?.readOnlyHint === true;
   const destructive = descriptor.annotations?.destructiveHint === true;
@@ -148,7 +167,7 @@ function createMcpToolEntry(
         };
 
   return {
-
+    ...(workspaceApproval ? { isWorkspacePreapproved: workspaceApproval } : {}),
     // 因精确查找直接返回 Tool not found。只在不可伪造的官方 authority 门成立且内部
     // serverName 仍是官方 namespaced 名时挂单向别名；provider 继续只看规范名称。
     aliases: officialCuaProviderSpellingAliases(name, descriptor, officialCuaAuthorityVerified),
@@ -225,6 +244,7 @@ function createMcpToolEntry(
             turnId: context.turnId,
           },
           runtimeScope: context.runtimeScope ?? "main",
+          ...(context.taskType ? { taskType: context.taskType } : {}),
           workspacePath: context.workingDirectory,
           ...(context.remoteSessionId ? { remoteSessionId: context.remoteSessionId } : {}),
           ...(context.workspaceIdentity?.trim()
@@ -244,7 +264,7 @@ function createMcpToolEntry(
       );
       // MCP server 会返回大 base64 图片；resultBudget 只看到图片占位文本，
       // 必须在 handler 阶段保存副本并替换模型可见内容，避免 provider 请求体被打爆。
-      return normalizeMcpToolResultForModel({
+      const output = await normalizeMcpToolResultForModel({
         compressOversizedImages: isHostNodeReplExecution,
         context,
         descriptor,
@@ -252,6 +272,8 @@ function createMcpToolEntry(
         result,
         toolName: name,
       });
+      // MCP isError 是工具执行失败；原来只格式化文字却发成功事件，桌面卡片误显示“已完成”。
+      return output.isError ? toMcpToolHandlerFailure(output, formatMcpToolResult(output)) : output;
     },
     formatModelContent: (output) => formatMcpToolResult(output),
   };

@@ -1,4 +1,5 @@
-export type PipSessionEvent =
+// Modified by ZCode Feiyu contributors (2026).
+export type PipSessionEvent = (
   | {
       kind: "turn-started";
       sessionId: string;
@@ -29,4 +30,5 @@ export type PipSessionEvent =
       turnId?: string;
       sequenceNumber?: number;
       eventId?: string;
-    };
+    }
+) & { workspaceKey?: string };

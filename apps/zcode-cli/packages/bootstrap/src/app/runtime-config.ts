@@ -157,6 +157,7 @@ export function resolveAppRuntimeConfig(input: {
       enabled: options.runtimeConfig?.mcp?.enabled ?? configResult.config.features.mcp,
       servers: autoConnectMcpServers,
       trustedOfficialCuaServerNames: [...trustedOfficialCuaServerNames],
+      trustedWorkspaceCuaServerNames: [...cuaBridgeServerNames],
     },
     hooks: mergeRuntimeHooks(
       options.runtimeConfig?.hooks

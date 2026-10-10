@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
   Crown,
   Download,
@@ -25,6 +26,7 @@ import {
   type StorePluginItem,
 } from "@/settings/pluginStoreListing.js";
 import { runUserAction } from "@/lib/userActionTelemetry.js";
+import { isSystemManagedDesktopPlugin } from "@zcode/shared";
 
 /** 商店条目的通用动作集：列表卡片、详情页共用同一套回调与进行中态判定。 */
 export interface PluginStoreActions {
@@ -165,7 +167,9 @@ export function PluginStoreItemMenu({
             {intl.formatMessage({ id: "settings.plugins.store.menu.resetConfig" })}
           </DropdownMenuItem>
         ) : null}
-        {item.installed ? (
+        {item.installed &&
+        item.info?.canUninstall !== false &&
+        !isSystemManagedDesktopPlugin(item.id) ? (
           <>
             {hasActionsBeforeUninstall ? <DropdownMenuSeparator /> : null}
             <DropdownMenuItem
@@ -342,7 +346,7 @@ export function PluginStoreCard({
         ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
-        {item.installed ? (
+        {item.installed && item.id !== "computer-use@zcode-plugins-official" ? (
           <>
             <PluginStoreUpdateButton item={item} actions={actions} />
             {/* 旧版误写 suppression 后可能只剩安装记录、没有运行时 info；

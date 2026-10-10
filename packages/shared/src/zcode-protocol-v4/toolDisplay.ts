@@ -3,6 +3,7 @@
 // 从 rows.ts 拆出：两侧增量叠加后 rows.ts 触发 oxlint max-lines(400)。
 // 本文件只含不依赖 rowBaseFields 的纯展示 union，rows.ts 单向依赖它，无循环。
 import { z } from "zod";
+import { nodeReplImageDisplaySchema as toolCallNodeReplImageDisplaySchema } from "../node-repl-display.js";
 import { imageGenerationDisplaySchema } from "../imageGeneration.js";
 import { bashOutputDisplaySchema } from "../bash-output-display.js";
 import { timestampSchema } from "./core.js";
@@ -22,8 +23,9 @@ import {
 // errorCode/suggestedAction/media(screenshot) 等结构化内容带到 renderer）。consume-main 之前
 // 缺这个 union + toolOutputSchema.display 字段——协议层 zod 校验会把 agent 下发的 display 整个
 // strip 掉，导致 UI 永远拿不到 display?.kind==="cua"，CUA 工具调用退化成 fallback 渲染。
-const toolResultDisplaySchema = z.discriminatedUnion("kind", [
+export const toolResultDisplaySchema = z.discriminatedUnion("kind", [
   imageGenerationDisplaySchema,
+  toolCallNodeReplImageDisplaySchema,
   bashOutputDisplaySchema,
   z.object({
     kind: z.literal("file_diff"),
@@ -173,43 +175,6 @@ export const toolProgressSchema = z.object({
   updatedAt: timestampSchema,
 });
 export type ToolProgress = z.infer<typeof toolProgressSchema>;
-
-/**
- * node_repl cell 的目标应用身份（Computer Use 的工具卡图标）。与 CLI contracts 的
- * `nodeReplCuaAppDisplaySchema` 必须同集——两侧都是 strict，少一个字段会让整块 display 被剥掉。
- */
-const toolCallNodeReplCuaAppDisplaySchema = z
-  .object({
-    appKey: z.string().trim().min(1).max(2_048),
-    displayName: z.string().trim().min(1).max(512).optional(),
-  })
-  .strict();
-
-const toolCallNodeReplImageDisplaySchema = z
-  .object({
-    kind: z.literal("node_repl_images"),
-    // images 可选：CUA 的纯动作 cell 没有截图，但仍要携带 app 身份。kind 名保留不动，
-    // 改名会让已持久化的 row 在这条 strict union 里整段校验失败。
-    images: z
-      .array(
-        z
-          .object({
-            base64: z
-              .string()
-              .min(1)
-              .max(200 * 1024),
-            mimeType: z.string().regex(/^image\/[a-z0-9.+-]+$/iu),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(2)
-      .optional(),
-    app: toolCallNodeReplCuaAppDisplaySchema.optional(),
-    truncated: z.boolean().optional(),
-    source: z.literal("browser_turn_end").optional(),
-  })
-  .strict();
 
 const toolCallTaskOutputDisplaySchema = z
   .object({

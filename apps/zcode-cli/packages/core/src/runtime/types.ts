@@ -186,6 +186,8 @@ export interface AgentRuntimeConfig {
      * official plugins. Never derive this list from serialized MCP config.
      */
     trustedOfficialCuaServerNames?: readonly string[];
+    /** 内置 CUA 执行宿主的来源，独立于官方 exact-raster MCP 列表。 */
+    trustedWorkspaceCuaServerNames?: readonly string[];
   };
   /**
    * Session 冻结的 Plugin 身份 catalog。

@@ -2086,13 +2086,25 @@ function exposeServicesOnMessagePort(
       ),
     );
   }
-  const rcsAuthorization = rcsGrant ? createRcsAuthorization({
-    grant: rcsGrant, file: services.get(IFileService), task: services.get(IZCodeTaskService),
-    terminal: services.get(ITerminalService), watcher: services.getOptional(IFileWatcherService),
-  }) : undefined;
+  const rcsAuthorization = rcsGrant
+    ? createRcsAuthorization({
+        grant: rcsGrant,
+        file: services.get(IFileService),
+        task: services.get(IZCodeTaskService),
+        terminal: services.get(ITerminalService),
+        watcher: services.getOptional(IFileWatcherService),
+      })
+    : undefined;
   services.exposeOnChannelServer(server, overrides, rcsAuthorization?.authorize);
   if (rcsGrant) {
-    const manifest: RcsCapabilities = { bridgeVersion: 1, rpcCodec: 1, agentWire: 3, services: RCS_SERVICE_MANIFEST, workspace: rcsGrant, nativeDesktop: false };
+    const manifest: RcsCapabilities = {
+      bridgeVersion: 1,
+      rpcCodec: 1,
+      agentWire: 3,
+      services: RCS_SERVICE_MANIFEST,
+      workspace: rcsGrant,
+      nativeDesktop: false,
+    };
     port.postMessage({ type: "rcs-ready", capabilities: manifest });
   }
   let disposed = false;
@@ -2166,7 +2178,8 @@ const windowHostAttachmentRegistry = createWindowHostAttachmentRegistry<
 });
 
 async function getRcsDirectory() {
-  if (!activeServices || databaseStartup?.coordinator.snapshot.phase !== "ready") throw new Error("HOST_NOT_READY");
+  if (!activeServices || databaseStartup?.coordinator.snapshot.phase !== "ready")
+    throw new Error("HOST_NOT_READY");
   return readRcsWorkspaces({
     settings: () => activeServices!.get(ISettingService).get(),
     registered: windowHostControllerRuntime.listRegisteredScopes,
@@ -2364,8 +2377,11 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   const port = e.ports[0];
   if (msg.type === "rcs-directory") {
     if (!port) return;
-    try { port.postMessage({ ok: true, workspaces: await getRcsDirectory() }); }
-    catch { port.postMessage({ ok: false, error: "HOST_NOT_READY" }); }
+    try {
+      port.postMessage({ ok: true, workspaces: await getRcsDirectory() });
+    } catch {
+      port.postMessage({ ok: false, error: "HOST_NOT_READY" });
+    }
     return;
   }
   if (msg.type === HostMessageTypes.DatabaseStartupControl) {
@@ -2889,21 +2905,37 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
       return;
     }
     let closed = false;
-    port.once("close", () => { closed = true; });
+    port.once("close", () => {
+      closed = true;
+    });
     const attach = async () => {
       try {
-        if (msg.scope.kind === "remote") await windowRemoteConnectionRegistry.waitForScopedServices(msg.scope);
+        if (msg.scope.kind === "remote")
+          await windowRemoteConnectionRegistry.waitForScopedServices(msg.scope);
         if (msg.rcsGrant) {
-          if (msg.clientMode !== "web-remote-replayable" || Boolean(msg.rcsGrant.remoteSessionId) !== (msg.scope.kind === "remote") || msg.scope.kind === "remote" && (msg.scope.remoteSessionId !== msg.rcsGrant.remoteSessionId || msg.scope.workspaceIdentity !== msg.rcsGrant.workspaceIdentity || msg.scope.workspacePath !== msg.rcsGrant.workspacePath)) throw new Error("CAPABILITY_DENIED");
+          if (
+            msg.clientMode !== "web-remote-replayable" ||
+            Boolean(msg.rcsGrant.remoteSessionId) !== (msg.scope.kind === "remote") ||
+            (msg.scope.kind === "remote" &&
+              (msg.scope.remoteSessionId !== msg.rcsGrant.remoteSessionId ||
+                msg.scope.workspaceIdentity !== msg.rcsGrant.workspaceIdentity ||
+                msg.scope.workspacePath !== msg.rcsGrant.workspacePath))
+          )
+            throw new Error("CAPABILITY_DENIED");
           assertRcsGrantCurrent(msg.rcsGrant, await getRcsDirectory());
         }
         if (closed) return;
         windowHostAttachmentRegistry.attach({ ...msg, port });
         logWindowHostTopology("attachment-added");
       } catch (error) {
-        if (msg.rcsGrant) { port.postMessage({ type: "rcs-error", error: "WORKSPACE_SCOPE_STALE" }); port.close(); }
-        else rejectUnavailableAttachedServicePort(port, false);
-        logger.warn(`failed to attach scoped service port, attachmentId=${msg.attachmentId}`, error);
+        if (msg.rcsGrant) {
+          port.postMessage({ type: "rcs-error", error: "WORKSPACE_SCOPE_STALE" });
+          port.close();
+        } else rejectUnavailableAttachedServicePort(port, false);
+        logger.warn(
+          `failed to attach scoped service port, attachmentId=${msg.attachmentId}`,
+          error,
+        );
       }
     };
     if (msg.scope.kind === "local" && databaseStartup?.coordinator.snapshot.phase !== "ready") {

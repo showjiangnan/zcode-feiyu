@@ -3,6 +3,7 @@ import { ingestToolExecResource } from "./desktopResourceTelemetry.js";
 import { ingestMcpResourceSamples } from "./processResourceMcpTelemetrySource.js";
 /* eslint-disable max-lines -- host process 统一处理 main↔host 生命周期、日志、ZCode Agent，拆分前先保持跨进程消息收口。 */
 import { bindDatabaseStartupRelay } from "./databaseStartupRelay.js";
+import { rotateComputerControlUiCredential } from "./computerControlUiCredential.js";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
@@ -264,6 +265,9 @@ export function spawnHostProcess(
       ...buildHostProcessEnv(dependencies.hostProcessLocalEnv),
       ...buildHostE2ECoverageEnv(),
       ZCODE_PROCESS_LABEL: label,
+      ...(initMessage.type === HostMessageTypes.InitLocal
+        ? { ZCODE_CUA_LOCAL_UI_TOKEN: rotateComputerControlUiCredential(win) }
+        : {}),
       // macOS-only: the Computer Use Helper launcher runs inside this forked host utilityProcess, whose
       // code-signing identity is a nested Electron helper (NOT dev.zcode.app). Publish THIS (main
       // Electron) process's pid — which IS dev.zcode.app — so helperLauncher passes it as

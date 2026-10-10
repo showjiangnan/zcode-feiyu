@@ -531,7 +531,7 @@
           "config": {
             "access": {
               "type": "api-key",
-              "apiKeyManagementUrl": "https://teamorouter.com/dashboard"
+              "apiKeyManagementUrl": "https://teamorouter.com/?i=bab87d35f3"
             },
             "api": {
               "type": "anthropic-messages",
@@ -553,7 +553,7 @@
           "config": {
             "access": {
               "type": "api-key",
-              "apiKeyManagementUrl": "https://teamorouter.com/dashboard"
+              "apiKeyManagementUrl": "https://teamorouter.com/?i=bab87d35f3"
             },
             "api": {
               "type": "openai-responses",

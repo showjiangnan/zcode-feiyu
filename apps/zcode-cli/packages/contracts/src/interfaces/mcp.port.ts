@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // MCP Port - Model Context Protocol adapter boundary
 
 import type { JsonSchema } from "../model/index.js";
@@ -224,6 +225,8 @@ export interface McpCallToolRequest {
   trace?: TraceContext;
   /** 调用来源；宿主 MCP 可据此限制不能安全继承到 subagent 的能力。 */
   runtimeScope?: "main" | "subagent";
+  /** Runtime 的任务类别，区分通用 main scope 下的工作流子任务。 */
+  taskType?: string;
   /** 请求上下文仅用于 shared-host 隔离，不改变 MCP tool 参数。 */
   workspacePath?: string;
   workspaceIdentity?: string;

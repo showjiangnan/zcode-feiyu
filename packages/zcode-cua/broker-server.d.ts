@@ -1,4 +1,6 @@
+// Modified by ZCode Feiyu contributors (2026).
 import type { CuaPermissionRestartOptions, CuaPermissionRestartResult } from "./broker.d.ts";
+import type { ControlPresentation } from "./control-contract.d.ts";
 
 export declare const HELPER_ADDON_ENV: string;
 export declare const WINDOWS_DEV_CONTROL_PROTOCOL: string;
@@ -98,6 +100,7 @@ export interface CuaProductMcpServerResolverContext {
 }
 
 export interface CuaHelperTransportHandle {
+  brokerToken?: string;
   socketPath: string;
   pluginAuthority: string;
   [key: string]: unknown;
@@ -131,6 +134,20 @@ export interface CuaProductHelperHost {
 export type ManagedCuaProductHelperHost = CuaProductHelperHost;
 
 export interface CuaHelperHost extends CuaProductHelperHost {
+  setControlPresentation(presentation: ControlPresentation): void;
+  getControlSnapshot(workspaceKey?: string): import("./control-contract.js").ControlSnapshot;
+  respondToControlApproval(
+    id: string,
+    allowed: boolean,
+    scope?: "turn" | "workspace",
+  ): Promise<void>;
+  stopControl(context: import("./control-contract.js").ControlContext): Promise<void>;
+  resumeControl(
+    context: import("./control-contract.js").ControlContext,
+    revision: number,
+  ): Promise<void>;
+  setControlVisibility(ids: string[], subscriber?: string): void;
+  revokeControlGrants(workspaceKey: string): Promise<void>;
   readonly reservedTransport: CuaHelperTransportHandle | undefined;
   waitForTransport(timeoutMs?: number): Promise<CuaHelperTransportHandle>;
   queryScreenCaptureProbe(): Promise<{ ok: boolean; reason?: string }>;
@@ -149,6 +166,7 @@ export interface CuaHelperTransportRestartResult {
 }
 
 export interface CuaHelperHandle {
+  brokerToken?: string;
   socketPath: string;
   launchSocketPath?: string;
   pluginAuthority: string;
@@ -201,7 +219,7 @@ export interface IsOfficialCuaPluginEnabledForWorkspaceOptions {
 
 export declare function isOfficialCuaPluginEnabledForWorkspace(
   options?: IsOfficialCuaPluginEnabledForWorkspaceOptions,
-): boolean;
+): Promise<boolean>;
 
 export declare function waitForCuaHelperStartup<T>(
   startup: Promise<T>,

@@ -1,0 +1,32 @@
+{
+  "name": "debug",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.server.json && vite build",
+    "dev": "tsx scripts/dev.ts",
+    "lint": "oxlint src server scripts",
+    "lint:fix": "oxlint --write src server scripts",
+    "start": "node dist-server/server/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "hono": "^4.10.7",
+    "http-mitm-proxy": "^1.1.0",
+    "lucide-react": "^1.17.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "vis-timeline": "^8.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.2.6"
+  }
+}

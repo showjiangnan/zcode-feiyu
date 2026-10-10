@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- timeline 同时承载本地 scoped 查询、远端主动缓存和任务操作分发，先集中保持链路清晰。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -423,6 +424,7 @@ export function WorkspaceTimelineTasksSection({
             nextTask: meta,
             previousState: { pinned, archived: false },
             nextState: { pinned, archived: false },
+            committedPin: pinned,
           });
         })
         .catch(() => {
@@ -783,6 +785,7 @@ export function WorkspaceTimelineTasksSection({
                     nextTask: meta,
                     previousState: { pinned, archived: false },
                     nextState: { pinned, archived: false },
+                    committedPin: pinned,
                   });
                 })
                 .catch(() => {

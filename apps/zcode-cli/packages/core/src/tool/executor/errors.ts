@@ -1,7 +1,11 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { CoreErrorType, createCoreError, isCoreError } from "@zcode/contracts";
 import { projectExecutionErrorPayload } from "../../errors/error-payload.js";
 import type { ExecutableToolCall, ToolExecutionResult, ToolHandlerFailure } from "../types.js";
 import { getInitialInputValidationModelContent } from "./validation.js";
+
+// 失败 payload 只跟随执行异常的生命周期，避免原 MCP 正文/图片进入异常上下文与日志。
+const failurePayloads = new WeakMap<Error, Pick<ToolHandlerFailure, "output" | "modelContent">>();
 
 export function createErrorResult(
   toolCall: ExecutableToolCall,
@@ -15,10 +19,12 @@ export function createErrorResult(
     isCoreError(error) && isToolHandlerFailure(error.context?.toolHandlerFailure)
       ? error.context.toolHandlerFailure
       : undefined;
+  const failurePayload = failurePayloads.get(error);
   // 根因：通用错误层按 tool name 拼接 provider 文案会反向依赖具体工具。
   // handler 只返回自己的 code/message；这里统一组装 envelope，并保留裸 message 给 UI 和日志。
   const modelContent =
     getInitialInputValidationModelContent(error) ??
+    failurePayload?.modelContent ??
     (handlerFailure ? `<tool_use_error>${handlerFailure.message}</tool_use_error>` : undefined);
   // subagent/turn/model 错误常把真实 provider 原因包在 cause 链里；
   // tool result 是父模型和 UI hover 的共同来源，必须在这里统一投影成可读摘要。
@@ -40,7 +46,7 @@ export function createErrorResult(
     toolCallId: toolCall.id,
     toolName: toolCall.name,
     success: false,
-    output: null,
+    output: failurePayload?.output ?? null,
     error: {
       type: isCoreError(error) ? error.type : error.name,
       message,
@@ -64,15 +70,19 @@ export function createToolHandlerFailureError(
   toolCall: ExecutableToolCall,
   failure: ToolHandlerFailure,
 ): Error {
-  return createCoreError(CoreErrorType.ToolExecutionFailed, failure.message, {
+  const { output, modelContent, ...reason } = failure;
+  const error = createCoreError(CoreErrorType.ToolExecutionFailed, failure.message, {
     context: {
       code: failure.errorCode,
-      toolHandlerFailure: failure,
+      toolHandlerFailure: reason,
       toolCallId: toolCall.id,
       toolName: toolCall.name,
     },
     recoverable: true,
   });
+  if (output !== undefined || modelContent !== undefined)
+    failurePayloads.set(error, { output, modelContent });
+  return error;
 }
 
 export function isToolHandlerFailure(value: unknown): value is ToolHandlerFailure {
@@ -80,8 +90,8 @@ export function isToolHandlerFailure(value: unknown): value is ToolHandlerFailur
   const candidate = value as Partial<ToolHandlerFailure>;
   return (
     candidate.result === false &&
-    typeof candidate.errorCode === "number" &&
-    Number.isFinite(candidate.errorCode) &&
+    ((typeof candidate.errorCode === "number" && Number.isFinite(candidate.errorCode)) ||
+      (typeof candidate.errorCode === "string" && candidate.errorCode.trim().length > 0)) &&
     typeof candidate.message === "string"
   );
 }

@@ -1,5 +1,6 @@
 // Modified by ZCode Feiyu contributors (2026).
 import { dropRevokedMemoryFromTurnPrefix } from "./methods/context-refresh.js";
+import type { ComputerUseRefreshInput } from "./methods/computer-use-refresh.js";
 import { DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY, resolveExecutionState } from "@zcode/shared";
 import { recoverProjectMemoryWorkspace } from "./helpers/project-memory-batch.js";
 import { resolveEnabledProjectMemoryRoot } from "./helpers/project-memory.js";
@@ -543,6 +544,7 @@ export class AgentRuntime {
 }
 
 export interface AgentRuntime {
+  refreshComputerUse(input: ComputerUseRefreshInput): Promise<boolean>;
   lastPermissionGrantId?: string;
   beginShutdown(): void;
   reviewProjectMemoryNow(sourceSessionId?: string): Promise<ProjectMemoryReviewOutcome>;

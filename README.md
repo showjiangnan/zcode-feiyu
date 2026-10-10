@@ -11,49 +11,57 @@ ZCode Feiyu 是基于 [zai-org/ZCode](https://github.com/zai-org/ZCode) 的社�
 
 优化模型供应商的操作便捷性。
 
+## 本次更新
+
+- 新增了实验性电脑控制（cua）能力。
+- 优化了部分 ui / ux 长期遗留问题。
+
 ## 下载安装包
 
-在 [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases) 下载飞鱼版。最新版为 [v3.14.4-feiyu.1（预发布）](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.4-feiyu.1)，应用内版本为 **3.14.4**，安装后名称为 **ZCode Preview**。
+飞鱼版安装包请从 [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases) 下载。最新版为 [v3.14.5-feiyu.1（预发布）](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.5-feiyu.1)，应用版本 **3.14.5**，安装后名称为 **ZCode Preview**。安装包基于该标签指向的生产提交构建；后续源码更新不会自动进入已有安装包。
 
-本次安装包基于生产源码提交 [2ed7386](https://github.com/showjiangnan/zcode-feiyu/commit/2ed7386f28ad4d680ced5ebdb2a093b857e0e6b2) 构建，包含下文的记忆、编排、主动工作、执行预算移除、swarm 请求修复和 RCS 远程服务。Release 标签固定实际构建提交；后续 README 更新不会改变安装包内容。较早版本仍可在 Releases 中下载。
+| 平台                                            | 下载                                                                                                                                                                                                                                                        | 验证与范围                                                                                                       |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| macOS Apple Silicon（arm64，macOS 14.4 及以上） | [DMG 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.5-feiyu.1/ZCode-Feiyu-3.14.5-mac-arm64.dmg) · [ZIP 压缩包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.5-feiyu.1/ZCode-Feiyu-3.14.5-mac-arm64.zip) | 本机原生构建，最终归档签名、内容及内置 Agent 核验；电脑控制为实验性能力                                          |
+| Windows x64                                     | 本版暂未提供安装包；[旧版 3.14.4](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.4-feiyu.1) 仍可下载                                                                                                                                        | 新增 CUA 原生 helper 需要 Windows SDK / MSVC，在当前 Mac 构建入口明确拒绝交叉编译；旧版不包含本轮 CUA 与 UI 更新 |
 
-| 平台                         | 下载                                                                                                                                                                                                                                                        | 本次验证范围                                                                                                                                |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| macOS Apple Silicon（arm64） | [DMG 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.4-feiyu.1/ZCode-Feiyu-3.14.4-mac-arm64.dmg) · [ZIP 压缩包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.4-feiyu.1/ZCode-Feiyu-3.14.4-mac-arm64.zip) | 在 Apple Silicon Mac 构建；DMG/ZIP 内容一致，严格 ad-hoc 签名核验、内置 Agent 启动通过；测试副本按现有 helper 权限准备步骤完成原生 PTY 冒烟 |
-| Windows x64                  | [EXE 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.4-feiyu.1/ZCode-Feiyu-3.14.4-win-x64.exe)                                                                                                                                  | 在同一 Mac 交叉构建；NSIS 安装器、运行时依赖、x64 主程序/PTY/Koffi 及归档内容检查通过；**尚未在 Windows 实机安装运行**                      |
+[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.5-feiyu.1/SHA256SUMS.txt) 提供本版 Mac 安装包的 SHA-256 摘要。可用 `shasum -a 256 <文件>` 核对。
 
-[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.4-feiyu.1/SHA256SUMS.txt) 提供三个安装包的 SHA-256 摘要。macOS 可用 `shasum -a 256 <文件>`，Windows PowerShell 可用 `Get-FileHash <文件> -Algorithm SHA256`，与校验文件比对。
-
-- **Mac 安装**：打开 DMG，将 ZCode Preview 拖入“应用程序”，再从“应用程序”启动；ZIP 用户先解压再复制。此包为 ad-hoc 签名，未使用 Apple Developer ID，也未经 Apple 公证；若系统拦截，确认下载来源及摘要后按“系统设置 → 隐私与安全性”的提示处理。
-- **Windows 安装**：运行 EXE，按向导选择安装目录。安装器没有 Authenticode 发布者签名，系统可能显示未知发布者或 SmartScreen 提示。
-- **平台差异**：共用生产源码不代表已证明所有功能跨平台一致。Windows 的终端、任务协作、fal 出图、文件权限及升级仍需实机验收；SSH 的可选原生加速模块不适用于 Windows，本包使用库内置的 JS/Node 加密回退，该路径已在本机完成握手与命令收发验证。此次没有发布 Intel Mac、Windows arm64 或 Linux 安装包。
-- **更新**：从飞鱼版 Releases 下载新包，退出应用后覆盖安装并保留数据目录。本仓库尚未提供飞鱼版自动更新服务；源码 `git pull` 不会更新已安装应用，官方版安装包也不应覆盖飞鱼版。
+- **Mac 安装**：打开 DMG，将 ZCode Preview 拖入 Applications 后启动；ZIP 用户先解压再复制应用。本版采用 ad-hoc 签名，没有 Apple Developer ID 或公证；如被系统拦截，核对来源和摘要后按照系统设置 → 隐私与安全性的提示处理。
+- **电脑控制授权**：在设置 → 电脑控制中开启能力，并授予 macOS 辅助功能与屏幕录制权限。更换本地签名构建后，系统可能要求重新授权。
+- **Windows 源码**：保留 Windows 实现，须在 Windows 使用 SDK / MSVC 构建；尚未执行 Windows 实机验收，不将源码或旧版交叉打包结果描述为本版 Windows 能力验证。
+- **更新**：退出应用后用新包覆盖相同应用，保留数据目录。本仓库没有飞鱼版自动更新服务；`git pull` 不会更新已安装应用。较早版本仍在 Releases 中保留。
 
 ## 新增能力与官方版对比
 
-| 能力                             | 官方基线 v3.14.3                                 | ZCode Feiyu                                                        |
-| -------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ |
-| Desktop / Web / CLI、Agent 与 V4 | 已有                                             | 保留并复用                                                         |
-| 当前线程编排                     | 已有普通子 Agent                                 | 标准模式、`coordinator`、`swarm`；请求边界动态切换                 |
-| 工作区记忆与整理                 | 已有会话及上下文基础                             | 身份隔离、相关召回、提取/整理、历史、差异及修订保护撤销            |
-| 受控主动工作                     | 已有任务运行时                                   | 应用许可加线程启用、事件/计时器准入、暂停及停止                    |
-| 消费累计执行限制                 | 原有执行策略                                     | 移除累计消费停工；保留用量、压缩、权限与取消                       |
-| 本地顶层任务应用服务             | 已有底层会话操作，没有本版统一任务工具及服务入口 | 增加发现、创建、读取、发送、回执查询、等待及生命周期控制           |
-| 顶层任务 A→B 自动发送            | 已有子代理消息等基础机制                         | 同工作区顶层任务互发提示词，忙时优先 guide/steer                   |
-| 自动消息来源提示                 | 没有本版来源类型及文案                           | 来源随消息持久化，显示“来自zcode其他任务自动发送”                  |
-| 遥测统一设置                     | 没有本版贯穿三个出口的总开关                     | 统一控制 ARMS、ZCode 事件、桌面及 Agent OTLP 上报                  |
-| 安装版动态工作流                 | Preview 强制开启，Production 受原有门控约束      | Production / Preview 安装版均注入 `alwaysOn`                       |
-| 本地 Session Mailbox             | 需要 `ZCODE_MESSAGE_ENABLED=1/true`              | 默认开启，支持显式关闭                                             |
-| 工作区搜索范围设置               | 页面存在，导航入口隐藏                           | 开放入口，继续使用已有 `.zcodeignore` 能力                         |
-| fal 内置图片生成                 | 没有本版设置、工具和图片作业链路                 | 可配置 Key、生成模型和编辑模型，支持加载、保存、预览、恢复和取消   |
-| 用户自托管 RCS                   | 原有手机远控与 SSH 基础                          | 独立 Python 桥接、响应式完整共享 Web、现有 Host 附着、公共 API/SDK |
-| 远程服务设置                     | 原 SSH / 机器人入口                              | 第三分组：RCS服务、SSH、移动聊天机器人，复用既有状态与组件         |
-| 子代理图片费用控制               | 不适用                                           | 独立授权开关，默认关闭                                             |
-| 图片参数                         | 不适用                                           | 默认一张 PNG，按模型能力校验显式尺寸、数量和格式                   |
+| 能力                             | 官方基线 v3.14.3                                 | ZCode Feiyu                                                                  |
+| -------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Desktop / Web / CLI、Agent 与 V4 | 已有                                             | 保留并复用                                                                   |
+| 实验性电脑控制（CUA）            | 少量电脑控制布线                                 | 本机应用观察与操作、系统授权设置、内置插件及控制预览；本次发行包为 Mac arm64 |
+| 当前线程编排                     | 已有普通子 Agent                                 | 标准模式、`coordinator`、`swarm`；请求边界动态切换                           |
+| 工作区记忆与整理                 | 已有会话及上下文基础                             | 身份隔离、相关召回、提取/整理、历史、差异及修订保护撤销                      |
+| 受控主动工作                     | 已有任务运行时                                   | 应用许可加线程启用、事件/计时器准入、暂停及停止                              |
+| 消费累计执行限制                 | 原有执行策略                                     | 移除累计消费停工；保留用量、压缩、权限与取消                                 |
+| 本地顶层任务应用服务             | 已有底层会话操作，没有本版统一任务工具及服务入口 | 增加发现、创建、读取、发送、回执查询、等待及生命周期控制                     |
+| 顶层任务 A→B 自动发送            | 已有子代理消息等基础机制                         | 同工作区顶层任务互发提示词，忙时优先 guide/steer                             |
+| 自动消息来源提示                 | 没有本版来源类型及文案                           | 来源随消息持久化，显示“来自zcode其他任务自动发送”                            |
+| 遥测统一设置                     | 没有本版贯穿三个出口的总开关                     | 统一控制 ARMS、ZCode 事件、桌面及 Agent OTLP 上报                            |
+| 安装版动态工作流                 | Preview 强制开启，Production 受原有门控约束      | Production / Preview 安装版均注入 `alwaysOn`                                 |
+| 本地 Session Mailbox             | 需要 `ZCODE_MESSAGE_ENABLED=1/true`              | 默认开启，支持显式关闭                                                       |
+| 工作区搜索范围设置               | 页面存在，导航入口隐藏                           | 开放入口，继续使用已有 `.zcodeignore` 能力                                   |
+| fal 内置图片生成                 | 没有本版设置、工具和图片作业链路                 | 可配置 Key、生成模型和编辑模型，支持加载、保存、预览、恢复和取消             |
+| 用户自托管 RCS                   | 原有手机远控与 SSH 基础                          | 独立 Python 桥接、响应式完整共享 Web、现有 Host 附着、公共 API/SDK           |
+| 远程服务设置                     | 原 SSH / 机器人入口                              | 第三分组：RCS服务、SSH、移动聊天机器人，复用既有状态与组件                   |
+| 子代理图片费用控制               | 不适用                                           | 独立授权开关，默认关闭                                                       |
+| 图片参数                         | 不适用                                           | 默认一张 PNG，按模型能力校验显式尺寸、数量和格式                             |
 
 这里的“App Server 能力”建立在 **ZCode 自有 stdio / V4 / Agent 架构**上。它没有内嵌 OpenAI Codex 服务，也不承诺兼容 Codex App Server 的外部协议。已有会话、输入顺序、恢复和图片 artifact 仍由原运行时管理，没有建立平行任务数据库。
 
 ## 如何使用二开能力
+
+### 实验性电脑控制（CUA）
+
+打开设置 → 电脑控制，开启功能并完成系统授权。电脑控制作为默认系统插件显示，不能卸载；可在会话输入框使用电脑操作入口，由主 Agent 根据你的指令观察和操作本机应用，并显示控制预览。该能力为实验性功能，请检查实际操作结果；Windows 源码尚待对应系统的构建和实机验证。
 
 ### 当前线程的标准 / coordinator / swarm 编排
 

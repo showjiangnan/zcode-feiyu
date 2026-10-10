@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- pinned 列表现在同时承载本地查询、远端主动注入结果和任务操作分发，先集中保持交互一致。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import type { ZCodeTaskMeta } from "@zcode/shared";
 import { toast } from "@/components/ui/toast.js";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu.js";
@@ -9,8 +10,8 @@ import { useLocalWorkspaceScopes } from "@/hooks/useLocalWorkspaceScopes.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
-import { compareZCodeTaskListItems } from "@/lib/taskListOrdering.js";
-import { resolveTaskFileTreeTargetFromTabs } from "@/lib/taskFileTreeTarget.js";
+import { sidebarTaskKey } from "@/lib/sidebarPresentation.js";
+import { useSidebarPresentationStore } from "@/store/sidebarPresentationStore.js";
 import { MemoTaskItem, TaskListItemContextMenuContent } from "@/TaskListItem.js";
 import { TaskRenameDialog } from "@/TaskRenameDialog.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
@@ -36,7 +37,6 @@ interface PinnedTaskItemHandlers {
   onArchiveTask: (taskId: string) => void;
   onMarkTaskAsUnread: (taskId: string) => void;
   onOpenTaskContextMenu: (taskId: string) => void;
-  onOpenFileTree: (task: ZCodeTaskMeta) => void;
 }
 
 function PinnedTasksSectionTitle({ title }: { title: string }) {
@@ -50,7 +50,7 @@ export function WorkspacePinnedTasksSection({
   activeTaskId,
   taskSortBy,
   onSelectTask,
-  onOpenFileTree,
+  pinnedProjects,
 }: {
   workspaceTabs: WorkspaceTabState[];
   activeWorkspacePath: string;
@@ -63,12 +63,7 @@ export function WorkspacePinnedTasksSection({
     targetWorkspaceIdentity?: string,
     expectedUnreadAt?: number,
   ) => void;
-  onOpenFileTree?: (target: {
-    workspacePath: string;
-    workspaceName: string;
-    workspaceIdentity?: string;
-    workspaceRemoteSessionId?: string;
-  }) => void;
+  pinnedProjects?: ReactNode;
 }) {
   const { intl } = useZCodeIntl();
   const baseServices = useBaseWorkspaceServices();
@@ -134,11 +129,20 @@ export function WorkspacePinnedTasksSection({
       (workspaceKey) => remotePinnedItemsByWorkspaceKey[workspaceKey] ?? [],
     );
   }, [remotePinnedItemsByWorkspaceKey, workspaceTabs]);
-  const sortedItems = useMemo(() => {
-    return [...localItems, ...remoteItems].sort((left, right) =>
-      compareZCodeTaskListItems(left, right, taskSortBy),
-    );
-  }, [localItems, remoteItems, taskSortBy]);
+  const taskPinOrder = useSidebarPresentationStore((state) => state.preferences.taskPinOrder);
+  const allPinnedItems = useMemo(() => [...localItems, ...remoteItems], [localItems, remoteItems]);
+  useEffect(() => {
+    useSidebarPresentationStore.getState().seedTaskPins(allPinnedItems);
+  }, [allPinnedItems]);
+  const sortedItems = useMemo(
+    () =>
+      [...allPinnedItems].sort(
+        (left, right) =>
+          (taskPinOrder[sidebarTaskKey(right)] ?? Number.MIN_SAFE_INTEGER) -
+          (taskPinOrder[sidebarTaskKey(left)] ?? Number.MIN_SAFE_INTEGER),
+      ),
+    [allPinnedItems, taskPinOrder],
+  );
   const items = showAllTasks ? sortedItems : sortedItems.slice(0, collapsedLimit);
   const total = sortedItems.length;
   const syncingRemoteWorkspaces = workspaceTabs.some((tab) => {
@@ -166,10 +170,6 @@ export function WorkspacePinnedTasksSection({
   }, [items]);
   const itemByKeyRef = useRef(itemByKey);
   itemByKeyRef.current = itemByKey;
-  const workspaceTabsRef = useRef(workspaceTabs);
-  workspaceTabsRef.current = workspaceTabs;
-  const onOpenFileTreeRef = useRef(onOpenFileTree);
-  onOpenFileTreeRef.current = onOpenFileTree;
 
   const resolveTaskServices = useCallback(
     (workspaceIdentity?: string) => {
@@ -311,6 +311,7 @@ export function WorkspacePinnedTasksSection({
             nextTask: meta,
             previousState: { pinned, archived: false },
             nextState: { pinned, archived: false },
+            committedPin: pinned,
           });
         })
         .catch(() => {
@@ -407,12 +408,6 @@ export function WorkspacePinnedTasksSection({
           onOpenTaskContextMenu: () => {
             openPinnedItemContextMenu(itemKey);
           },
-          onOpenFileTree: (task) => {
-            const target = resolveTaskFileTreeTargetFromTabs(task, workspaceTabsRef.current);
-            if (target) {
-              onOpenFileTreeRef.current?.(target);
-            }
-          },
         };
         taskItemHandlersByKeyRef.current.set(itemKey, handlers);
       }
@@ -461,7 +456,7 @@ export function WorkspacePinnedTasksSection({
     ? resolveTaskServices(contextMenuItem.workspaceIdentity)
     : null;
 
-  if (items.length === 0) {
+  if (items.length === 0 && !pinnedProjects) {
     // 切换/加入工作区时 pinned 查询会先进入 loading，但此时没有可展示的数据。
     // 不能仍渲染“已置顶 + 正在获取任务”，否则侧栏每次切换都出现一次无实际帮助的 loading。
     // 有缓存数据时继续走下面的正常渲染路径，保持 stale-while-revalidate 的展示体验。
@@ -555,6 +550,7 @@ export function WorkspacePinnedTasksSection({
                   }
                   task={item}
                   isPinned
+                  showConversationIcon
                   isActive={
                     // 同路径远端 workspace 可能包含相同 taskId，选中态必须按 workspaceIdentity 隔离。
                     buildTaskWorkspaceKey(item.workspacePath, item.workspaceIdentity) ===
@@ -569,7 +565,6 @@ export function WorkspacePinnedTasksSection({
                   onArchiveTask={handlers.onArchiveTask}
                   onMarkTaskAsUnread={handlers.onMarkTaskAsUnread}
                   onOpenTaskContextMenu={handlers.onOpenTaskContextMenu}
-                  onOpenFileTree={onOpenFileTree ? handlers.onOpenFileTree : undefined}
                   intl={intl}
                 />
               );
@@ -639,6 +634,7 @@ export function WorkspacePinnedTasksSection({
                     nextTask: meta,
                     previousState: { pinned, archived: false },
                     nextState: { pinned, archived: false },
+                    committedPin: pinned,
                   });
                 })
                 .catch(() => {
@@ -756,6 +752,7 @@ export function WorkspacePinnedTasksSection({
           </span>
         </div>
       ) : null}
+      {pinnedProjects}
     </div>
   );
 }

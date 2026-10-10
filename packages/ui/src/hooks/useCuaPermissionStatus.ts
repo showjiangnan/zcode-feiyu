@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 // Computer Use Helper 的 macOS 权限状态。状态来自 Helper 当前 runtime preflight，
 // 历史 TCC 行不参与判定；展示口径见 cuaPermissionStatusStore 的 isCuaPermissionTccGranted。
 //
@@ -5,6 +6,7 @@
 // - 挂载（进入设置页 / 输入框入口首次渲染）；
 // - 窗口重获焦点（用户刚从 macOS 系统设置授权完切回来）；
 // - 调用方显式 refresh（插件开关、Helper 重启、授权返回恢复链）。
+// observe 模式只订阅相同工作区槽位，以上查询与焦点监听均不执行。
 //
 // 去掉轮询的原因：授权状态是低频事件，秒级轮询除了压 host RPC，还会让 UI 持续抖动——
 // 每轮查询开始都要把 fresh 置回 false，设置页的授权按钮就在「打开系统设置」与「验证中…」
@@ -23,6 +25,7 @@ import { useOptionalServices } from "./useServices.js";
 export function useCuaPermissionStatus(
   workspacePath: string | null,
   workspaceIdentity?: string,
+  queryMode: "query" | "observe" = "query",
 ): {
   status: CuaPermissionStatusResult | null;
   fresh: boolean;
@@ -46,7 +49,7 @@ export function useCuaPermissionStatus(
 
   const query = useCallback(
     (mode: "refresh" | "ensure", options?: CuaPermissionStatusQueryOptions): void => {
-      if (!workspacePath || !cuaPermissionService) return;
+      if (queryMode === "observe" || !workspacePath || !cuaPermissionService) return;
       fetchCuaPermissionStatus({
         service: cuaPermissionService,
         workspacePath,
@@ -55,7 +58,7 @@ export function useCuaPermissionStatus(
         ...(options ? { options } : {}),
       });
     },
-    [cuaPermissionService, workspaceIdentity, workspacePath],
+    [cuaPermissionService, queryMode, workspaceIdentity, workspacePath],
   );
 
   const refresh = useCallback(
@@ -64,14 +67,14 @@ export function useCuaPermissionStatus(
   );
 
   useEffect(() => {
-    if (!workspacePath || !cuaPermissionService) return;
+    if (queryMode === "observe" || !workspacePath || !cuaPermissionService) return;
     // 进入页面拉一次。设置页与输入框入口可能先后挂载，用 ensure 让后者搭上前者在飞的查询。
     query("ensure");
     // 用户刚从 macOS 系统设置授权完切回来：状态可能已变，必须是强制重查。
     const onFocus = (): void => query("refresh");
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [cuaPermissionService, query, workspacePath]);
+  }, [cuaPermissionService, query, queryMode, workspacePath]);
 
   return {
     status: snapshot.status,

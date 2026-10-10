@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* eslint-disable max-lines -- 文件树行集中维护拖拽、打开方式、Git 状态与上下文菜单交互。 */
 import type { EditorInfo, OpenInEditorRemoteTarget } from "@zcode/shared";
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
-import { AlertCircle, ChevronRight, LoaderCircle } from "lucide-react";
+import { AlertCircle, ChevronRight, Folder, FolderOpen, LoaderCircle } from "lucide-react";
 import { TID_WORKSPACE_FILE_TREE_ROW, testId } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import {
@@ -217,7 +218,7 @@ export function WorkspaceFileTreeRowView({
       className={cn(
         "group/file-tree-row relative flex h-7 w-full min-w-0 items-center gap-1.5 rounded-lg border pr-2 py-1 text-left text-ui-base text-foreground outline-none transition-[background-color,border-color,box-shadow]",
         isDeletedFile ? "cursor-default" : "cursor-pointer",
-        "pl-[calc(var(--workspace-file-tree-depth)*0.75rem+0.5rem)]",
+        "pl-[calc(var(--workspace-file-tree-depth)*1.375rem+1rem)]",
         selected
           ? "border-input-border-focused bg-transparent hover:bg-surface-hover"
           : "border-transparent hover:bg-surface-hover",
@@ -257,17 +258,17 @@ export function WorkspaceFileTreeRowView({
         dispatchWorkspaceFileDragState(false);
       }}
     >
-      {/* 引导线上下各延伸 1px；12px 层级步进让最后一条线与当前层级图标之间稳定保留 4px。 */}
+      {/* 16px 图标 + 6px 间距作为层级步进，让子文件图标与父文件夹文字准确对齐。 */}
       {hierarchyGuideStyle && !isDragging ? (
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -inset-y-px left-2.5"
+          className="pointer-events-none absolute -inset-y-px left-4"
           data-workspace-file-tree-hierarchy-guides={row.depth}
           style={hierarchyGuideStyle}
         />
       ) : null}
       {isDirectory ? (
-        <span className="flex size-4 shrink-0 items-center justify-center text-foreground-subtle">
+        <span className="absolute left-[calc(var(--workspace-file-tree-depth)*1.375rem+0.125rem)] flex size-3 shrink-0 items-center justify-center text-foreground-subtle">
           <ChevronRight
             aria-hidden="true"
             className={cn(
@@ -278,6 +279,21 @@ export function WorkspaceFileTreeRowView({
         </span>
       ) : null}
       <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        {isDirectory ? (
+          row.expanded ? (
+            <FolderOpen
+              aria-hidden="true"
+              data-workspace-file-tree-folder-icon="true"
+              className="size-4 shrink-0 text-foreground-subtle"
+            />
+          ) : (
+            <Folder
+              aria-hidden="true"
+              data-workspace-file-tree-folder-icon="true"
+              className="size-4 shrink-0 text-foreground-subtle"
+            />
+          )
+        ) : null}
         {fileIconSrc ? <FileDisplayIcon src={fileIconSrc} className="shrink-0 size-4" /> : null}
         <WorkspaceFileTreeRowName
           name={row.name}

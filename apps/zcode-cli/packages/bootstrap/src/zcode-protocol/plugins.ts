@@ -1,4 +1,6 @@
+// Modified by ZCode Feiyu contributors (2026).
 import {
+  isSystemManagedDesktopPlugin,
   zcodePluginsConfigureParamsSchema,
   zcodePluginsResetConfigParamsSchema,
   zcodePluginsInstallParamsSchema,
@@ -75,6 +77,8 @@ function toPluginInfo(plugin: PluginMetadata, configResult?: ConfigResult): ZCod
     enabled: plugin.enabled,
     source: plugin.source,
     marketplace: plugin.marketplace,
+    systemManaged: isSystemManagedDesktopPlugin(plugin.id),
+    canUninstall: !isSystemManagedDesktopPlugin(plugin.id),
     // manifest 的作者/主页回退字段（商店 listing 优先）。
     ...(plugin.author !== undefined ? { author: plugin.author } : {}),
     ...(plugin.authorUrl !== undefined ? { authorUrl: plugin.authorUrl } : {}),

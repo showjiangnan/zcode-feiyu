@@ -1,5 +1,8 @@
+// Modified by ZCode Feiyu contributors (2026).
+import { createComputerUseSDK } from "@zcode/zcode-cua/sdk";
 import { randomUUID } from "node:crypto";
 import { createConnection } from "node:net";
+import { StringDecoder } from "node:string_decoder";
 import type { NodeReplCuaAppIdentity, NodeReplRequestMeta, NodeReplSession } from "@zcode/core";
 import { CUA_APP_ASSOCIATIONS_META_KEY } from "@zcode/zcode-cua/host-display-contract";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -11,6 +14,7 @@ const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 export interface ActiveCuaNodeReplCall {
   generation: number;
   requestMeta: NodeReplRequestMeta;
+  broker?: NodeReplCuaBrokerConnection;
   signal: AbortSignal;
 }
 
@@ -33,20 +37,28 @@ export function createComputerUseBridgeGlobals(input: {
   session: () => NodeReplSession;
   documentationRoot: string;
 }): Record<PropertyKey, unknown> {
-  const assertActive = (): ActiveCuaNodeReplCall => {
+  const assertActive = (expected?: ActiveCuaNodeReplCall): ActiveCuaNodeReplCall => {
     const active = input.getActiveCall();
-    if (!active || active.generation !== input.generation) {
-      throw new Error("Computer Use runtime binding is stale after kernel reset");
+    if (!active || active.generation !== input.generation || (expected && active !== expected)) {
+      throw cuaBindingError(
+        "stale_binding",
+        "Computer Control binding expired after a kernel reset; initialize and observe again",
+      );
     }
     return active;
   };
   const assertAvailable = (): ActiveCuaNodeReplCall => {
     const active = assertActive();
     if (active.requestMeta.runtime_scope === "subagent") {
-      throw new Error(CUA_UNAVAILABLE_IN_SUBAGENT_MESSAGE);
+      throw cuaBindingError("subagent_not_allowed", CUA_UNAVAILABLE_IN_SUBAGENT_MESSAGE);
     }
-    if (!input.broker) {
-      throw new Error("Computer Use is unavailable for this node_repl session");
+    // 缺失 turn/session 也曾变成笼统 unavailable；先检查可信上下文，保留实际阻断原因。
+    requestContext(active.requestMeta);
+    if (!(active.broker || input.broker)) {
+      throw cuaBindingError(
+        "binding_unavailable",
+        "Computer Control is not connected to this task. Check Computer Control settings and the local host connection; application control has not started.",
+      );
     }
     return active;
   };
@@ -59,7 +71,7 @@ export function createComputerUseBridgeGlobals(input: {
     call: async (method, methodInput) => {
       const active = assertAvailable();
       const result = await sendCuaBrokerRequest(
-        input.broker!,
+        (active.broker || input.broker)!,
         {
           method,
           input: methodInput,
@@ -67,18 +79,20 @@ export function createComputerUseBridgeGlobals(input: {
         },
         active.signal,
       );
-      assertActive();
+      // generation 标识 kernel，仍需当次 cell 身份，防止旧回执进入新 cell 的 sink。
+      assertActive(active);
       if (result.responseMeta) input.session().mergeResponseMeta(result.responseMeta);
       // 目标应用身份必须在这里取：broker 响应是模型看不见也改不了的一跳。等到
       // `projectToHost` 把 `_meta` 交给 `nodeRepl.emitStructuredResult` 就已经落在模型可写的
       // sandbox 通道上，无法再区分「producer 给的」和「cell 里自己写的」。
       const app = readPrimaryAppIdentity(result.result);
       if (app) input.session().recordCuaAppIdentity(app);
+      if (!result.result.isError) input.session().publishComputerControlResult(result.result);
       return result.result;
     },
   };
 
-  return { [NODE_REPL_CUA_BRIDGE_SYMBOL]: bridge };
+  return { [NODE_REPL_CUA_BRIDGE_SYMBOL]: bridge, cua: createComputerUseSDK(bridge) };
 }
 
 /**
@@ -108,21 +122,50 @@ function readPrimaryAppIdentity(result: CallToolResult): NodeReplCuaAppIdentity 
   };
 }
 
-function requestContext(meta: NodeReplRequestMeta): Record<string, unknown> {
+export function requestContext(meta: NodeReplRequestMeta): Record<string, unknown> {
   const stringMeta = (key: string): string | undefined => {
     const value = meta[key];
     return typeof value === "string" && value.trim() ? value.trim() : undefined;
   };
+  if (meta.runtime_scope === "subagent")
+    throw cuaBindingError("subagent_not_allowed", CUA_UNAVAILABLE_IN_SUBAGENT_MESSAGE);
+  if (meta.runtime_scope !== "main")
+    throw cuaBindingError(
+      "context_missing",
+      "Computer Control requires trusted main runtime_scope metadata",
+    );
   const sessionId = stringMeta("session_id");
-  if (!sessionId) throw new Error("node_repl CUA request is missing session_id metadata");
+  if (stringMeta("task_type")?.endsWith("_child"))
+    throw cuaBindingError(
+      "child_task_denied",
+      "Computer Control is available only to the top-level main task",
+    );
+  if (stringMeta("remote_session_id"))
+    throw cuaBindingError(
+      "remote_workspace_unavailable",
+      "Computer Control is unavailable for a remote workspace",
+    );
+  if (!sessionId)
+    throw cuaBindingError(
+      "context_missing",
+      "Computer Control requires trusted session_id metadata",
+    );
+  const turnId = stringMeta("turn_id");
+  if (!turnId)
+    throw cuaBindingError("context_missing", "Computer Control requires trusted turn_id metadata");
   const workspacePath = stringMeta("workspace_path");
   const workspaceIdentity = stringMeta("workspace_identity");
   const workspaceKey = stringMeta("workspace_key") ?? workspaceIdentity ?? workspacePath;
-  if (!workspaceKey) throw new Error("node_repl CUA request is missing workspaceKey metadata");
+  if (!workspaceKey)
+    throw cuaBindingError(
+      "context_missing",
+      "Computer Control requires trusted workspace metadata",
+    );
   const clientMode = stringMeta("client_mode") ?? "desktop-continuous";
   const deliveryKind = stringMeta("delivery_kind") ?? clientMode;
   return {
-    runtimeScope: meta.runtime_scope === "subagent" ? "subagent" : "main",
+    runtimeScope: "main",
+    ...(stringMeta("task_type") ? { taskType: stringMeta("task_type") } : {}),
     sessionId,
     ...(workspacePath ? { workspacePath } : {}),
     ...(workspaceIdentity ? { workspaceIdentity } : {}),
@@ -130,7 +173,7 @@ function requestContext(meta: NodeReplRequestMeta): Record<string, unknown> {
     ...(stringMeta("remote_session_id")
       ? { remoteSessionId: stringMeta("remote_session_id") }
       : {}),
-    ...(stringMeta("turn_id") ? { turnId: stringMeta("turn_id") } : {}),
+    turnId,
     clientMode,
     deliveryKind,
     ...(stringMeta("trace_id")
@@ -138,13 +181,15 @@ function requestContext(meta: NodeReplRequestMeta): Record<string, unknown> {
           trace: {
             traceId: stringMeta("trace_id"),
             ...(stringMeta("span_id") ? { spanId: stringMeta("span_id") } : {}),
-            ...(stringMeta("parent_span_id")
-              ? { parentSpanId: stringMeta("parent_span_id") }
-              : {}),
+            ...(stringMeta("parent_span_id") ? { parentSpanId: stringMeta("parent_span_id") } : {}),
           },
         }
       : {}),
   };
+}
+
+function cuaBindingError(code: string, message: string): Error & { code: string } {
+  return Object.assign(new Error(message), { name: "CuaError", code });
 }
 
 async function sendCuaBrokerRequest(
@@ -155,9 +200,14 @@ async function sendCuaBrokerRequest(
   const id = randomUUID();
   return await new Promise((resolve, reject) => {
     const socket = createConnection(broker.socketPath);
+    const decoder = new StringDecoder("utf8");
     let buffer = "";
+    let bytes = 0;
     let settled = false;
-    const finish = (error?: unknown, value?: { result: CallToolResult; responseMeta?: Record<string, unknown> }) => {
+    const finish = (
+      error?: unknown,
+      value?: { result: CallToolResult; responseMeta?: Record<string, unknown> },
+    ) => {
       if (settled) return;
       settled = true;
       signal.removeEventListener("abort", onAbort);
@@ -172,8 +222,10 @@ async function sendCuaBrokerRequest(
       socket.write(`${JSON.stringify({ id, token: broker.token, ...request })}\n`);
     });
     socket.on("data", (chunk) => {
-      buffer += chunk.toString("utf8");
-      if (Buffer.byteLength(buffer) > MAX_RESPONSE_BYTES) {
+      // socket 是字节流；中文/Emoji 可跨 chunk，逐包 toString 会不可逆地替换字符。
+      bytes += chunk.length;
+      buffer += decoder.write(chunk);
+      if (bytes > MAX_RESPONSE_BYTES) {
         finish(new Error("Computer Use broker response exceeded the 32 MiB limit"));
         return;
       }
@@ -188,7 +240,20 @@ async function sendCuaBrokerRequest(
           responseMeta?: Record<string, unknown>;
         };
         if (payload.id !== id) throw new Error("Computer Use broker response id mismatch");
-        if (payload.ok !== true) throw new Error(typeof payload.error === "string" ? payload.error : "Computer Use broker failed");
+        if (payload.ok !== true) {
+          const error =
+            payload.error && typeof payload.error === "object"
+              ? (payload.error as { code?: unknown; message?: unknown })
+              : undefined;
+          throw cuaBindingError(
+            typeof error?.code === "string" ? error.code : "broker_error",
+            typeof error?.message === "string"
+              ? error.message
+              : typeof payload.error === "string"
+                ? payload.error
+                : "Computer Control broker failed",
+          );
+        }
         if (!payload.result) throw new Error("Computer Use broker returned no result");
         finish(undefined, { result: payload.result, responseMeta: payload.responseMeta });
       } catch (error) {

@@ -1,9 +1,11 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ZCODE_PLUGIN_HOST_COMMAND } from "@zcode/contracts/plugins";
 import {
   getCapturedZCodeCuaBrokerCredentials,
+  getCapturedZCodeCuaBrokerCredentialState,
   ZCODE_CUA_BROKER_SOCKET_ENV_KEY,
   ZCODE_CUA_NODE_REPL_HOST_ENV_KEY,
 } from "@zcode/shared/runtime-env";
@@ -52,17 +54,21 @@ export async function runPluginHostCommand(ctx: RunContext, argv: string[]): Pro
     }
 
     const originalArgv = process.argv;
+    const originalBrokerToken = process.env.ZCODE_CUA_BROKER_TOKEN;
     const originalBrokerSocket = process.env[ZCODE_CUA_BROKER_SOCKET_ENV_KEY];
     // shared node_repl 把同一凭据组恢复到环境，由 broker bridge 读取；旧的独立 CUA
     // MCP 不再拥有执行入口。
     process.argv = [process.execPath, serverPath, ...serverArgs];
     if (capturedBrokerCredentials.socket && process.env[ZCODE_CUA_NODE_REPL_HOST_ENV_KEY] === "1") {
       process.env[ZCODE_CUA_BROKER_SOCKET_ENV_KEY] = capturedBrokerCredentials.socket;
+      process.env.ZCODE_CUA_BROKER_TOKEN = capturedBrokerCredentials.token;
     }
     try {
       await module.main();
     } finally {
       process.argv = originalArgv;
+      if (originalBrokerToken === undefined) delete process.env.ZCODE_CUA_BROKER_TOKEN;
+      else process.env.ZCODE_CUA_BROKER_TOKEN = originalBrokerToken;
       if (originalBrokerSocket === undefined) {
         delete process.env[ZCODE_CUA_BROKER_SOCKET_ENV_KEY];
       } else {
@@ -81,19 +87,20 @@ export async function runPluginHostCommand(ctx: RunContext, argv: string[]): Pro
 type CapturedBrokerCredentials = ReturnType<typeof getCapturedZCodeCuaBrokerCredentials>;
 
 function assertCapturedBrokerLaunchIsAuthorized(credentials: CapturedBrokerCredentials): void {
+  // 清洗半组会删除所有值；只检查清洗后的空快照会静默退化，必须保留非敏感完整性诊断。
+  if (getCapturedZCodeCuaBrokerCredentialState() === "incomplete") {
+    throw new Error(
+      "Computer Control broker credentials are incomplete; repair the trusted host binding",
+    );
+  }
   const hasCapturedCredentials = Boolean(credentials.socket || credentials.pluginAuthority);
   if (!hasCapturedCredentials) return;
 
   const pluginId = process.env[ZCODE_PLUGIN_ID_ENV_KEY]?.trim().toLowerCase();
-  // 凭据组里已经没有 token 了：broker 全平台改为身份模式（Helper 按对端代码签名裁决连接），
-  // shared/runtimeEnv.ts 的 CapturedCuaBrokerCredentials 只有 socket + pluginAuthority
-  // (+ refreshMarker)。这里不能再读 `credentials.token`；token 已从凭据组移除，
-  // 残留读取方只能靠 CLI 自己的 typecheck 发现（根 `pnpm typecheck` 不含 apps/zcode-cli）。
-  // socket + pluginAuthority 必须成对（authority 是 bootstrap 写入 node_repl 配置的 provenance
-  // 随机数，core 据此认官方 server）；捕获侧本就只在成对时落快照，半组会清空并 fail-closed。
-  // 校验也不能要求 token 齐全——身份模式凭据没有 token，强校验会让 node_repl 宿主启动即
-  // 退出（"connection closed during the server/discover probe"），工具面为空。
+  // 原始 socket/token/authority 仅由 CLI 启动捕获并定向交给官方 node_repl。
+  // 普通工具和 Worker 不继承原始凭据；每个 cell 由可信 broker 另铸绑定 context 的短期票据。
   if (
+    credentials.token === undefined ||
     credentials.socket === undefined ||
     credentials.pluginAuthority === undefined ||
     pluginId !== ZCODE_CUA_OFFICIAL_PLUGIN_ID ||

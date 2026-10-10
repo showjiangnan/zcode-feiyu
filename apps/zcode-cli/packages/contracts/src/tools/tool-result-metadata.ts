@@ -1,5 +1,6 @@
 // Modified by ZCode Feiyu contributors (2026).
 import { z } from "zod";
+import { NODE_REPL_DISPLAY_IMAGE_BASE64_BYTES } from "@zcode/shared";
 import { imageGenerationDisplaySchema } from "./image-generation-display.js";
 import { OFFICIAL_MCP_TOOL_ERROR_CODES } from "@zcode/shared";
 
@@ -152,26 +153,21 @@ export const cuaToolResultDisplayPayloadSchema = z
  * `darwin:<bundleId>` / `windows-aumid:<aumid>` / `windows-exe:<path>` / `linux-exe:<path>`；
  * UI 按前缀派生 `ApplicationIconLocator` 再交给平台服务解析，协议不承载图标字节。
  */
+// CLI 使用 Zod v3，桌面 shared 使用 v4；只共享预算常量，不能把两个主版本的 schema 混进 union。
 export const nodeReplCuaAppDisplaySchema = z
   .object({
     appKey: z.string().trim().min(1).max(2_048),
     displayName: z.string().trim().min(1).max(512).optional(),
   })
   .strict();
-
 export const nodeReplImageToolResultDisplayPayloadSchema = z
   .object({
     kind: z.literal("node_repl_images"),
-    // images 可选而不是 min(1)：CUA 的纯动作 cell（点击、输入）没有截图，但仍要投影 app 身份。
-    // kind 名保留为 node_repl_images —— 改名会让已持久化的 row 在 strict union 里整段被剥掉。
     images: z
       .array(
         z
           .object({
-            base64: z
-              .string()
-              .min(1)
-              .max(200 * 1024),
+            base64: z.string().min(1).max(NODE_REPL_DISPLAY_IMAGE_BASE64_BYTES),
             mimeType: z.string().regex(/^image\/[a-z0-9.+-]+$/iu),
           })
           .strict(),

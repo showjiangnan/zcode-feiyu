@@ -248,9 +248,11 @@ window.addEventListener("DOMContentLoaded", updateRendererProcessTitle, {
 contextBridge.exposeInMainWorld("zcode", {
   rcs: {
     getSettings: () => ipcRenderer.invoke(PlatformChannels.Rcs, "getSettings"),
-    saveSettings: (input: import("@zcode/shared").RcsSave) => ipcRenderer.invoke(PlatformChannels.Rcs, "saveSettings", input),
+    saveSettings: (input: import("@zcode/shared").RcsSave) =>
+      ipcRenderer.invoke(PlatformChannels.Rcs, "saveSettings", input),
     getStatus: () => ipcRenderer.invoke(PlatformChannels.Rcs, "getStatus"),
-    validate: (input: { endpoint: string; key?: string }) => ipcRenderer.invoke(PlatformChannels.Rcs, "validate", input),
+    validate: (input: { endpoint: string; key?: string }) =>
+      ipcRenderer.invoke(PlatformChannels.Rcs, "validate", input),
     reconnect: () => ipcRenderer.invoke(PlatformChannels.Rcs, "reconnect"),
     listHosts: () => ipcRenderer.invoke(PlatformChannels.Rcs, "listHosts"),
     listClients: () => ipcRenderer.invoke(PlatformChannels.Rcs, "listClients"),

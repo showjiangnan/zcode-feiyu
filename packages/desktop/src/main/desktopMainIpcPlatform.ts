@@ -415,6 +415,11 @@ export function registerPlatformIpcHandlers(options: {
 
   ipcMain.handle(PlatformChannels.ExecuteDesktopCommand, async (event, command: string) => {
     const senderWindow = BrowserWindow.fromWebContents(event.sender);
+    if (
+      command === DesktopCommandIds.GetComputerControlUi &&
+      (!senderWindow || event.senderFrame !== event.sender.mainFrame)
+    )
+      throw new Error("Computer control requires the local desktop window");
     const isKnownCommand = (Object.values(DesktopCommandIds) as string[]).includes(command);
     if (!isKnownCommand) {
       options.logger.warn("[desktop-command] invalid command:", command);

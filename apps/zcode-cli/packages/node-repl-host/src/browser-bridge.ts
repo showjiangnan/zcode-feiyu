@@ -1,5 +1,7 @@
+// Modified by ZCode Feiyu contributors (2026).
 import { randomUUID } from "node:crypto";
 import { createConnection } from "node:net";
+import { StringDecoder } from "node:string_decoder";
 import type { BrowserClientTransport } from "@zcode/core/browser-client";
 import type { NodeReplRequestMeta, NodeReplSession } from "@zcode/core/repl";
 import type { BrowserCommand, BrowserCommandResult } from "@zcode/shared";
@@ -37,10 +39,13 @@ export function createBrowserBridgeGlobals(input: {
   getActiveCall: () => ActiveNodeReplCall | undefined;
   session: () => NodeReplSession;
 }): Record<PropertyKey, unknown> {
-  const assertActive = (): ActiveNodeReplCall => {
+  const assertActive = (expected?: ActiveNodeReplCall): ActiveNodeReplCall => {
     const active = input.getActiveCall();
-    if (!active || active.generation !== input.generation) {
-      throw new Error("Browser runtime binding is stale after kernel reset");
+    if (!active || active.generation !== input.generation || (expected && active !== expected)) {
+      throw Object.assign(
+        new Error("Browser runtime binding expired after a kernel reset or cell completion"),
+        { code: "stale_binding" },
+      );
     }
     return active;
   };
@@ -60,7 +65,8 @@ export function createBrowserBridgeGlobals(input: {
         { op: "list", ...requestContext(active.requestMeta) },
         active.signal,
       );
-      assertActive();
+      // 共用持久 kernel 的两次 cell 具有同 generation，必须另外核对当次调用身份。
+      assertActive(active);
       return response.browsers ?? [];
     },
     execute: async (browserId, browserGeneration, command) => {
@@ -75,7 +81,7 @@ export function createBrowserBridgeGlobals(input: {
         },
         active.signal,
       );
-      assertActive();
+      assertActive(active);
       if (!response.result) throw new Error("Browser broker returned no command result");
       mergeBrowserResponseMeta(input.session(), command, response.result);
       return response.result;
@@ -137,7 +143,9 @@ async function sendBrokerRequest(
   }
   const id = randomUUID();
   return await new Promise<SuccessfulBrokerResponse>((resolve, reject) => {
+    const decoder = new StringDecoder("utf8");
     let buffer = "";
+    let bytes = 0;
     let settled = false;
     const socket = createConnection(socketPath);
     const finish = (error?: unknown, value?: SuccessfulBrokerResponse) => {
@@ -155,8 +163,9 @@ async function sendBrokerRequest(
       socket.write(`${JSON.stringify({ id, token, ...request })}\n`);
     });
     socket.on("data", (chunk) => {
-      buffer += chunk.toString("utf8");
-      if (Buffer.byteLength(buffer) > MAX_RESPONSE_BYTES) {
+      bytes += chunk.length;
+      buffer += decoder.write(chunk);
+      if (bytes > MAX_RESPONSE_BYTES) {
         finish(new Error("Browser broker response exceeded the 32 MiB limit"));
         return;
       }

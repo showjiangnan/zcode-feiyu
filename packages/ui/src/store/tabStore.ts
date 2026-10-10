@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu contributors (2026).
 /* oxlint-disable eslint(max-lines) */
 /**
  * Tab Store —— 多标签页状态管理
@@ -20,6 +21,7 @@ import {
   type WorkspaceExpansionState,
 } from "@/lib/workspaceExpansionPreference.js";
 import { isSameWorkspaceTab } from "@/store/tabWorkspaceIdentity.js";
+import { useSidebarPresentationStore } from "./sidebarPresentationStore.js";
 
 export const SETTINGS_TAB_ID = "__settings__" satisfies TabId;
 
@@ -284,6 +286,13 @@ export function createTabStore(storage: StorageLike | null | undefined = undefin
             existing.workspacePath,
           ),
         }));
+        // addTab 也是显式导航入口；只更新标签却不记访问时间会让新打开项目落在旧项目之后。
+        useSidebarPresentationStore
+          .getState()
+          .touchProject(
+            existing.workspacePath,
+            options?.workspaceIdentity ?? existing.workspaceIdentity,
+          );
         return existing.id;
       }
 
@@ -302,6 +311,7 @@ export function createTabStore(storage: StorageLike | null | undefined = undefin
           workspacePath,
         ),
       }));
+      useSidebarPresentationStore.getState().touchProject(tab.workspacePath, tab.workspaceIdentity);
       return tab.id;
     },
 
@@ -440,6 +450,9 @@ export function createTabStore(storage: StorageLike | null | undefined = undefin
 
       if (isWorkspaceTab(tab)) {
         persistWorkspaceExpandedPreference(tab.workspacePath, true, storage);
+        useSidebarPresentationStore
+          .getState()
+          .touchProject(tab.workspacePath, tab.workspaceIdentity);
       }
 
       set(nextState);
@@ -566,6 +579,7 @@ export function createTabStore(storage: StorageLike | null | undefined = undefin
       };
 
       persistWorkspaceExpandedPreference(path, true, storage);
+      useSidebarPresentationStore.getState().touchProject(tab.workspacePath, tab.workspaceIdentity);
 
       set(nextState);
       return true;

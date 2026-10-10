@@ -58,7 +58,12 @@ const BASE_SETTINGS_SECTION_GROUPS: Array<{
 
 const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
   { id: "remoteRcs", icon: Globe2, titleId: "remoteServices.rcs.title", groupId: "remoteServices" },
-  { id: "remoteSsh", icon: Terminal, titleId: "remoteServices.ssh.title", groupId: "remoteServices" },
+  {
+    id: "remoteSsh",
+    icon: Terminal,
+    titleId: "remoteServices.ssh.title",
+    groupId: "remoteServices",
+  },
   { id: "remoteBots", icon: Bot, titleId: "remoteServices.bots.title", groupId: "remoteServices" },
   {
     id: "imageGeneration",
@@ -186,7 +191,7 @@ export function createSettingsPageConfig({
   isMacDesktop = false,
   isWindowsDesktop = false,
 }: SettingsPageConfigOptions = {}) {
-  const showComputerUse = isDesktop || isMacDesktop || isWindowsDesktop;
+  const showComputerUse = isDesktop && (isMacDesktop || isWindowsDesktop);
   const settingsSections = BASE_SETTINGS_SECTIONS.filter((section) => {
     if (section.id === "computerUse" && !showComputerUse) return false;
     return isSettingsSectionEnabled(section.id);

@@ -203,6 +203,7 @@ export interface ToolExecutionContext {
   /** 见 ToolExecutionDeps.getMemoryOwnershipFence；由记忆工具在提交点复核。 */
   memoryOwnershipFence?: import("@zcode/contracts").MemoryCommitFence;
   runtimeScope?: ToolRuntimeScope;
+  taskType?: string;
   providerVisibleToolNames?: readonly string[];
   sessionId: SessionId;
   turnId?: TurnId;
@@ -241,8 +242,11 @@ export type ReadFileStateMap = Map<string, ReadFileStateEntry>;
 // tool handler 用该返回值表达可预期业务失败；成功 output 不使用此保留形状。
 export interface ToolHandlerFailure {
   result: false;
-  errorCode: number;
+  errorCode: number | string;
   message: string;
+  /** 本次失败的业务结果与模型内容；不进入异常日志或遥测上下文。 */
+  output?: unknown;
+  modelContent?: ModelMessageContent;
 }
 
 export interface ToolInputValidationContext {
@@ -314,6 +318,8 @@ export interface ToolEntry extends ToolContractDeclaration {
    * 只由宿主验证后的可信来源写入；不能从模型可见的 MCP 名称或 descriptor 推导。
    */
   permissionCapabilityGroup?: PermissionCapabilityGroup;
+  /** 宿主验证来源后挂载；每次从唯一配置 owner 读取，不由 MCP descriptor 或模型控制。 */
+  isWorkspacePreapproved?: () => boolean;
   executionMode?: ToolExecutionMode;
   providerNative?: ProviderNativeToolSpec;
   handler: ToolHandler;
