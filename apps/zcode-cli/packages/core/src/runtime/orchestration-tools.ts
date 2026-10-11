@@ -27,7 +27,31 @@ export function selectOrchestrationParentTools(
   if (mode === "coordinator" && !selected.some((tool) => isSubagentDispatchToolName(tool.name))) {
     throw new Error("Coordinator mode requires an available subagent dispatch tool");
   }
-  return selected;
+  return mode === "swarm" ? selected : selected.map(withoutAgentMemberName);
+}
+
+function withoutAgentMemberName(tool: ModelToolContract): ModelToolContract {
+  if (!isSubagentDispatchToolName(tool.name)) return tool;
+  const schema = tool.inputSchema;
+  if (
+    !schema?.properties ||
+    typeof schema.properties !== "object" ||
+    Array.isArray(schema.properties)
+  )
+    return tool;
+  // 注册表由多个请求复用；仅投影当前 effective 模式，不能就地删除共享字段。
+  const properties = { ...schema.properties };
+  delete (properties as Record<string, unknown>).name;
+  return {
+    ...tool,
+    inputSchema: {
+      ...schema,
+      properties,
+      ...(Array.isArray(schema.required)
+        ? { required: schema.required.filter((key) => key !== "name") }
+        : {}),
+    },
+  };
 }
 
 export function isOrchestrationParentToolAllowed(

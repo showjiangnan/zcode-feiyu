@@ -34,7 +34,7 @@ export const AgentInputSchema = z.object({
     })
     .optional()
     .describe(
-      "Stable member name when swarm mode is active. Use 1-32 characters, starting with a letter or number; Unicode letters and numbers, underscores and hyphens are allowed.",
+      "Swarm mode only: stable member name. Omit name in standard or coordinator mode; never pass an empty name. Use 1-32 characters, starting with a letter or number; Unicode letters and numbers, underscores and hyphens are allowed.",
     ),
   subagent_type: z
     .string()

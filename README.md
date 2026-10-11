@@ -133,11 +133,13 @@ Web 可管理允许的会话及模型设置；模型/API 凭据不会在读取�
 构建桌面与 Web 后，可同步桥接配套资源：
 
 ```bash
-pnpm --filter @zcode/web build
+ZCODE_ENV=production pnpm --filter @zcode/web build
 node scripts/build-rcs-assets.mjs ../zcode-rcs
 ```
 
 导出的 `web/`、`sdk/` 和 `protocol/` 是桥接仓库的交付资产，升级时应一起更新；云服务器无需 Node.js 或 Electron。
+
+配套 RCS / SDK 1.1.0 使用 Web 3.14.5，桥接协议保持 1 / 1 / 3。导出前验证 Web 源码指纹，暂存校验完成后再替换资源，失败时回滚。`web/build-info.json` 记录配套版本及源码、产物摘要；生产升级应停服更新完整发布包，保留认证数据后重启。
 
 ### 图片生成：fal.ai
 

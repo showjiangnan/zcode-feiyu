@@ -292,7 +292,9 @@ function extractImages(values: unknown[]): NodeReplDisplayImage[] {
     if (!base64 || !mimeType || !IMAGE_MIME_TYPE_PATTERN.test(mimeType)) {
       return;
     }
-    const key = `${mimeType}:${base64.length}:${base64.slice(0, 24)}`;
+    // 相同格式的截图经常具有相同头部和长度，不能按截断前缀判断图片身份。
+    // 比较完整内容，既保留不同截图，也消除实时输出和终态快照的重复投影。
+    const key = `${mimeType}:${base64}`;
     if (seen.has(key)) {
       return;
     }

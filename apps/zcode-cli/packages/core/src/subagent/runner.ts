@@ -196,7 +196,11 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
       rawRequest: SubagentLaunchRequest,
       launchOptions?: SubagentLaunchOptions,
     ): Promise<AgentOutput> {
-      const { profile, request } = resolveAgentProfileForRequest(profiles, rawRequest);
+      // 标准/协调模式的历史 Agent 调用可能仍带 name；它不是团队准入。
+      // 在唯一 launch 入口按实时模式去除身份，run/start 的显式成员校验仍保留。
+      const admittedRequest = { ...rawRequest };
+      if (!options.allowNamedMembers?.()) delete admittedRequest.teamMemberName;
+      const { profile, request } = resolveAgentProfileForRequest(profiles, admittedRequest);
       const executionRequest = toSubagentExecutionRequest(request);
       const backgroundRequested =
         rawRequest.runInBackground === true || profile.background === true;

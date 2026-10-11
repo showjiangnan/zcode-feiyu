@@ -133,11 +133,13 @@ Future mini-programs and native apps can implement clients against the same REST
 Export compatible production assets together when updating the companion project:
 
 ```bash
-pnpm --filter @zcode/web build
+ZCODE_ENV=production pnpm --filter @zcode/web build
 node scripts/build-rcs-assets.mjs ../zcode-rcs
 ```
 
 The exported `web/`, `sdk/`, and `protocol/` directories are shipped runtime assets. The cloud server does not need Node.js or Electron.
+
+RCS / SDK 1.1.0 pairs with Web 3.14.5; wire versions remain 1 / 1 / 3. The exporter verifies the Web source fingerprint, validates staged assets, and rolls back failed replacements. `web/build-info.json` records paired versions and source/artifact digests. Stop the service for a complete release upgrade, retain authentication storage, and restart.
 
 ### Image generation with fal.ai
 
