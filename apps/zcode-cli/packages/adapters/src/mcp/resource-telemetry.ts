@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
+import { ZCODE_MCP_RESOURCE_SAMPLE_INTERVAL_MS, type ZCodeMcpResourceSample } from "@zcode/shared";
 import { randomUUID } from "node:crypto";
 import { cpus, totalmem } from "node:os";
-import { ZCODE_MCP_RESOURCE_SAMPLE_INTERVAL_MS, type ZCodeMcpResourceSample } from "@zcode/shared";
 import {
   createProcessProbe,
   type ProcessProbe,

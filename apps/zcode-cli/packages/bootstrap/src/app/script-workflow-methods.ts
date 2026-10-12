@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { SubmitPromptOptions, ZCodeApp } from "./types.js";
 import {
   ScriptWorkflowRuntime,
@@ -22,10 +23,7 @@ type ScriptWorkflowBridgeDeps = Omit<ScriptWorkflowRuntimeDeps, "runtime"> & {
   getRuntime: () => ScriptWorkflowRuntimeDeps["runtime"];
 };
 
-type ScriptWorkflowRuntimeOptions = Pick<
-  SubmitPromptOptions,
-  "abortSignal" | "traceContext"
-> & {
+type ScriptWorkflowRuntimeOptions = Pick<SubmitPromptOptions, "abortSignal" | "traceContext"> & {
   onEvent?: (event: unknown) => void | Promise<void>;
 };
 
@@ -51,16 +49,6 @@ export function createScriptWorkflowBridge(deps: ScriptWorkflowBridgeDeps): Scri
       traceContext: deps.traceContext,
       workingDirectory: deps.workingDirectory,
     }),
-  };
-}
-
-function createScriptWorkflowFacade(runtime: ScriptWorkflowRuntime): ScriptWorkflowFacade {
-  return {
-    listScriptWorkflows: runtime.list.bind(runtime),
-    resumeWorkflowScript: (input, options) => runtime.resume(input, toRuntimeOptions(options)),
-    runWorkflowScript: (input, options) => runtime.run(input, toRuntimeOptions(options)),
-    scriptWorkflowStatus: runtime.status.bind(runtime),
-    validateWorkflowScript: runtime.validate.bind(runtime),
   };
 }
 

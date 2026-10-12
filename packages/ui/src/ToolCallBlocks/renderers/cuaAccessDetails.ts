@@ -1,12 +1,13 @@
+// Modified by ZCode Feiyu.
 import type { ToolCallBlockRenderContext } from "@/ToolCallBlocks/shared.js";
 
-interface CuaAccessRow {
+export interface CuaAccessRow {
   labelId: string;
   value: string;
   status?: boolean;
 }
 
-interface CuaAccessDetails {
+export interface CuaAccessDetails {
   ready: boolean;
   permissionRows: CuaAccessRow[];
   environmentRows: CuaAccessRow[];

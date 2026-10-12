@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { ModelToolContract } from "@zcode/contracts";
 import type { OrchestrationMode } from "@zcode/shared/zcode-protocol-v4";
 import { isSubagentDispatchToolName } from "../tool/compat.js";

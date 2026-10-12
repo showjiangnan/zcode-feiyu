@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { PermissionRuleValue, PermissionUpdate } from "@zcode/contracts";
 import type { ToolPermissionRulePolicy, ToolRuntimePermissionCapabilityContext } from "../types.js";
 import {
@@ -91,7 +92,7 @@ export function resolveBashPermissionRulePolicy(
   return createBashPermissionRulePolicy(command, context);
 }
 
-function createBashPermissionRulePolicy(
+export function createBashPermissionRulePolicy(
   command: string,
   context?: ToolRuntimePermissionCapabilityContext,
 ): ToolPermissionRulePolicy {

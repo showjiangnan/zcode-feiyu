@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { randomUUID } from "node:crypto";
 import { HostResponseTypes } from "@zcode/shared";
 import type {
@@ -15,7 +16,7 @@ import type {
  * 设计成可注入 postMessage + 无全局依赖，便于单测（假 parentPort）。
  */
 
-interface BrowserExecuteRequestMessage {
+export interface BrowserExecuteRequestMessage {
   type: typeof HostResponseTypes.BrowserExecuteRequest;
   requestId: string;
   browserId: string;
@@ -31,7 +32,7 @@ interface BrowserExecuteRequestMessage {
   command: BrowserCommand;
 }
 
-interface BrowserExecuteResultMessage {
+export interface BrowserExecuteResultMessage {
   requestId: string;
   result: BrowserCommandResult;
 }
@@ -92,7 +93,7 @@ function mayHaveSideEffects(command: BrowserCommand): boolean {
   ].includes(command.method);
 }
 
-interface BrowserControlMainBridge {
+export interface BrowserControlMainBridge {
   list(): Promise<BrowserBackendDescriptor[]>;
   execute(input: {
     requestId?: string;

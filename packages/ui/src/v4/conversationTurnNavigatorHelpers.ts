@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ConversationTurnRenderUnit } from "@/v4/conversationTurnRenderUnits.js";
 
 export type ConversationTurnNavigatorAssistantPreviewKind = "empty" | "running" | "text";
@@ -13,7 +14,7 @@ export interface ConversationTurnNavigatorItem {
   isRunning: boolean;
 }
 
-interface BuildConversationTurnNavigatorItemsOptions {
+export interface BuildConversationTurnNavigatorItemsOptions {
   assistantEmptyPreview: string;
   assistantRunningPreview: string;
   userFallbackPreview: string;
@@ -27,7 +28,7 @@ export interface ConversationTurnNavigatorVirtualItem {
   size: number;
 }
 
-interface ResolveConversationTurnNavigatorActiveUnitIndexOptions {
+export interface ResolveConversationTurnNavigatorActiveUnitIndexOptions {
   items: readonly ConversationTurnNavigatorItem[];
   virtualItems: readonly ConversationTurnNavigatorVirtualItem[];
   scrollOffsetPx: number;
@@ -40,33 +41,33 @@ export interface ConversationTurnNavigatorQueryPosition {
   end: number;
 }
 
-interface ResolveConversationTurnNavigatorActiveQueryRowIdOptions {
+export interface ResolveConversationTurnNavigatorActiveQueryRowIdOptions {
   positions: readonly ConversationTurnNavigatorQueryPosition[];
   scrollOffsetPx: number;
   viewportHeightPx: number;
 }
 
-type ConversationTurnNavigatorBarTone = "idle" | "mid" | "near" | "peak";
-type ConversationTurnNavigatorBarColorTone = "focus" | "muted";
+export type ConversationTurnNavigatorBarTone = "idle" | "mid" | "near" | "peak";
+export type ConversationTurnNavigatorBarColorTone = "focus" | "muted";
 
-interface ConversationTurnNavigatorBarVisualState {
+export interface ConversationTurnNavigatorBarVisualState {
   colorTone: ConversationTurnNavigatorBarColorTone;
   opacity: number;
   scaleX: number;
   tone: ConversationTurnNavigatorBarTone;
 }
 
-interface ResolveConversationTurnNavigatorBarVisualStateOptions {
+export interface ResolveConversationTurnNavigatorBarVisualStateOptions {
   itemIndex: number;
   visualFocusItemIndex: number | undefined;
 }
 
-interface ResolveConversationTurnNavigatorVisualFocusItemIndexOptions {
+export interface ResolveConversationTurnNavigatorVisualFocusItemIndexOptions {
   activeItemIndex: number;
   interactionItemIndex: number | undefined;
 }
 
-const CONVERSATION_TURN_NAVIGATOR_MIN_WIDTH_PX = 864;
+export const CONVERSATION_TURN_NAVIGATOR_MIN_WIDTH_PX = 864;
 
 export type ConversationTurnNavigatorHydrationResult =
   | { status: "hydrated"; logEpoch: string }

@@ -1,60 +1,56 @@
-// Modified by ZCode Feiyu contributors (2026).
-import { localTtftContextSchema, localTtftClockSchema } from "../localTtft.js";
+// Modified by ZCode Feiyu.
+import { commandKeySchema } from "./command-key.js";
+export { commandKeySchema, type CommandKey } from "./command-key.js";
+import { requireModelSelectionForExecution } from "./command-model-execution.js";
+import { conversationQuotesSchema } from "../conversationSelection.js";
+import { localTtftClockSchema, localTtftContextSchema } from "../localTtft.js";
+import { createSessionRequestedConfigSchema } from "./create-session-config.js";
 // Command 层：信封 / ACK / 命令全集 payload。
 // conversation rewind 无独立命令（裁决：= editUserQuery 的 UI 入口）；
 // workspace-only 文件撤销走 applyFileRewind，不截断聊天历史。
 import { z } from "zod";
+import { botGroupInputSourceSchema, zcodeAutomationBotDeliveryTargetSchema } from "../bots.js";
+import { DYNAMIC_WORKFLOW_MODES } from "../dynamic-workflow-feature.js";
+import { highspeedMessageMetaSchema } from "../highspeed.js";
+import { modelExecutionSchema } from "../model-execution.js";
+import { modelSelectionSchema } from "../model-selection.js";
+import {
+  zcodeBrowserAmbientContextSchema,
+  zcodeProtocolMcpServerSchema,
+} from "../zcode-protocol/index.js";
+import { attachmentRefSchema } from "./attachment-ref.js";
 import { commandExecutionSchema } from "./command-execution.js";
 import { conversationRowTargetSchema, timestampSchema } from "./core.js";
-import { attachmentRefSchema } from "./attachment-ref.js";
-import { v4ConversationFileRewindPreviewResultSchema } from "./transport.js";
-import { modelSelectionSchema } from "../model-selection.js";
-import { modelExecutionSchema } from "../model-execution.js";
-import { submissionModeSchema } from "./submission.js";
+import { conversationInputSourceSchema } from "./input-intent.js";
 import {
   orchestrationModeSchema,
-  proactiveSubscriptionSchema,
   proactiveCausalContextSchema,
+  proactiveSubscriptionSchema,
 } from "./orchestration.js";
-import { zcodeAutomationBotDeliveryTargetSchema } from "../bots.js";
+import { sharedContextRefSchema } from "./shared-context-ref.js";
+import { submissionModeSchema } from "./submission.js";
+import { v4ConversationFileRewindPreviewResultSchema } from "./transport.js";
 import {
   amendWorkflowRunSettingsPayloadSchema,
   amendWorkflowRunSettingsResultSchema,
 } from "./workflow-run-settings-command.js";
 import {
+  requestWorkspaceHookReviewTargetSchema,
   workspaceHookReviewCommandTargetSchema,
   workspaceHookReviewDecisionSchema,
   workspaceHookTrustRevokeTargetSchema,
-  requestWorkspaceHookReviewTargetSchema,
 } from "./workspace-hook-review.js";
-import {
-  zcodeBrowserAmbientContextSchema,
-  zcodeProtocolMcpServerSchema,
-} from "../zcode-protocol/index.js";
-import { sharedContextRefSchema } from "./shared-context-ref.js";
 export type { SharedContextRef } from "./shared-context-ref.js";
+export * from "./workflow-command-rejections.js";
 
-const createSessionRequestedConfigSchema = z.object({
-  modelSelection: modelSelectionSchema.optional(),
-  provider: z.string().optional(),
-  model: z.string().optional(),
-  thought: z.string().optional(),
-  followupMode: z.enum(["queue", "guide"]).optional(),
-  // createSession.config 表达“请求覆盖字段”，不能复用 snapshot 的
-  // sessionConfigStateSchema.partial()；snapshot 为兼容旧快照给 mode 设了 default("build")，
-  // 会把“没传 mode”误变成“请求切回 build”，覆盖 workspace 默认 yolo。
-  mode: z.string().optional(),
-  planEnabled: z.boolean().optional(),
-  orchestrationMode: orchestrationModeSchema.optional(),
-});
-
-// ── 命令 payload 全集 ──
+// ── §6.4 命令 payload 全集 ──
 export const commandPayloadSchemas = {
   // firstInput 缺省 → phase=draft 空会话；携带 → 直接 turnHeader+userInput rows。
   createSession: z.object({
     workspaceId: z.string(),
     originCommandId: z.string().min(1).optional(),
     title: z.string().optional(),
+    permissionScope: z.literal("session").optional(),
     firstInput: z
       .object({
         text: z.string(),
@@ -73,6 +69,8 @@ export const commandPayloadSchemas = {
     offPeakToolEnabled: z.boolean().optional(),
     // 动态工作流灰度 flag，与 offPeakToolEnabled 同一模式。
     dynamicWorkflowEnabled: z.boolean().optional(),
+    // 灰度 mode 与布尔同行（launch.md「On demand: activation」）；旧 CLI 的 z.object 静默丢弃。
+    dynamicWorkflowMode: z.enum(DYNAMIC_WORKFLOW_MODES).optional(),
   }),
   // 父会话由 envelope.sessionId 指定；服务端从父 record 派生完整运行配置。
   // firstInput 存在时，child 创建完成后立即启动首条普通输入；缺省则保持空副屏。
@@ -102,6 +100,8 @@ export const commandPayloadSchemas = {
       // Share handover 只允许当前 session 的一个已导入上下文；完整正文由 runtime 从
       // 持久化 provenance 解析，不能随 command 从 renderer 传入。
       context_refs: z.array(sharedContextRefSchema).max(1).optional(),
+      // 插件 UI 代发（ui/message）时的来源标记；随 intent 持久化并投影到 userInput row。
+      source: conversationInputSourceSchema.optional(),
       heldQueueDisposition: z.enum(["clearQueueAndSend", "keepQueueAndSend"]).optional(),
       // 暂停队列确认框打开时看到的 queueItemId 集合。CLI 在执行 clear/keep 前校验，
       // 防止桌面/手机并发增删后把用户没确认过的新队列一并处置。
@@ -114,11 +114,18 @@ export const commandPayloadSchemas = {
       // 本次执行仍使用上面的标准 Selection；这里只携带不持久化语义、动态鉴权和 child 策略。
       // 仅 idle startNow 接受，防止 Secret/Ticket 进入普通 CommandInbox。
       modelExecution: modelExecutionSchema.optional(),
+      // Highspeed 卡快照随输入事实进入 message.data；不包含 runtime 凭据或 header。
+      // 加速本轮的模型与凭据走上面的 modelSelection + modelExecution，见
+      // docs/highspeed/highspeed-access-mode-migration.md。
+      highspeedMeta: highspeedMessageMetaSchema.optional(),
       automationId: z.string().min(1).optional(),
       offPeakTaskId: z.string().min(1).optional(),
       offPeakRunType: z.enum(["init", "resume"]).optional(),
       // Bot 来源只由 Host 注入，用于 CronCreate 在当前 turn 内读取并持久化回推地址。
       botDeliveryTarget: zcodeAutomationBotDeliveryTargetSchema.optional(),
+      inputOrigin: z.enum(["desktop", "mobile"]).optional(),
+      botGroupSource: botGroupInputSourceSchema.optional(),
+      conversationQuotes: conversationQuotesSchema.optional(),
       // 定时任务会话的后续用户输入也必须保持 turn-scoped 工具面隔离；不能借用
       // automationId，否则会把普通用户输入误标成一次 automation 派发。
       toolDisallowlist: z.array(z.string().min(1)).optional(),
@@ -137,13 +144,7 @@ export const commandPayloadSchemas = {
           path: ["offPeakRunType"],
         });
       }
-      if (payload.modelExecution && !payload.modelSelection) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "modelExecution requires modelSelection",
-          path: ["modelExecution"],
-        });
-      }
+      requireModelSelectionForExecution(payload, context);
     }),
   sendGoalCommand: z.object({
     text: z.string(),
@@ -164,19 +165,48 @@ export const commandPayloadSchemas = {
   // running 时对稳定 assistant row 可用。
   forkAssistant: z.object({ target: conversationRowTargetSchema }),
   applyFileRewind: z.object({ target: conversationRowTargetSchema }),
-  editUserQuery: z.object({
-    target: conversationRowTargetSchema,
-    newText: z.string(),
-    attachments: z.array(attachmentRefSchema).optional(),
-    // 缺省 preserve：仅切 conversation branch；rewind 会先安全恢复该轮文件。
-    workspaceMode: z.enum(["preserve", "rewind"]).optional(),
-  }),
+  editUserQuery: z
+    .object({
+      target: conversationRowTargetSchema,
+      newText: z.string(),
+      conversationQuotes: conversationQuotesSchema.optional(),
+      attachments: z.array(attachmentRefSchema).optional(),
+      // 编辑重发按新的主动发送处理：只接受本次重新 prepare 得到的卡与执行材料，
+      // 不从被 rewind 的历史消息复用旧凭据。
+      modelSelection: modelSelectionSchema.optional(),
+      modelExecution: modelExecutionSchema.optional(),
+      highspeedMeta: highspeedMessageMetaSchema.optional(),
+      // 缺省 preserve：仅切 conversation branch；rewind 会先安全恢复该轮文件。
+      workspaceMode: z.enum(["preserve", "rewind"]).optional(),
+    })
+    .superRefine(requireModelSelectionForExecution),
   retryTurn: z.object({ target: conversationRowTargetSchema }),
+  // （2026-09-12）：原 setToolWidgetState / setSessionPluginUiState 已删除——插件 UI widgetState
+  // 回退为宿主 renderer 内存保存，不再写 CLI 会话存储；模型可见信息改走 ui/update-model-context。
   setAssistantFeedback: z.object({
     target: conversationRowTargetSchema,
     feedback: z.enum(["like", "dislike"]).nullable(),
   }),
-  sendQueuedNow: z.object({ queueItemId: z.string() }),
+  setHighspeedMetrics: z.object({
+    target: conversationRowTargetSchema,
+    regularTps: z.number().positive(),
+    outputTokens: z.number().int().nonnegative(),
+    durationMs: z.number().nonnegative(),
+    highspeedTps: z.number().positive(),
+    savedDurationMs: z.number().nonnegative(),
+    modelDurationMs: z.number().nonnegative().optional(),
+    toolDurationMs: z.number().nonnegative().optional(),
+    otherDurationMs: z.number().nonnegative().optional(),
+  }),
+  sendQueuedNow: z
+    .object({
+      queueItemId: z.string(),
+      // 手动提升允许 Renderer 为原队列项补充同卡执行材料；凭据不入队列持久化面。
+      modelSelection: modelSelectionSchema.optional(),
+      modelExecution: modelExecutionSchema.optional(),
+      highspeedMeta: highspeedMessageMetaSchema.optional(),
+    })
+    .superRefine(requireModelSelectionForExecution),
   editQueueItem: z.object({ queueItemId: z.string(), newText: z.string() }),
   // beforeQueueItemId = null → 移到队尾。
   reorderQueueItem: z.object({
@@ -226,7 +256,7 @@ export const commandPayloadSchemas = {
   // additive（冻结面按黄金测试背书演进）：agent 协作模式切换。
   // 值域 = core CollaborationMode 的可切换子集（auto 非用户可切，不进 UI 命令面）。
   switchCollaborationMode: z.object({
-    mode: z.enum(["build", "edit", "plan", "yolo"]),
+    mode: z.enum(["build", "edit", "plan", "yolo", "guarded"]),
   }),
   setOrchestrationMode: z.object({ mode: orchestrationModeSchema }).strict(),
   controlProactiveWork: z
@@ -251,7 +281,7 @@ export const commandPayloadSchemas = {
   // 同类：不携 baseRevision（workflowRuns 面免 revision，假 CAS 失败只会误伤）。name 由 agent 从
   // 解析结果填（不变式 6），命令不收 name 覆盖。
   // 拒绝以 fault.command.savedWorkflowStartRejected.<reason> 回 ACK（词表见下方
-  // savedWorkflowStartRejectionReasonSchema）；能力缺席（无 dwf 端口）→ V4CapabilityUnsupportedError
+  // workflow-command-rejections.ts 的 savedWorkflowStartRejectionReasonSchema）；能力缺席（无 dwf 端口）→ V4CapabilityUnsupportedError
   // （与 resumeWorkflowRun 同一条错误）。
   startSavedWorkflow: z.object({
     name: z.string().min(1),
@@ -277,33 +307,6 @@ export type CommandPayloadMap = {
 export const commandTypeSchema = z.enum(
   Object.keys(commandPayloadSchemas) as [CommandType, ...CommandType[]],
 );
-
-// startSavedWorkflow 拒绝词表：
-// bootstrap handler 铸造 fault code，ui launcher 反查 i18n 文案，两侧共享此枚举避免漂移。
-// invalid_name / not_found：解析阶段；invalid_args：实参校验；compile_failed：analyzeScript 诊断；
-// session_busy：会话有活动 turn；start_failed：port.submit 之前的其它启动失败。
-export const savedWorkflowStartRejectionReasonSchema = z.enum([
-  "invalid_name",
-  "not_found",
-  "invalid_args",
-  "compile_failed",
-  "session_busy",
-  "start_failed",
-]);
-export type SavedWorkflowStartRejectionReason = z.infer<
-  typeof savedWorkflowStartRejectionReasonSchema
->;
-
-// 完整 fault code = 前缀 + reason（如 fault.command.savedWorkflowStartRejected.not_found）。
-// 与 workflowRunResumeRejected 命名空间同族；导出常量供 bootstrap 拼接、ui 前缀匹配。
-export const SAVED_WORKFLOW_START_REJECTED_FAULT_PREFIX =
-  "fault.command.savedWorkflowStartRejected." as const;
-
-// resumeWorkflowRun 的拒绝：前缀 + 端口 reason（not_found / not_resumable / superseded /
-// already_running / script_missing / script_mismatch / compile_failed）；`ack.message` 携带
-// compile_failed 的有界诊断。
-export const WORKFLOW_RUN_RESUME_REJECTED_FAULT_PREFIX =
-  "fault.command.workflowRunResumeRejected." as const;
 
 // cancelBackgroundWork 的拒绝：core 明确回「没有取消任何东西」时（任务不存在 / 已终结 / 类型不支持）
 // 以前缀 + reason 上行，而不是一个假装成功的 accepted——详情页据此告诉用户这个 run 并不在跑。
@@ -337,6 +340,7 @@ export const ROW_TARGETING_COMMANDS: ReadonlySet<CommandType> = new Set([
   "editUserQuery",
   "retryTurn",
   "setAssistantFeedback",
+  "setHighspeedMetrics",
 ]);
 
 // ── 信封 ──
@@ -468,16 +472,6 @@ export const commandAckSchema = z.object({
   result: commandResultSchema.optional(),
 });
 export type CommandAck = z.infer<typeof commandAckSchema>;
-
-// ── commands/query ──
-export const commandKeySchema = z
-  .object({
-    // null 只属于全局/createSession 幂等桶；session 命令必须携带 sessionId。
-    sessionId: z.string().nullable(),
-    commandId: z.string().min(1),
-  })
-  .strict();
-export type CommandKey = z.infer<typeof commandKeySchema>;
 
 export const commandsQueryParamsSchema = z
   .object({

@@ -1,7 +1,5 @@
-import type {
-  BrowserCommand,
-  BrowserCommandResult,
-} from "@zcode/contracts/browser-control";
+// Modified by ZCode Feiyu.
+import type { BrowserCommand, BrowserCommandResult } from "@zcode/contracts/browser-control";
 
 export class BrowserCommandError extends Error {
   readonly code: string;

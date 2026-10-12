@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { countContextPrefixMessages } from "../deps.js";
 import type { EnvInfo, ExecutionShellSelection, TraceContext } from "../deps.js";
 import type { AgentRuntimeInternal } from "../internal.js";
@@ -21,7 +22,7 @@ export type SessionShellEnvironmentCandidate =
   | ExecutionShellSelection
   | (() => ExecutionShellSelection);
 
-interface SessionShellEnvironment {
+export interface SessionShellEnvironment {
   selection: ExecutionShellSelection;
   promptShell: string;
 }
@@ -72,7 +73,7 @@ export function initializeSessionShellEnvironmentIfNeeded(
   return true;
 }
 
-function applySessionShellEnvironment(
+export function applySessionShellEnvironment(
   runtime: AgentRuntimeInternal,
   selection: ExecutionShellSelection | undefined,
   options: { refreshPreConversationContext?: boolean } = {},
@@ -91,15 +92,15 @@ function resolveSessionShellCandidate(
   return typeof candidate === "function" ? candidate() : candidate;
 }
 
-function applySessionShellToEnvInfo<T extends { shell?: string }>(
+export function applySessionShellToEnvInfo<T extends { shell?: string }>(
   envInfo: T,
   selection: ExecutionShellSelection | undefined,
 ): T;
-function applySessionShellToEnvInfo<T extends { shell?: string }>(
+export function applySessionShellToEnvInfo<T extends { shell?: string }>(
   envInfo: T | undefined,
   selection: ExecutionShellSelection | undefined,
 ): T | undefined;
-function applySessionShellToEnvInfo<T extends { shell?: string }>(
+export function applySessionShellToEnvInfo<T extends { shell?: string }>(
   envInfo: T | undefined,
   selection: ExecutionShellSelection | undefined,
 ): T | undefined {

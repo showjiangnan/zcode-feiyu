@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { parseModelSelectionValue, SESSION_ENTRY_MODEL_SELECTION } from "@zcode/contracts";
 import type { SessionStorePort } from "@zcode/contracts";
 import { createCoreError, CoreErrorType, type ModelSelection } from "../deps.js";

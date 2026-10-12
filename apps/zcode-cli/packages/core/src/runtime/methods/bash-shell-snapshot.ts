@@ -1,8 +1,6 @@
+// Modified by ZCode Feiyu.
 import { accessSync, constants as fsConstants } from "node:fs";
-import {
-  SESSION_ENTRY_BASH_SHELL_SELECTION,
-  traceContextToLogContext,
-} from "../deps.js";
+import { SESSION_ENTRY_BASH_SHELL_SELECTION, traceContextToLogContext } from "../deps.js";
 import type {
   ExecutionShellSelection,
   Logger,

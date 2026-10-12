@@ -1,4 +1,5 @@
-interface HostShutdownPhase {
+// Modified by ZCode Feiyu.
+export interface HostShutdownPhase {
   name: string;
   run: () => Promise<void>;
   timeoutMs?: number;

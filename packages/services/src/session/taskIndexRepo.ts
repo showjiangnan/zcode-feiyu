@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import {
   isTasksStorageMigrated,
   isTasksStoragePrepared,
@@ -10,7 +10,7 @@ import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import {
   isRemoteWorkspaceIdentity,
-  ZCODE_AGENT_PROVIDER,
+  normalizeAgentProviderToZCodeAgent,
   zcodeTaskMetaSchema,
   resolveWorkspaceKey,
   CRON_DEFAULT_GROUP_ID,
@@ -246,7 +246,10 @@ function rowToMeta(row: TaskIndexRow): ZCodeTaskMeta {
     updatedAt: row.updated_at,
     mode: row.mode as ZCodeTaskMeta["mode"],
     model: row.model ?? undefined,
-    provider: row.provider === ZCODE_AGENT_PROVIDER ? ZCODE_AGENT_PROVIDER : undefined,
+    // 旧行 provider 列可能残留三方 CLI 值；meta 回退投影时统一归一为 glm。
+    provider: row.provider
+      ? normalizeAgentProviderToZCodeAgent(row.provider as ZCodeTaskMeta["provider"])
+      : undefined,
     migrationSource: (row.migration_source as ZCodeTaskMeta["migrationSource"]) ?? undefined,
     forkedFromTaskId: row.forked_from_task_id ?? undefined,
     cronAutomationId: row.cron_automation_id ?? undefined,
@@ -535,7 +538,15 @@ export class TaskIndexRepo {
     if (!isTasksStorageMigrated(path, this.db)) runTasksDatabaseMigrations(this.db);
     this.backfillOffPeakTaskMarkers();
     this.backfillOffPeakGroupMemberships();
+    // 飞鱼版已退休的历史协议不再改变用户任务 ID；真实会话归属由 CLI owner 校验。
     this.cleanupDeletedTaskGroupingReferences();
+  }
+
+  private hasColumn(table: string, column: string): boolean {
+    const columns = this.getDatabase().prepare(`PRAGMA table_info(${table})`).all() as Array<{
+      name: string;
+    }>;
+    return columns.some((item) => item.name === column);
   }
 
   /**
@@ -1711,7 +1722,7 @@ export class TaskIndexRepo {
         FROM tasks
         WHERE (@workspace_key IS NULL OR workspace_key = @workspace_key)
           AND (@include_deleted = 1 OR deleted = 0)
-          -- 按请求指定的 runtime provider 过滤；迁移来源另存于 migration_source。
+          -- Bugfix: ZCode Agent 列表只接受当前 glm provider；Claude Code 导入也属于非 glm 历史数据。
           AND (@provider IS NULL OR provider = @provider)
           AND (@pinned IS NULL OR pinned = @pinned)
           AND (@archived IS NULL OR archived = @archived)
@@ -2091,7 +2102,7 @@ export class TaskIndexRepo {
     const activeTaskArgs: Array<string | number> = includeAllWorkspaces ? [] : [...workspaceKeys];
     if (params.provider) {
       // grouped 和 workspace 都是 ZCode Agent 任务列表入口，必须共享旧 provider
-      // 残留过滤口径；否则历史 claude/codex/gemini 索引行会只在 grouped 里冒出来。
+      // 残留过滤口径；否则历史第三方 provider 的索引行会只在 grouped 里冒出来。
       appendZCodeAgentIndexedProviderFilter(activeTaskWhere, activeTaskArgs, params.provider);
     }
     const activeTasks =
@@ -2388,7 +2399,7 @@ export class TaskIndexRepo {
         throw new Error("Grouped task order 包含不可见 task");
       }
       if (params.provider && row.provider !== params.provider) {
-        // grouped 保存回包之前没有 provider 边界，旧 gemini/codex/claude 排序残留会在保存后重新展示。
+        // grouped 保存回包之前没有 provider 边界，旧第三方 provider 的排序残留会在保存后重新展示。
         // 带 provider 的 ZCode Agent 视图只接受当前 glm task；旧 provider 引用作为不可见遗留数据跳过。
         return null;
       }

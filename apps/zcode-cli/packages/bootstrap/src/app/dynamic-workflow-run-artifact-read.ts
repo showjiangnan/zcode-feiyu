@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
 // ============================================================
@@ -26,16 +27,415 @@
 // 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
 // 它猜对了哪一半。
 
-import type {
-  DynamicWorkflowRunArtifactBytes,
-  ToolArtifactStorePort,
-} from "@zcode/contracts";
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+// ============================================================
+// 用户面产物的字节读回（DynamicWorkflowRunPort.readArtifact 的实现体）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出（journal
+// `kind = "artifact"` 的行），**不是**引擎内部的 `RunSettlement.artifact`（脚本顶层返回值，
+// 端口上叫 `output` / `result`）。
+//
+// 从 dynamic-workflow-run-service.ts 拆出（那个文件已在 max-lines 的既有欠账里，不再加码），
+// 与把 driver 的发布路径拆成 workflow-artifact-publish.ts 是同一条理由：读一次字节
+// 要走「授权 → 定位 → store」三步，每一步都有一条必须写下来的纪律。
+//
+// **授权链**（与 attachmentRead 同一条纪律）：
+//
+//   调用方给的 (runId, artifactId, version)
+//        │
+//        ├─① runId 的 dwf_run 行存在吗？                     否 ⇒ undefined
+//        ├─② 该行的 parent_session_id == 本服务的父会话吗？   否 ⇒ undefined
+//        ├─③ journal 里有 (artifactId, version) 的 completed  否 ⇒ undefined
+//        │    artifact 行吗？
+//        ├─④ 那行的记录上有 uri 吗？（预置看板没有）          否 ⇒ undefined
+//        └─⑤ 拿**行上的** uri 去 store 读
+//
+// 第 ⑤ 步是全部要点：renderer 传来的 id 只用于**在 journal 里查行**，从不直接成为路径。
+// 中间任何一步失败都回 undefined 而不是抛错——「没有这个版本」「不是你的 run」「这是个看板」
+// 对调用方是同一个业务事实（网关归一成 not found），把它们区分开只会告诉一个越权的调用方
+// 它猜对了哪一半。
+import type { DynamicWorkflowRunArtifactBytes, ToolArtifactStorePort } from "@zcode/contracts";
 import type { JournalStorePort } from "@zcode/dynamic-workflow";
 
-import {
-  artifactRowId,
-  supportsArtifactReads,
-} from "./dynamic-workflow-run-artifact-queries.js";
+import { artifactRowId, supportsArtifactReads } from "./dynamic-workflow-run-artifact-queries.js";
 
 interface WorkflowArtifactReadDeps {
   journal: JournalStorePort;

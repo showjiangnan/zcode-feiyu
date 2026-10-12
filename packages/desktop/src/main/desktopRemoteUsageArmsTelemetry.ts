@@ -1,3 +1,5 @@
+// Modified by ZCode Feiyu.
+import { setInterval, clearInterval } from "node:timers";
 import type {
   ArmsCustomEventPayload,
   ArmsRumEnv,
@@ -12,11 +14,11 @@ import {
   type FinalArmsCustomEventE2EController,
 } from "./desktopArmsCustomEvent.js";
 
-const REMOTE_USAGE_ARMS_GROUP = "remote_usage";
-const REMOTE_USAGE_ARMS_EVENT_CONNECT_RESULT = "remote_connect_result";
-const REMOTE_USAGE_ARMS_EVENT_ACTIVE_SESSION_COUNT = "remote_active_session_count";
-const REMOTE_USAGE_ARMS_EVENT_DISCONNECT = "remote_disconnect";
-const REMOTE_USAGE_GAUGE_INTERVAL_MS = 300_000;
+export const REMOTE_USAGE_ARMS_GROUP = "remote_usage";
+export const REMOTE_USAGE_ARMS_EVENT_CONNECT_RESULT = "remote_connect_result";
+export const REMOTE_USAGE_ARMS_EVENT_ACTIVE_SESSION_COUNT = "remote_active_session_count";
+export const REMOTE_USAGE_ARMS_EVENT_DISCONNECT = "remote_disconnect";
+export const REMOTE_USAGE_GAUGE_INTERVAL_MS = 300_000;
 
 export interface RemoteConnectionStats {
   activeSessionCount: number;
@@ -45,15 +47,15 @@ interface RemoteUsageArmsTelemetryConfig {
   sendCustom: (payload: FinalArmsCustomEventPayload) => void;
   e2eController?: FinalArmsCustomEventE2EController | null;
   logger: { warn: (...args: unknown[]) => void };
-  setInterval?: (callback: () => void, delayMs: number) => ReturnType<typeof setInterval>;
-  clearInterval?: (timer: ReturnType<typeof setInterval>) => void;
+  setInterval?: (callback: () => void, delayMs: number) => NodeJS.Timeout;
+  clearInterval?: (timer: NodeJS.Timeout) => void;
 }
 
 let telemetryConfig: RemoteUsageArmsTelemetryConfig | null = null;
-let periodicTimer: ReturnType<typeof setInterval> | null = null;
+let periodicTimer: NodeJS.Timeout | null = null;
 let lastGaugeRendererId: number | null = null;
 
-function buildRemoteConnectResultArmsPayload(params: {
+export function buildRemoteConnectResultArmsPayload(params: {
   result: RemoteUsageResult;
   remoteKind: RemoteUsageRemoteKind;
   connectTrigger: RemoteWorkspaceConnectTrigger;
@@ -72,7 +74,7 @@ function buildRemoteConnectResultArmsPayload(params: {
   };
 }
 
-function buildRemoteActiveSessionCountArmsPayload(
+export function buildRemoteActiveSessionCountArmsPayload(
   params: {
     sampleReason: "state-change" | "periodic";
     transition: RemoteGaugeTransition;
@@ -93,7 +95,7 @@ function buildRemoteActiveSessionCountArmsPayload(
   };
 }
 
-function buildRemoteDisconnectArmsPayload(params: {
+export function buildRemoteDisconnectArmsPayload(params: {
   remoteKind: RemoteUsageRemoteKind;
   disconnectReason: RemoteDisconnectReason;
   durationMs: number;
@@ -113,9 +115,11 @@ function buildRemoteDisconnectArmsPayload(params: {
 export function configureRemoteUsageArmsTelemetry(config: RemoteUsageArmsTelemetryConfig): void {
   stopRemoteUsageArmsPeriodicSampling();
   telemetryConfig = config;
-  const schedule = config.setInterval ?? setInterval;
-  periodicTimer = schedule(reportPeriodicGauge, REMOTE_USAGE_GAUGE_INTERVAL_MS);
-  periodicTimer.unref?.();
+  const schedule: NonNullable<RemoteUsageArmsTelemetryConfig["setInterval"]> =
+    config.setInterval ?? ((callback, delay) => setInterval(callback, delay) as NodeJS.Timeout);
+  const timer = schedule(reportPeriodicGauge, REMOTE_USAGE_GAUGE_INTERVAL_MS);
+  periodicTimer = timer;
+  timer.unref?.();
 }
 
 function dispatchSafely(rendererId: number, payload: ArmsCustomEventPayload): void {
@@ -207,4 +211,10 @@ export function stopRemoteUsageArmsPeriodicSampling(): void {
   if (!timer) return;
   (telemetryConfig?.clearInterval ?? clearInterval)(timer);
   periodicTimer = null;
+}
+
+export function resetRemoteUsageArmsTelemetryForTest(): void {
+  stopRemoteUsageArmsPeriodicSampling();
+  telemetryConfig = null;
+  lastGaugeRendererId = null;
 }

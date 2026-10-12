@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import { FACADE_DTS, FACADE_FILE_NAME } from "../facade/dts.js";
 import { TS_LIBS } from "./libs.generated.js";
@@ -29,6 +30,11 @@ export const WORKFLOW_FUNCTION_NAME = "__workflowScript__";
 // No return-type annotation: an annotated Promise<unknown> would demand a return
 // statement (TS2355), but scripts may legitimately end without one.
 const SCRIPT_PRELUDE = `async function ${WORKFLOW_FUNCTION_NAME}() {\n`;
+/**
+ * 包装前缀的长度：wrapped 源码里的位置减去它就是作者原文里的偏移。留白补全的拼接
+ * （analysis/hole-splice.ts）要按站点表里的节点位置在原文上插入文本，走的正是这条换算。
+ */
+export const SCRIPT_PRELUDE_LENGTH = SCRIPT_PRELUDE.length;
 const SCRIPT_EPILOGUE = "\n}\nexport {};\n";
 const PRELUDE_LINES = 1;
 

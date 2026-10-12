@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Vercel AI SDK tool transforms
 // ============================================================
 
 import { anthropic } from "@ai-sdk/anthropic";
-import { jsonSchema, tool, type ToolSet } from "ai";
 import { ModelErrorCode, type JsonSchema, type ModelToolContract } from "@zcode/contracts";
+import { jsonSchema, tool, type ToolSet } from "ai";
 import { AiSdkModelAdapterError } from "./errors.js";
 import { isAnthropicFirstPartyModelId, toStrictToolSchema } from "./strict-tool-schema.js";
 

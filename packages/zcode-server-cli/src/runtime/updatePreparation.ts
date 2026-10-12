@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,7 +10,7 @@ import { fetchReleaseCatalog, fetchReleaseJson, ReleaseDownloader } from "./rele
 import { ReleaseInstaller } from "./releaseInstaller.js";
 import { ReleaseManager } from "./releaseManager.js";
 
-type UpdatePreparation =
+export type UpdatePreparation =
   | { status: "up-to-date"; version: string }
   | { status: "prepared"; version: string; discard: () => Promise<void> }
   | { status: "prepared-offline"; version: string };

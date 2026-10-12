@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // subscribe ACK activation barrier：notification 可能先于 RPC response 抵达 renderer。
 // transport 先按 topic 有界暂存，store 写入 ACK subscriptionId 后显式 activate；
 // 这里只暂存 physical wire；logical assembly 在 ownership 激活后执行。
@@ -17,7 +18,7 @@ function encodedBytes(value: unknown): number {
   return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
-interface AckActivationBarrier<T extends { topic: string; subscriptionId: string }> {
+export interface AckActivationBarrier<T extends { topic: string; subscriptionId: string }> {
   begin(topic: string): object;
   bind(token: object, subscriptionId: string): void;
   cancel(token: object): void;

@@ -1,7 +1,11 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Todo Tool Handlers
 // ============================================================
 
+// ============================================================
+// Todo Tool Handlers
+// ============================================================
 import {
   CoreErrorType,
   TodoReadInputJsonSchema,
@@ -22,7 +26,7 @@ import type { ToolEntry, ToolHandler } from "../types.js";
 
 const MAX_TODO_MODEL_BYTES = 100_000;
 
-const todoReadHandler: ToolHandler = async (input, context) => {
+export const todoReadHandler: ToolHandler = async (input, context) => {
   TodoReadInputSchema.parse(input);
 
   if (!context.sessionStore) {
@@ -44,7 +48,7 @@ const todoReadHandler: ToolHandler = async (input, context) => {
   } satisfies TodoReadOutput;
 };
 
-const todoWriteHandler: ToolHandler = async (input, context) => {
+export const todoWriteHandler: ToolHandler = async (input, context) => {
   const { todos } = TodoWriteInputSchema.parse(input) as TodoWriteInput;
 
   if (!context.sessionStore) {

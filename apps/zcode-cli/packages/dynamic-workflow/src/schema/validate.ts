@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { JsonSchema, JsonSchemaType, Violation } from "./types.js";
 
 /**
@@ -25,7 +26,13 @@ export function formatViolations(violations: readonly Violation[]): string {
   return violations.map(formatViolation).join("\n");
 }
 
-function check(schema: JsonSchema, value: unknown, path: string, root: JsonSchema, out: Violation[]): void {
+function check(
+  schema: JsonSchema,
+  value: unknown,
+  path: string,
+  root: JsonSchema,
+  out: Violation[],
+): void {
   if (schema.$ref !== undefined) {
     const resolved = resolveRef(root, schema.$ref);
     if (resolved === undefined) {
@@ -38,14 +45,22 @@ function check(schema: JsonSchema, value: unknown, path: string, root: JsonSchem
 
   if ("const" in schema) {
     if (!deepEqual(value, schema.const)) {
-      out.push({ expected: describeValue(schema.const as unknown), got: describeValue(value), path });
+      out.push({
+        expected: describeValue(schema.const as unknown),
+        got: describeValue(value),
+        path,
+      });
     }
     return;
   }
 
   if (schema.enum !== undefined) {
     if (!schema.enum.some((candidate) => deepEqual(value, candidate))) {
-      out.push({ expected: `one of ${schema.enum.map((v) => describeValue(v)).join(", ")}`, got: describeValue(value), path });
+      out.push({
+        expected: `one of ${schema.enum.map((v) => describeValue(v)).join(", ")}`,
+        got: describeValue(value),
+        path,
+      });
     }
     return;
   }
@@ -57,7 +72,11 @@ function check(schema: JsonSchema, value: unknown, path: string, root: JsonSchem
       return trial.length === 0;
     });
     if (!matched) {
-      out.push({ expected: `one of ${schema.anyOf.length} variants`, got: describeValue(value), path });
+      out.push({
+        expected: `one of ${schema.anyOf.length} variants`,
+        got: describeValue(value),
+        path,
+      });
     }
     return;
   }
@@ -67,13 +86,20 @@ function check(schema: JsonSchema, value: unknown, path: string, root: JsonSchem
     return;
   }
 
-  if (schema.type === "object") checkObject(schema, value as Record<string, unknown>, path, root, out);
+  if (schema.type === "object")
+    checkObject(schema, value as Record<string, unknown>, path, root, out);
   if (schema.type === "array") checkArray(schema, value as unknown[], path, root, out);
   if (typeof value === "string") checkString(schema, value, path, out);
   if (typeof value === "number") checkNumber(schema, value, path, out);
 }
 
-function checkObject(schema: JsonSchema, value: Record<string, unknown>, path: string, root: JsonSchema, out: Violation[]): void {
+function checkObject(
+  schema: JsonSchema,
+  value: Record<string, unknown>,
+  path: string,
+  root: JsonSchema,
+  out: Violation[],
+): void {
   for (const key of schema.required ?? []) {
     if (!Object.prototype.hasOwnProperty.call(value, key)) {
       out.push({ expected: "present", got: "missing", path: `${path}.${key}` });
@@ -88,16 +114,30 @@ function checkObject(schema: JsonSchema, value: Record<string, unknown>, path: s
     }
     const additional = schema.additionalProperties;
     if (additional === false) {
-      out.push({ expected: "no additional property", got: describeValue(propValue), path: `${path}.${key}` });
+      out.push({
+        expected: "no additional property",
+        got: describeValue(propValue),
+        path: `${path}.${key}`,
+      });
     } else if (additional !== undefined && additional !== true) {
       check(additional, propValue, `${path}.${key}`, root, out);
     }
   }
 }
 
-function checkArray(schema: JsonSchema, value: unknown[], path: string, root: JsonSchema, out: Violation[]): void {
+function checkArray(
+  schema: JsonSchema,
+  value: unknown[],
+  path: string,
+  root: JsonSchema,
+  out: Violation[],
+): void {
   if (schema.minItems !== undefined && value.length < schema.minItems) {
-    out.push({ expected: `at least ${schema.minItems} items`, got: `array(${value.length})`, path });
+    out.push({
+      expected: `at least ${schema.minItems} items`,
+      got: `array(${value.length})`,
+      path,
+    });
   }
   if (schema.maxItems !== undefined && value.length > schema.maxItems) {
     out.push({ expected: `at most ${schema.maxItems} items`, got: `array(${value.length})`, path });
@@ -120,10 +160,18 @@ function checkArray(schema: JsonSchema, value: unknown[], path: string, root: Js
 
 function checkString(schema: JsonSchema, value: string, path: string, out: Violation[]): void {
   if (schema.minLength !== undefined && value.length < schema.minLength) {
-    out.push({ expected: `string length >= ${schema.minLength}`, got: `length ${value.length}`, path });
+    out.push({
+      expected: `string length >= ${schema.minLength}`,
+      got: `length ${value.length}`,
+      path,
+    });
   }
   if (schema.maxLength !== undefined && value.length > schema.maxLength) {
-    out.push({ expected: `string length <= ${schema.maxLength}`, got: `length ${value.length}`, path });
+    out.push({
+      expected: `string length <= ${schema.maxLength}`,
+      got: `length ${value.length}`,
+      path,
+    });
   }
   if (schema.pattern !== undefined && !new RegExp(schema.pattern).test(value)) {
     out.push({ expected: `match /${schema.pattern}/`, got: describeValue(value), path });
@@ -193,9 +241,10 @@ function deepEqual(a: unknown, b: unknown): boolean {
     const aKeys = Object.keys(a as object);
     const bKeys = Object.keys(b as object);
     if (aKeys.length !== bKeys.length) return false;
-    return aKeys.every((key) =>
-      Object.prototype.hasOwnProperty.call(b, key) &&
-      deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
+    return aKeys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(b, key) &&
+        deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
     );
   }
   return false;

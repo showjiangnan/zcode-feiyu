@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // ============================================================
 // 工具卡 renderer 注册表：tool identity → 具体 renderer 组件
 // ============================================================
@@ -41,6 +41,7 @@ import { CuaGroupToolCallBlock } from "@/ToolCallBlocks/renderers/cua-group.js";
 import { GoalToolCallBlock } from "@/ToolCallBlocks/renderers/goal.js";
 import { NodeReplToolCallBlock } from "@/ToolCallBlocks/renderers/node-repl.js";
 import { McpToolCallBlock, readMcpToolPresentation } from "@/ToolCallBlocks/renderers/mcp.js";
+import * as PluginUi from "@/plugin-ui/index.js";
 import { PlanGuidanceToolCallBlock } from "@/ToolCallBlocks/renderers/plan-guidance.js";
 import { ReadToolCallBlock } from "@/ToolCallBlocks/renderers/read.js";
 import { ReadSessionContextToolCallBlock } from "@/ToolCallBlocks/renderers/read-session-context.js";
@@ -130,6 +131,7 @@ export function resolveToolCallRenderer(context: ToolCallBlockRenderContext) {
   if (identity.family === "node-repl") {
     return NodeReplToolCallBlock;
   }
+  if (PluginUi.shouldRenderPluginUi(context)) return PluginUi.PluginUiToolCallBlock;
   if (readMcpToolPresentation(context)) {
     return McpToolCallBlock;
   }

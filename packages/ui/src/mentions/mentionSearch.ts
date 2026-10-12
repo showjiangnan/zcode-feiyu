@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { MentionItem } from "@/mentions/mentionTypes.js";
 
 /**
@@ -122,6 +123,10 @@ function sortScoredItems<T>(
       return getLabel(left.item).localeCompare(getLabel(right.item));
     })
     .map((item) => item.item);
+}
+
+export function filterMentionItems(items: MentionItem[], query: string): MentionItem[] {
+  return filterMentionItemsWithOptions(items, query);
 }
 
 function applyMentionItemLimit(items: MentionItem[], limit?: number): MentionItem[] {

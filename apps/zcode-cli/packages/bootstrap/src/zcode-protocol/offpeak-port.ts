@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { OffPeakPort, OffPeakTaskSummary } from "@zcode/contracts";
 import {
   zcodeOffPeakCreateResultSchema,
@@ -10,11 +11,11 @@ import type {
   ZCodeProtocolSessionRecord,
 } from "./server-types.js";
 
-const OFF_PEAK_CREATE_FROM_OFF_PEAK_RUN_ERROR =
+export const OFF_PEAK_CREATE_FROM_OFF_PEAK_RUN_ERROR =
   "Cannot create an idle-time task while running an idle-time task.";
-const OFF_PEAK_CREATE_IN_BOUND_SESSION_ERROR =
+export const OFF_PEAK_CREATE_IN_BOUND_SESSION_ERROR =
   "This session already has a pending idle-time task. Wait for it to finish (or cancel it in Automations) before creating another one here.";
-const OFF_PEAK_CREATE_BOUND_SESSION_CHECK_ERROR =
+export const OFF_PEAK_CREATE_BOUND_SESSION_CHECK_ERROR =
   "Cannot verify whether this session already has a pending idle-time task; try again later.";
 
 const OFF_PEAK_TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"]);

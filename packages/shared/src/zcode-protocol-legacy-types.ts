@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- re-home 产物：旧协议消息/会话承重类型集中迁移，保持单文件契约面。 */
 // re-home 迁移产物（为删除旧协议树铺路）。
 // 本文件承载旧 ZCode Protocol 中仍被存活栈（validation/background-task-notifications/
@@ -14,11 +15,13 @@ const timestampMsSchema = z.number().int().nonnegative();
 export const zcodeDeliveryKindSchema = z.enum(["desktop-continuous", "web-remote-replayable"]);
 export const zcodeMessageVisibilitySchema = z.enum(["user-visible", "model-only"]);
 export const zcodeSyntheticUserMessageSourceSchema = z.enum([
+  "agent_listing_delta",
   "background_task",
   "fork",
   "goal_state_change",
   "goal-continuation",
   "plugin_reference",
+  "bot_topic_context",
   "rewind",
   "selection_side_chat",
   "subagent",
@@ -71,7 +74,7 @@ export const zcodePermissionResponseSchema = z
   })
   .strict();
 export type ZCodePermissionResponse = z.infer<typeof zcodePermissionResponseSchema>;
-export const zcodeSessionModeSchema = z.enum(["plan", "build", "edit", "yolo", "auto"]);
+export const zcodeSessionModeSchema = z.enum(["plan", "build", "edit", "yolo", "guarded", "auto"]);
 export const zcodeSessionStatusSchema = z.enum([
   "idle",
   "running",

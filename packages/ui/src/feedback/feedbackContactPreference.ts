@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 const FEEDBACK_CONTACT_STORAGE_KEY = "zcode.feedback.contact";
 
 function getStorage(): Storage | null {
@@ -17,7 +18,7 @@ export function readFeedbackContactPreference(storage: Storage | null = getStora
   }
 }
 
-function clearFeedbackContactPreference(storage: Storage | null = getStorage()): void {
+export function clearFeedbackContactPreference(storage: Storage | null = getStorage()): void {
   if (!storage) return;
   try {
     storage.removeItem(FEEDBACK_CONTACT_STORAGE_KEY);

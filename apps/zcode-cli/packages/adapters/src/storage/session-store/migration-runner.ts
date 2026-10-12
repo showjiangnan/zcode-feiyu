@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   classifyDatabaseStartupError,
   databaseMigrationIdSchema,
@@ -42,7 +43,7 @@ export interface AsyncSqliteMigrationOptions {
   onProgress?: (progress: SqliteMigrationProgress) => Promise<void>;
 }
 
-const DEFAULT_SQLITE_MIGRATION_WAIT_MS = 60 * 60_000;
+export const DEFAULT_SQLITE_MIGRATION_WAIT_MS = 60 * 60_000;
 const ASYNC_NATIVE_BUSY_TIMEOUT_MS = 25;
 type MigrationStep = SqliteMigrationProgress | { delayMs: number };
 
@@ -70,6 +71,7 @@ export async function runSqliteSessionMigrationsAsync(
     options.lockWaitTimeoutMs ?? DEFAULT_SQLITE_MIGRATION_WAIT_MS,
   );
   let failed = false;
+  let cleanupFailure: { error: unknown } | undefined;
   try {
     for (const step of steps) {
       if ("delayMs" in step)
@@ -91,9 +93,11 @@ export async function runSqliteSessionMigrationsAsync(
       steps.return();
       db.exec(`pragma busy_timeout = ${DEFAULT_SQLITE_STARTUP_LOCK_TIMEOUT_MS}`);
     } catch (error) {
-      if (!failed) throw error;
+      // 清理异常不能从 finally 覆盖原异常；成功路径在 finally 外传播清理失败。
+      if (!failed) cleanupFailure = { error };
     }
   }
+  if (cleanupFailure) throw cleanupFailure.error;
 }
 
 function* migrationSteps(

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // ============================================================
 // Context Builder Types
 // ============================================================
@@ -107,6 +107,7 @@ export interface ContextBuilderConfig {
   /** 当前步骤的执行对象，不进入 Context Source 或持久化环境快照。 */
   model?: Model;
   presentationSurface?: PresentationSurface;
+  genUiOutputDirectory?: string;
   currentDate?: string;
   userInstructions?: ResolvedUserInstructions;
   projectContext?: ProjectContext;

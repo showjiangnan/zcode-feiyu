@@ -1,4 +1,5 @@
-interface ShareHeaderMeasurements {
+// Modified by ZCode Feiyu.
+export interface ShareHeaderMeasurements {
   /** 分享 Header shell 的宽度。 */
   shellWidth: number;
   /** 内容 rail 左右边缘到 shell 边缘的距离。 */

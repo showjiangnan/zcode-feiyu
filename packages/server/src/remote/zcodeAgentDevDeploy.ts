@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 开发态 agent 部署包含本地打包、远端 owner staging 与 wrapper 安装，后续独立拆分上传事务。 */
 import { ZCODE_AGENT_PROVIDER, resolveZCodeRuntimeEnv } from "@zcode/shared";
 import { createHash, randomUUID } from "node:crypto";
@@ -15,6 +16,7 @@ import {
 import {
   buildWriteLiteralFileCommand,
   quotePosixPathArg,
+  quotePosixShellArg,
 } from "@zcode/server/remote/posixShell.js";
 import { createTarGzArchive } from "@zcode/server/remote/localTarGz.js";
 import {
@@ -196,6 +198,7 @@ async function shouldSkipDevelopmentZCodeAgentDeploy(params: {
   runtimeResourceDir: string;
   runtimeVersion: string;
   devVersion: string;
+  localBundleSha256: string;
   force: boolean;
   missingOfficialPluginAssetPaths: string[];
   loggers: DeployLoggers;
@@ -237,6 +240,25 @@ async function shouldSkipDevelopmentZCodeAgentDeploy(params: {
   }
 
   if (params.missingOfficialPluginAssetPaths.length > 0) {
+    return false;
+  }
+
+  // 旧发布包或另一客户端可能覆盖 bundle，却留下相同的 .dev-version。
+  // 标记只描述上次部署意图；跳过上传前必须在远端校验实际文件，避免 PAT 交给旧版 Agent 的过时鉴权逻辑。
+  const verifyBundleScript =
+    "require('node:fs/promises').readFile(process.argv[1]).then(content => {" +
+    "process.exitCode = require('node:crypto').createHash('sha256').update(content).digest('hex') === process.argv[2] ? 0 : 1;" +
+    "}).catch(() => { process.exitCode = 1; });";
+  try {
+    await waitForClose(
+      await params.backend.exec(
+        `"\${ZCODE_SERVER_RUNTIME_ROOT:-$HOME/.zcode/server}/node" -e ${quotePosixShellArg(verifyBundleScript)} ${quotePosixPathArg(params.remoteBundlePath)} ${quotePosixShellArg(params.localBundleSha256)}`,
+      ),
+    );
+  } catch {
+    params.loggers.logWarn(
+      `[zcode-agent-deploy] ${ZCODE_AGENT_PROVIDER}: 远端 bundle SHA 不匹配或无法校验，重新上传`,
+    );
     return false;
   }
 
@@ -376,6 +398,9 @@ export async function deployDevelopmentZCodeAgentRuntime(
       runtimeResourceDir: params.runtimeResourceDir,
       runtimeVersion: params.runtimeVersion,
       devVersion,
+      localBundleSha256: createHash("sha256")
+        .update(await readFile(developmentBundle.localBundlePath))
+        .digest("hex"),
       force: params.force,
       missingOfficialPluginAssetPaths,
       loggers,

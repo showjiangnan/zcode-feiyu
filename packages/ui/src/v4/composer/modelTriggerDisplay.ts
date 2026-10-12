@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
   resolveModelProviderFamilyIdByProviderId,
@@ -5,7 +6,7 @@ import {
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
 import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
 
-interface V4ModelTriggerDisplay {
+export interface V4ModelTriggerDisplay {
   fullLabel: string;
   modelLabel: string;
   providerPrefix?: string;
@@ -95,8 +96,7 @@ export function resolveV4ModelTriggerDisplay({
   providerId: string | undefined;
   providerName?: string;
 }): V4ModelTriggerDisplay {
-  // 把 provider/model 预先拼成单一字符串后，响应式布局只能整段隐藏或依赖
-  // 平台 JS 分支裁剪；这里保留结构化前缀，让 composer 容器断点统一决定可见密度。
+  // 输入框展示与供应来源提示分别投影；不从拼接文案中裁剪名称，避免同名连接串选。
   const fullLabel = resolveV4ModelTriggerLabel({
     modelGroups,
     normalizedValue,
@@ -113,17 +113,6 @@ export function resolveV4ModelTriggerDisplay({
   }
 
   const modelLabel = selectedItem.name;
-  const normalizedProviderName = providerName?.trim() || providerId;
-  if (
-    !normalizedProviderName ||
-    (providerId && resolveModelProviderFamilyIdByProviderId(providerId))
-  ) {
-    return { fullLabel, modelLabel };
-  }
-
-  return {
-    fullLabel,
-    providerPrefix: `${normalizedProviderName}/`,
-    modelLabel,
-  };
+  // 输入框仅展示模型名；供应商身份仍由菜单分组、提示和历史切换事实保留。
+  return { fullLabel, modelLabel };
 }

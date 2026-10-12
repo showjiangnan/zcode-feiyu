@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { mkdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";

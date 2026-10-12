@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   getIpAddressVersion,
   getPublicEgressIpBlockReason,
@@ -100,9 +101,7 @@ function isPublicHost(url: URL): boolean {
   return getBlockedHostReason(url) === undefined;
 }
 
-function getBlockedHostReason(
-  url: URL,
-): { hostname: string; message: string } | undefined {
+function getBlockedHostReason(url: URL): { hostname: string; message: string } | undefined {
   const hostname = normalizeHostname(url.hostname);
   if (hostname.length === 0) {
     return { hostname, message: "URL must include a hostname" };

@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+// Modified by ZCode Feiyu.
 import {
   auth,
   type FetchLike,
@@ -9,16 +9,20 @@ import {
   type OAuthTokens,
 } from "@modelcontextprotocol/client";
 import type { Logger, McpOAuthConfig } from "@zcode/contracts";
+import { createHash, randomBytes } from "node:crypto";
 import {
   createLocalhostOAuthCallbackServer,
   type LocalhostOAuthCallbackServer,
 } from "../auth/localhost-callback.js";
 import type { SharedZCodeCredentialStore } from "../auth/shared-credentials.js";
+import { loadCanonicalCredentials, publishCanonicalCredentials } from "./oauth-credentials.js";
 import {
-  loadCanonicalCredentials,
-  publishCanonicalCredentials,
-  type CanonicalCredentialSnapshot,
-} from "./oauth-credentials.js";
+  hashIdentifier,
+  hasNewerCredentials,
+  logContext,
+  normalizeCallbackPath,
+  sleep,
+} from "./oauth-interactive-response.js";
 import {
   deletePendingAuthorizationIfOwned,
   loadPendingAuthorization,
@@ -32,11 +36,15 @@ import {
 } from "./oauth-shared.js";
 import { withTimeout } from "./timeout.js";
 
-type McpAuthorizationCodeOAuthConfig = Extract<McpOAuthConfig, { type: "authorization_code" }>;
+export type McpAuthorizationCodeOAuthConfig = Extract<
+  McpOAuthConfig,
+  { type: "authorization_code" }
+>;
 
 /** 授权事务的全局寿命。与 caller 等待预算（session 15s）无关，由 caller 侧独立收口。 */
 export const MCP_OAUTH_AUTHORIZATION_TRANSACTION_TTL_MS = 5 * 60 * 1000;
-const FOLLOWER_POLL_INTERVAL_MS = 500;
+
+export const FOLLOWER_POLL_INTERVAL_MS = 500;
 
 export type McpInteractiveAuthorizationOutcome =
   /** 本次调用完成了授权，凭据已发布。 */
@@ -47,7 +55,7 @@ export type McpInteractiveAuthorizationOutcome =
   | { status: "pending"; authorizationUrl?: string }
   | { status: "failed"; error: unknown };
 
-interface McpInteractiveAuthorizationInput {
+export interface McpInteractiveAuthorizationInput {
   adapterInstanceId?: string;
   config: McpAuthorizationCodeOAuthConfig;
   credentialStore: SharedZCodeCredentialStore;
@@ -110,7 +118,7 @@ export async function runMcpInteractiveAuthorization(
   }
 }
 
-async function leadAuthorization(
+export async function leadAuthorization(
   input: McpInteractiveAuthorizationInput,
   context: {
     attemptId: string;
@@ -209,7 +217,7 @@ async function leadAuthorization(
   }
 }
 
-async function followAuthorization(
+export async function followAuthorization(
   input: McpInteractiveAuthorizationInput,
   baselineGeneration: string | undefined,
   transactionTtlMs: number,
@@ -243,7 +251,7 @@ async function followAuthorization(
   return { status: "pending", ...(projectedUrl ? { authorizationUrl: projectedUrl } : {}) };
 }
 
-/**
+export /**
  * Phase 2 专用 OAuthClientProvider。
  *
  * 与 Phase 1 的纯 AuthProvider 相反，这里必须是完整 `OAuthClientProvider` 才能驱动 `auth()`；
@@ -447,51 +455,4 @@ class InteractiveAuthorizationProvider implements OAuthClientProvider {
       processId: process.pid,
     };
   }
-}
-
-function hasNewerCredentials(
-  current: CanonicalCredentialSnapshot | undefined,
-  baselineGeneration: string | undefined,
-): boolean {
-  return Boolean(current?.tokens && current.generation !== baselineGeneration);
-}
-
-function normalizeCallbackPath(value: string | undefined, serverName: string): string {
-  const fallback = `/oauth/callback/mcp/${encodeURIComponent(serverName)}`;
-  if (!value) return fallback;
-  return value.startsWith("/") ? value : `/${value}`;
-}
-
-function logContext(
-  input: McpInteractiveAuthorizationInput,
-  state?: string,
-): Record<string, unknown> {
-  return {
-    adapterInstanceId: input.adapterInstanceId,
-    credentialKeyPrefix: input.keyPrefix,
-    mcpServerName: input.serverName,
-    ...(state
-      ? { oauthStateId: createHash("sha256").update(state).digest("hex").slice(0, 16) }
-      : {}),
-    processId: process.pid,
-  };
-}
-
-function hashIdentifier(value: string | undefined): string | undefined {
-  if (!value) return undefined;
-  return createHash("sha256").update(value).digest("hex").slice(0, 12);
-}
-
-function sleep(durationMs: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      signal?.removeEventListener("abort", onAbort);
-      resolve();
-    }, durationMs);
-    const onAbort = () => {
-      clearTimeout(timer);
-      resolve();
-    };
-    signal?.addEventListener("abort", onAbort, { once: true });
-  });
 }

@@ -1,13 +1,7 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import {
   RESPOND_TO_COORDINATOR_TOOL_NAME,
   RespondToCoordinatorOutputSchema,
-  MCP_TOOL_DISPLAY_MAX_DESCRIPTION_CHARS,
-  MCP_TOOL_DISPLAY_MAX_NAME_CHARS,
-  CUA_TARGET_APP_DISPLAY_META_KEY,
-  cuaTargetAppDisplaySchema,
-  nodeReplCuaAppDisplaySchema,
-  ZCODE_MCP_NODE_REPL_CUA_APP_META_KEY,
   SEND_MESSAGE_TOOL_NAME,
   SendMessageOutputSchema,
   TASK_OUTPUT_DISPLAY_MAX_OUTPUT_CHARS,
@@ -17,7 +11,6 @@ import {
   TASK_STOP_TOOL_NAME,
   TaskStopOutputSchema,
   type DiffHunk,
-  type NodeReplCuaAppDisplay,
   type ToolResultDisplayPayload,
 } from "@zcode/contracts";
 import { createBashResultDisplay } from "./bash-result-display.js";
@@ -26,84 +19,35 @@ import { countPatchLines } from "../diff.js";
 import { boundDisplayText } from "./display-text.js";
 import { createCreateWorkflowDisplay } from "./create-workflow-display.js";
 import { createWorkflowObservationDisplay } from "./workflow-observation-display.js";
+import { isRecord } from "./utils.js";
+
+import { type McpToolDisplayMetadata, createMcpToolDisplay } from "./mcp-result-display.js";
+import {
+  readCuaToolName,
+  createCuaToolResultDisplay,
+  createNodeReplDisplay,
+} from "./cua-result-display.js";
+export { type McpToolDisplayMetadata, createMcpToolDisplay } from "./mcp-result-display.js";
+export { MAX_NODE_REPL_DISPLAY_IMAGE_BASE64_BYTES } from "./cua-result-display.js";
+// 按职责拆分；保留原始规则、执行顺序与状态所有者。
 
 // 拆到 create-workflow-display.ts 后保持既有导出面（handlers/create-workflow.ts 仍从这里 import）。
 export { createCreateWorkflowDisplay } from "./create-workflow-display.js";
-import { isRecord } from "./utils.js";
-import { parseOfficialMcpToolError, type OfficialMcpToolErrorCode } from "@zcode/shared";
-import {
-  CUA_REQUEST_ACCESS_STATUS_META_KEY,
-  cuaRequestAccessStatusSchema,
-} from "@zcode/zcode-cua/request-access-contract";
 
 const MAX_DISPLAY_DIFF_HUNKS = 8;
+
 const MAX_DISPLAY_DIFF_LINES = 160;
+
 const MAX_SEND_MESSAGE_DISPLAY_FIELD_BYTES = 4 * 1024;
+
 const MAX_TASK_STOP_DISPLAY_FIELD_BYTES = 16 * 1024;
-export const MAX_NODE_REPL_DISPLAY_IMAGE_BASE64_BYTES = 200 * 1024;
-const MAX_NODE_REPL_DISPLAY_IMAGES = 2;
-
-export function createMcpToolDisplay(
-  metadata:
-    | {
-        serverName: string;
-        toolName: string;
-        description?: string;
-        official?: boolean;
-      }
-    | undefined,
-  output?: unknown,
-): ToolResultDisplayPayload | undefined {
-  if (!metadata) return undefined;
-  const serverName = boundMcpDisplayText(metadata.serverName, MCP_TOOL_DISPLAY_MAX_NAME_CHARS);
-  const toolName = boundMcpDisplayText(metadata.toolName, MCP_TOOL_DISPLAY_MAX_NAME_CHARS);
-  if (!serverName || !toolName) return undefined;
-  const description = metadata.description
-    ? boundMcpDisplayText(metadata.description, MCP_TOOL_DISPLAY_MAX_DESCRIPTION_CHARS)
-    : undefined;
-  const unavailable = metadata.official ? readOfficialMcpUnavailable(output) : undefined;
-  return {
-    kind: "mcp_tool",
-    serverName,
-    toolName,
-    ...(description ? { description } : {}),
-    ...(unavailable ? { unavailable } : {}),
-  };
-}
-
-/**
- * 官方 Server MCP 在配额耗尽 / 无 Coding Plan 时把结构化标识渲染进 tool error content 的
- * JSON 文本（服务端 `ToolError.Error()`）。这里只读该标识，不解析普通错误文案。
- *
- * 仅在 `metadata.official` 为真时才会走到，而该标记只对 **http** 官方 MCP 置位——那种形态的
- * 响应来自已校验 origin 的 ZCode 后端。stdio 官方 MCP 与第三方 MCP 塞同样的 payload 一律忽略：
- * 它们的结果由插件进程自己产出，可以伪造一条 Coding Plan 提示误导用户去购买。
- */
-function readOfficialMcpUnavailable(
-  output: unknown,
-): { code: OfficialMcpToolErrorCode } | undefined {
-  if (!isRecord(output) || output.isError !== true || !Array.isArray(output.content)) {
-    return undefined;
-  }
-  for (const block of output.content) {
-    if (!isRecord(block) || block.type !== "text" || typeof block.text !== "string") continue;
-    const parsed = parseOfficialMcpToolError(block.text);
-    if (parsed) return { code: parsed.code };
-  }
-  return undefined;
-}
 
 export function createToolResultDisplay(
   toolName: string,
   output: unknown,
   options?: {
     officialCua?: boolean;
-    mcp?: {
-      serverName: string;
-      toolName: string;
-      description?: string;
-      official?: boolean;
-    };
+    mcp?: McpToolDisplayMetadata;
   },
 ): ToolResultDisplayPayload | undefined {
   if (toolName === "Bash") return createBashResultDisplay(output);
@@ -227,195 +171,6 @@ export function createToolResultDisplay(
     deletions,
     structuredPatch: boundedPatch,
     truncated,
-  };
-}
-
-function boundMcpDisplayText(value: string, maxChars: number): string | undefined {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  const bounded = trimmed.slice(0, maxChars);
-  // MCP discovery 是外部输入，直接 slice 可能在 UTF-16 surrogate pair
-  // 中间截断，生成无法稳定跨事件、持久化和 replayable snapshot 的字符串。
-  // 若边界落在高位 surrogate 后，丢弃这个半字符，保证 display 始终可安全序列化。
-  const lastCodeUnit = bounded.charCodeAt(bounded.length - 1);
-  return lastCodeUnit >= 0xd800 && lastCodeUnit <= 0xdbff ? bounded.slice(0, -1) : bounded;
-}
-
-const MAX_CUA_DISPLAY_FIELD_BYTES = 32 * 1024;
-const MAX_CUA_INLINE_MEDIA_BYTES = 256 * 1024;
-const MAX_CUA_INLINE_MEDIA_TOTAL_BYTES = 512 * 1024;
-
-function readCuaToolName(toolName: string): string | undefined {
-  // 兼容两种 CUA 工具命名：直接的 `mcp__computer_use__<action>` 与 plugin
-  // 命名空间形式 `mcp__plugin_zcode-cua_computer-use__<action>`。
-  // 归一化（小写 + `-`→`_`）后：名字包含 `computer_use`，且 action 是最后一个 `__` 之后的子串。
-  const normalized = toolName.trim().toLowerCase().replaceAll("-", "_");
-  if (!normalized.includes("computer_use")) return undefined;
-  const lastSep = normalized.lastIndexOf("__");
-  if (lastSep === -1) return undefined;
-  const action = normalized.slice(lastSep + "__".length);
-  return action.length > 0 ? action : undefined;
-}
-
-function createCuaToolResultDisplay(
-  toolName: string,
-  output: unknown,
-  officialCua: boolean,
-): ToolResultDisplayPayload {
-  const result = isRecord(output) ? output : {};
-  const content = Array.isArray(result.content) ? result.content : [];
-  const text = content
-    .filter(isRecord)
-    .filter((item) => item.type === "text" && typeof item.text === "string")
-    .map((item) => item.text as string)
-    .join("\n");
-  const structuredContent = result.structuredContent;
-  const structuredRecord = isRecord(structuredContent) ? structuredContent : undefined;
-  const errorRecord = isRecord(structuredRecord?.error) ? structuredRecord.error : undefined;
-  const structuredJson =
-    structuredContent === undefined
-      ? undefined
-      : boundDisplayText(safeJson(structuredContent), MAX_CUA_DISPLAY_FIELD_BYTES);
-  const boundedText = text ? boundDisplayText(text, MAX_CUA_DISPLAY_FIELD_BYTES) : undefined;
-  // artifact URI 只在 Agent 本地可读，直接投影会让多端 UI 收到无法渲染的媒体。
-  // 在受控读取 API 建立前，display 只承载可直接渲染的内联图片。
-  const media: Array<{ mimeType: string; data: string }> = [];
-  let inlineMediaBytes = 0;
-  let mediaTruncated = false;
-  for (const item of content) {
-    if (!isRecord(item)) continue;
-    let projectedMedia: { mimeType: string; data: string } | undefined;
-    let decodedBytes = 0;
-    if (
-      item.type === "image" &&
-      typeof item.mimeType === "string" &&
-      typeof item.data === "string"
-    ) {
-      decodedBytes = Buffer.byteLength(item.data, "base64");
-      projectedMedia = { mimeType: item.mimeType, data: item.data };
-    }
-    if (!projectedMedia) continue;
-    // media 配额只约束真实媒体，前置 text block 不能吞掉截图位置。
-    if (media.length >= 4) {
-      mediaTruncated = true;
-      break;
-    }
-    if (
-      decodedBytes > MAX_CUA_INLINE_MEDIA_BYTES ||
-      inlineMediaBytes + decodedBytes > MAX_CUA_INLINE_MEDIA_TOTAL_BYTES
-    ) {
-      mediaTruncated = true;
-      continue;
-    }
-    inlineMediaBytes += decodedBytes;
-    media.push(projectedMedia);
-  }
-  const truncated =
-    mediaTruncated || structuredJson?.truncated === true || boundedText?.truncated === true;
-  const meta = isRecord(result._meta) ? result._meta : undefined;
-  const targetApp = officialCua
-    ? cuaTargetAppDisplaySchema.safeParse(meta?.[CUA_TARGET_APP_DISPLAY_META_KEY])
-    : undefined;
-  const permissionStatus =
-    officialCua && toolName === "request_access"
-      ? cuaRequestAccessStatusSchema.safeParse(meta?.[CUA_REQUEST_ACCESS_STATUS_META_KEY])
-      : undefined;
-
-  // MCP modelContent 会把 structuredContent 展平成文本；在展平前生成独立、有限长的
-  // display，才能让实时事件和历史会话稳定区分 CUA 错误与结构化结果。
-  return {
-    kind: "cua",
-    schemaVersion: 1,
-    toolName,
-    status: result.isError === true ? "failed" : "success",
-    ...(structuredJson ? { structuredContent: structuredJson.value } : {}),
-    ...(boundedText ? { text: boundedText.value } : {}),
-    ...(typeof errorRecord?.code === "string" ? { errorCode: errorRecord.code } : {}),
-    ...(typeof errorRecord?.suggested_action === "string"
-      ? { suggestedAction: errorRecord.suggested_action }
-      : {}),
-    ...(targetApp?.success ? { targetApp: targetApp.data } : {}),
-    ...(permissionStatus?.success ? { permissionStatus: permissionStatus.data } : {}),
-    ...(media.length > 0 ? { media } : {}),
-    ...(truncated ? { truncated: true } : {}),
-  };
-}
-
-function safeJson(value: unknown): string {
-  try {
-    return JSON.stringify(value ?? null);
-  } catch {
-    return "null";
-  }
-}
-
-/**
- * 读取宿主写入的 CUA 目标应用身份。
- *
- * 只认 `zcode/nodeReplCuaApp`：producer 自己的 `zcode.cua/app-associations-v1` 也可能出现在
- * `_meta` 里，但那个键经模型可写的 `nodeRepl.setResponseMeta` /
- * `nodeRepl.emitStructuredResult` 同样能到达，宿主已在 toMcpRunResult 里把它删掉。这里不做
- * 第二次兜底解析，避免把已经判定为不可信的来源重新接回展示面。
- */
-function readNodeReplCuaApp(output: Record<string, unknown>): NodeReplCuaAppDisplay | undefined {
-  const meta = isRecord(output._meta) ? output._meta : undefined;
-  const parsed = nodeReplCuaAppDisplaySchema.safeParse(
-    meta?.[ZCODE_MCP_NODE_REPL_CUA_APP_META_KEY],
-  );
-  return parsed.success ? parsed.data : undefined;
-}
-
-function createNodeReplDisplay(
-  toolName: string,
-  output: unknown,
-): ToolResultDisplayPayload | undefined {
-  if (toolName !== "js" && toolName !== "mcp__node_repl__js") return undefined;
-  if (!isRecord(output)) return undefined;
-
-  const candidates = [
-    ...(Array.isArray(output.images) ? output.images : []),
-    ...(Array.isArray(output.content) ? output.content : []),
-  ];
-  const images: Array<{ base64: string; mimeType: string }> = [];
-  let truncated = false;
-
-  for (const candidate of candidates) {
-    if (!isRecord(candidate)) continue;
-    const mimeType = candidate.mimeType;
-    const encoded = candidate.base64 ?? candidate.data;
-    if (
-      typeof mimeType !== "string" ||
-      !/^image\/[a-z0-9.+-]+$/iu.test(mimeType) ||
-      typeof encoded !== "string"
-    ) {
-      continue;
-    }
-    const base64 = encoded.startsWith("data:")
-      ? encoded.slice(Math.max(0, encoded.indexOf(",") + 1))
-      : encoded;
-    if (
-      base64.length === 0 ||
-      Buffer.byteLength(base64, "utf8") > MAX_NODE_REPL_DISPLAY_IMAGE_BASE64_BYTES
-    ) {
-      truncated = true;
-      continue;
-    }
-    if (images.length >= MAX_NODE_REPL_DISPLAY_IMAGES) {
-      truncated = true;
-      continue;
-    }
-    images.push({ base64, mimeType });
-  }
-
-  // 纯动作 cell（点击、输入）没有截图，但仍要把 App 身份投影给工具卡的 leading icon；
-  // 因此不能再以「有图」作为产出 display 的唯一条件。
-  const app = readNodeReplCuaApp(output);
-  if (images.length === 0 && !app) return undefined;
-  return {
-    kind: "node_repl_images",
-    ...(images.length > 0 ? { images } : {}),
-    ...(app ? { app } : {}),
-    ...(truncated ? { truncated: true } : {}),
   };
 }
 

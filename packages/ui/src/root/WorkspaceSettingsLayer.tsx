@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useEffect } from "react";
 import { SettingsPage } from "@/SettingsPage.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
@@ -11,6 +12,7 @@ export function WorkspaceSettingsLayer({
   isDesktop,
   isMacDesktop,
   isWindowsDesktop,
+  isWebRemoteControl,
   windowsWindowControlsRightPaddingPx,
   captionWorkspacePath,
   onBack,
@@ -38,6 +40,7 @@ export function WorkspaceSettingsLayer({
             isDesktop={isDesktop}
             isMacDesktop={isMacDesktop}
             isWindowsDesktop={isWindowsDesktop}
+            isWebRemoteControl={isWebRemoteControl}
             windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
             captionWorkspacePath={captionWorkspacePath}
             onBack={onBack}
@@ -56,6 +59,7 @@ export function WorkspaceSettingsLayer({
           isDesktop={isDesktop}
           isMacDesktop={isMacDesktop}
           isWindowsDesktop={isWindowsDesktop}
+          isWebRemoteControl={isWebRemoteControl}
           windowsWindowControlsRightPaddingPx={windowsWindowControlsRightPaddingPx}
           captionWorkspacePath={captionWorkspacePath}
           onBack={onBack}

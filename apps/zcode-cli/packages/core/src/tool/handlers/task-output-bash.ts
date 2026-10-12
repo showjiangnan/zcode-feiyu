@@ -1,14 +1,15 @@
+// Modified by ZCode Feiyu.
 import { open } from "node:fs/promises";
 import type { BackgroundExecutionSnapshot, TaskOutputTask } from "@zcode/contracts";
 import type { RuntimeTaskSnapshot } from "../../runtime-task/registry.js";
 import type { ToolExecutionContext } from "../types.js";
 
-interface ProjectBashTaskOptions {
+export interface ProjectBashTaskOptions {
   readOutputFile: (path: string | undefined) => Promise<TaskOutputFileRead>;
   runningOutputPrefixBytes: number;
 }
 
-interface TaskOutputFileRead {
+export interface TaskOutputFileRead {
   available: boolean;
   content: string;
   truncated: boolean;

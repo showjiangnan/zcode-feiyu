@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
 import type { ZCodeAutomationRunOutcome, ZCodeAutomationTrigger } from "@zcode/shared";
 
-interface CronRunLifecycleRepo {
+export interface CronRunLifecycleRepo {
   ensureRunClaimed(params: {
     runId: string;
     automationId: string;
@@ -18,7 +19,7 @@ interface CronRunLifecycleRepo {
   releaseManualClaim(automationId: string, workspaceKey: string): Promise<void>;
 }
 
-interface CronRunLifecycleIdentity {
+export interface CronRunLifecycleIdentity {
   runId: string;
   automationId: string;
   workspaceKey: string;
@@ -69,7 +70,7 @@ export async function recordCronRunOutcomeBestEffort(
   }
 }
 
-async function releaseManualClaimBestEffort(
+export async function releaseManualClaimBestEffort(
   params: Pick<CronRunLifecycleIdentity, "automationId" | "runId" | "workspaceKey"> & {
     repo: Pick<CronRunLifecycleRepo, "releaseManualClaim">;
     logWarn: LogWarn;

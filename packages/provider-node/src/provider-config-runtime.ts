@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   ProviderConfigService,
   type ProviderConfigLayerSnapshot,
@@ -17,6 +18,7 @@ import {
   NodePersonalProviderConfigRepository,
   type PersonalProviderConfigRecoveryEvent,
 } from "./personal-provider-config-repository.js";
+import { NodeManagedProviderConfigSource } from "./managed-provider-config-source.js";
 
 export interface NodeProviderConfigRuntimeOptions {
   readonly zcodeBuiltinFilePath: string;
@@ -30,6 +32,7 @@ export interface NodeProviderConfigRuntimeOptions {
   readonly onPersonalConfigRecovery?: (event: PersonalProviderConfigRecoveryEvent) => void;
   readonly onPersonalConfigPollingError?: (error: unknown) => void;
   readonly personalFilePath: string;
+  readonly managedFilePath?: string;
   readonly personalPollingIntervalMs?: number | false;
   readonly importLegacy?: (
     zcodeBuiltin: ProviderConfigLayerSnapshot,
@@ -44,6 +47,7 @@ export class NodeProviderConfigRuntime {
     | NodeZCodeBuiltinProviderConfigSource
     | EndpointScopedZCodeBuiltinSource;
   readonly #personalRepository: NodePersonalProviderConfigRepository;
+  readonly #managedSource?: NodeManagedProviderConfigSource;
   readonly #remoteSynchronizer?: ZCodeBuiltinRemoteSynchronizer;
   readonly #onRemoteRefreshError?: (error: unknown) => void;
   #startPromise: Promise<void> | null = null;
@@ -83,9 +87,13 @@ export class NodeProviderConfigRuntime {
           }
         : {}),
     });
+    this.#managedSource = options.managedFilePath
+      ? new NodeManagedProviderConfigSource(options.managedFilePath, options.watch !== false)
+      : undefined;
     this.configService = new ProviderConfigService({
       zcodeBuiltinSource: this.#zcodeBuiltinSource,
       personalRepository: this.#personalRepository,
+      managedSource: this.#managedSource,
     });
   }
 
@@ -166,6 +174,7 @@ export class NodeProviderConfigRuntime {
     this.#remoteSynchronizer?.dispose();
     this.configService.dispose();
     this.#personalRepository.dispose();
+    this.#managedSource?.dispose();
     this.#zcodeBuiltinSource.dispose();
   }
 }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { BrowserWindow, ipcMain } from "electron";
 import {
   PlatformChannels,
@@ -64,7 +65,7 @@ export interface BrowserViewResidencyIpcHandlers {
   ): Promise<BrowserViewRestoredTabShell[]>;
 }
 
-function registerBrowserViewIpcHandlers(
+export function registerBrowserViewIpcHandlers(
   attachBrowserGuest?: AttachBrowserGuest,
   updateBrowserGuestViewport?: UpdateBrowserGuestViewport,
   reportBrowserScreenshotSurfaceReady?: ReportBrowserScreenshotSurfaceReady,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { traceContextToLogContext } from "../deps.js";
 import type {
   Logger,
@@ -11,7 +12,7 @@ import {
   officialCuaRasterUnavailableBlock,
 } from "./official-cua-media.js";
 
-interface CompactMediaPlaceholderProjection {
+export interface CompactMediaPlaceholderProjection {
   messages: ModelInputMessage[];
   replacedMediaCount: number;
 }

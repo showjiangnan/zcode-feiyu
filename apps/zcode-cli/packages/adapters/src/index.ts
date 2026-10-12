@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // Adapters layer - external I/O implementations
 export * from "./storage/index.js";
 export * from "./fs/index.js";
@@ -17,3 +18,4 @@ export * from "./auth/index.js";
 export * from "./browser/index.js";
 export * from "./mcp/index.js";
 export * from "./workflow/index.js";
+export * from "./tools/index.js";

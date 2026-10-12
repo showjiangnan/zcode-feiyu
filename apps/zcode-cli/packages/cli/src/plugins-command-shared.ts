@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { Logger } from "@zcode/contracts";
 import type { listZCodePlugins } from "@zcode/bootstrap";
 import { createInterface } from "node:readline";
@@ -28,8 +29,7 @@ export const BOOTSTRAP_EXPORTS = {
 } as const satisfies Record<string, keyof BootstrapModule>;
 
 export type PluginDepName = keyof typeof BOOTSTRAP_EXPORTS;
-export type PluginDepFn<K extends PluginDepName> =
-  BootstrapModule[(typeof BOOTSTRAP_EXPORTS)[K]];
+export type PluginDepFn<K extends PluginDepName> = BootstrapModule[(typeof BOOTSTRAP_EXPORTS)[K]];
 
 export type PluginsCommandOverrides = { [K in PluginDepName]?: PluginDepFn<K> };
 

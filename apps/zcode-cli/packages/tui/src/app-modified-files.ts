@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { formatToolFilePath } from "./app-tool-path-display.js";
 import { asRecord, numberField, stringField } from "./state.js";
 
@@ -78,8 +79,6 @@ function nonNegativeCount(value: number | undefined): number {
   return Math.floor(value);
 }
 
-function compactStats(
-  stats: Array<ModifiedFileStat | undefined>,
-): ModifiedFileStat[] {
+function compactStats(stats: Array<ModifiedFileStat | undefined>): ModifiedFileStat[] {
   return stats.filter((stat): stat is ModifiedFileStat => stat !== undefined);
 }

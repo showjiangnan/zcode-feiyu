@@ -1,8 +1,9 @@
+// Modified by ZCode Feiyu.
+import type { BrowserTabSummary } from "@zcode/contracts";
 import { randomUUID } from "node:crypto";
 import type { BrowserContext, Dialog, Page, ViewportSize } from "playwright-core";
-import type { BrowserTabSummary } from "@zcode/contracts";
 
-interface ManagedCdpTab {
+export interface ManagedCdpTab {
   id: string;
   page: Page;
 }

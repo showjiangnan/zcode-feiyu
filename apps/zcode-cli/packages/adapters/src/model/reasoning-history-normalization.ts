@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import type {
+  ModelId,
   ModelInputMessage,
   ModelMessageContent,
   ModelMessageContentBlock,
-  ModelReasoningContentBlock,
-  ModelId,
   ModelProviderId,
+  ModelReasoningContentBlock,
 } from "@zcode/contracts";
 import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
 import { getStatusCode, unwrapRetryError } from "./failure-inspection.js";
@@ -39,7 +40,7 @@ export function normalizeReasoningHistory(
   return repairEmptyAssistantContent(withoutWhitespaceOnlyAssistants);
 }
 
-function removeRejectedReasoning(messages: ModelInputMessage[]): ModelInputMessage[] {
+export function removeRejectedReasoning(messages: ModelInputMessage[]): ModelInputMessage[] {
   const filtered = filterReasoningBlocks(messages, isSignedOrRedactedReasoning);
   if (filtered === messages) return messages;
 
@@ -73,7 +74,7 @@ export function repairReasoningHistoryAfterSignatureRejection(
   return repaired === projectedMessages ? undefined : repaired;
 }
 
-function isThinkingSignatureRejection(error: unknown): boolean {
+export function isThinkingSignatureRejection(error: unknown): boolean {
   const unwrapped = unwrapRetryError(error);
   if (getStatusCode(unwrapped) !== 400) return false;
 

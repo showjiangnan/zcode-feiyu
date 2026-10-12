@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createContext } from "react";
 import type { TrajectoryVisualRole } from "@/ModelTrajectoryRoleStyles.js";
 
@@ -32,7 +33,7 @@ export interface TrajectoryExpansionOverride {
   commandVersion: number;
 }
 
-interface TrajectoryExpansionRegistry {
+export interface TrajectoryExpansionRegistry {
   overrides: ReadonlyMap<string, TrajectoryExpansionOverride>;
   setOverride: (key: string, override: TrajectoryExpansionOverride) => void;
 }

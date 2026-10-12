@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { localTtftFactsSchema } from "../localTtft.js";
 /* eslint-disable max-lines -- 三个 topic 的 logical/physical/candidate schema 必须共享同一通用传输声明，避免跨文件分叉。 */
 // 传输外壳：连接握手 / 订阅 / 帧信封。
@@ -606,13 +606,24 @@ export type V4ConversationFileChangesResult = z.infer<typeof v4ConversationFileC
 // （`appendEvent` 单调分配），在 workflowRuns[].lastEventSequence 抬升时重取。
 // 刻意**不是** v4 command：command 的 ACK 结果是 commandResultSchema 那个封闭的「变更结果」
 // 判别联合，把一页只读事件塞进去等于把读放进写的词汇表，还要白背 baseRevision/幂等那套机制。
+
+/**
+ * 事件日志一页的两道界，网关按它们取数（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md
+ * 「Reading the journal」）。字节按存储里的序列化字节计、取协议单帧上限的四分之一：条数单独
+ * 管不住字节，500 条带着大 report item 的事件足以顶到单帧上限。
+ */
+export const WORKFLOW_RUN_EVENTS_PAGE_LIMITS = {
+  maxEvents: 500,
+  maxBytes: PROTOCOL_V4_LIMITS.logicalFrameAssemblyMaxBytes / 4,
+} as const;
+
 export const v4ConversationWorkflowRunEventsParamsSchema = z
   .object({
     sessionId: z.string().min(1),
     runId: z.string().min(1),
     /** 只取 sequence 严格大于该值的事件；缺省从头取。 */
     afterSequence: z.number().int().nonnegative().optional(),
-    limit: z.number().int().positive().max(500).optional(),
+    limit: z.number().int().positive().max(WORKFLOW_RUN_EVENTS_PAGE_LIMITS.maxEvents).optional(),
   })
   .strict();
 export type V4ConversationWorkflowRunEventsParams = z.infer<
@@ -633,7 +644,7 @@ export const v4ConversationWorkflowRunEventsResultSchema = z
         })
         .strict(),
     ),
-    /** 本页取满 limit 且后面仍有事件。 */
+    /** 本页之后仍有事件（页可能因条数或字节上界提前收尾）。 */
     hasMore: z.boolean(),
   })
   .strict();
@@ -839,16 +850,16 @@ const v4AttachmentUploadIdSchema = z
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
 const v4AttachmentChecksumSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 
+// 文件名禁止 NUL/CR/LF；命名字符保留 JSON schema 与运行时的精确同一合同。
+const attachmentNullCharacter = String.fromCharCode(0);
+const attachmentFileNamePattern = new RegExp(`^[^${attachmentNullCharacter}\\r\\n]+$`);
+
 export const v4AttachmentBeginParamsSchema = z
   .object({
     connectionId: z.string().min(1),
     uploadId: v4AttachmentUploadIdSchema,
     sessionId: z.string().min(1),
-    fileName: z
-      .string()
-      .min(1)
-      .max(255)
-      .regex(/^[^\0\r\n]+$/),
+    fileName: z.string().min(1).max(255).regex(attachmentFileNamePattern),
     mime: z
       .string()
       .min(3)
@@ -1026,8 +1037,9 @@ export const v4AttachmentReadResultSchema = z
         (value) =>
           value.startsWith("image/") ||
           value.startsWith("video/") ||
-          value.split(";", 1)[0]?.trim().toLowerCase() === "application/pdf",
-        "attachment preview only supports image/video/pdf media types",
+          value.split(";", 1)[0]?.trim().toLowerCase() === "application/pdf" ||
+          value.split(";", 1)[0]?.trim().toLowerCase() === "text/plain",
+        "attachment preview only supports image/video/pdf/plain text types",
       ),
     totalBytes: z.number().int().nonnegative().max(PROTOCOL_V4_LIMITS.attachmentPreviewMaxBytes),
     nextOffset: z.number().int().positive().nullable(),
@@ -1035,7 +1047,9 @@ export const v4AttachmentReadResultSchema = z
   .strict()
   .superRefine((value, context) => {
     if (
-      value.mediaType.startsWith("image/") &&
+      // 根因：运行时已支持材料文本，响应 schema 仍只接受媒体，导致跨进程预览失败。
+      (value.mediaType.startsWith("image/") ||
+        value.mediaType.split(";", 1)[0]?.trim().toLowerCase() === "text/plain") &&
       value.totalBytes > PROTOCOL_V4_LIMITS.attachmentMaxBytes
     ) {
       context.addIssue({
@@ -1043,7 +1057,7 @@ export const v4AttachmentReadResultSchema = z
         maximum: PROTOCOL_V4_LIMITS.attachmentMaxBytes,
         origin: "number",
         inclusive: true,
-        message: "image preview exceeds total byte limit",
+        message: "image/text preview exceeds total byte limit",
         path: ["totalBytes"],
       });
     }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { CuaAppIdentity } from "@zcode/shared/zcode-protocol-v4";
 
 const OFFICIAL_CUA_PREFIXES = [
@@ -21,7 +22,7 @@ function asAppRef(value: unknown): Record<string, unknown> | null {
   return asRecord(value);
 }
 
-function readCuaInputPid(input: unknown): number | null {
+export function readCuaInputPid(input: unknown): number | null {
   const root = asRecord(input);
   const candidates = [root?.app_ref, root?.app, asRecord(root?.target)?.app_ref];
   for (const candidate of candidates) {
@@ -31,7 +32,7 @@ function readCuaInputPid(input: unknown): number | null {
   return null;
 }
 
-function readCuaInputBundleId(input: unknown): string | null {
+export function readCuaInputBundleId(input: unknown): string | null {
   const root = asRecord(input);
   const candidates = [root?.app_ref, root?.app, asRecord(root?.target)?.app_ref];
   for (const candidate of candidates) {

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createHash, createHmac } from "node:crypto";
 import { CUA_APP_ASSOCIATIONS_META_KEY } from "../../host-display-contract.js";
 import { OFFICIAL_CUA_FRAME_INTEGRITY_META_KEY } from "../../frame-contract.js";

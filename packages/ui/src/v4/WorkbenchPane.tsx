@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- WorkbenchLeafPane 集中承载 pane focus、per-pane provider、恢复守卫和 session drop target；拆散会让 DnD/focus/session 绑定链路跨文件跳转，后续稳定后再按职责抽离。 */
 // 分屏叶子 pane：Focus 层外壳 + per-pane 数据面接线 + 恢复守卫。宿主 = V4WorkspaceChatArea。
 import {
@@ -258,6 +259,7 @@ export interface WorkbenchShellBinding {
   /** Prompt 模板埋点当前仅覆盖 Desktop。 */
   isDesktop?: boolean;
   readOnly?: boolean;
+  compactForRemoteControl?: boolean;
   sessionId: string | null;
   /** Shell 当前真正激活的 task；split pane 接管 active task 时不等于 primary sessionId。 */
   activeSessionId?: string | null;
@@ -289,6 +291,7 @@ export interface WorkbenchShellBinding {
   onSyncSubagentSessionTabs?: (request: SyncSubagentSessionTabsRequest) => void;
   onOpenSelectionSideChat?: (request: OpenSelectionSideChatRequest) => void;
   onOpenPlanDetail?: (request: OpenScopedPlanDetailSideTabRequest) => void;
+  /** 插件 UI 侧栏：与 onOpenPlanDetail 同路径经 shell binding 下发到 SessionPane。 */
   onOpenWorkflowRun?: (request: OpenScopedWorkflowRunSideTabRequest) => void;
   onOpenWorkflowArtifact?: (request: OpenScopedWorkflowArtifactSideTabRequest) => void;
   onOpenWorkflowRunDirectory?: (request: OpenScopedWorkflowRunDirectorySideTabRequest) => void;
@@ -302,7 +305,7 @@ export interface WorkbenchShellBinding {
   onSearchResultHighlightDone?: (requestId: number) => void;
 }
 
-interface WorkbenchLeafPaneProps {
+export interface WorkbenchLeafPaneProps {
   paneId: string;
   rect: RectExpr;
   focused: boolean;
@@ -559,6 +562,7 @@ export function WorkbenchLeafPane({
           workspaceIdentity={scope.workspaceIdentity}
           remoteSessionId={scope.remoteSessionId}
           isDesktop={shell.isDesktop}
+          compactForRemoteControl={shell.compactForRemoteControl ?? false}
           provider={isPrimary && isShellWorkspace ? shell.provider : undefined}
           onSessionCreated={handleSessionCreated}
           onSessionDeleted={handleSessionDeleted}
@@ -622,7 +626,7 @@ export function WorkbenchLeafPane({
   );
 }
 
-function resolvePaneActiveSelectionSideChatSessionId(
+export function resolvePaneActiveSelectionSideChatSessionId(
   paneSessionId: string | null,
   shellActiveSessionId: string | null,
   activeSelectionSideChatSessionId: string | null | undefined,

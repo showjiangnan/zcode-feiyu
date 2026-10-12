@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { estimateTokens } from "../context/utils.js";
 
 const DEFAULT_MEMORY_TOKEN_BUDGET = 4_096;

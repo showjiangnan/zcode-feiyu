@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   IPlatformService,
   LoadCliMcpFromUserDirectoryRequest,
@@ -74,6 +75,18 @@ export async function fetchNativeMcpServers(
   }
   const result = await platform.loadMcpFromUserDirectory(payload);
   return result.servers ?? [];
+}
+
+export async function peekLegacyCommonMcpCount(
+  platform: McpPlatformService | null,
+): Promise<number> {
+  try {
+    const result = await fetchLegacyCommonMcp(platform);
+    const count = result.totalCount || Object.keys(result.servers ?? {}).length;
+    return count;
+  } catch {
+    return 0;
+  }
 }
 
 export async function migrateLegacyCommonMcpFromDesktop(

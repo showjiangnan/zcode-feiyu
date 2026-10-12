@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import {
   ZCODE_MCP_BROWSER_SCREENSHOT_CONTENT_INDICES_META_KEY,
   ZCODE_MCP_NODE_REPL_CUA_APP_META_KEY,

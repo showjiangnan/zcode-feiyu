@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { WorkspaceFileEntry } from "@zcode/shared";
 import { logger } from "@/logger.js";
 import { unpackWorkspaceFileEntries } from "@zcode/shared/workspaceFileEntriesCodec";
@@ -34,7 +35,7 @@ export interface WorkspaceFileSearchFilterBackend {
   dispose(): void;
 }
 
-function createSyncWorkspaceFileSearchFilterBackend(): WorkspaceFileSearchFilterBackend {
+export function createSyncWorkspaceFileSearchFilterBackend(): WorkspaceFileSearchFilterBackend {
   let candidates: ReturnType<typeof mapWorkspaceFileEntriesToSearchCandidates> = [];
   let byId: Map<string, WorkspaceFileEntry> = new Map();
   return {

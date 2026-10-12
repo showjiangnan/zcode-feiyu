@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   BOT_TASK_BROADCAST_CHANNEL,
   type ZCodeTaskRuntimeStatus,
@@ -8,9 +9,7 @@ import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
 import type { WindowTabState } from "@/store/tabStore.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 
-function isBotTaskBroadcastPayload(
-  payload: unknown,
-): payload is BotTaskBroadcastPayload {
+function isBotTaskBroadcastPayload(payload: unknown): payload is BotTaskBroadcastPayload {
   if (typeof payload !== "object" || payload === null) {
     return false;
   }
@@ -32,8 +31,7 @@ function isBotTaskBroadcastPayload(
     typeof value.workspacePath === "string" &&
     typeof value.taskId === "string" &&
     typeof value.updatedAt === "number" &&
-    (value.workspaceIdentity === undefined ||
-      typeof value.workspaceIdentity === "string") &&
+    (value.workspaceIdentity === undefined || typeof value.workspaceIdentity === "string") &&
     typeof value.event === "string" &&
     validEvents.has(value.event) &&
     (value.task === undefined ||
@@ -75,8 +73,7 @@ export function resolveBotTaskBroadcastRefresh(
   const hasOpenWorkspace = tabs.some(
     (tab) =>
       isWorkspaceTab(tab) &&
-      buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity) ===
-        targetWorkspaceKey,
+      buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity) === targetWorkspaceKey,
   );
   return hasOpenWorkspace ? message.payload : null;
 }

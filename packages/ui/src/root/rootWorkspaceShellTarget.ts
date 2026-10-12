@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
 
 interface WorkspaceShellTargetTab {
@@ -6,7 +7,7 @@ interface WorkspaceShellTargetTab {
   workspaceIdentity?: string;
 }
 
-interface RootWorkspaceShellTarget {
+export interface RootWorkspaceShellTarget {
   workspaceShellPath: string | null;
   workspaceIdentity?: string;
   workspaceRemoteSessionId?: string;

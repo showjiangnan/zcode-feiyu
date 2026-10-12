@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { randomUUID } from "node:crypto";
 import { resolveStandaloneDeviceMid } from "./standalone-device-mid.js";
 import type {

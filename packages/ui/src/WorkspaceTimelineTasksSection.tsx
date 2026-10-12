@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- timeline 同时承载本地 scoped 查询、远端主动缓存和任务操作分发，先集中保持链路清晰。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -48,6 +48,7 @@ export function WorkspaceTimelineTasksSection({
   groupByDate = true,
   taskRowVariant = "timeline",
   emptyMessage,
+  mobileActiveTaskKey,
   onSelectTask,
 }: {
   workspaceTabs: WorkspaceTabState[];
@@ -58,6 +59,7 @@ export function WorkspaceTimelineTasksSection({
   groupByDate?: boolean;
   taskRowVariant?: "default" | "timeline";
   emptyMessage?: string;
+  mobileActiveTaskKey?: string | null;
   onSelectTask: (
     targetWorkspacePath: string,
     taskId: string,
@@ -706,10 +708,11 @@ export function WorkspaceTimelineTasksSection({
                           isPinned={false}
                           variant={taskRowVariant}
                           isActive={
-                            // timeline 是跨 workspace 视图，active 判断必须使用 workspaceKey，避免同路径远端串高亮。
+                            // Bugfix: timeline 是跨 workspace 视图，active 判断必须使用 workspaceKey，避免同路径远端串高亮。
                             buildTaskWorkspaceKey(item.workspacePath, item.workspaceIdentity) ===
                               activeWorkspaceKey && item.taskId === activeTaskId
                           }
+                          isMobileActive={mobileActiveTaskKey === itemKey}
                           onSelectTask={handlers.onSelectTask}
                           onArchiveTaskInline={handlers.onArchiveTaskInline}
                           onCancelArchiveConfirm={handleCancelArchiveConfirm}

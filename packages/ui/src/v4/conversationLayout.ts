@@ -1,14 +1,18 @@
+// Modified by ZCode Feiyu.
 import type { ChatViewSummaryPanelVariant } from "@/v4/legacyChatViewTypes.js";
 
-const CONVERSATION_DRAFT_CONTENT_WIDTH_CLASS_NAME = "max-w-2xl";
-const CONVERSATION_CONTENT_WITH_STATUS_PANEL_WIDTH_CLASS_NAME =
+export const CONVERSATION_DRAFT_CONTENT_WIDTH_CLASS_NAME = "max-w-2xl";
+export const CONVERSATION_CONTENT_WITH_STATUS_PANEL_WIDTH_CLASS_NAME =
   "w-full @min-[864px]/conversation:w-[calc(100%_-_6rem)] @min-[864px]/conversation:max-w-4xl @min-[1280px]/conversation:w-[calc(100%_-_24rem)] @min-[1280px]/conversation:max-w-6xl";
-const CONVERSATION_CONTENT_WITHOUT_STATUS_PANEL_WIDTH_CLASS_NAME =
+export const CONVERSATION_CONTENT_WITHOUT_STATUS_PANEL_WIDTH_CLASS_NAME =
   "w-full @min-[864px]/conversation:w-[calc(100%_-_6rem)] @min-[864px]/conversation:max-w-4xl @min-[1280px]/conversation:w-[calc(100%_-_24rem)] @min-[1280px]/conversation:max-w-6xl";
-const CONVERSATION_STATUS_PANEL_WIDE_OFFSET_CLASS_NAME =
+
+export const CONVERSATION_STATUS_PANEL_INLINE_OFFSET_CLASS_NAME = "-translate-x-42";
+export const CONVERSATION_STATUS_PANEL_INLINE_OFFSET_PX = 168;
+export const CONVERSATION_STATUS_PANEL_WIDE_OFFSET_CLASS_NAME =
   "@min-[1280px]/conversation:-translate-x-42";
 
-type ConversationStatusPanelResolvedVariant = ChatViewSummaryPanelVariant | "auto";
+export type ConversationStatusPanelResolvedVariant = ChatViewSummaryPanelVariant | "auto";
 
 export function getConversationContentWidthClassName(params: {
   centeredEmptyLayout: boolean;

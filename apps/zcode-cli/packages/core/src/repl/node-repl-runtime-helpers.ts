@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { inspect } from "node:util";
 
 export const PROCESS_MODULE_IDS = new Set(["process", "node:process"]);

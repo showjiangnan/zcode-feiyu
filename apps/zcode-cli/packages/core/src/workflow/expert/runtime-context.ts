@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { randomUUID } from "node:crypto";
 import {
   WorkflowDefinitionSchema,
@@ -7,7 +8,6 @@ import {
   type WorkflowArtifact,
   type WorkflowDefinition,
   type WorkflowEvent,
-  type WorkflowGraphNode,
   type WorkflowNodeStatus,
   type WorkflowPhaseDefinition,
   type WorkflowPhaseSnapshot,

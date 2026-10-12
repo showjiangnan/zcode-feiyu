@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { CompactBoundaryPayload, MessagePart, MessageWithParts } from "@zcode/contracts";
 import { invalidateRuntimeTokenUsage } from "./message-history.js";
 
@@ -26,7 +27,7 @@ export function compactActiveSessionMessages(
   ];
 }
 
-function compactPreservedSegmentMessages(
+export function compactPreservedSegmentMessages(
   messages: MessageWithParts[],
   boundaryIndex: number,
 ): MessageWithParts[] {
@@ -57,7 +58,9 @@ function cloneCompactPreservedSessionMessage(message: MessageWithParts): Message
   };
 }
 
-function compactBoundaryFromMessage(message: MessageWithParts): CompactBoundaryPayload | undefined {
+export function compactBoundaryFromMessage(
+  message: MessageWithParts,
+): CompactBoundaryPayload | undefined {
   for (const part of message.parts) {
     if (part.type === "compaction" && part.compactBoundary) {
       return part.compactBoundary;

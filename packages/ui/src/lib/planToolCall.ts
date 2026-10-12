@@ -1,13 +1,14 @@
+// Modified by ZCode Feiyu.
 import { getPathLeaf, isAbsoluteFilePath, joinFilePath } from "@/lib/path.js";
 
-interface PlanToolCallSource {
+export interface PlanToolCallSource {
   input?: unknown;
   inputText?: string;
   output?: unknown;
   raw?: unknown;
 }
 
-interface PlanToolCallContent {
+export interface PlanToolCallContent {
   markdown?: string;
   planFilePath?: string;
 }

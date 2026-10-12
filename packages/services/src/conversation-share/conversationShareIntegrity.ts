@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 
 import {
@@ -65,7 +66,7 @@ function canonicalizeValue(value: unknown): string {
   }
 }
 
-function canonicalizeConversationShareJson(value: unknown): string {
+export function canonicalizeConversationShareJson(value: unknown): string {
   return canonicalizeValue(value);
 }
 

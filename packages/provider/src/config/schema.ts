@@ -1,7 +1,9 @@
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 import { modelConfigDataSchema } from "@zcode/shared/model-config";
 import { providerConfigDataSchema, zhipuAccountAccessDataSchema } from "./provider-data-schema.js";
 import { ModelConfig, ModelConfigRules } from "./model-config.js";
+import { ChatGPTSubscriptionAccessConfig } from "./subscription-access-config.js";
 import {
   ApiKeyAccessConfig,
   ProviderApiConfig,
@@ -148,9 +150,11 @@ function createProviderConfig(config: z.infer<typeof providerConfigDataSchema>):
     access:
       config.access == null
         ? config.access
-        : config.access.type !== "zhipu-account"
-          ? new ApiKeyAccessConfig(config.access)
-          : new ZhipuAccountAccessConfig(config.access),
+        : config.access.type === "chatgpt-subscription"
+          ? new ChatGPTSubscriptionAccessConfig(config.access)
+          : config.access.type !== "zhipu-account"
+            ? new ApiKeyAccessConfig(config.access)
+            : new ZhipuAccountAccessConfig(config.access),
     api: config.api == null ? config.api : new ProviderApiConfig(config.api),
   });
 }

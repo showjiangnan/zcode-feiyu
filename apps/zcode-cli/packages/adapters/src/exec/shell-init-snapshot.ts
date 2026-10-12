@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   execFile as execFileCallback,
   type ExecFileOptionsWithStringEncoding,
@@ -14,7 +15,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const SNAPSHOT_TIMEOUT_MS = 10_000;
 const SNAPSHOT_MAX_BUFFER_BYTES = 1_048_576;
 
-const DEFAULT_SHELL_INIT_SNAPSHOT_RETENTION_DAYS = 30;
+export const DEFAULT_SHELL_INIT_SNAPSHOT_RETENTION_DAYS = 30;
 
 type ShellInitSnapshotExecFile = (
   file: string,
@@ -31,41 +32,41 @@ const defaultExecFile: ShellInitSnapshotExecFile = async (file, args, options) =
   };
 };
 
-type ShellInitSnapshotDialect = Extract<ExecutionShellDialect, "posix" | "git-bash">;
-type ShellInitSnapshotShellKind = "bash" | "zsh" | "sh";
+export type ShellInitSnapshotDialect = Extract<ExecutionShellDialect, "posix" | "git-bash">;
+export type ShellInitSnapshotShellKind = "bash" | "zsh" | "sh";
 
-interface ShellInitSnapshot {
+export interface ShellInitSnapshot {
   path: string;
   shellPath: string;
 }
 
-interface ShellInitSnapshotCleanupResult {
+export interface ShellInitSnapshotCleanupResult {
   deleted: number;
   errors: number;
 }
 
-interface CleanupStaleShellInitSnapshotsOptions {
+export interface CleanupStaleShellInitSnapshotsOptions {
   now?: Date;
   retentionDays?: number;
   rootDir: string;
 }
 
-interface ShellInitSnapshotRequest {
+export interface ShellInitSnapshotRequest {
   env: NodeJS.ProcessEnv;
   rootDir: string;
   shellDialect: StartupShellDialect;
   shellPath: string;
 }
 
-interface ShellInitSnapshotManagerOptions {
+export interface ShellInitSnapshotManagerOptions {
   execFile?: ShellInitSnapshotExecFile;
 }
 
-function shellInitSnapshotsDir(rootDir: string): string {
+export function shellInitSnapshotsDir(rootDir: string): string {
   return join(rootDir, "shell-snapshots");
 }
 
-class ShellInitSnapshotCleanupRegistry {
+export class ShellInitSnapshotCleanupRegistry {
   private readonly paths = new Set<string>();
 
   register(snapshotPath: string): void {
@@ -234,14 +235,17 @@ export function supportsShellInitSnapshot(
   return shellDialect === "posix" || shellDialect === "git-bash";
 }
 
-function detectShellKind(shellPath: string): ShellInitSnapshotShellKind {
+export function detectShellKind(shellPath: string): ShellInitSnapshotShellKind {
   const name = basename(shellPath).toLowerCase();
   if (name.includes("zsh")) return "zsh";
   if (name.includes("bash")) return "bash";
   return "sh";
 }
 
-function detectShellInitConfigPath(input: { env: NodeJS.ProcessEnv; shellPath: string }): string {
+export function detectShellInitConfigPath(input: {
+  env: NodeJS.ProcessEnv;
+  shellPath: string;
+}): string {
   const home = input.env.HOME || input.env.USERPROFILE || "";
   const shellKind = detectShellKind(input.shellPath);
   if (shellKind === "zsh") return join(home, ".zshrc");
@@ -249,7 +253,7 @@ function detectShellInitConfigPath(input: { env: NodeJS.ProcessEnv; shellPath: s
   return join(home, ".profile");
 }
 
-function buildShellInitSnapshotCreationScript(input: {
+export function buildShellInitSnapshotCreationScript(input: {
   configExists: boolean;
   configPath: string;
   pathValue?: string;

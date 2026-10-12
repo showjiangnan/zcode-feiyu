@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { MemoryReviewRun, WorkspaceMemoryResult } from "@zcode/shared";
 import type { RefObject } from "react";
 import { type ContinuityPage, formatMemoryRunObservation } from "@/hooks/continuityProjection.js";

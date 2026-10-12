@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 冷恢复协调器：订阅落在「不在内存注册表、但可能已持久化」的会话时
 // （CLI 重启后打开历史会话），经宿主钩子把 record 拉起来，再回到既有
 // gateway READY hydration 路径。从 v4-gateway 拆出（单一职责 + max-lines）。
@@ -17,7 +18,7 @@ export type ColdSessionResumeOutcome =
   | { status: "notFound" };
 
 /** 协调器需要的宿主能力窄面（与 V4GatewayHost 同形，避免循环 import）。 */
-interface ColdSessionResumeHost {
+export interface ColdSessionResumeHost {
   resumePersistedSession?(
     sessionId: string,
     resumeThoughtLevel?: string,
@@ -28,7 +29,7 @@ interface ColdSessionResumeHost {
 }
 
 /** 订阅不可用会话的结构化错误（reasonCode 见文件头）。 */
-class V4SubscribeSessionUnavailableError extends Error {
+export class V4SubscribeSessionUnavailableError extends Error {
   constructor(
     readonly sessionId: string,
     readonly reasonCode: "fault.subscribe.sessionNotFound" | "fault.subscribe.resumeFailed",

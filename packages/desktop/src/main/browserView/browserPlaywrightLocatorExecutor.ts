@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- Playwright isolated-world selector、frame target 与 CDP trusted input 必须共享同一会话状态。 */
 import type { BrowserPlaywrightAction, BrowserPlaywrightModifier } from "@zcode/shared";
 import { logger } from "../logger.js";
@@ -104,7 +105,7 @@ interface ScrollAlignment {
   inline: "center" | "end" | "nearest" | "start";
 }
 
-const POINTER_SCROLL_ALIGNMENTS: readonly ScrollAlignment[] = [
+const POINTER_SCROLL_ALIGNMENTS: readonly [ScrollAlignment, ...ScrollAlignment[]] = [
   { block: "center", inline: "center" },
   { block: "end", inline: "end" },
   { block: "start", inline: "start" },
@@ -116,7 +117,7 @@ type ActionProbeExecution =
   | { kind: "timeout" }
   | { kind: "cancelled" };
 
-type IabLocatorExecution =
+export type IabLocatorExecution =
   | { kind: "done"; value?: unknown }
   | { kind: "timeout"; reason: string }
   | { kind: "cancelled" };
@@ -319,7 +320,8 @@ class IabPlaywrightLocatorSession {
             scrollAlignment:
               action.force === true
                 ? POINTER_SCROLL_ALIGNMENTS[0]
-                : POINTER_SCROLL_ALIGNMENTS[pointerAttempt % POINTER_SCROLL_ALIGNMENTS.length],
+                : (POINTER_SCROLL_ALIGNMENTS[pointerAttempt % POINTER_SCROLL_ALIGNMENTS.length] ??
+                  POINTER_SCROLL_ALIGNMENTS[0]),
           },
           remaining,
         );
@@ -595,7 +597,7 @@ class IabPlaywrightLocatorSession {
         let stableFrames = 0;
         for (let index = 0; index < 10 && stableFrames < 2; index += 1) {
           await waitForAnimationFrame();
-          // el-table 等页面会在 rAF 间用同 locator、同几何的新 DOM node 替换旧 node。
+          // Bug 根因：el-table 等页面会在 rAF 间用同 locator、同几何的新 DOM node 替换旧 node。
           // locator 描述当前匹配目标，不绑定首次 node identity；detach 后应重解析再比较几何。
           const currentElement = element.isConnected ? element : resolveCurrentElement();
           if (!currentElement) return { count: 0, actionable: false };

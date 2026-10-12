@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
 import { access, readFile, readdir, stat } from "node:fs/promises";
@@ -14,7 +15,7 @@ import {
 const DISCOVERY_COMMAND_TIMEOUT_MS = 3_000;
 const SUPPORTED_PLATFORMS = new Set<NodeJS.Platform>(["darwin", "linux", "win32"]);
 
-interface ChromeExecutableDiscoveryOptions extends ChromeInstallationPathOptions {
+export interface ChromeExecutableDiscoveryOptions extends ChromeInstallationPathOptions {
   installations?: ChromeInstallationCandidate[];
   processCommandLines?: string[];
   /** 测试可注入已由操作系统注册表/索引解析出的可执行文件，避免依赖宿主环境。 */

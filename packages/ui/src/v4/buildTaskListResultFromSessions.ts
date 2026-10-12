@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 左侧列表投影：tasks-index 决定持久行集合与 membership，sessions-index 只补实时 activity/detail。
 // 这里保持纯函数，供 Project/Timeline/Pinned/Archived/Grouped 共用同一字段权威。
 import type { ZCodeTaskMeta } from "@zcode/shared";
@@ -6,10 +7,10 @@ import { buildTaskEntityKey } from "@/lib/taskQueryCache.js";
 import { compareZCodeTaskListItems } from "@/lib/taskListOrdering.js";
 import { attachTaskListRowActivity, getTaskListRowActivity } from "@/v4/taskListRowActivity.js";
 
-type TaskListKind = "pinned" | "archived" | "timeline" | "active";
-type TaskListSortBy = "created" | "updated";
+export type TaskListKind = "pinned" | "archived" | "timeline" | "active";
+export type TaskListSortBy = "created" | "updated";
 
-interface BuildTaskListParams {
+export interface BuildTaskListParams {
   /** tasks-index active/pinned/archived 三个持久分区的 task 行并集。 */
   taskIndexItems: ZCodeTaskMeta[];
   /** sessions-index 派生的会话 activity/detail；只覆盖命中的持久行。 */
@@ -40,7 +41,7 @@ interface BuildTaskListParams {
   cronAutomationIdByTaskId?: ReadonlyMap<string, string>;
 }
 
-interface BuildTaskListResult {
+export interface BuildTaskListResult {
   items: ZCodeTaskMeta[];
   total: number;
 }
@@ -98,7 +99,7 @@ export function joinTaskListUnreadAt(
   return joinTaskListMembershipMeta(tasks, { unreadAtByTaskId });
 }
 
-function joinTaskListMembershipMeta(
+export function joinTaskListMembershipMeta(
   tasks: ZCodeTaskMeta[],
   params: {
     unreadAtByTaskId?: ReadonlyMap<string, number>;

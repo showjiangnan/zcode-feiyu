@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- codeViewer 集中维护文件、文本、图片和 diff 预览提取；本次只收敛 tool identity，不顺手拆文件以免扩大回归面。 */
 import type { BundledLanguage } from "shiki";
 import { getMediaPreviewFormat, type MediaPreviewKind } from "@zcode/shared";
@@ -410,7 +411,7 @@ function getPatchHeaderFileTarget(patch: string): string | null {
   return null;
 }
 
-function getDiffSourceFileTarget(
+export function getDiffSourceFileTarget(
   source: PatchCodeViewerSource | MultiFileDiffCodeViewerSource,
 ): string | null {
   if (isUsableDiffFileTarget(source.path)) {

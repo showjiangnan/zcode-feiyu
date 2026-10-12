@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 旧 composer 草稿的 localStorage 持久化清理。
  *
@@ -34,7 +35,7 @@ function getBrowserStorage(): StorageLike | null {
   }
 }
 
-function getComposerDraftStorageKey(workspacePath: string, workspaceIdentity?: string) {
+export function getComposerDraftStorageKey(workspacePath: string, workspaceIdentity?: string) {
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   return `${STORAGE_KEY_PREFIX}${encodeURIComponent(workspaceKey)}`;
 }

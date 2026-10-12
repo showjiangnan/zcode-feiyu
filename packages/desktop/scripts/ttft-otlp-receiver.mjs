@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // 本地验收接收器：保留最终 OTLP 解码证据，不拦截内部埋点调用。
 import { createServer } from "node:http";
 import { createRequire } from "node:module";

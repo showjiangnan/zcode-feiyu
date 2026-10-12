@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { TuiSubmitPromptResult } from "@zcode/tui";
 import { parseModelPickerValue, type ModelSelection } from "@zcode/shared/model-selection";
 import { listAppEffortOptions } from "../effort-options.js";
@@ -59,7 +60,7 @@ export async function handleModelCommand(
 }
 
 /** A deliberate new selection uses the catalog default; restored selections never pass here. */
-function resolveTuiModelSelection(
+export function resolveTuiModelSelection(
   args: string,
   options: readonly CommandCenterModelOption[],
   selectedRef?: ModelSelection,

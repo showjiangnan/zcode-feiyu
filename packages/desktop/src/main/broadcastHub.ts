@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
 import {
   HostMessageTypes,

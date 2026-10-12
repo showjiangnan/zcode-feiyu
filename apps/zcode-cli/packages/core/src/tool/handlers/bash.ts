@@ -1,24 +1,16 @@
-// ============================================================
-// Bash Tool Handler
-// ============================================================
-
+// Modified by ZCode Feiyu.
 import {
-  BashInputJsonSchema,
   BashInputSchema,
+  BashInputJsonSchema,
   BashOutputJsonSchema,
   BashOutputSchema,
   CoreErrorType,
-  SessionEventType,
   createCoreError,
-  type BackgroundExecutionStartResult,
   type BashInput,
   type BashOutput,
-  type CommandCategory,
+  type BackgroundExecutionStartResult,
   type CommandExecutionSpanWriter,
-  type CommandShellKind,
-  type ExecutionEvent,
   type ExecutionRequest,
-  type ExecutionResult,
   type ExecutionRunOptions,
   type TraceContext,
 } from "@zcode/contracts";
@@ -26,39 +18,49 @@ import {
   shouldInjectEmbeddedSearchBashPrelude,
   supportsEmbeddedSearchShellSelection,
 } from "../../embedded-search/shell.js";
-import {
-  DEFAULT_BASH_TIMEOUT_POLICY,
-  resolveBashTimeoutMs,
-  type BashTimeoutPolicy,
-} from "../bash-timeout-policy.js";
+import type { ToolEntry, ToolExecutionContext, ToolHandler } from "../types.js";
 import { resolveToolWorkingDirectory } from "../path-policy.js";
-import type {
-  ToolEntry,
-  ToolExecutionContext,
-  ToolHandler,
-  ToolRuntimePermissionCapability,
-  ToolRuntimePermissionCapabilityContext,
-} from "../types.js";
-import { supportsBashBackgroundLifecycle } from "./bash-background-lifecycle.js";
-import { isBashAutoBackgroundEligible } from "./bash-background-policy.js";
-import { resolveBashPermissionRulePolicy } from "./bash-command-permission-policy.js";
 import { decideBashCwdPolicy } from "./bash-cwd-policy.js";
-import { readStringProperty } from "./bash-metadata.js";
 import { formatBashModelContent, formatPersistedBashModelContent } from "./bash-model-content.js";
+import { createBashProviderDescription } from "./bash-prompt.js";
 import {
   createBashBackgroundPerformanceTelemetry,
   createEmptyBashPerformanceTelemetry,
   toBashOutput,
   type BashProgressTiming,
 } from "./bash-output.js";
-import { createBashProviderDescription } from "./bash-prompt.js";
+import { attachToolExecutionTelemetry } from "./tool-perf.js";
 import { applyBashReadFileStateEffects } from "./bash-read-file-state.js";
-import { isRuntimeReadOnlyBashCommand } from "./bash-semantics.js";
+import { isBashAutoBackgroundEligible } from "./bash-background-policy.js";
+import { supportsBashBackgroundLifecycle } from "./bash-background-lifecycle.js";
+import { resolveBashPermissionRulePolicy } from "./bash-command-permission-policy.js";
 import {
-  attachToolExecutionTelemetry,
-  classifyCommand,
-  classifySafeCommandIdentity,
-} from "./tool-perf.js";
+  DEFAULT_BASH_TIMEOUT_POLICY,
+  resolveBashTimeoutMs,
+  type BashTimeoutPolicy,
+} from "../bash-timeout-policy.js";
+import {
+  startBashCommandTelemetry,
+  finishBashCommandTelemetry,
+  emitProgressEvent,
+} from "./bash-command-telemetry.js";
+import { resolveBashPermissionCapability } from "./bash-permission-capability.js";
+
+import { createBashTimeoutBudgetResolver, createBashInputJsonSchema } from "./bash-entry-schema.js";
+// 按职责拆分；保留原始规则、执行顺序与状态所有者。
+
+export {
+  isBashInputReadOnly,
+  isBashInputConcurrencySafe,
+  checkBashInputPermissions,
+  prepareBashPermissionMatcher,
+  resolveBashPermissionCapability,
+} from "./bash-permission-capability.js";
+
+// 按职责拆分；保留原始规则、执行顺序与状态所有者。
+
+// 按职责拆分；保留原始规则、执行顺序与状态所有者。
+
 export {
   getBashActivityDescription,
   getBashAutoClassifierInput,
@@ -68,33 +70,24 @@ export {
 } from "./bash-metadata.js";
 
 const MAX_INLINE_OUTPUT_BYTES = 30_000;
+
 const MAX_RUNTIME_PERSISTED_OUTPUT_BYTES = 5 * 1024 * 1024 * 1024;
+
 const BASH_PROVIDER_DESCRIPTION = createBashProviderDescription({
   defaultTimeoutMs: DEFAULT_BASH_TIMEOUT_POLICY.defaultTimeoutMs,
   maxTimeoutMs: DEFAULT_BASH_TIMEOUT_POLICY.maxTimeoutMs,
 });
 
-function resolveBashPermissionCapability(
-  input: unknown,
-  context?: ToolRuntimePermissionCapabilityContext,
-): ToolRuntimePermissionCapability | undefined {
-  const command = readStringProperty(input, "command");
-  if (!command || !isRuntimeReadOnlyBashCommand(command, context)) return undefined;
-  return {
-    destructive: false,
-    needsApproval: false,
-    readOnly: true,
-    riskLevel: "low" as const,
-    sideEffectScope: "none" as const,
-    permission: {
-      needsApproval: false,
-      riskLevel: "low" as const,
-      sideEffectScope: "none" as const,
-    },
-  };
+export function getBashPrompt(
+  timeoutPolicy: BashTimeoutPolicy = DEFAULT_BASH_TIMEOUT_POLICY,
+): string {
+  return createBashProviderDescription({
+    defaultTimeoutMs: timeoutPolicy.defaultTimeoutMs,
+    maxTimeoutMs: timeoutPolicy.maxTimeoutMs,
+  });
 }
 
-const bashHandler: ToolHandler = (input, context) =>
+export const bashHandler: ToolHandler = (input, context) =>
   executeBashHandler(input, context, DEFAULT_BASH_TIMEOUT_POLICY);
 
 function createBashHandler(timeoutPolicy: BashTimeoutPolicy): ToolHandler {
@@ -286,105 +279,6 @@ function createExecutionRunOptions(
   };
 }
 
-function startBashCommandTelemetry(
-  input: BashInput,
-  context: ToolExecutionContext,
-): CommandExecutionSpanWriter | undefined {
-  const identity = classifySafeCommandIdentity(input.command);
-  return context.telemetry?.startCommand({
-    category: commandCategory(input.command),
-    commandCount: identity.count ?? 0,
-    safeName: identity.name ?? "other",
-    sandboxed: input.dangerouslyDisableSandbox !== true,
-    shellKind: commandShellKind(context.bashShellSelection),
-  });
-}
-
-function finishBashCommandTelemetry(
-  telemetry: CommandExecutionSpanWriter | undefined,
-  result: ExecutionResult,
-): void {
-  if (!telemetry) return;
-  if (result.exitCode !== undefined) telemetry.setExitCode(result.exitCode);
-  if (result.signal) telemetry.setSignal(result.signal);
-  telemetry.setOutputBytes(result.stdout.bytes + result.stderr.bytes);
-  telemetry.setTimedOut(result.timedOut);
-
-  if (result.timedOut) {
-    telemetry.markTerminationRequested("timeout");
-    telemetry.finishFailed("timeout", "timeout", result.error);
-  } else if (result.cancelled) {
-    telemetry.markTerminationRequested("cancelled");
-    telemetry.finishCancelled("abort_signal");
-  } else if (result.status === "spawn_error") {
-    telemetry.finishFailed("spawn", "configuration", result.error);
-  } else if (result.status === "failed" && result.error) {
-    // 非零退出码是命令事实（例如 grep 未匹配），不等同于执行框架失败。
-    // 只有 Adapter 明确提供结构化 failure 时才污染 command failure rate。
-    telemetry.finishFailed("execute", "internal", result.error);
-  } else {
-    telemetry.finishCompleted();
-  }
-}
-
-function commandCategory(command: string): CommandCategory {
-  switch (classifyCommand(command)) {
-    case "git":
-      return "git";
-    case "package":
-      return "package_manager";
-    case "build":
-      return "build";
-    case "test":
-      return "test";
-    case "network":
-      return "network";
-    default:
-      return "shell";
-  }
-}
-
-function commandShellKind(
-  selection: ToolExecutionContext["bashShellSelection"],
-): CommandShellKind | undefined {
-  const displayName = selection?.display.name.toLowerCase();
-  if (displayName?.includes("powershell")) return "powershell";
-  if (displayName?.includes("zsh")) return "zsh";
-  if (displayName?.includes("bash")) return "bash";
-  if (selection?.dialect === "cmd") return "cmd";
-  if (selection?.dialect === "posix") return "sh";
-  return selection ? "other" : undefined;
-}
-
-async function emitProgressEvent(
-  event: Extract<ExecutionEvent, { type: "progress" }>,
-  context: ToolExecutionContext,
-): Promise<void> {
-  if (!context.emitEvent) return;
-
-  await context.emitEvent({
-    id: crypto.randomUUID() as any,
-    sessionId: context.sessionId,
-    turnId: context.turnId,
-    type: SessionEventType.ToolCallProgress,
-    timestamp: event.timestamp,
-    traceId: context.traceId,
-    sequenceNumber: 0,
-    payload: {
-      toolCallId: context.toolCallId,
-      toolName: "Bash",
-      elapsedMs: event.elapsedMs,
-      pid: event.pid,
-      stdoutBytes: event.stdoutBytes,
-      stderrBytes: event.stderrBytes,
-      outputBytes: event.stdoutBytes + event.stderrBytes,
-      outputPreview: event.outputPreview,
-      stdoutTail: event.stdoutTail,
-      stderrTail: event.stderrTail,
-    },
-  });
-}
-
 function createExecutionRequest(
   input: BashInput,
   context: ToolExecutionContext,
@@ -535,35 +429,6 @@ export function createBashToolEntry(
       maxMs: timeoutPolicy.maxTimeoutMs,
       allowCallOverride: true,
       cleanupGraceMs: 6_000,
-    },
-  };
-}
-
-function createBashTimeoutBudgetResolver(
-  timeoutPolicy: BashTimeoutPolicy,
-): NonNullable<ToolEntry["resolveTimeoutBudgetMs"]> {
-  return (input) => {
-    const parsed = BashInputSchema.safeParse(input);
-    // 旧 watchdog 直接读取 raw timeout，导致 0 被压成 1ms，且字符串数字绕过
-    // Bash policy。这里和 handler 共用 timeout || default / max 解析后再加 cleanup grace。
-    return resolveBashTimeoutMs(parsed.success ? parsed.data.timeout : undefined, timeoutPolicy);
-  };
-}
-
-function createBashInputJsonSchema(timeoutPolicy: BashTimeoutPolicy): Record<string, unknown> {
-  const schema = BashInputJsonSchema as Record<string, unknown>;
-  const properties = schema.properties as Record<string, unknown> | undefined;
-  const timeoutProperty = properties?.timeout as Record<string, unknown> | undefined;
-  if (!properties || !timeoutProperty) return schema;
-
-  return {
-    ...schema,
-    properties: {
-      ...properties,
-      timeout: {
-        ...timeoutProperty,
-        description: `Optional timeout in milliseconds (max ${timeoutPolicy.maxTimeoutMs})`,
-      },
     },
   };
 }

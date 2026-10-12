@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useId, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Loader2Icon, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
@@ -39,7 +40,7 @@ import {
 
 import { ModelEditorAdvanced } from "@/settings/model-provider-section/ModelEditorAdvanced.js";
 
-function selectFocusedInputText(event: Pick<FocusEvent<HTMLInputElement>, "currentTarget">) {
+export function selectFocusedInputText(event: Pick<FocusEvent<HTMLInputElement>, "currentTarget">) {
   event.currentTarget.select();
 }
 

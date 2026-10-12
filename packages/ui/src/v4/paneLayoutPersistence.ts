@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 分屏 Layout 层持久化（localStorage）：try/catch 静默降级；
 // 损坏数据整体丢弃回初始布局（不部分救回）。
 // 兼容读取旧版 v1（单值 splitPane），仅当 v1 workspaceKey 是可信本地路径时迁移。
@@ -14,12 +15,12 @@ import {
   type SplitDirection,
 } from "@/v4/paneLayoutTree.js";
 
-const PANE_LAYOUT_STORAGE_KEY = "zcode-v4-pane-layout:v2";
-/** 旧版单值分屏的 key（只读迁移，不再写入）。 */
-const PANE_LAYOUT_STORAGE_KEY_V1 = "zcode-v4-pane-layout:v1";
+export const PANE_LAYOUT_STORAGE_KEY = "zcode-v4-pane-layout:v2";
+/** 一期单值分屏的旧 key（只读迁移，不再写入）。 */
+export const PANE_LAYOUT_STORAGE_KEY_V1 = "zcode-v4-pane-layout:v1";
 
-/** v1 迁移用的保留 pane id（旧版 split pane 固定 id，e2e/testid 契约沿用）。 */
-const V4_LEGACY_SPLIT_PANE_ID = "split";
+/** v1 迁移用的保留 pane id（一期 split pane 固定 id，e2e/testid 契约沿用）。 */
+export const V4_LEGACY_SPLIT_PANE_ID = "split";
 
 interface PersistedScopeV2 {
   workspacePath: string;
@@ -109,7 +110,7 @@ function sanitizeScope(raw: unknown): PaneWorkspaceScope | null {
  * 叶子数 ≤ 上限、每个非 primary 叶子有合法绑定。恢复出的 session 绑定补
  * restoredUnvalidated（等 sessions-index 验证）；focusedPaneId 不在树中回 primary。
  */
-function sanitizePersistedPaneLayout(raw: unknown): PaneLayoutSnapshot | null {
+export function sanitizePersistedPaneLayout(raw: unknown): PaneLayoutSnapshot | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
   }
@@ -168,7 +169,7 @@ function isPlausibleLocalPath(value: string): boolean {
  * 旧版 v1（单值 splitPane）→ v2 迁移：v1 只存了 workspaceKey（identity ?? path），
  * 无法还原远程 scope——仅当它是可信本地路径时迁移为双叶子树，否则丢弃回单 pane（null）。
  */
-function migratePersistedPaneLayoutV1(raw: unknown): PaneLayoutSnapshot | null {
+export function migratePersistedPaneLayoutV1(raw: unknown): PaneLayoutSnapshot | null {
   if (typeof raw !== "object" || raw === null) {
     return null;
   }

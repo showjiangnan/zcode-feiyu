@@ -1,22 +1,11 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { beginLocalTurnPreparation } from "@zcode/contracts";
 import {
-  CompactPhase,
-  CompactReason,
-  createMessageId,
-  traceContextToLogContext,
-  TurnMachineImpl,
-} from "../deps.js";
-import {
-  buildRuntimeModeReminderBody,
-  buildPlanModeExitReminderBody,
-  buildRuntimeOutputStyleReminderBody,
-  buildTodoReminderBody,
-  buildRuntimeProviderRequestMessages,
-  createCompactRapidRefillError,
-  throwIfTurnAborted,
-  shouldBuildTodoReminder,
-} from "../helpers/index.js";
+  AUTOMATION_MUTATION_TOOL_NAMES,
+  OFF_PEAK_MUTATION_TOOL_NAMES,
+  isAutomationMutationRestrictedTurn,
+  isOffPeakCreateRestrictedTurn,
+} from "./turn-loop-state.js";
 import {
   systemReminderAttachmentEntry,
   todoReminderRuntimeMetadata,
@@ -27,31 +16,46 @@ import {
   MID_TURN_RECALL_MAX_TOTAL_CHARS,
   recallProjectMemoryTopicSet,
 } from "../../memory/recall/relevant.js";
+import {
+  CompactPhase,
+  CompactReason,
+  createMessageId,
+  traceContextToLogContext,
+  TurnMachineImpl,
+} from "../deps.js";
+import { appendRuntimeAgentListing } from "../helpers/agent-listing.js";
+import {
+  buildPlanModeExitReminderBody,
+  buildRuntimeModeReminderBody,
+  buildRuntimeOutputStyleReminderBody,
+  buildRuntimeProviderRequestMessages,
+  buildTodoReminderBody,
+  createCompactRapidRefillError,
+  shouldBuildTodoReminder,
+  throwIfTurnAborted,
+} from "../helpers/index.js";
 import type { AgentRuntimeInternal } from "../internal.js";
-import { dropRevokedMemoryFromTurnPrefix } from "./context-refresh.js";
-import { runModelBackedTurnStep } from "./turn-model-step.js";
-import { activateRuntimeOrchestrationMode } from "../orchestration.js";
 import {
   orchestrationReminderBody,
   selectOrchestrationParentTools,
 } from "../orchestration-tools.js";
+import { activateRuntimeOrchestrationMode } from "../orchestration.js";
+import { dropRevokedMemoryFromTurnPrefix } from "./context-refresh.js";
+import type { RegularTurnLoopState } from "./turn-loop-state.js";
 import {
-  AUTOMATION_MUTATION_TOOL_NAMES,
   evaluateRapidRefill,
-  isAutomationMutationRestrictedTurn,
-  isOffPeakCreateRestrictedTurn,
   MAX_CONSECUTIVE_RAPID_REFILLS,
-  OFF_PEAK_MUTATION_TOOL_NAMES,
   RAPID_REFILL_TOOL_TURN_THRESHOLD,
   recordCompactHistoryRound,
   recordCompactSuccess,
 } from "./turn-loop-state.js";
-import type { RegularTurnLoopState } from "./turn-loop-state.js";
+import { runModelBackedTurnStep } from "./turn-model-step.js";
 import {
   appendTurnRequestEntries,
   commitTurnRequestEntries,
   filterOutputTokenContinuationEntries,
 } from "./turn-output-token-continuation.js";
+import { getTurnTools } from "./turn-tool-visibility.js";
 
 export async function runRegularTurnLoop(
   this: AgentRuntimeInternal,
@@ -107,6 +111,7 @@ export async function runRegularTurnLoop(
       state.events,
       state.turnAbortSignal,
       {
+        getAgentListingTools: () => getTurnTools(this, state),
         compactReason: CompactReason.ContextLimit,
         modelStepIndex: state.modelStepCount,
         phase: compactPhase,
@@ -134,6 +139,8 @@ export async function runRegularTurnLoop(
 
     const finishMcp = beginLocalTurnPreparation(state.turnTraceContext, "mcp");
     await this.initializeMcp(state.turnTraceContext);
+    // tools/list_changed 只在回合开始前生效。
+    await this.refreshMcpToolsIfChanged(state.turnTraceContext);
     finishMcp();
     throwIfTurnAborted(state.turnAbortSignal);
     const finishTools = beginLocalTurnPreparation(state.turnTraceContext, "tools");
@@ -145,13 +152,16 @@ export async function runRegularTurnLoop(
       ? []
       : turnDisallowedTools
         ? this.getTools(state.model).filter((tool) => !turnDisallowedTools.has(tool.name))
-        : this.getTools(state.model);
+        : getTurnTools(this, state);
     const tools = selectOrchestrationParentTools(
       availableTools,
       orchestration.effective,
       Boolean(this.config.parentSessionId && this.teamBoardPort),
     );
     finishTools();
+    if (!outputTokenRecoveryActive) {
+      await appendRuntimeAgentListing(this, state.turnRequestState, tools, state.turnTraceContext);
+    }
     if (!outputTokenRecoveryActive && this.needsPlanModeExitReminder) {
       this.needsPlanModeExitReminder = false;
       commitTurnRequestEntries(this, state.turnRequestState, [
@@ -217,7 +227,7 @@ export async function runRegularTurnLoop(
     if (memoryFreeEntries) state.turnRequestState.entries = memoryFreeEntries;
     const providerEntries = [...state.turnRequestState.entries];
     const requestEntries = providerEntries;
-    // provider-visible user ordering projection 会改变最终 latest user 落点，
+    // 修复原因：provider-visible user ordering projection 会改变最终 latest user 落点，
     // cache-control 必须在 projection 后统一设置，避免 raw synthetic entry 抢占缓存锚点。
     const providerProjection = buildRuntimeProviderRequestMessages(this, {
       entries: requestEntries,

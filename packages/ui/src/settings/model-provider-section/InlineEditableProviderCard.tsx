@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- provider 卡片同时承载名称、连接、鉴权、模型和映射编辑；本阶段先维持单组件，后续再按表单域拆分。 */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -26,11 +27,11 @@ import {
 } from "./ProviderCardSections.js";
 import { resolveModelProviderDisplayName } from "./constants.js";
 import { useProviderDetailFeedback } from "./ProviderDetailFeedback.js";
-import { useIdleTrigger } from "./useIdleTrigger.js";
+import { MODEL_PROVIDER_TEXT_IDLE_TRIGGER_MS, useIdleTrigger } from "./useIdleTrigger.js";
 import { useOptimisticReorder } from "./useOptimisticReorder.js";
 
-type ProviderNameEditKeyAction = "commit" | "cancel";
-type ProviderDraftCleanupAction = "commit" | "skip-delete";
+export type ProviderNameEditKeyAction = "commit" | "cancel";
+export type ProviderDraftCleanupAction = "commit" | "skip-delete";
 interface ProviderSaveNotificationTarget {
   modelId?: string;
   operation?: "delete";
@@ -38,14 +39,16 @@ interface ProviderSaveNotificationTarget {
   draftOwnsRetry?: boolean;
 }
 
-function shouldApplyProviderSaveCompletion(
+export const PROVIDER_TEXT_INPUT_IDLE_SAVE_MS = MODEL_PROVIDER_TEXT_IDLE_TRIGGER_MS;
+
+export function shouldApplyProviderSaveCompletion(
   currentRevision: number,
   completedRevision: number,
 ): boolean {
   return currentRevision === completedRevision;
 }
 
-function resolveProviderDraftCleanupAction({
+export function resolveProviderDraftCleanupAction({
   deleteRequested,
 }: {
   deleteRequested: boolean;
@@ -62,7 +65,7 @@ function isPromiseLike(value: unknown): value is PromiseLike<void> {
   );
 }
 
-function runProviderDeleteWithDraftCleanupGuard({
+export function runProviderDeleteWithDraftCleanupGuard({
   deleteRequestedRef,
   onDelete,
 }: {
@@ -92,7 +95,7 @@ function runProviderDeleteWithDraftCleanupGuard({
   deleteRequestedRef.current = false;
 }
 
-function resolveProviderNameEditKeyAction(event: {
+export function resolveProviderNameEditKeyAction(event: {
   key: string;
   compositionActive?: boolean;
   isComposing?: boolean;

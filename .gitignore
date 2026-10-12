@@ -70,24 +70,16 @@ packages/desktop/.e2e-cache/
 packages/desktop/.e2e-network-capture/
 .zcode-runtime/
 
-# ZCode Feiyu publishes production sources and runtime assets only.
-/spec/
-/.agents/
-/harness/
-**/test/
-**/tests/
-**/__tests__/
-**/__mocks__/
-**/fixtures/
-**/__fixtures__/
-**/e2e/
-**/benchmarks/
+# Public production snapshot excludes local engineering and test material.
+spec/
+test/
+tests/
+fixtures/
+__fixtures__/
+__tests__/
+e2e/
 *.test.*
 *.spec.*
 TASKS.md
 AGENTS.md
-
-**/dist-types/
-packages/desktop/src/shared/armsRumShared.js
-packages/desktop/src/shared/armsRumShared.d.ts
-*.browser.*
+.agents/

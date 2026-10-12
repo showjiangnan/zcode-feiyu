@@ -1,5 +1,6 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { ConfigResult } from "@zcode/adapters/config";
+import { GEN_UI_OUTPUT_ROOT_ENV } from "@zcode/shared/node";
 import { resolveInitialModelSelection, type ModelSelectionOptions } from "@zcode/provider";
 import { resolveBashTimeoutPolicy, type AgentProfile, type AgentRuntimeConfig } from "@zcode/core";
 import { type BuiltInSubagentModelSelectionOverrides } from "@zcode/shared";
@@ -17,7 +18,6 @@ import { getProjectMemoryRoot } from "./paths.js";
 import type { ZCodeAppOptions } from "./types.js";
 import {
   resolveRegistryOwnedModelSelection,
-  resolveRegistryModelSelection,
   type ResolvedRegistrySelection,
 } from "./provider-registry-selection.js";
 
@@ -118,6 +118,7 @@ export function resolveAppRuntimeConfig(input: {
     options.runtimeConfig?.subagents?.builtInModelSelectionOverrides ?? {};
   const runtimeConfig: AgentRuntimeConfig = {
     ...options.runtimeConfig,
+    genUiOutputRoot: (options.env ?? process.env)[GEN_UI_OUTPUT_ROOT_ENV],
     bashTimeoutPolicy:
       options.runtimeConfig?.bashTimeoutPolicy ??
       resolveBashTimeoutPolicy(options.env ?? process.env),
@@ -170,7 +171,7 @@ export function resolveAppRuntimeConfig(input: {
       enabled: options.runtimeConfig?.subagents?.enabled ?? configResult.config.features.subagent,
       outputRootDir: options.runtimeConfig?.subagents?.outputRootDir ?? subagentOutputRootDir,
       builtInModelSelectionOverrides: {
-        ...(input.builtInSubagentModelSelectionOverrides ?? {}),
+        ...input.builtInSubagentModelSelectionOverrides,
         ...runtimeBuiltInModelSelectionOverrides,
       },
       profiles: [...(options.runtimeConfig?.subagents?.profiles ?? []), ...subagentProfiles],

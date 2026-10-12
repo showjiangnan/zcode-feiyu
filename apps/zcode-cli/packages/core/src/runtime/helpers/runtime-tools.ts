@@ -1,4 +1,7 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
+import { sessionHasLoadedSkill } from "../../agent/loaded-skills.js";
+import { shouldSuppressSealedSubagentBashNotification } from "../../runtime-task/notification-policy.js";
+import type { HookRunner, SessionId, ToolExecutor, TraceContext } from "../deps.js";
 import {
   createConfiguredHookRunner,
   createInMemoryHookRunner,
@@ -8,22 +11,19 @@ import {
   registerBuiltInTools,
   traceContextToLogContext,
 } from "../deps.js";
-import type { HookRunner, SessionId, ToolExecutor, TraceContext } from "../deps.js";
 import type { AgentRuntimeInternal } from "../internal.js";
-import type { AgentRuntimeDeps } from "../types.js";
 import { resolveRuntimeEmbeddedSearchEnabled } from "../methods/embedded-search-branch.js";
+import { isStaleBranchRuntimeTaskEvent } from "../methods/runtime-command-generation.js";
 import { getSessionShellSelectionFromConfig } from "../methods/session-shell-environment.js";
+import { consumeProactiveMailboxCauses, proactiveMailboxCause } from "../proactive-causality.js";
 import { createRuntimeSessionModePort } from "../session-mode-port.js";
-import { shouldSuppressSealedSubagentBashNotification } from "../../runtime-task/notification-policy.js";
+import type { AgentRuntimeDeps } from "../types.js";
+import { resolveEnabledProjectMemoryRoot } from "./project-memory.js";
 import {
   resolveBuiltInToolAllowlist,
   resolveRuntimeDisallowedTools,
   resolveRuntimeDynamicWorkflowToolsIncluded,
 } from "./tool-allowlist.js";
-import { isStaleBranchRuntimeTaskEvent } from "../methods/runtime-command-generation.js";
-import { resolveEnabledProjectMemoryRoot } from "./project-memory.js";
-import { sessionHasLoadedSkill } from "../../agent/loaded-skills.js";
-import { consumeProactiveMailboxCauses, proactiveMailboxCause } from "../proactive-causality.js";
 
 const DEFAULT_SUBAGENT_BACKGROUND_BASH_MAX_MS = 3_600_000;
 const EMPTY_RUNTIME_HOOK_CONFIG = {
@@ -86,13 +86,12 @@ function registerRuntimeBuiltInTools(runtime: AgentRuntimeInternal, deps: AgentR
     // 动态工作流灰度门：与 off-peak 相反，
     // 这里不能用端口在场做判据——十个工具的端口在任何 CLI 里都装配齐全，灰度是 Host 的决定。
     // 取值收在 tool-allowlist.ts，与分支刷新那个入口共用同一个推导。
-    includeDynamicWorkflow: resolveRuntimeDynamicWorkflowToolsIncluded(runtime.config),
-    // browserControlPort 只是宿主能力，不应隐式暴露高权限 node_repl。
+    includeDynamicWorkflow: resolveRuntimeDynamicWorkflowToolsIncluded(runtime),
+    // 修复原因：browserControlPort 只是宿主能力，不应隐式暴露高权限 node_repl。
     // node_repl/browser-use 由 ZCode 官方 browser-use 插件启停推导出的 runtimeFeatures 控制。
     includeNodeRepl: nodeReplEnabled,
     includeBrowserUse: browserUseEnabled,
     embeddedSearchEnabled: resolveRuntimeEmbeddedSearchEnabled(runtime),
-    agentProfiles: runtime.config.subagents?.profiles,
     allowedTools: resolveBuiltInToolAllowlist(runtime.config),
     // workflow_child 的结构性禁用（CreateWorkflow/SaveWorkflow 因 alwaysAsk 隐形挂起；
     // ResumeWorkflowRun 已免确认但因「child 内不得再编排」仍在列）在 helper
@@ -237,6 +236,7 @@ function createRuntimeToolExecutor(
             }),
         }
       : undefined,
+    topicResourcePort: deps.topicResourcePort,
     sessionStore: deps.sessionStore,
     sessionModePort: createRuntimeSessionModePort(runtime),
     workflowPort: deps.workflowPort,

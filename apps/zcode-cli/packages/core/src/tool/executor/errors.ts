@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { CoreErrorType, createCoreError, isCoreError } from "@zcode/contracts";
 import { projectExecutionErrorPayload } from "../../errors/error-payload.js";
 import type { ExecutableToolCall, ToolExecutionResult, ToolHandlerFailure } from "../types.js";

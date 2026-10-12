@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { ZCodeSessionFile, ZCodeTaskMeta } from "@zcode/shared";
@@ -56,7 +57,7 @@ export async function persistImportedClaudeTask(params: {
   const indexMeta: ZCodeTaskMeta = {
     ...meta,
     // SQLite task index 的 mode 列仍是 NOT NULL；导入 snapshot 本身保持过滤后的缺省。
-    mode: meta.mode ?? "build",
+    mode: meta.mode ?? "default",
   };
 
   await writeImportedClaudeTaskSnapshot({ sessionFile: { ...parsed, meta } });

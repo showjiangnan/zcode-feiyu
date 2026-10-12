@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // 脚本 transcript 的纯模型
 // ============================================================
@@ -53,12 +54,12 @@ function argList(args: readonly unknown[] | undefined, index: number): string[] 
 }
 
 /** 一条 argv 的展示：带空格的实参加引号，与终端里敲的样子一致。 */
-function formatCommandLine(cmd: string, args: readonly string[]): string {
+export function formatCommandLine(cmd: string, args: readonly string[]): string {
   const quote = (part: string) => (/[\s"']/.test(part) ? JSON.stringify(part) : part);
   return [cmd, ...args].map(quote).join(" ");
 }
 
-function workspaceCardKindOf(op: string | undefined): WorkspaceCardKind {
+export function workspaceCardKindOf(op: string | undefined): WorkspaceCardKind {
   if (op === undefined) return "step";
   if (op === "read") return "read";
   if (op === "glob" || op === "grep") return "search";

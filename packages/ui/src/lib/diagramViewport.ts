@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export type DiagramPoint = {
   x: number;
   y: number;
@@ -16,10 +17,10 @@ export type DiagramViewportBounds = {
   y?: number;
 };
 
-const MIN_DIAGRAM_SCALE = 0.25;
-const MAX_DIAGRAM_SCALE = 4;
+export const MIN_DIAGRAM_SCALE = 0.25;
+export const MAX_DIAGRAM_SCALE = 4;
 
-function clampDiagramScale(scale: number): number {
+export function clampDiagramScale(scale: number): number {
   if (!Number.isFinite(scale)) {
     return 1;
   }

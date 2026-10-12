@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 网络指标采集/聚合/ARMS 上报 */
 import armsRum from "@arms/rum-electron";
 import { mapZCodeEnvToArmsRumEnv } from "@zcode/shared";
@@ -12,7 +13,7 @@ import {
 import { desktopRuntimeEnv } from "./desktopRuntimeEnv.js";
 
 /** 与资源指标对齐：开发 1min、生产 5min 聚合上报 */
-const NETWORK_REPORT_INTERVAL_MS = desktopRuntimeEnv === "development" ? 60_000 : 300_000;
+export const NETWORK_REPORT_INTERVAL_MS = desktopRuntimeEnv === "development" ? 60_000 : 300_000;
 
 interface NetworkLogger {
   info: (...args: unknown[]) => void;
@@ -137,6 +138,47 @@ export function ingestHostNetworkObservations(observations: NetworkObservation[]
   for (const observation of observations) {
     recordNetworkObservation(observation);
   }
+}
+
+/** 远控 relay WebSocket：接口维度固定为 web_remote_control.relay */
+export const WEB_REMOTE_RELAY_INTERFACE = "web_remote_control.relay";
+
+export function noteWebRemoteRelayConnectAttempt(
+  durationMs: number,
+  ok: boolean,
+  options?: { error?: unknown; attempt?: number },
+): void {
+  recordNetworkObservation({
+    transport: "websocket",
+    interface: WEB_REMOTE_RELAY_INTERFACE,
+    durationMs: Math.max(0, Math.round(durationMs)),
+    ok,
+    errorKind: ok ? undefined : classifyWsError(options?.error),
+    attempt: options?.attempt ?? 1,
+  });
+}
+
+export function noteWebRemoteRelayReconnect(): void {
+  recordNetworkObservation({
+    transport: "websocket",
+    interface: WEB_REMOTE_RELAY_INTERFACE,
+    durationMs: 0,
+    ok: false,
+    errorKind: "connection_reset",
+    attempt: 2,
+  });
+}
+
+function classifyWsError(error: unknown): string {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  if (message.includes("timeout") || message.includes("timed out")) {
+    return "timeout";
+  }
+  if (message.includes("dns") || message.includes("getaddrinfo")) {
+    return "dns_failure";
+  }
+  return "connection_reset";
 }
 
 export function configureDesktopNetworkTelemetry(context: NetworkGlobalContext): void {

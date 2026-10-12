@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 反馈后台提交状态机集中维护创建、截图、日志上传、取消和降级逻辑；本次修 413/fetch 回归，不拆文件避免扩大行为面。 */
 import type { CreateFeedbackTicketInput, FeedbackAttachmentKind } from "@zcode/shared";
 import type { FeedbackUploadProgress, IFeedbackService } from "@zcode/services";
@@ -72,7 +73,7 @@ export interface FeedbackSubmissionJobSnapshot extends FeedbackSubmissionJobStat
   job: FeedbackSubmissionJob;
 }
 
-interface StartFeedbackSubmissionJobOptions {
+export interface StartFeedbackSubmissionJobOptions {
   feedbackService: IFeedbackService;
   ticketInput: CreateFeedbackTicketInput;
   screenshots: FeedbackSubmissionAttachmentDraft[];
@@ -554,7 +555,7 @@ export function formatBytes(size: number) {
   return `${(size / 1024 / 1024).toFixed(2)} MB`;
 }
 
-function formatUploadProgress(
+export function formatUploadProgress(
   progress: FeedbackUploadProgress,
   copy: FeedbackSubmissionCopy = DEFAULT_SUBMISSION_COPY,
 ): FeedbackSubmissionProgressState {

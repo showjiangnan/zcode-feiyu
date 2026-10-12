@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Plan Mode Tools - plan approval flow
 // ============================================================
@@ -20,9 +21,11 @@ export const EnterPlanModeOutputSchema = z
   .object({
     message: z.string().min(1).describe("Confirmation that plan mode was entered."),
     previousMode: z
-      .enum(["plan", "build", "edit", "yolo", "auto"])
+      .enum(["plan", "build", "edit", "yolo", "guarded", "auto"])
       .describe("Session mode before EnterPlanMode ran."),
-    mode: z.enum(["plan", "build", "edit", "yolo", "auto"]).describe("Current permission mode."),
+    mode: z
+      .enum(["plan", "build", "edit", "yolo", "guarded", "auto"])
+      .describe("Current permission mode."),
     planEnabled: z.boolean().optional(),
     previousPlanEnabled: z.boolean().optional(),
   })
@@ -69,12 +72,12 @@ export const ExitPlanModeOutputSchema = z
     plan: z.string().nullable().describe("The plan that was approved by the user."),
     approved: z.literal(true).describe("True when the user approved exiting plan mode."),
     previousMode: z
-      .enum(["plan", "build", "edit", "yolo", "auto"])
+      .enum(["plan", "build", "edit", "yolo", "guarded", "auto"])
       .describe("Previous permission mode."),
     planEnabled: z.boolean().optional(),
     previousPlanEnabled: z.boolean().optional(),
     mode: z
-      .enum(["build", "edit", "yolo", "auto"])
+      .enum(["build", "edit", "yolo", "guarded", "auto"])
       .describe("Current session mode after exiting plan mode."),
     allowedPrompts: z.array(ExitPlanModeAllowedPromptSchema).optional(),
   })

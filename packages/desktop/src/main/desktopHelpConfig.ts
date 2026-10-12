@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { net } from "electron";
 import {
   buildHelpAppConfigUrl,
@@ -11,7 +12,9 @@ export function createDesktopHelpConfigReader(options: {
   appVersion: string;
   deviceMid: string;
 }) {
-  const read = createHelpAppConfigReader({ fetchImpl: (input, init) => net.fetch(input, init) });
+  const read = createHelpAppConfigReader({
+    fetchImpl: (input, init) => net.fetch(input instanceof URL ? input.toString() : input, init),
+  });
   return async () => {
     const endpointOrigin = await options.resolveEndpointOrigin();
     return read(

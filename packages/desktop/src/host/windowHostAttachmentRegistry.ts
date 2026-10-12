@@ -1,21 +1,22 @@
-import type { WindowHostAttachmentScope, RcsGrant } from "@zcode/shared";
+// Modified by ZCode Feiyu.
 import type { ZCodeAgentV4ClientMode } from "@zcode/services";
+import type { RcsGrant, WindowHostAttachmentScope } from "@zcode/shared";
 
-interface WindowHostAttachmentPort {
+export interface WindowHostAttachmentPort {
   once(event: "close", listener: () => void): unknown;
 }
 
-interface WindowHostAttachmentHandle {
+export interface WindowHostAttachmentHandle {
   dispose(): void;
 }
 
-interface WindowHostResolvedAttachmentScope<TServices, TCapabilities = never> {
+export interface WindowHostResolvedAttachmentScope<TServices, TCapabilities = never> {
   services: TServices;
   generation: number;
   capabilities?: TCapabilities;
 }
 
-interface WindowHostExposeAttachmentParams<TServices, TPort, TCapabilities = never> {
+export interface WindowHostExposeAttachmentParams<TServices, TPort, TCapabilities = never> {
   rcsGrant?: RcsGrant;
   requestId: string;
   attachmentId: string;

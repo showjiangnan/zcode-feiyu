@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 重启 Helper 后的 accessibility 验证:吸收 tccd 传播 lag + 决定是否升级到"重启 ZCode"兜底。
 //
 // 背景:macOS Accessibility 授权后,运行中 Helper 的 AXIsProcessTrusted 被进程级缓存,必须重启 Helper
@@ -8,14 +9,14 @@
 // 直到超时仍 stale(或一直 unavailable/抛错)才返回 true,触发 UI 升级到"重启 ZCode"兜底。
 import { isCuaPermissionStatusAvailable, type CuaPermissionStatusResult } from "@zcode/services";
 
-interface WaitForAccessibilityNotStaleOptions {
+export interface WaitForAccessibilityNotStaleOptions {
   /** 总超时(默认 6s):覆盖 tccd 传播 lag,首轮通常立即 granted。 */
   timeoutMs?: number;
   /** 轮询间隔(默认 500ms)。 */
   intervalMs?: number;
 }
 
-type GetCuaPermissionStatusFn = () => Promise<CuaPermissionStatusResult>;
+export type GetCuaPermissionStatusFn = () => Promise<CuaPermissionStatusResult>;
 
 const DEFAULT_TIMEOUT_MS = 6000;
 const DEFAULT_INTERVAL_MS = 500;

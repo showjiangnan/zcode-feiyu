@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 import { createSessionId, type WorkspaceId } from "@zcode/contracts";
 import type { ZCodeProtocolTrace, ZCodeSessionCreateParams } from "@zcode/shared";

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { buildStartPlanEntitlementOptions } from "@/lib/startPlanEntitlementOptions.js";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { ProviderSettingsView } from "@zcode/services";
@@ -17,7 +18,7 @@ import type { CodingPlanEntitlementState } from "@/settings/model-provider-secti
 import { buildUsageEntitlementCacheKey } from "@/lib/usageEntitlementCache.js";
 import { resolveAccountProviderInspectionAccess } from "@/lib/accountProviderAccess.js";
 
-function resolveCodingPlanProviderFingerprintAutoRefresh({
+export function resolveCodingPlanProviderFingerprintAutoRefresh({
   loading,
   providerFingerprint,
   skippedProviderFingerprint,

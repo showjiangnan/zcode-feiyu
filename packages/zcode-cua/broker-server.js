@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { CuaHelperError } from "./broker.js";
@@ -14,10 +14,6 @@ export const HELPER_ADDON_ENV = "ZCODE_CUA_HELPER_ADDON";
 export const WINDOWS_DEV_CONTROL_PROTOCOL = "zcode-cua-windows-dev/v1";
 
 const UNAVAILABLE = "Computer Use is not available in this build.";
-
-function unavailableReject() {
-  return Promise.reject(new CuaHelperError(UNAVAILABLE));
-}
 
 export function buildHelperOpenArgs(_spec, _launcherPid) {
   return [];
@@ -131,7 +127,7 @@ export function isOfficialCuaPluginEnabledForWorkspace(options) {
 
 export function createCuaProductMcpServerResolver(host, _options) {
   return {
-    async resolveMcpServers(servers, context) {
+    async resolveMcpServers(servers, _context) {
       const handle = await host.start();
       return servers?.map((server) =>
         isPotentialZCodeCuaAgentMcpServer(server)

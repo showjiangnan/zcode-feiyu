@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ModelAnomalyGuardConfig, ModelToolCall, ToolCallId } from "../deps.js";
 
 interface RepeatedToolCallWarningState {
@@ -90,10 +91,7 @@ export function detectToolCallBudgetWarning(
   };
 }
 
-export function buildRepeatedToolCallReminderBody(
-  toolName: string,
-  observedCount: number,
-): string {
+export function buildRepeatedToolCallReminderBody(toolName: string, observedCount: number): string {
   return [
     `You have called ${toolName} with the same input ${observedCount} times in a row.`,
     "Do not repeat the exact same tool call again unless the user explicitly asked you to retry it unchanged.",

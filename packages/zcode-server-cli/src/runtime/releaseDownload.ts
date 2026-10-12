@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, rm, stat } from "node:fs/promises";
@@ -32,7 +33,7 @@ export async function fetchReleaseCatalog(
   return await fetchReleaseJson(url, releaseCatalogSchema, timeoutMs, "Release catalog");
 }
 
-interface DownloadOptions {
+export interface DownloadOptions {
   url: string;
   destination: string;
   sha256: string;

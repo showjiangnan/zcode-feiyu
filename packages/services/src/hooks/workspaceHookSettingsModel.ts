@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { dirname } from "node:path";
 import type {
   Hook,
@@ -16,7 +17,7 @@ import {
   type WorkspaceHooksConfig,
 } from "@zcode/shared/workspace-hook-discovery";
 
-interface LegacyHookDefinition {
+export interface LegacyHookDefinition {
   type?: "command" | "process" | string;
   command?: string;
   args?: string[];

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- Electron Builder config keeps related packaging hooks together so build order stays explicit. */
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { readdir, writeFile } from "node:fs/promises";
@@ -103,7 +103,7 @@ const requireFromConfig = createRequire(import.meta.url);
 let nsisInstallSectionPatched = false;
 let nsisInstallSectionOriginalSource = null;
 let nsisInstallSectionPath = null;
-const desktopElectronVersion = requireFromConfig("./package.json").devDependencies.electron;
+const _desktopElectronVersion = requireFromConfig("./package.json").devDependencies.electron;
 const asarCliPath = resolve(
   dirname(requireFromConfig.resolve("@electron/asar/package.json")),
   "bin",

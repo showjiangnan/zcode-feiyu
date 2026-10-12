@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 终端 resize 调度需要和 xterm/PTY 生命周期放在同一组件内，避免拖拽状态、fit、后端 resize 队列拆散后出现竞态。*/
 import { ClipboardAddon } from "@xterm/addon-clipboard";
 import { FitAddon } from "@xterm/addon-fit";
@@ -339,7 +340,8 @@ export function TerminalSession({
       let existingEntry = sidePaneTerminalSessionRegistry.get(persistentKey);
       // RCS 重连更换服务代理后，旧订阅已经失效；重新 attach Host PTY 并回放。
       if (existingEntry?.service && existingEntry.service !== services.terminalService) {
-        sidePaneTerminalSessionRegistry.release(persistentKey); existingEntry = undefined;
+        sidePaneTerminalSessionRegistry.release(persistentKey);
+        existingEntry = undefined;
       }
 
       // --- 复用快路径：切回 workspace / 重挂，entry 已在 registry ---

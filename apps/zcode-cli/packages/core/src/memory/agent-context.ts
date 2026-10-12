@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { ESTIMATED_TOKEN_CHAR_DIVISOR } from "@zcode/shared";
 import {
   modelMessageContentToText,

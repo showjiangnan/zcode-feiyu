@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { logger } from "@/logger.js";
 
 const PREFIX = "zcode:start-plan-reminder:v1:";
@@ -7,7 +8,7 @@ interface RecordEntry {
 }
 
 /** 10% 提醒记录唯一 owner；已展示事实持久化，当前展示实例只留在内存。 */
-function createStartPlanQuotaReminderStore(
+export function createStartPlanQuotaReminderStore(
   options: {
     storage?: () => Storage | null;
   } = {},

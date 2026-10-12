@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createConfig } from "@zcode/adapters/config";
 import { buildPluginReferenceCatalog, type AgentRuntime } from "@zcode/core";
 import type {

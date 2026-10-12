@@ -1,39 +1,40 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type {
   AgentExecutionTelemetryPort,
   AgentTelemetryActorKind,
+  AutomationPort,
   BackgroundResultOriginMeta,
+  BrowserControlPort,
   CollaborationMode,
   CoordinatorResponsePort,
   DynamicWorkflowRunPort,
   DynamicWorkflowSnippetPort,
-  ModelCatalogPort,
   EmbeddedSearchBackend,
   ExecutionPort,
-  BrowserControlPort,
   ExecutionShellSelection,
-  AutomationPort,
-  OffPeakPort,
-  TaskMessagePort,
   FileSystemPort,
   HttpClientPort,
   ImageProcessorPort,
-  PdfDocumentPort,
   Logger,
   Model,
+  ModelCatalogPort,
+  OffPeakPort,
+  PdfDocumentPort,
   PermissionBrokerPort,
   SessionEvent,
   SessionId,
   SessionModePort,
   SessionStorePort,
   SkillPort,
-  SubagentRunOptions,
   SubagentPort,
+  SubagentRunOptions,
+  TaskMessagePort,
   ToolArtifactStorePort,
+  TopicResourcePort,
   TraceContext,
   TurnId,
-  WorkflowPort,
   WorkflowEscalatePort,
+  WorkflowPort,
   WorkflowSubmitPort,
 } from "@zcode/contracts";
 import type { HookRunner } from "../../hooks/index.js";
@@ -42,10 +43,10 @@ import type { RuntimeTaskRegistry } from "../../runtime-task/registry.js";
 import type { ToolRegistry } from "../registry.js";
 import type { ToolSchedule } from "../scheduler.js";
 import type {
+  BackgroundTaskControlPort,
   ExecutableToolCall,
   ReadFileStateMap,
   ToolBatchEvent,
-  BackgroundTaskControlPort,
   ToolExecutionResult,
   ToolRuntimeScope,
 } from "../types.js";
@@ -115,6 +116,7 @@ export interface ToolExecutorOptions {
   taskMessagePort?: TaskMessagePort;
   getPaidImageInputId?: () => string | undefined;
   imageGenerationPort?: import("@zcode/contracts").ImageGenerationPort;
+  topicResourcePort?: TopicResourcePort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
   workflowPort?: WorkflowPort;
@@ -155,6 +157,13 @@ export interface ToolExecutorOptions {
 }
 
 export interface ToolExecutor {
+  /** 同一权限链供 MCP App 使用；返回审批后的输入，不执行 handler / 不做模型结果投影。 */
+  authorizeAppTool?(
+    toolCall: ExecutableToolCall,
+    entry: import("../types.js").ToolEntry,
+    options?: ToolExecuteOptions,
+  ): Promise<unknown>;
+
   execute(toolCall: ExecutableToolCall, options?: ToolExecuteOptions): Promise<ToolExecutionResult>;
   executeBatch(
     toolCalls: ExecutableToolCall[],
@@ -233,6 +242,7 @@ export interface ToolExecutorDeps {
   automationPort?: AutomationPort;
   offPeakPort?: OffPeakPort;
   taskMessagePort?: TaskMessagePort;
+  topicResourcePort?: TopicResourcePort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
   workflowPort?: WorkflowPort;

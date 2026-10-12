@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { randomBytes } from "node:crypto";
 import type { HttpClientPort, HttpClientRunOptions, TraceContext } from "@zcode/contracts";
 import { buildBigModelApiUrl } from "@zcode/shared";
@@ -24,7 +25,10 @@ export interface BigmodelOAuthTokenSet {
 
 export interface BigmodelOAuthClient {
   buildAuthorizeUrl(input: { redirectUri: string; state: string }): string;
-  exchangeCode(input: { code: string }, options?: HttpClientRunOptions): Promise<BigmodelOAuthTokenSet>;
+  exchangeCode(
+    input: { code: string },
+    options?: HttpClientRunOptions,
+  ): Promise<BigmodelOAuthTokenSet>;
 }
 
 export class BigmodelOAuthError extends Error {
@@ -90,7 +94,9 @@ export function createBigmodelOAuthClient(
       const payload = JSON.parse(new TextDecoder().decode(response.body)) as BigmodelTokenEnvelope;
       const accessToken = payload.data?.accessToken?.trim() ?? "";
       if (!accessToken) {
-        throw new BigmodelOAuthError(payload.msg ?? "BigModel token response is missing accessToken.");
+        throw new BigmodelOAuthError(
+          payload.msg ?? "BigModel token response is missing accessToken.",
+        );
       }
       return {
         accessToken,

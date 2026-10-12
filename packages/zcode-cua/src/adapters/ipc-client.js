@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createConnection } from "node:net";
 import { randomUUID } from "node:crypto";
 import { StringDecoder } from "node:string_decoder";

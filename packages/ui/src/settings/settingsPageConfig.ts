@@ -1,27 +1,27 @@
-// Modified by ZCode Feiyu contributors (2026).
-import {
-  Monitor,
-  Moon,
-  Settings,
-  Settings2,
-  Package,
-  Bot,
-  Palette,
-  Sun,
-  BarChart3,
-  Terminal,
-  AlarmClock,
-  Anchor,
-  Brain,
-  Blocks,
-  Globe2,
-  Cable,
-  WandSparkles,
-  Keyboard,
-  FileSearch,
-} from "lucide-react";
+// Modified by ZCode Feiyu.
 import { isSettingsSectionEnabled, type SettingsSectionId } from "@/lib/settingsNavigation.js";
 import type { Theme } from "@/useTheme.js";
+import {
+  AlarmClock,
+  Anchor,
+  BarChart3,
+  Blocks,
+  Bot,
+  Brain,
+  Cable,
+  FileSearch,
+  Globe2,
+  Keyboard,
+  Monitor,
+  Moon,
+  Package,
+  Palette,
+  Settings,
+  Settings2,
+  Sun,
+  Terminal,
+  WandSparkles,
+} from "lucide-react";
 
 export const THEME_MODES: Array<{
   mode: Theme;
@@ -32,7 +32,11 @@ export const THEME_MODES: Array<{
   { mode: "zai-light", icon: Sun },
 ];
 
-type SettingsSectionGroupId = "basics" | "agentCapabilities" | "remoteServices" | "dataAndStats";
+export type SettingsSectionGroupId =
+  | "basics"
+  | "agentCapabilities"
+  | "remoteServices"
+  | "dataAndStats";
 
 interface SettingsSectionDefinition {
   id: SettingsSectionId;
@@ -180,7 +184,7 @@ export const SETTINGS_SECTIONS = BASE_SETTINGS_SECTIONS.filter(
   (section) => section.id !== "computerUse" && isSettingsSectionEnabled(section.id),
 );
 
-interface SettingsPageConfigOptions {
+export interface SettingsPageConfigOptions {
   isDesktop?: boolean;
   isMacDesktop?: boolean;
   isWindowsDesktop?: boolean;

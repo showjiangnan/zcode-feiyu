@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 卷探测：用 stat().dev 识别物理卷，向上遍历找到挂载点，再 statfs 取容量。
  * 任何一步失败都返回 null（UI 只展示占用、不展示容量），不抛错。
@@ -7,7 +8,7 @@ import { dirname } from "node:path";
 import type { StorageVolume } from "@zcode/shared";
 import type { VolumeProbePort } from "../app/ports.js";
 
-async function probeStorageVolume(path: string): Promise<StorageVolume | null> {
+export async function probeStorageVolume(path: string): Promise<StorageVolume | null> {
   try {
     const deviceId = (await stat(path)).dev;
     let mountPoint = path;

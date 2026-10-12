@@ -1,5 +1,5 @@
-// Modified by ZCode Feiyu contributors (2026).
-const GANTT_BAR_MIN_WIDTH_PX = 18;
+// Modified by ZCode Feiyu.
+export const GANTT_BAR_MIN_WIDTH_PX = 18;
 
 type GanttItemType = "range" | "point";
 

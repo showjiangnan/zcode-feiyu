@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { type IMemoryService } from "@zcode/services";
 import { TID_SETTINGS_MEMORY_SWITCH } from "@zcode/shared";

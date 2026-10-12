@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { SessionCreateSource } from "@zcode/shared";
 import type { GroupedDraftTaskState } from "@/store/zcodeSessionStoreTypes.js";
 
@@ -19,7 +20,9 @@ interface WorkspaceScopedPendingCommand {
   };
 }
 
-function resolvePendingCommandWorkspaceKey(entry: WorkspaceScopedPendingCommand): string | null {
+export function resolvePendingCommandWorkspaceKey(
+  entry: WorkspaceScopedPendingCommand,
+): string | null {
   const workspace = entry.clientContext?.workspace;
   if (workspace) {
     return workspace.workspaceIdentity?.trim() || workspace.workspacePath;

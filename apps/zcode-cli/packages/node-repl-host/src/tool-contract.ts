@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // 旧默认值与模型常用的 30 秒页面等待相同，发送等副作用成功后会在结果读取前被中止。
 // 执行层和模型可见文案共用该常量，避免真实超时与 tools/list 描述漂移。
 export const NODE_REPL_DEFAULT_TIMEOUT_MS = 60_000;

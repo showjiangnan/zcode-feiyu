@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { BlockList, isIP } from "node:net";
 
 export type IpAddressVersion = 0 | 4 | 6;
@@ -50,7 +51,10 @@ const BLOCKED_PUBLIC_EGRESS_RANGES = BLOCKED_IP_RANGES.map((range) => {
 });
 
 export function normalizeIpAddressLiteral(value: string): string {
-  return value.toLowerCase().replace(/\.$/, "").replace(/^\[|\]$/g, "");
+  return value
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .replace(/^\[|\]$/g, "");
 }
 
 export function getIpAddressVersion(value: string): IpAddressVersion {

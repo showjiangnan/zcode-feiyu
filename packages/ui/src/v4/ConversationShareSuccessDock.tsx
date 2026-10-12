@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { CheckCircle2, Copy, ExternalLink, X } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -8,7 +9,7 @@ import {
   resolveConversationShareWarningMessageId,
 } from "@/lib/conversationShareError.js";
 
-interface ConversationShareSuccessDockProps {
+export interface ConversationShareSuccessDockProps {
   title: string;
   warnings?: ConversationShareDisplayWarnings | null;
   onOpen: () => void;

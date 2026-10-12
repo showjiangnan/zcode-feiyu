@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
 import type { PluginDiagnosticCode } from "@zcode/contracts";
 
-class PluginSourceMaterializationError extends Error {
+export class PluginSourceMaterializationError extends Error {
   readonly diagnosticCode: PluginDiagnosticCode;
 
   constructor(diagnosticCode: PluginDiagnosticCode, message: string, options?: ErrorOptions) {
@@ -34,7 +35,7 @@ export function createArchiveFetchError(source: string, cause: unknown): Error {
  * source materialization 错误现在会被持久化并投影到桌面/Web UI，不能把 URL
  * userinfo 带入状态文件、日志或截图。凭据只在诊断生成边界清理，所有消费者共享同一规则。
  */
-function redactPluginSource(source: string): string {
+export function redactPluginSource(source: string): string {
   const trimmed = source.trim();
   try {
     const url = new URL(trimmed);

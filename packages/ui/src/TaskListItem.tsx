@@ -1,6 +1,49 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- task item 同时承载默认列表和 timeline 两行布局的共享交互，先保持动作链路集中避免归档/置顶回归。 */
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cn } from "@/components/lib/utils.js";
+import { TaskTitleOverflowText } from "@/components/TaskTitleOverflowText.js";
+import { Badge } from "@/components/ui/badge.js";
+import { Button } from "@/components/ui/button.js";
+import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.js";
+import { toast } from "@/components/ui/toast.js";
+import { TaskWorkflowRunLines } from "@/components/workflow-run-line/TaskWorkflowRunLines.js";
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { useFeedbackStore } from "@/feedback/feedbackStore.js";
+import { useTaskInteractionAutoResolutionSnooze } from "@/hooks/useTaskInteractionAutoResolutionSnooze.js";
+import { getPathLeaf } from "@/lib/path.js";
+import { formatTaskTitleWithChanges, getTaskChangeSummary } from "@/lib/taskChangeSummary.js";
+import { buildTaskFeedbackDescription } from "@/lib/taskFeedbackDraft.js";
+import {
+  deriveTaskLeadingIndicator,
+  formatTaskRelativeTime,
+} from "@/lib/taskListItemPresentation.js";
+import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
+import { createTaskWorkbenchDragPreview } from "@/lib/taskWorkbenchDragPreview.js";
+import { runUserAction } from "@/lib/userActionTelemetry.js";
+import { useModelTrajectoryStore } from "@/store/modelTrajectoryStore.js";
+import { isWorkspaceReadOnly } from "@/store/tabStore.js";
+import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
+import { TaskInteractionBadge } from "@/TaskInteractionBadge.js";
+import { TaskListItemContextMenu } from "@/TaskListItemContextMenu.js";
+import { useTaskListItemContextActions } from "@/useTaskListItemContextActions.js";
+import { useV4SplitPaneEntry } from "@/v4/splitPaneEntryContext.js";
+import { getTaskListAttention, getTaskListRowActivity } from "@/v4/taskListRowActivity.js";
+import {
+  WORKBENCH_SESSION_DRAG_MIME,
+  clearActiveWorkbenchSessionDragPayload,
+  serializeWorkbenchSessionDragPayload,
+  setActiveWorkbenchSessionDragPayload,
+} from "@/v4/workbenchDragDrop.js";
+import { buildWorkbenchSessionKey, useWorkbenchGroupStore } from "@/v4/workbenchGroupStore.js";
+import { TaskRowActionButton } from "@/workspace-grouped-tasks/task-row-action-button.js";
+import {
+  TID_TASK_ARCHIVE,
+  TID_TASK_ITEM,
+  isCronTask,
+  isOffPeakTask,
+  testId,
+  type ZCodeTaskMeta,
+} from "@zcode/shared";
 import {
   Archive,
   Clock,
@@ -13,44 +56,7 @@ import {
   Pin,
   Smartphone,
 } from "lucide-react";
-import { isCronTask, isOffPeakTask, type ZCodeTaskMeta } from "@zcode/shared";
-import { TID_TASK_ARCHIVE, TID_TASK_ITEM, testId } from "@zcode/shared";
-import { Badge } from "@/components/ui/badge.js";
-import { Button } from "@/components/ui/button.js";
-import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.js";
-import { cn } from "@/components/lib/utils.js";
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { getPathLeaf } from "@/lib/path.js";
-import { formatTaskTitleWithChanges, getTaskChangeSummary } from "@/lib/taskChangeSummary.js";
-import {
-  deriveTaskLeadingIndicator,
-  formatTaskRelativeTime,
-} from "@/lib/taskListItemPresentation.js";
-import { getTaskListAttention, getTaskListRowActivity } from "@/v4/taskListRowActivity.js";
-import { TaskListItemContextMenu } from "@/TaskListItemContextMenu.js";
-import { TaskInteractionBadge } from "@/TaskInteractionBadge.js";
-import { useTaskListItemContextActions } from "@/useTaskListItemContextActions.js";
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
-import { useModelTrajectoryStore } from "@/store/modelTrajectoryStore.js";
-import { buildTaskFeedbackDescription } from "@/lib/taskFeedbackDraft.js";
-import { toast } from "@/components/ui/toast.js";
-import { buildTaskWorkspaceKey } from "@/lib/taskQueryCache.js";
-import { useV4SplitPaneEntry } from "@/v4/splitPaneEntryContext.js";
-import { buildWorkbenchSessionKey, useWorkbenchGroupStore } from "@/v4/workbenchGroupStore.js";
-import { useTaskInteractionAutoResolutionSnooze } from "@/hooks/useTaskInteractionAutoResolutionSnooze.js";
-import {
-  WORKBENCH_SESSION_DRAG_MIME,
-  clearActiveWorkbenchSessionDragPayload,
-  serializeWorkbenchSessionDragPayload,
-  setActiveWorkbenchSessionDragPayload,
-} from "@/v4/workbenchDragDrop.js";
-import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
-import { isWorkspaceReadOnly } from "@/store/tabStore.js";
-import { TaskTitleOverflowText } from "@/components/TaskTitleOverflowText.js";
-import { createTaskWorkbenchDragPreview } from "@/lib/taskWorkbenchDragPreview.js";
-import { runUserAction } from "@/lib/userActionTelemetry.js";
-import { TaskRowActionButton } from "@/workspace-grouped-tasks/task-row-action-button.js";
-import { TaskWorkflowRunLines } from "@/components/workflow-run-line/TaskWorkflowRunLines.js";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type TaskListItemIntl = {
   formatMessage: (desc: { id: string }, values?: Record<string, string>) => string;
@@ -444,7 +450,7 @@ export const MemoTaskItem = memo(function TaskListItem({
             }}
             onClick={handleArchive}
             data-testid={testId(TID_TASK_ARCHIVE, task.taskId)}
-            // 归档确认态是显式等待用户决策的状态，必须持续显示 destructive 按钮。
+            // Bugfix: 归档确认态是显式等待用户决策的状态，必须持续显示 destructive 按钮。
             className={cn("shrink-0 border-destructive/20 px-2", archiveActionVisibilityClassName)}
             aria-label={archiveLabel}
           >
@@ -481,7 +487,7 @@ export const MemoTaskItem = memo(function TaskListItem({
     !hasPendingInteraction &&
     (shouldMountWorkspaceTaskActions || isMobileActive) ? (
       <span className="inline-flex shrink-0">
-        {/* Pinned 文件树按钮曾手写 hover 背景和 tooltip，导致与 Grouped task
+        {/* Bugfix：Pinned 文件树按钮曾手写 hover 背景和 tooltip，导致与 Grouped task
             的同一操作视觉不一致。直接复用共享 action，统一 bg-hover、尺寸和 pointer 行为。 */}
         <TaskRowActionButton
           label={intl.formatMessage({ id: "git.action.showTree" })}
@@ -606,7 +612,7 @@ export const MemoTaskItem = memo(function TaskListItem({
         isActive ? "bg-selected" : "hover:bg-surface-hover",
       )}
     >
-      {/* 之前任务列表依赖 divide-y 画分隔线，深色侧栏里每个 item 上下都会出现明显黑线，
+      {/* Bugfix: 之前任务列表依赖 divide-y 画分隔线，深色侧栏里每个 item 上下都会出现明显黑线，
               视觉上像被两条边框夹住。这里改成“列表留白 + item 自己带圆角态”，
               让 hover/active 的层级由卡片背景承担，不再依赖分隔线。 */}
 
@@ -693,7 +699,7 @@ export const MemoTaskItem = memo(function TaskListItem({
               className="text-ui-base text-foreground"
               title={taskTitleWithChanges}
             >
-              {/* workspace/timeline task 标题之前使用 truncate，会在长标题末尾显示省略号；
+              {/* Bugfix: workspace/timeline task 标题之前使用 truncate，会在长标题末尾显示省略号；
                       grouped task 已改为右侧渐隐。这里统一 task 列表标题溢出策略，避免同一侧栏里出现两种截断语义。 */}
               {taskTitle}
             </TaskTitleOverflowText>
@@ -773,10 +779,10 @@ export const MemoTaskItem = memo(function TaskListItem({
                       id: "taskList.mobileActive",
                     })}
                   >
-                    {/* mobileViewState 已经能告诉桌面端手机正在看的 task，
+                    {/* Bugfix: mobileViewState 已经能告诉桌面端手机正在看的 task，
                         但列表未消费这个状态，用户会误以为只有桌面端在操作。上一版把图标作为标题前的 flex 子项，
                         会把当前行标题往右挤，造成上下 task 标题不对齐；这里改成绝对定位到原有 leading 槽，
-                        标题文本仍从既有位置开始；同时 hover 时隐藏手机标记，把置顶按钮还给用户。 */}
+                        标题文本仍然从原来的位置开始；同时 hover 时隐藏手机标记，把原来的置顶按钮还给用户。 */}
                     <Smartphone className="size-3.5" />
                   </span>
                 </ControlHintTooltip>
@@ -785,7 +791,7 @@ export const MemoTaskItem = memo(function TaskListItem({
                 className="text-ui-base text-foreground"
                 title={taskTitleWithChanges}
               >
-                {/* 默认 workspace task item 和 timeline item 共享标题溢出规则；
+                {/* Bugfix: 默认 workspace task item 和 timeline item 共享标题溢出规则；
                         使用 mask 渐隐而不是省略号，和 grouped task row 保持一致。 */}
                 {taskTitle}
               </TaskTitleOverflowText>
@@ -906,9 +912,11 @@ export function TaskListItemContextMenuContent({
   const {
     taskSessionFile,
     taskNativeSessionLogFile,
+    providerConfigFile,
     fileManagerLabel,
     handleCopyText,
     handleOpenTaskPathInFileManager,
+    handleOpenProviderConfig,
   } = useTaskListItemContextActions({
     workspacePath,
     remoteSessionId,
@@ -919,6 +927,7 @@ export function TaskListItemContextMenuContent({
     // row 级菜单已收敛为列表级单例，只有菜单真正打开时才挂载此组件。
     // 因此路径探测和 provider 配置探测可以直接随打开态运行，避免每个 idle row 订阅和计算。
     loadTaskPaths: true,
+    loadProviderConfig: true,
   });
   const taskTitle =
     task.title ||
@@ -939,7 +948,7 @@ export function TaskListItemContextMenuContent({
       type: "bug",
       module: "Agent任务执行失败",
       severity: "P2-中",
-      includeLogs: false,
+      includeLogs: true,
       description: buildTaskFeedbackDescription({
         taskTitle,
         taskId: task.taskId,
@@ -971,6 +980,7 @@ export function TaskListItemContextMenuContent({
       taskSessionFile={taskSessionFile}
       activeSessionId={task.taskId}
       taskNativeSessionLogFile={taskNativeSessionLogFile}
+      providerConfigFile={providerConfigFile}
       disableTaskActions={workspaceActionsDisabled}
       disabledReason={workspaceActionsDisabledReason}
       onTogglePinTask={() => {
@@ -1026,6 +1036,9 @@ export function TaskListItemContextMenuContent({
           workspaceKey: task.workspaceIdentity?.trim() || workspacePath,
           title: taskTitle,
         });
+      }}
+      onOpenProviderConfig={() => {
+        void handleOpenProviderConfig();
       }}
     />
   );

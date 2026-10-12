@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback } from "react";
 import { resolveModelProviderFamilyIdByProviderId } from "@zcode/shared";
 import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
@@ -32,7 +33,7 @@ interface CodingPlanUpgradeDialogProps {
 }
 
 // 完成刷新：官网页通过 window.zcodeBridge.notifyPurchaseComplete 回传购买成功后调用。
-async function refreshCodingPlanUpgradeCompletion(params: {
+export async function refreshCodingPlanUpgradeCompletion(params: {
   productsProviderId: CodingPlanProviderId | null;
   providerId: CodingPlanProviderId | null;
   refreshCodingPlanEntitlements: () => Promise<unknown> | unknown;
@@ -48,7 +49,7 @@ async function refreshCodingPlanUpgradeCompletion(params: {
   ]);
 }
 
-async function closeAndRefreshCodingPlanUpgradeFromWebview(params: {
+export async function closeAndRefreshCodingPlanUpgradeFromWebview(params: {
   onClose: () => void;
   refresh: () => Promise<unknown> | unknown;
   onRefreshError?: (error: unknown) => void;

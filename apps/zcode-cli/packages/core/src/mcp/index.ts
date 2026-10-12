@@ -1,32 +1,41 @@
-// Modified by ZCode Feiyu contributors (2026).
-// MCP tool bridge - projects MCP descriptors into core tool entries
-
+// Modified by ZCode Feiyu.
 import {
-  modelMessageContentToText,
-  ZCODE_MCP_ERROR_PRESENTATION_MESSAGE_ONLY,
-  ZCODE_MCP_ERROR_PRESENTATION_META_KEY,
+  resolveMcpToolVisibility,
+  SessionEventType,
   type JsonSchema,
   type McpPort,
-  type McpToolCallResult,
   type McpToolDescriptor,
-  type ModelMessageContent,
-  type ModelMessageContentBlock,
   type ModelToolSideEffectScope,
   type PermissionCapabilityGroup,
   type RiskLevel,
+  type SessionEvent,
+  type ToolCallProgressPayload,
 } from "@zcode/contracts";
 import { ZCODE_CUA_OFFICIAL_MCP_NAMESPACE_NAME as ZCODE_CUA_OFFICIAL_MCP_SERVER_NAME } from "@zcode/shared";
 import { OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION } from "@zcode/zcode-cua/frame-contract";
+import { randomUUID } from "node:crypto";
 import type { ToolRegistry } from "../tool/registry.js";
-import type { ToolEntry } from "../tool/types.js";
 import { createToolRuleNameSet } from "../tool/tool-visibility.js";
-import {
-  asDataUrl,
-  base64PayloadFromMcpImageData,
-  normalizeMcpToolResultForModel,
-} from "./image-normalization.js";
-import { toMcpToolName, toModelVisibleMcpNamePart } from "./name.js";
+import type { ToolEntry } from "../tool/types.js";
 import { toMcpToolHandlerFailure } from "./handler-failure.js";
+import { normalizeMcpToolResultForModel } from "./image-normalization.js";
+import { toMcpToolName, toModelVisibleMcpNamePart } from "./name.js";
+
+import {
+  createModelFacingMcpInputSchema,
+  isZCodeCuaGetAppState,
+  toMcpRuntimeArguments,
+} from "./mcp-schema.js";
+import { formatMcpToolResult } from "./mcp-result-format.js";
+export { formatMcpToolResult } from "./mcp-result-format.js";
+// 按职责拆分；保留原始规则、执行顺序与状态所有者。
+
+export {
+  createMcpAppProvidedToolEntry,
+  MCP_APP_PROVIDED_TOOL_ENTRY_TIMEOUT_MS,
+  type McpAppProvidedToolDefinition,
+  type McpAppProvidedToolExecutor,
+} from "./app-tools.js";
 
 export { toMcpToolName } from "./name.js";
 
@@ -37,15 +46,11 @@ export {
 } from "./image-normalization.js";
 
 const MCP_TOOL_TIMEOUT_MS = 30_000;
+
 const OFFICIAL_CUA_PERMISSION_CAPABILITY_GROUP = "official_cua" satisfies PermissionCapabilityGroup;
-const CUA_USER_TITLE_SCHEMA = {
-  type: "string",
-  minLength: 1,
-  maxLength: 120,
-  description:
-    "Required short user-facing title in the user's language that describes why the app interface is being read without implementation terms such as CUA, MCP, or get_app_state",
-} satisfies JsonSchema;
+
 const ZCODE_CUA_CANONICAL_MODEL_PREFIX = "mcp__computer-use__";
+
 const ZCODE_CUA_PROVIDER_SPELLING_ALIAS_PREFIX = "mcp__computer_use__";
 
 export interface RegisterMcpToolsOptions {
@@ -62,6 +67,11 @@ export interface RegisterMcpToolsOptions {
     serverNames: ReadonlySet<string>;
     isEnabled: () => boolean;
   };
+  /**
+   * namespaced server 名 → 插件稳定 id，来自 session 冻结的 PluginReferenceCatalog。
+   * 只用于 display.ui 的归属投影；缺失时该 server 的工具不投影 UI。
+   */
+  pluginIdByServerName?: ReadonlyMap<string, string>;
 }
 
 export function registerMcpTools(
@@ -93,6 +103,7 @@ export function registerMcpTools(
         mcpPort,
         officialCuaAuthorityVerified,
         workspaceApproval,
+        { pluginId: options.pluginIdByServerName?.get(descriptor.serverName) },
       ),
     );
     registered.push(name);
@@ -117,15 +128,20 @@ function toRegisteredMcpToolName(
   return toMcpToolName(descriptor);
 }
 
-function createMcpToolEntry(
+export function createMcpToolEntry(
   name: string,
   descriptor: McpToolDescriptor,
   mcpPort: McpPort,
   officialCuaAuthorityVerified: boolean,
   workspaceApproval?: () => boolean,
+  presentation: { pluginId?: string } = {},
 ): ToolEntry {
   const readOnly = descriptor.annotations?.readOnlyHint === true;
   const destructive = descriptor.annotations?.destructiveHint === true;
+  // 插件 UI：visibility 不含 "model" 的工具只供 UI 回调（mcp/uiCallTool），
+  // 仍进 registry 以复用元数据，但不进 provider contracts（registry.toContracts 已过滤 providerVisible=false）。
+  // 修复：之前只看 ui.visibility，没有 resourceUri 的 app-only 数据工具会被当成模型可见。
+  const providerVisible = resolveMcpToolVisibility(descriptor).includes("model");
   const isHostNodeReplExecution =
     descriptor.serverName === "node_repl" && descriptor.toolName === "js";
   const isCuaAppObservation = isZCodeCuaGetAppState(descriptor);
@@ -198,8 +214,11 @@ function createMcpToolEntry(
         ...(descriptor.description ? { description: descriptor.description } : {}),
         // 只有官方 MCP 的结果才允许携带被客户端信任的结构化标识（额度耗尽 / 无套餐）。
         ...(descriptor.official ? { official: true } : {}),
+        ...(presentation.pluginId ? { pluginId: presentation.pluginId } : {}),
+        ...(descriptor.ui ? { ui: descriptor.ui } : {}),
       },
       needsApproval,
+      ...(providerVisible ? {} : { providerVisible: false }),
       readOnly,
       riskLevel,
       sideEffectScope,
@@ -231,6 +250,7 @@ function createMcpToolEntry(
       recordOutput: "summary",
     },
     handler: async (input, context) => {
+      const startedAt = Date.now();
       const result = await mcpPort.callTool(
         {
           serverName: descriptor.serverName,
@@ -260,6 +280,16 @@ function createMcpToolEntry(
         {
           signal: context.abortSignal,
           timeoutMs,
+          // MCP 进度通知（A8）→ ToolCallProgress：与 Bash 输出进度同一事件，UI 走已有工具行进度路径。
+          ...(context.emitEvent
+            ? {
+                onProgress: (progress: { progress: number; total?: number; message?: string }) => {
+                  void context.emitEvent?.(
+                    createMcpProgressEvent(context, name, startedAt, progress),
+                  );
+                },
+              }
+            : {}),
         },
       );
       // MCP server 会返回大 base64 图片；resultBudget 只看到图片占位文本，
@@ -276,6 +306,32 @@ function createMcpToolEntry(
       return output.isError ? toMcpToolHandlerFailure(output, formatMcpToolResult(output)) : output;
     },
     formatModelContent: (output) => formatMcpToolResult(output),
+  };
+}
+
+function createMcpProgressEvent(
+  context: Parameters<ToolEntry["handler"]>[1],
+  toolName: string,
+  startedAt: number,
+  progress: { progress: number; total?: number; message?: string },
+): SessionEvent {
+  const payload: ToolCallProgressPayload = {
+    toolCallId: context.toolCallId as ToolCallProgressPayload["toolCallId"],
+    toolName,
+    elapsedMs: Math.max(0, Date.now() - startedAt),
+    progress: progress.progress,
+    ...(progress.total !== undefined ? { total: progress.total } : {}),
+    ...(progress.message !== undefined ? { message: progress.message } : {}),
+  };
+  return {
+    id: randomUUID() as SessionEvent["id"],
+    sessionId: context.sessionId,
+    turnId: context.turnId,
+    type: SessionEventType.ToolCallProgress,
+    timestamp: new Date(),
+    traceId: context.traceId,
+    sequenceNumber: 0,
+    payload,
   };
 }
 
@@ -319,180 +375,3 @@ export const McpToolOutputJsonSchema = {
   },
   additionalProperties: false,
 } satisfies JsonSchema;
-
-function normalizeInputSchema(schema: JsonSchema | undefined): JsonSchema {
-  if (!schema || typeof schema !== "object") {
-    return {
-      type: "object",
-      properties: {},
-      additionalProperties: true,
-    };
-  }
-
-  return {
-    ...schema,
-    type: "object",
-    properties:
-      schema.properties &&
-      typeof schema.properties === "object" &&
-      !Array.isArray(schema.properties)
-        ? schema.properties
-        : {},
-  };
-}
-
-function createModelFacingMcpInputSchema(
-  descriptor: McpToolDescriptor,
-  isCuaAppObservation: boolean,
-): JsonSchema {
-  const schema = normalizeInputSchema(descriptor.inputSchema);
-  if (!isCuaAppObservation) return schema;
-
-  const properties = schema.properties as Record<string, unknown>;
-  const required = Array.isArray(schema.required)
-    ? schema.required.filter((value): value is string => typeof value === "string")
-    : [];
-
-  // 原因：title 是 ZCode 给用户看的意图摘要，不属于上游 zcode-cua 参数。只在模型 contract
-  // 叠加必填字段，runtime dispatch 再剥离，既让模型稳定生成可读标题，也保持上游严格 schema 兼容。
-  return {
-    ...schema,
-    properties: {
-      ...properties,
-      title: CUA_USER_TITLE_SCHEMA,
-    },
-    required: [...new Set([...required, "title"])],
-  };
-}
-
-function isZCodeCuaGetAppState(
-  descriptor: Pick<McpToolDescriptor, "serverName" | "toolName">,
-): boolean {
-  if (descriptor.toolName.trim().toLowerCase().replace(/-/g, "_") !== "get_app_state") {
-    return false;
-  }
-
-  const serverName = descriptor.serverName.trim().toLowerCase().replace(/_/g, "-");
-  return (
-    descriptor.serverName === ZCODE_CUA_OFFICIAL_MCP_SERVER_NAME ||
-    serverName === "zcode-cua" ||
-    serverName === "computer-use" ||
-    (serverName.includes("zcode-cua") && serverName.includes("computer-use"))
-  );
-}
-
-function hasInformativeStructuredContent(value: unknown): boolean {
-  if (value === null || value === undefined) return false;
-  if (Array.isArray(value)) return value.length > 0;
-  if (typeof value === "object") return Object.keys(value).length > 0;
-  return true;
-}
-
-function formatMcpToolResult(output: unknown): ModelMessageContent {
-  if (!isMcpToolCallResult(output)) {
-    return stringify(output);
-  }
-
-  const blocks = output.content.flatMap(formatContentBlock);
-  // 生产 adapter 会保留 structuredContent 的空键；undefined、null、空对象和
-  // 空数组都没有模型信息，不能追加伪造的 "Structured content" 块。有内容的错误详情
-  // 仍需保留，权限引导依赖这条结构化通道。
-  if (hasInformativeStructuredContent(output.structuredContent)) {
-    blocks.push({
-      type: "text",
-      text: `Structured content:\n${stringify(output.structuredContent)}`,
-    });
-  }
-
-  const content = blocks.length > 0 ? collapseModelBlocks(blocks) : stringify(output);
-  if (!output.isError) return content;
-  // 展示策略由 MCP result 显式声明；通用 bridge 不应识别具体 server，
-  // 也不应通过解析错误字符串来猜测哪些内容属于堆栈。
-  const errorPresentation = output._meta?.[ZCODE_MCP_ERROR_PRESENTATION_META_KEY];
-  return typeof errorPresentation === "string" &&
-    errorPresentation === ZCODE_MCP_ERROR_PRESENTATION_MESSAGE_ONLY
-    ? content
-    : `MCP tool returned an error:\n${modelMessageContentToText(content)}`;
-}
-
-function formatContentBlock(block: Record<string, unknown>): ModelMessageContentBlock[] {
-  if (block.type === "text" && typeof block.text === "string") {
-    return block.text.length > 0 ? [{ type: "text", text: block.text }] : [];
-  }
-  if (block.type === "image") {
-    const mimeType = typeof block.mimeType === "string" ? block.mimeType : "unknown";
-    if (typeof block.data === "string" && typeof block.mimeType === "string") {
-      return [
-        {
-          type: "image",
-          mediaType: block.mimeType,
-          dataUrl: asDataUrl(block.data, block.mimeType),
-          source: {
-            id: "mcp-image",
-            kind: "inline",
-            mimeType: block.mimeType,
-            placeholder: "MCP image",
-            sizeBytes: estimateBase64Bytes(block.data),
-          },
-        },
-      ];
-    }
-    return [{ type: "text", text: `[MCP image content omitted: ${mimeType}]` }];
-  }
-  if (block.type === "audio") {
-    const mimeType = typeof block.mimeType === "string" ? block.mimeType : "unknown";
-    return [{ type: "text", text: `[MCP audio content omitted: ${mimeType}]` }];
-  }
-  if (block.type === "resource") {
-    return [{ type: "text", text: `MCP resource content:\n${stringify(block.resource ?? block)}` }];
-  }
-  return [{ type: "text", text: stringify(block) }];
-}
-
-function collapseModelBlocks(blocks: ModelMessageContentBlock[]): ModelMessageContent {
-  if (blocks.every((block) => block.type === "text")) {
-    return blocks.map((block) => (block.type === "text" ? block.text : "")).join("\n\n");
-  }
-  return blocks;
-}
-
-function estimateBase64Bytes(value: string): number | undefined {
-  const data = base64PayloadFromMcpImageData(value);
-  if (data.length === 0) return undefined;
-  return Math.floor((data.replace(/=+$/, "").length * 3) / 4);
-}
-
-function isMcpToolCallResult(value: unknown): value is McpToolCallResult {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    Array.isArray((value as McpToolCallResult).content)
-  );
-}
-
-function toRecordInput(input: unknown): Record<string, unknown> {
-  if (input && typeof input === "object" && !Array.isArray(input)) {
-    return input as Record<string, unknown>;
-  }
-  return {};
-}
-
-function toMcpRuntimeArguments(
-  input: unknown,
-  stripCuaUserTitle: boolean,
-): Record<string, unknown> {
-  const argumentsRecord = toRecordInput(input);
-  if (!stripCuaUserTitle || !("title" in argumentsRecord)) return argumentsRecord;
-
-  const runtimeArguments = { ...argumentsRecord };
-  delete runtimeArguments.title;
-  return runtimeArguments;
-}
-
-function stringify(value: unknown): string {
-  try {
-    return JSON.stringify(value, null, 2) ?? "";
-  } catch {
-    return String(value);
-  }
-}

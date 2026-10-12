@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { GitCommitGraphCommit } from "@zcode/shared";
 
 export interface GraphPoint {
@@ -41,7 +42,7 @@ class LayoutBranch {
   }
 }
 
-class LayoutVertex {
+export class LayoutVertex {
   readonly id: number;
   readonly hash: string;
   private readonly parents: LayoutVertex[] = [];

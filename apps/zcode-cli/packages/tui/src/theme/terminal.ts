@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { CliRenderer, TerminalColors } from "@mbears/opentui-core";
 import type { UiThemeMode } from "@zcode/contracts";
 import { isTuiThemeMode } from "./state.js";
@@ -10,10 +11,7 @@ const RGB_COMPONENT_START = 1;
 const RGB_COMPONENT_SIZE = 2;
 const BRIGHTNESS_THRESHOLD = 128;
 
-type TerminalThemeRenderer = Pick<
-  CliRenderer,
-  "getPalette" | "themeMode" | "waitForThemeMode"
->;
+type TerminalThemeRenderer = Pick<CliRenderer, "getPalette" | "themeMode" | "waitForThemeMode">;
 
 export async function resolveInitialTerminalThemeMode(
   renderer: TerminalThemeRenderer,
@@ -68,4 +66,3 @@ function inferThemeModeFromHex(color: string): UiThemeMode | null {
 function readHexComponent(color: string, offset: number): number {
   return Number.parseInt(color.slice(offset, offset + RGB_COMPONENT_SIZE), HEX_RADIX);
 }
-

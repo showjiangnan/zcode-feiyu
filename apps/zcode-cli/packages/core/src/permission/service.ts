@@ -1,89 +1,25 @@
-// Modified by ZCode Feiyu contributors (2026).
-// ============================================================
-// Permission Service - Permission checking and decision making
-// ============================================================
+// Modified by ZCode Feiyu.
+import { type PermissionRuleset, type PermissionUpdate } from "@zcode/contracts";
 
-import {
-  AMEND_WORKFLOW_TOOL_NAME,
-  isAmendWorkflowOwnedPredecessor,
-  PermissionCapabilityGroup,
-  type PermissionCapabilityGroup as PermissionCapabilityGroupType,
-  type PermissionRuleValue,
-  type PermissionRuleset,
-  type PermissionUpdate,
-  type CollaborationMode,
-  type ModelToolSideEffectScope,
-  type RiskLevel,
-  type ToolPermissionSpec,
-} from "@zcode/contracts";
-import { OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME } from "@zcode/shared";
 import { resolvePlanModeTransitionPermission } from "./plan-mode-policy.js";
-import { webFetchRuleSubjects, wildcardToRegExp } from "./rule-matching.js";
+
 import { isPreapprovedWorkflowDraftWrite } from "./workflow-draft-path.js";
 import { applyPermissionUpdates } from "../tool/executor/permission-rules.js";
-import { isWebFetchPreapprovedUrl } from "../tool/webfetch-preapproved.js";
+
 import type { ToolPermissionRulePolicy } from "../tool/types.js";
-
-// -----------------------------------------------
-// Types
-// -----------------------------------------------
-
-/** 草稿免确认的规则号。 */
-const WORKFLOW_DRAFT_PREAPPROVED_RULE_ID = "tool.workflowDraft.preapproved";
-
-export interface PermissionContext {
-  toolName: string;
-  input: unknown;
-  riskLevel: RiskLevel;
-  mode: CollaborationMode;
-  planEnabled?: boolean;
-  prePlanMode?: Exclude<CollaborationMode, "plan">;
-  /**
-   * 会话工作目录。判定相对路径的落点用（目前只有 workflow 草稿免确认这一条），
-   * 可选：拿不到工作目录的调用方照常按其余规则判定，不会因此少一层确认。
-   */
-  workingDirectory?: string;
-}
-
-export interface PermissionToolCapability {
-  allowedInPlanMode?: boolean;
-  alwaysAsk?: boolean;
-  readOnly?: boolean;
-  destructive?: boolean;
-  requiresUserInteraction?: boolean;
-  sideEffectScope?: ModelToolSideEffectScope;
-  riskLevel?: RiskLevel;
-  needsApproval?: boolean;
-  permissionCapabilityGroup?: PermissionCapabilityGroupType;
-  /** 已验证的宿主工具从工作区配置动态派生，不能落普通工具持久授权。 */
-  workspacePreapproved?: boolean;
-  permission?: ToolPermissionSpec;
-}
-
-export type PermissionBehavior = "allow" | "ask" | "deny";
-
-export interface PermissionDecisionResult {
-  decision: PermissionBehavior;
-  allowed: boolean;
-  reason?: string;
-  modifiedInput?: unknown;
-  escalated: boolean;
-  mode: CollaborationMode;
-  ruleId: string;
-  riskLevel: RiskLevel;
-  sideEffectScope?: ModelToolSideEffectScope;
-  /**
-   * 该 ask 来自工具的 alwaysAsk 声明，不是模式或规则推导出来的。下游（PreToolUse hook 的
-   * allow 覆盖）靠这个结构化标记识别"不可抹掉的确认"，而不是去匹配 ruleId 字符串。
-   */
-  alwaysAsk?: boolean;
-}
-
-// -----------------------------------------------
-// Permission Service
-// -----------------------------------------------
-
-export class PermissionService {
+import {
+  WORKFLOW_DRAFT_PREAPPROVED_RULE_ID,
+  type PermissionContext,
+  type PermissionToolCapability,
+  type PermissionDecisionResult,
+  type ResolvedPermissionCapability,
+  type PermissionConfig,
+  defaultPermissionConfig,
+} from "./permission-types.js";
+import { PermissionPolicy } from "./permission-policy.js";
+export * from "./permission-types.js";
+// 会话授权只由原服务实例持有；拆分策略不复制状态。
+export class PermissionService extends PermissionPolicy {
   /**
    * 会话级 allow 规则（「Always allow in this session」）。
    * 一个实例 = 一个 app = 一个会话，所以"随会话消亡"不需要任何额外机制：重启 / 冷恢复 / `/new`
@@ -91,7 +27,9 @@ export class PermissionService {
    */
   private sessionRules: PermissionRuleset = { version: 1 };
 
-  constructor(private config: PermissionConfig = defaultPermissionConfig) {}
+  constructor(config: PermissionConfig = defaultPermissionConfig) {
+    super(config);
+  }
 
   grantSessionPermission(updates: PermissionUpdate[]): void {
     this.sessionRules = applyPermissionUpdates(this.sessionRules, updates);
@@ -130,13 +68,26 @@ export class PermissionService {
       );
     }
 
-    // 声明 alwaysAsk 的工具必须经过用户确认，不能被权限模式的放行分支绕过。
+    // 独立 Plan 优先于 Guarded 的 YOLO 基础策略，审批不能解除 Plan 的执行限制。
+    const planEnabled = context.planEnabled ?? context.mode === "plan";
+    if (!planEnabled && context.mode === "guarded" && toolCapability?.userApprovalRule) {
+      return {
+        ...this.ask(
+          context,
+          capability,
+          toolCapability.userApprovalRule,
+          "Dangerous command requires your approval for this execution",
+        ),
+        approvalMode: "user-once",
+      };
+    }
+
+    // 保留 staging 的工具级确认，不被 Guarded 普通调用的 YOLO 基础策略跳过。
     if (capability.alwaysAsk) {
       return this.checkAlwaysAsk(context, capability, projectRules, rulePolicy);
     }
 
-    const planEnabled = context.planEnabled ?? context.mode === "plan";
-    if (context.mode === "yolo" && !planEnabled) {
+    if ((context.mode === "yolo" || context.mode === "guarded") && !planEnabled) {
       return this.allow(context, capability, "mode.yolo", "Yolo mode bypasses permission prompts");
     }
 
@@ -173,6 +124,24 @@ export class PermissionService {
         capability,
         "rule.project.ask",
         `Tool ${context.toolName} requires approval by project permission rules`,
+      );
+    }
+
+    // 原会话回复的接收范围由 Host 再次校验；network 副作用不能让这个免审批契约重新弹窗。
+    // 放在显式 deny/ask 之后，且同时匹配内置工具名和能力，不能扩大其他网络工具的权限。
+    if (
+      context.toolName === "ReplyToChannel" &&
+      capability.permissionName === "channel.reply" &&
+      capability.sideEffectScope === "network" &&
+      capability.riskLevel === "medium" &&
+      !capability.destructive &&
+      !capability.needsApproval
+    ) {
+      return this.allow(
+        context,
+        capability,
+        "tool.channelReply.preapproved",
+        "The originating bot conversation is already authorized",
       );
     }
 
@@ -242,95 +211,6 @@ export class PermissionService {
     }
 
     return this.checkBuildMode(context, capability);
-  }
-
-  private matchesProjectRules(
-    ruleset: PermissionRuleset | null | undefined,
-    behavior: PermissionBehavior,
-    context: PermissionContext,
-    capability: ResolvedPermissionCapability,
-    rulePolicy?: ToolPermissionRulePolicy,
-  ): boolean {
-    const rules = ruleset?.[behavior];
-    if (!Array.isArray(rules)) return false;
-    const toolRules = rules.filter((rule) =>
-      this.matchesRuleScope(rule, context.toolName, capability),
-    );
-    if (toolRules.length === 0) return false;
-    if (rulePolicy) return rulePolicy.evaluateRules(behavior, toolRules);
-    return toolRules.some((rule) => this.matchesRule(rule, context, capability));
-  }
-
-  private matchesRule(
-    rule: PermissionRuleValue,
-    context: PermissionContext,
-    capability: ResolvedPermissionCapability,
-  ): boolean {
-    if (!this.matchesRuleScope(rule, context.toolName, capability)) return false;
-    if (!rule.ruleContent) return true;
-
-    const subjects = this.ruleSubjects(context.input, context.toolName);
-    if (subjects.length === 0) return false;
-
-    return subjects.some((subject) => this.matchesRuleContent(subject, rule.ruleContent!));
-  }
-
-  private matchesRuleToolName(ruleToolName: string, contextToolName: string): boolean {
-    if (ruleToolName === contextToolName) return true;
-    return contextToolName === "Write" && ruleToolName === "Edit";
-  }
-
-  private matchesRuleScope(
-    rule: PermissionRuleValue,
-    contextToolName: string,
-    capability: ResolvedPermissionCapability,
-  ): boolean {
-    if (rule.toolName === OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME) {
-      // 保留 key 只有在当前 tool entry 另行携带宿主验证后的 official_cua
-      // capability 时才匹配。同名第三方 MCP、authority 漂移以及旧普通 tool
-      // 都不能把可解析的 wire/storage 字符串升级成可信能力。
-      return capability.permissionCapabilityGroup === PermissionCapabilityGroup.OfficialCua;
-    }
-    return this.matchesRuleToolName(rule.toolName, contextToolName);
-  }
-
-  private ruleSubjects(input: unknown, toolName: string): string[] {
-    if (typeof input === "string") return [input];
-    if (!input || typeof input !== "object") return [];
-
-    const record = input as Record<string, unknown>;
-    if (toolName === "WebFetch" && typeof record.url === "string") {
-      return webFetchRuleSubjects(record.url);
-    }
-
-    for (const key of ["command", "url", "file_path", "path", "pattern", "patch_text"]) {
-      const value = record[key];
-      if (typeof value === "string") return [value];
-    }
-
-    return [];
-  }
-
-  private isPreapprovedWebFetchRequest(context: PermissionContext): boolean {
-    if (context.toolName !== "WebFetch") return false;
-    if (!context.input || typeof context.input !== "object") return false;
-    const url = (context.input as Record<string, unknown>).url;
-    return typeof url === "string" && isWebFetchPreapprovedUrl(url);
-  }
-
-  private matchesRuleContent(subject: string, ruleContent: string): boolean {
-    if (ruleContent.endsWith(":*")) {
-      const prefix = ruleContent.slice(0, -2);
-      return (
-        subject === prefix || subject.startsWith(`${prefix} `) || subject.startsWith(`${prefix}\t`)
-      );
-    }
-
-    if (ruleContent.includes("*")) {
-      return wildcardToRegExp(ruleContent).test(subject);
-    }
-
-    return subject === ruleContent;
   }
 
   /**
@@ -405,299 +285,8 @@ export class PermissionService {
     );
   }
 
-  /** AmendWorkflow 且回填的 `predecessor` 说「本会话的 run、非用户停下」。 */
-  private isOwnedWorkflowAmend(context: PermissionContext): boolean {
-    if (context.toolName !== AMEND_WORKFLOW_TOOL_NAME) return false;
-    if (!context.input || typeof context.input !== "object") return false;
-    // 谓词本体住在契约里：就地调并发落回修订时读的必须是同一条规则，不能各写一遍。
-    return isAmendWorkflowOwnedPredecessor((context.input as Record<string, unknown>).predecessor);
-  }
-
-  private checkPlanMode(
-    context: PermissionContext,
-    capability: ResolvedPermissionCapability,
-  ): PermissionDecisionResult {
-    if (capability.readOnly && !capability.destructive) {
-      return this.allow(
-        context,
-        capability,
-        "mode.plan.readOnly",
-        "Plan mode allows read-only tool execution",
-      );
-    }
-
-    if (this.isMcpToolCapability(capability) && !capability.destructive) {
-      return this.allow(
-        context,
-        capability,
-        "mode.plan.mcp",
-        "Plan mode allows non-destructive MCP tool execution",
-      );
-    }
-
-    if (
-      capability.allowedInPlanMode &&
-      capability.sideEffectScope === "session" &&
-      !capability.destructive &&
-      !capability.needsApproval
-    ) {
-      return this.allow(
-        context,
-        capability,
-        "mode.plan.explicitSessionCapability",
-        "Plan mode allows this explicit non-destructive session control action",
-      );
-    }
-
-    return this.deny(
-      context,
-      capability,
-      "mode.plan.nonReadOnly",
-      "Plan mode only allows read-only, non-destructive tools",
-    );
-  }
-
-  private isMcpToolCapability(capability: ResolvedPermissionCapability): boolean {
-    return capability.permissionName === "mcp";
-  }
-
-  private checkBuildMode(
-    context: PermissionContext,
-    capability: ResolvedPermissionCapability,
-  ): PermissionDecisionResult {
-    if (capability.readOnly && !capability.destructive && !capability.needsApproval) {
-      return this.allow(
-        context,
-        capability,
-        "mode.build.readOnly",
-        "Build mode allows read-only tools",
-      );
-    }
-
-    if (capability.riskLevel === "critical") {
-      return this.ask(
-        context,
-        capability,
-        "mode.build.criticalRisk",
-        "Critical risk tools require explicit approval",
-      );
-    }
-
-    if (capability.riskLevel === "high" && !this.config.autoApproveHighRisk) {
-      return this.ask(
-        context,
-        capability,
-        "mode.build.highRisk",
-        "High risk tools require explicit approval",
-      );
-    }
-
-    if (
-      capability.sideEffectScope === "session" &&
-      capability.riskLevel === "low" &&
-      !capability.destructive &&
-      !capability.needsApproval
-    ) {
-      return this.allow(
-        context,
-        capability,
-        "mode.build.sessionState",
-        "Build mode allows low-risk session-local state updates",
-      );
-    }
-
-    if (
-      capability.needsApproval ||
-      capability.destructive ||
-      capability.sideEffectScope !== "none"
-    ) {
-      return this.ask(
-        context,
-        capability,
-        "mode.build.sideEffect",
-        "Tool has side effects and requires approval",
-      );
-    }
-
-    return this.allow(
-      context,
-      capability,
-      "mode.build.lowRisk",
-      "Build mode allows low-risk tool execution",
-    );
-  }
-
-  private checkEditMode(
-    context: PermissionContext,
-    capability: ResolvedPermissionCapability,
-  ): PermissionDecisionResult {
-    if (capability.permissionName === "edit" && capability.sideEffectScope === "workspace") {
-      return this.allow(
-        context,
-        capability,
-        "mode.edit.fileEdit",
-        "Edit mode allows file edit tools",
-      );
-    }
-
-    return this.checkBuildMode(context, capability);
-  }
-
   requiresApproval(context: PermissionContext, toolCapability?: PermissionToolCapability): boolean {
     const decision = this.checkPermission(context, toolCapability);
     return decision.decision === "ask";
   }
-
-  getRiskLevel(toolName: string, toolCapability?: PermissionToolCapability): RiskLevel {
-    if (toolCapability?.riskLevel) {
-      return toolCapability.riskLevel;
-    }
-
-    if (this.isReadOnlyTool(toolName)) {
-      return "low";
-    }
-
-    if (this.isWriteTool(toolName)) {
-      return "medium";
-    }
-
-    if (this.isDestructiveTool(toolName)) {
-      return "high";
-    }
-
-    return "medium";
-  }
-
-  private isReadOnlyTool(name: string): boolean {
-    return new Set([
-      "Read",
-      "Glob",
-      "Grep",
-      "WebSearch",
-      "WebFetch",
-      "TodoRead",
-      "TodoWrite",
-      "AskUserQuestion",
-      "Agent",
-      "Task",
-      "Skill",
-    ]).has(name);
-  }
-
-  private isWriteTool(name: string): boolean {
-    return new Set(["Write", "Edit", "ApplyPatch", "Bash"]).has(name);
-  }
-
-  private isDestructiveTool(name: string): boolean {
-    return new Set(["Bash"]).has(name);
-  }
-
-  private resolveCapability(
-    context: PermissionContext,
-    toolCapability?: PermissionToolCapability,
-  ): ResolvedPermissionCapability {
-    return {
-      allowedInPlanMode: toolCapability?.allowedInPlanMode ?? false,
-      alwaysAsk: toolCapability?.permission?.alwaysAsk ?? toolCapability?.alwaysAsk ?? false,
-      readOnly: toolCapability?.readOnly ?? this.isReadOnlyTool(context.toolName),
-      destructive: toolCapability?.destructive ?? this.isDestructiveTool(context.toolName),
-      requiresUserInteraction:
-        toolCapability?.requiresUserInteraction ??
-        (toolCapability?.permission?.sideEffectScope ?? toolCapability?.sideEffectScope) ===
-          "userInteraction",
-      sideEffectScope:
-        toolCapability?.permission?.sideEffectScope ??
-        toolCapability?.sideEffectScope ??
-        (this.isReadOnlyTool(context.toolName) ? "none" : "workspace"),
-      riskLevel:
-        toolCapability?.permission?.riskLevel ??
-        this.getRiskLevel(context.toolName, toolCapability),
-      needsApproval:
-        toolCapability?.permission?.needsApproval ??
-        toolCapability?.needsApproval ??
-        !this.isReadOnlyTool(context.toolName),
-      permissionCapabilityGroup: toolCapability?.permissionCapabilityGroup,
-      workspacePreapproved: toolCapability?.workspacePreapproved === true,
-      permissionName: toolCapability?.permission?.permission,
-    };
-  }
-
-  private allow(
-    context: PermissionContext,
-    capability: ResolvedPermissionCapability,
-    ruleId: string,
-    reason?: string,
-  ): PermissionDecisionResult {
-    return this.result("allow", context, capability, ruleId, reason);
-  }
-
-  private ask(
-    context: PermissionContext,
-    capability: ResolvedPermissionCapability,
-    ruleId: string,
-    reason: string,
-  ): PermissionDecisionResult {
-    return this.result("ask", context, capability, ruleId, reason);
-  }
-
-  private deny(
-    context: PermissionContext,
-    capability: ResolvedPermissionCapability,
-    ruleId: string,
-    reason: string,
-  ): PermissionDecisionResult {
-    return this.result("deny", context, capability, ruleId, reason);
-  }
-
-  private result(
-    decision: PermissionBehavior,
-    context: PermissionContext,
-    capability: ResolvedPermissionCapability,
-    ruleId: string,
-    reason?: string,
-  ): PermissionDecisionResult {
-    return {
-      decision,
-      allowed: decision === "allow",
-      escalated: decision === "ask",
-      mode: context.mode,
-      reason,
-      riskLevel: capability.riskLevel,
-      ruleId,
-      sideEffectScope: capability.sideEffectScope,
-      ...(capability.alwaysAsk ? { alwaysAsk: true } : {}),
-    };
-  }
 }
-
-interface ResolvedPermissionCapability {
-  allowedInPlanMode: boolean;
-  alwaysAsk: boolean;
-  readOnly: boolean;
-  destructive: boolean;
-  requiresUserInteraction: boolean;
-  sideEffectScope: ModelToolSideEffectScope;
-  riskLevel: RiskLevel;
-  needsApproval: boolean;
-  permissionCapabilityGroup?: PermissionCapabilityGroupType;
-  workspacePreapproved: boolean;
-  permissionName?: string;
-}
-
-// -----------------------------------------------
-// Configuration
-// -----------------------------------------------
-
-export interface PermissionConfig {
-  allowedTools: Set<string>;
-  disallowedTools: Set<string>;
-  autoApproveHighRisk: boolean;
-  allowMediumRiskInAutoMode: boolean;
-}
-
-export const defaultPermissionConfig: PermissionConfig = {
-  allowedTools: new Set(),
-  disallowedTools: new Set(),
-  autoApproveHighRisk: false,
-  allowMediumRiskInAutoMode: false,
-};

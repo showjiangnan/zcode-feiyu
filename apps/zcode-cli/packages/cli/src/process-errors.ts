@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { randomUUID } from "node:crypto";
 import {
   ZCODE_PROCESS_DIAGNOSTIC_PREFIX,
@@ -7,12 +8,12 @@ import {
   type ZCodeProcessDiagnostic,
 } from "@zcode/shared/process-diagnostic";
 
-interface CliProcessErrorBoundaryTarget {
+export interface CliProcessErrorBoundaryTarget {
   on(event: string, listener: (...args: unknown[]) => void): unknown;
   off(event: string, listener: (...args: unknown[]) => void): unknown;
 }
 
-interface CliProcessErrorBoundaryOptions {
+export interface CliProcessErrorBoundaryOptions {
   onFatal: (reason: unknown) => void;
   target?: CliProcessErrorBoundaryTarget;
   stderr?: {

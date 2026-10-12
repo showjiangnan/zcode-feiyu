@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { create } from "zustand";
 import type { ControlSnapshot } from "@zcode/zcode-cua/control-contract";
 

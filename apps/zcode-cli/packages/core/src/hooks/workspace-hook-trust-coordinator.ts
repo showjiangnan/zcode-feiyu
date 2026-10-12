@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   WorkspaceHookBundleSnapshot,
   WorkspaceHookPolicy,
@@ -5,10 +6,7 @@ import type {
   WorkspaceHookSecurityRevision,
   WorkspaceHookTrustRecord,
 } from "@zcode/contracts";
-import {
-  workspaceHookPolicySchema,
-  workspaceHookTrustRecordSchema,
-} from "@zcode/contracts";
+import { workspaceHookPolicySchema, workspaceHookTrustRecordSchema } from "@zcode/contracts";
 import { evaluateWorkspaceHookEntry, trustKey } from "./workspace-hook-trust-evaluation.js";
 import {
   InMemoryWorkspaceHookPolicyProvider,
@@ -106,7 +104,9 @@ export class WorkspaceHookTrustCoordinator {
     return this.bumpRevision(input.workspaceIdentity);
   }
 
-  evaluateSnapshot(input: { snapshot: WorkspaceHookBundleSnapshot }): WorkspaceHookSnapshotEvaluation {
+  evaluateSnapshot(input: {
+    snapshot: WorkspaceHookBundleSnapshot;
+  }): WorkspaceHookSnapshotEvaluation {
     const workspaceIdentity = input.snapshot.workspaceIdentity;
     this.ensureRevision(workspaceIdentity);
     const policyResult = this.resolvePolicy(workspaceIdentity);

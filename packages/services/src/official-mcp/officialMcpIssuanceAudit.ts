@@ -1,4 +1,5 @@
-interface OfficialMcpIssuanceAudit {
+// Modified by ZCode Feiyu.
+export interface OfficialMcpIssuanceAudit {
   markFirst(pluginId: string, mcpKey: string, workspaceKey: string): boolean;
 }
 

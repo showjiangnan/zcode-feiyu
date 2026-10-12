@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, CopyIcon, Inbox, Loader2, PlusCircle, RefreshCcw } from "lucide-react";
 import type { FeedbackTicketSummary } from "@zcode/shared";
@@ -138,7 +139,7 @@ export function TicketsView({
   );
 }
 
-function TicketsInitialLoadingState() {
+export function TicketsInitialLoadingState() {
   const { intl } = useZCodeIntl();
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-6 py-8 text-center text-ui-base text-foreground-subtle">
@@ -148,7 +149,7 @@ function TicketsInitialLoadingState() {
   );
 }
 
-function FeedbackTicketList({
+export function FeedbackTicketList({
   items,
   selectedTicketId,
   copiedTicketId,

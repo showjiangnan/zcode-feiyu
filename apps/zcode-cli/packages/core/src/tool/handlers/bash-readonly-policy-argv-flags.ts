@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { XARGS_TARGET_COMMANDS } from "./bash-readonly-policy-callbacks.js";
 import { OPTION_PATTERN } from "./bash-readonly-policy-flags.js";
 import type { BashReadonlyCommandPolicy, SafeFlagValue } from "./bash-readonly-policy-types.js";
@@ -80,7 +81,6 @@ function flagsAndPositionalsAllowed(
       }
 
       if (flagValue === "optionalString") {
-
         // 只拦截独立 argv 里看起来像 option 的字符串，避免误吞下一段参数。
         index += 1;
         continue;

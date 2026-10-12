@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // composer parity：v4 composer 的 per-session 草稿持久化（新做，轻量 localStorage）。
 //
 // 旧草稿面（zcodeSessionStore composerDraftByScopeId + chatComposerDraftStorage 写路径）
@@ -65,7 +65,10 @@ function getStorage(): Storage | null {
   }
 }
 
-function getV4ComposerDraftStorageKey(workspacePath: string, workspaceIdentity?: string): string {
+export function getV4ComposerDraftStorageKey(
+  workspacePath: string,
+  workspaceIdentity?: string,
+): string {
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   return `${STORAGE_KEY_PREFIX}${encodeURIComponent(workspaceKey)}`;
 }

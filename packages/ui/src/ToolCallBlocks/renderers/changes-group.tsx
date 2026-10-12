@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { PencilIcon } from "lucide-react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -20,7 +21,7 @@ const CHANGES_GROUP_ICON = <PencilIcon className="size-4 shrink-0 text-foregroun
 const FILE_CHIP_GAP_PX = 8;
 const FILE_CHIP_TRAILING_SPACE_PX = 24;
 
-function resolveFileChipAvailableWidth({
+export function resolveFileChipAvailableWidth({
   boundaryRight,
   listLeft,
   trailingWidth,
@@ -32,7 +33,7 @@ function resolveFileChipAvailableWidth({
   return Math.max(0, boundaryRight - listLeft - trailingWidth);
 }
 
-function resolveResponsiveFileChipCount({
+export function resolveResponsiveFileChipCount({
   availableWidth,
   chipWidths,
   overflowWidth,

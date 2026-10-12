@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- Electron capture authority、renderer 消息协议与文件清理属于同一个录制事务，拆开会让 abort/close 状态跨模块竞态。 */
 import { randomUUID } from "node:crypto";
 import { mkdir, open, rm, writeFile, type FileHandle } from "node:fs/promises";
@@ -182,7 +183,7 @@ function recorderHtml(): string {
                   if (!chunkEvent.data || chunkEvent.data.size === 0) return;
                   chunkQueue = chunkQueue.then(async () => {
                     const bytes = await chunkEvent.data.arrayBuffer();
-                    // DOM MessagePort → Electron MessagePortMain 对 ArrayBuffer transfer
+                    // Bug 原因：DOM MessagePort → Electron MessagePortMain 对 ArrayBuffer transfer
                     // 在部分 Electron 平台会静默丢弃整条消息；让 structured clone 复制分片才能
                     // 保证 dataavailable 与后续 stopped 都按序抵达 main。
                     port.postMessage({ type: "chunk", data: bytes });
@@ -374,8 +375,7 @@ export async function createElectronBrowserWebmRecorder(
   };
   recorderWindow.webContents.on("render-process-gone", onRendererGone);
   const onConsoleMessage = (
-    _event: unknown,
-    details: { level?: string; message?: string },
+    details: Electron.Event<Electron.WebContentsConsoleMessageEventParams>,
   ): void => {
     debug?.(
       `[browser-recording] recorder console level=${details.level ?? "unknown"} message=${details.message ?? ""}`,

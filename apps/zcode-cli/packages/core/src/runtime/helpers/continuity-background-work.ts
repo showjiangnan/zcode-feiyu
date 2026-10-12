@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { TraceContext } from "../deps.js";
 import { SessionEventType, traceContextToLogContext } from "../deps.js";
 import type { BackgroundTaskStatus } from "@zcode/contracts";

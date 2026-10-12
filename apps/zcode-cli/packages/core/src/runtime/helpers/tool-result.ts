@@ -1,6 +1,12 @@
+// Modified by ZCode Feiyu.
 import { modelMessageContentToText } from "../deps.js";
 import { isBashOutputProviderError } from "../../tool/handlers/bash-model-content.js";
-import type { ModelMessageContent, ToolCallId, ToolSchedule, ToolExecutionResult } from "../deps.js";
+import type {
+  ModelMessageContent,
+  ToolCallId,
+  ToolSchedule,
+  ToolExecutionResult,
+} from "../deps.js";
 
 export function emptyTokenUsageInfo(): ReturnType<typeof toTokenUsageInfo> {
   return {
@@ -72,7 +78,6 @@ export function isErrorForToolResult(result: ToolExecutionResult): boolean {
   if (typeof explicitIsError === "boolean") return explicitIsError;
 
   if (result.toolName === "Bash" && typeof result.output.interrupted === "boolean") {
-
     if (isBashOutputProviderError(result.output)) return true;
     return result.output.interrupted;
   }

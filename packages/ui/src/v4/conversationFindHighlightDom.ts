@@ -1,8 +1,9 @@
+// Modified by ZCode Feiyu.
 import type { ConversationFindMatch } from "@/v4/conversationFindIndex.js";
 
-const FIND_HIGHLIGHT_NAME = "zcode-v4-conversation-find";
-const ACTIVE_FIND_HIGHLIGHT_NAME = "zcode-v4-conversation-find-active";
-const SEARCH_RESULT_HIGHLIGHT_NAME = "zcode-v4-conversation-search-result";
+export const FIND_HIGHLIGHT_NAME = "zcode-v4-conversation-find";
+export const ACTIVE_FIND_HIGHLIGHT_NAME = "zcode-v4-conversation-find-active";
+export const SEARCH_RESULT_HIGHLIGHT_NAME = "zcode-v4-conversation-search-result";
 
 const FIND_STYLE_ID = "zcode-v4-conversation-find-highlight-style";
 const FIND_HIGHLIGHT_STYLE = `
@@ -28,7 +29,7 @@ interface CssHighlightRegistryLike {
 type CssHighlightLike = { priority?: number };
 type HighlightConstructor = new (...ranges: Range[]) => unknown;
 
-function ensureConversationFindHighlightStyle() {
+export function ensureConversationFindHighlightStyle() {
   if (typeof document === "undefined") {
     return;
   }
@@ -121,7 +122,7 @@ function getMountedRowElement(root: HTMLElement, rowId: number): HTMLElement | n
   return root.querySelector<HTMLElement>(`[data-row-id="${rowId}"]`);
 }
 
-function getMountedConversationFindRange(
+export function getMountedConversationFindRange(
   root: HTMLElement,
   query: string,
   match: ConversationFindMatch,

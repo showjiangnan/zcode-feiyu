@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createMessageId, traceContextToLogContext } from "../deps.js";
 import type { MessageId } from "../deps.js";
 import { createRuntimeCommandId, type SubagentMessageRuntimeCommand } from "../command-queue.js";
@@ -6,7 +7,7 @@ import type { EnqueueSubagentMessageInput } from "../types.js";
 import { runtimeInputMetadata } from "../../agent/runtime-input-presentation.js";
 import { escapeXml } from "../../runtime-task/notification.js";
 
-function formatSubagentMessage(input: {
+export function formatSubagentMessage(input: {
   agentId: string;
   agentType: string;
   summary: string;

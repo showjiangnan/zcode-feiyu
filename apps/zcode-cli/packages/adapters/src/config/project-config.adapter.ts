@@ -1,4 +1,4 @@
-import { basename, dirname, isAbsolute, resolve } from "node:path";
+// Modified by ZCode Feiyu.
 import type { McpServerConfig, RuntimeConfigPatch } from "@zcode/contracts";
 import {
   createWorkspaceHookSourceInput,
@@ -6,6 +6,7 @@ import {
   workspaceHooksConfigSchema,
   type WorkspaceHookSourceInput,
 } from "@zcode/shared/workspace-hook-discovery";
+import { basename, dirname, isAbsolute, resolve } from "node:path";
 import { loadFileConfig, type LoadedConfig } from "./file-config.adapter.js";
 
 const CURRENT_DIRECTORY = ".";

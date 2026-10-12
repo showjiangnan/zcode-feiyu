@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export const OFFICIAL_CUA_FRAME_INTEGRITY_META_KEY: string;
 export const OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION: string;
 export const OFFICIAL_CUA_IMAGE_INLINE_BASE64_BYTES: number;

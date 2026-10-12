@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // sessions-index topic publisher：在 SessionsIndexProjection 之上做
 // seq 区间记账 + snapshot/delta 帧构造 + 每连接单订阅（重订阅替换旧代际）。
 // 比 ConversationTopicPublisher 简单：index delta 不做 profile 过滤（列表摘要对所有客户端一致），
@@ -25,7 +26,7 @@ interface IndexSubscription {
   nextLogicalFrameOrdinal: number;
 }
 
-interface SessionsIndexSubscribeResult {
+export interface SessionsIndexSubscribeResult {
   subscriptionId: string;
   mode: "snapshot" | "resume";
   frame: SessionsIndexTopicFrame | null;

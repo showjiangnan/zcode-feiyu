@@ -1,9 +1,10 @@
+// Modified by ZCode Feiyu.
 interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
 
-const WORKSPACE_EXPANSION_STORAGE_KEY = "zcode-workspace-expansion";
+export const WORKSPACE_EXPANSION_STORAGE_KEY = "zcode-workspace-expansion";
 
 function getBrowserStorage(): StorageLike | null {
   if (typeof window === "undefined") {

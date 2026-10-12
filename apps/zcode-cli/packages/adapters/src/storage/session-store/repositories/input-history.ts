@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { DatabaseSync } from "node:sqlite";
 import type {
   InputHistoryAttachment,
@@ -39,25 +40,22 @@ export async function recordInputHistory(
 
   db.exec("begin immediate");
   try {
-    db
-      .prepare(
-        `
+    db.prepare(
+      `
         insert into input_history (id, project_id, session_id, text, attachments, kind, time_created)
         values (?, ?, ?, ?, ?, ?, ?)
         `,
-      )
-      .run(
-        id,
-        input.projectID,
-        input.sessionID ?? null,
-        text,
-        encodeJson(attachments),
-        input.kind,
-        timeCreated,
-      );
-    db
-      .prepare(
-        `
+    ).run(
+      id,
+      input.projectID,
+      input.sessionID ?? null,
+      text,
+      encodeJson(attachments),
+      input.kind,
+      timeCreated,
+    );
+    db.prepare(
+      `
         delete from input_history
         where id not in (
           select id from input_history
@@ -65,8 +63,7 @@ export async function recordInputHistory(
           limit ?
         )
         `,
-      )
-      .run(INPUT_HISTORY_LIMIT);
+    ).run(INPUT_HISTORY_LIMIT);
     db.exec("commit");
   } catch (error) {
     db.exec("rollback");

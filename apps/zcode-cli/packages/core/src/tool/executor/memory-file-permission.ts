@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { PermissionDecisionResult } from "../../permission/service.js";
 import {
   resolveContainedMemoryFilePath,
@@ -49,9 +50,7 @@ export function targetsMemoryFile(input: MemoryFileTargetInput): boolean {
   return resolveMemoryFileTarget(input) !== undefined;
 }
 
-function resolveMemoryFileTarget(
-  input: MemoryFileTargetInput,
-): string | undefined {
+function resolveMemoryFileTarget(input: MemoryFileTargetInput): string | undefined {
   if (input.toolName !== "Write" && input.toolName !== "Edit") return undefined;
   if (!input.memoryRoot) return undefined;
 

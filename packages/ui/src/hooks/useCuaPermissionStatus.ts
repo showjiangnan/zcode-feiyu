@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // Computer Use Helper 的 macOS 权限状态。状态来自 Helper 当前 runtime preflight，
 // 历史 TCC 行不参与判定；展示口径见 cuaPermissionStatusStore 的 isCuaPermissionTccGranted。
 //

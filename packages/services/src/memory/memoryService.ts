@@ -1,13 +1,13 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
+import { readProjectMemoryFileFromStableHandle } from "#src/memory/projectMemoryStableRead.js";
+import { getZCodeDataRootDir } from "#src/paths.js";
+import { lstat, readdir, realpath } from "node:fs/promises";
+import { basename, isAbsolute, join, relative, sep } from "node:path";
 import {
   type IMemoryService,
   type ProjectMemoryFileSummary,
   type ProjectMemoryWorkspaceSummary,
 } from "./memory.js";
-import { lstat, readdir, realpath } from "node:fs/promises";
-import { basename, isAbsolute, join, relative, sep } from "node:path";
-import { readProjectMemoryFileFromStableHandle } from "#src/memory/projectMemoryStableRead.js";
-import { getZCodeDataRootDir } from "#src/paths.js";
 
 const PROJECT_MEMORY_INDEX_FILE_NAME = "MEMORY.md";
 const PROJECT_MEMORY_DIRECTORY_NAME = "memory";

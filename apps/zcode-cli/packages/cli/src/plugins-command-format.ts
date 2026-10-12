@@ -1,12 +1,19 @@
+// Modified by ZCode Feiyu.
 import { formatJson } from "@zcode/core";
 import type { GlobalOptions, JsonValue, RunContext } from "@zcode/shared-types";
 import type {
   SetZCodePluginEnabledResult,
+  ZCodePluginInstallData,
   ZCodeAvailablePluginData,
   ZCodeInstalledPluginData,
   ZCodeMarketplaceSummaryData,
 } from "@zcode/bootstrap";
-import type { PluginDiagnostic, PluginListItem, PluginListOutcome } from "./plugins-command-shared.js";
+import { hasErrors } from "./plugins-command-shared.js";
+import type {
+  PluginDiagnostic,
+  PluginListItem,
+  PluginListOutcome,
+} from "./plugins-command-shared.js";
 
 export function writeWarnings(ctx: RunContext, diagnostics: readonly PluginDiagnostic[]): void {
   const warnings = diagnostics.filter((diagnostic) => diagnostic.severity !== "error");
@@ -100,10 +107,7 @@ export const formatPluginSetJson = (result: SetZCodePluginEnabledResult): string
   });
 
 /** 已加载插件的 JSON 形态；诊断按 pluginId 归到各自条目上，顶层不再有 cwd/diagnostics 包装。 */
-export function formatPluginJson(
-  plugin: PluginListItem,
-  diagnostics: readonly PluginDiagnostic[],
-) {
+export function formatPluginJson(plugin: PluginListItem, diagnostics: readonly PluginDiagnostic[]) {
   return {
     commandRootCount: plugin.commandRootCount,
     dataPath: plugin.dataPath,
@@ -194,3 +198,39 @@ export function formatDiagnosticJson(diagnostic: PluginDiagnostic) {
     ...(diagnostic.pluginId ? { pluginId: diagnostic.pluginId } : {}),
   };
 }
+
+export function reportInstallOutcome(
+  ctx: RunContext,
+  options: GlobalOptions,
+  result: ZCodePluginInstallData,
+  pluginId: string,
+): number {
+  const failed = hasErrors(result.diagnostics);
+  if (options.json) {
+    ctx.stdout.write(
+      formatJson({
+        pluginId,
+        ok: !failed,
+        installed: result.installedPlugins.map(formatInstalledPluginJson),
+        dependencyClosure: result.dependencyClosure,
+        diagnostics: result.diagnostics.map(formatDiagnosticJson),
+      }),
+    );
+    return failed ? 1 : 0;
+  }
+  if (failed) {
+    ctx.stderr.write(
+      `Failed to install plugin ${pluginId}\n${formatDiagnosticLines(result.diagnostics)}`,
+    );
+    return 1;
+  }
+  for (const plugin of result.installedPlugins) {
+    const version = plugin.version ? ` (${plugin.version})` : "";
+    ctx.stdout.write(
+      `Installed plugin ${plugin.id}${version} [${plugin.enabled ? "enabled" : "disabled"}]\n`,
+    );
+  }
+  writeWarnings(ctx, result.diagnostics);
+  return 0;
+}
+

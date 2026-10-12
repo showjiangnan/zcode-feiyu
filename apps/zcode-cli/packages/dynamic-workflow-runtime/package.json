@@ -16,13 +16,14 @@
     "clean": "node ../../scripts/clean-dist.mjs",
     "pretypecheck": "pnpm --filter @zcode/dynamic-workflow build",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint src",
-    "lint:fix": "oxlint --write src"
+    "lint": "oxlint src tests",
+    "lint:fix": "oxlint --write src tests"
   },
   "dependencies": {
     "@zcode/dynamic-workflow": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.0.0",
+    "vitest": "^4.1.5"
   }
 }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
@@ -33,14 +34,14 @@ function copyFileIfChanged(sourcePath: string, targetPath: string): boolean {
   return true;
 }
 
-function shouldInstallAppImageDesktopIcon(params: {
+export function shouldInstallAppImageDesktopIcon(params: {
   env?: { APPIMAGE?: string };
   iconSourcePath?: string;
 }): boolean {
   return Boolean(params.env?.APPIMAGE?.trim() && params.iconSourcePath);
 }
 
-function installLinuxAppImageDesktopIcon(params: {
+export function installLinuxAppImageDesktopIcon(params: {
   dataDir: string;
   iconSourcePath: string;
   logger: LinuxDeepLinkRegistrationLogger;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import {
   adoptFields,
@@ -22,7 +23,11 @@ import type { EvalContext, Evaluator } from "./taint.js";
  * re-evaluation that grew is raised there — neither function touches `ev.s.changed`.
  */
 
-export function evalArrayLiteral(ev: Evaluator, node: ts.ArrayLiteralExpression, ctx: EvalContext): AbstractValue {
+export function evalArrayLiteral(
+  ev: Evaluator,
+  node: ts.ArrayLiteralExpression,
+  ctx: EvalContext,
+): AbstractValue {
   const out = emptyValue();
   if (node.elements.some((el) => ts.isSpreadElement(el))) {
     // Sole-spread `[...xs]` where xs is a place: array spread shallow-copies, so each
@@ -31,7 +36,12 @@ export function evalArrayLiteral(ev: Evaluator, node: ts.ArrayLiteralExpression,
     // A spread beside other elements, or a non-place spread, still folds by value;
     // reference sharing is not modeled for those cases.
     const sole = node.elements[0];
-    if (node.elements.length === 1 && sole !== undefined && ts.isSpreadElement(sole) && spreadShare(ev, out, sole.expression)) {
+    if (
+      node.elements.length === 1 &&
+      sole !== undefined &&
+      ts.isSpreadElement(sole) &&
+      spreadShare(ev, out, sole.expression)
+    ) {
       return out;
     }
     for (const el of node.elements) collapseInto(out, ev.evalExpr(el, ctx));
@@ -43,7 +53,11 @@ export function evalArrayLiteral(ev: Evaluator, node: ts.ArrayLiteralExpression,
   return out;
 }
 
-export function evalObjectLiteral(ev: Evaluator, node: ts.ObjectLiteralExpression, ctx: EvalContext): AbstractValue {
+export function evalObjectLiteral(
+  ev: Evaluator,
+  node: ts.ObjectLiteralExpression,
+  ctx: EvalContext,
+): AbstractValue {
   const out = emptyValue();
   for (const prop of node.properties) {
     if (ts.isPropertyAssignment(prop) && !ts.isComputedPropertyName(prop.name)) {
@@ -75,17 +89,23 @@ export function evalObjectLiteral(ev: Evaluator, node: ts.ObjectLiteralExpressio
       // Getter: the field's read value IS the getter's return summary (re-read each pass;
       // the fixpoint converges) — without this case accessor fields would be invisible.
       const id = ev.s.fnId.get(prop);
-      out.fields.set(prop.name.getText(ev.s.scriptFile), id === undefined ? emptyValue() : cloneValue(ev.s.summaryOf(id)));
+      out.fields.set(
+        prop.name.getText(ev.s.scriptFile),
+        id === undefined ? emptyValue() : cloneValue(ev.s.summaryOf(id)),
+      );
     } else if (ts.isPropertyAssignment(prop)) {
       // Computed key: cannot track the field name; fold the value into occs. The key
       // expression must be evaluated too — both for effect (a facade sink inside the key
       // was never visited, so its edges vanished) and because the key STRING becomes an
       // observable property name (`Object.keys(o)`), so its taint joins the object
       // ("strings launder nothing").
-      if (ts.isComputedPropertyName(prop.name)) collapseInto(out, ev.evalExpr(prop.name.expression, ctx));
+      if (ts.isComputedPropertyName(prop.name))
+        collapseInto(out, ev.evalExpr(prop.name.expression, ctx));
       collapseInto(out, ev.evalExpr(prop.initializer, ctx));
     } else if (
-      (ts.isMethodDeclaration(prop) || ts.isGetAccessorDeclaration(prop) || ts.isSetAccessorDeclaration(prop)) &&
+      (ts.isMethodDeclaration(prop) ||
+        ts.isGetAccessorDeclaration(prop) ||
+        ts.isSetAccessorDeclaration(prop)) &&
       ts.isComputedPropertyName(prop.name)
     ) {
       // Computed method/accessor name (`{ [await ask()]() {} }`): the name becomes an

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { join } from "node:path";
 import {
   NodeProviderConfigRuntime,
@@ -18,6 +19,7 @@ export interface ProviderConfigRuntimeOptions {
   readonly onPersonalConfigRecovery?: (event: PersonalProviderConfigRecoveryEvent) => void;
   readonly onPersonalConfigPollingError?: (error: unknown) => void;
   readonly personalFilePath?: string;
+  readonly managedFilePath?: string;
   readonly personalPollingIntervalMs?: number | false;
   readonly readLegacyProviders?: () => Promise<readonly ModelProviderConfig[]>;
   readonly watch?: boolean;
@@ -42,6 +44,8 @@ export class ProviderConfigRuntime {
       onPersonalConfigPollingError: options.onPersonalConfigPollingError,
       personalFilePath:
         options.personalFilePath ?? join(getAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),
+      managedFilePath:
+        options.managedFilePath ?? join(getAppConfigDir(), "chatgpt-subscription.providers.json"),
       personalPollingIntervalMs: options.personalPollingIntervalMs,
       watch: options.watch,
       ...(options.readLegacyProviders

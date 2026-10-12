@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback } from "react";
 import type { ZCodeSavedWorkflowRun } from "@zcode/shared";
 import type {
@@ -6,7 +7,7 @@ import type {
 } from "@/settings/saved-workflows/savedWorkflowContract.js";
 
 /** 一行运行记录归属的项目（项目档恒定，全局档按 `run.cwd` 反查）。 */
-interface SavedWorkflowRunOpenTarget {
+export interface SavedWorkflowRunOpenTarget {
   workspacePath: string;
   workspaceIdentity?: string;
 }

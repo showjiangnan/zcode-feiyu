@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // escalate Tool Handler
 // ============================================================
@@ -13,6 +14,20 @@
 // 端口缺席仍然抛 ConfigurationError（照 submit_result）：本工具只在注入了端口的 actor 会话
 // 注册，走到这里就是接线故障，不是一种结局。
 
+// ============================================================
+// escalate Tool Handler
+// ============================================================
+// 工作流 actor（子 AgentRuntime）用它把一个**真阻塞**升级给创建这条工作流的主代理，并停驻
+// 在自己那次 ask 里等答案。handler 把问题交给注入的 WorkflowEscalatePort，阻塞等待结局：
+//   - answered → 返回主代理给的答案文本；actor 的轮次就地继续，ask 照常 settle。
+//   - refused  → 返回端口写好的文案（预算已尽 / 无在飞 ask）。
+//
+// 两支都是**普通工具结果**，不是 ToolHandlerFailure。这与 submit_result 的 reject 分道：
+// 那里的 error tool_result 是「修复通道」（模型该重试），而这里没有可修复的东西——把
+// 「升级预算已尽」渲染成错误只会让模型反复撞同一堵墙，而投机绕过正是本特性要消灭的行为。
+//
+// 端口缺席仍然抛 ConfigurationError（照 submit_result）：本工具只在注入了端口的 actor 会话
+// 注册，走到这里就是接线故障，不是一种结局。
 import {
   CoreErrorType,
   ESCALATE_TOOL_NAME,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * Computer Use Helper 权限状态的进程内共享缓存。
  *
@@ -23,7 +24,7 @@ import {
   readCachedCuaPermissionStatus,
 } from "./cuaPermissionStatusCache.js";
 
-interface CuaPermissionStatusSnapshot {
+export interface CuaPermissionStatusSnapshot {
   /** 上次成功查询的结果；null = 该 workspace 尚未拿到过任何状态。 */
   status: CuaPermissionStatusResult | null;
   /**
@@ -101,6 +102,14 @@ export function subscribeCuaPermissionStatus(listener: () => void): () => void {
 export function getCuaPermissionStatusSnapshot(key: string | null): CuaPermissionStatusSnapshot {
   if (!key) return initialSnapshot();
   return slots.get(key)?.snapshot ?? initialSnapshot();
+}
+
+/** 测试复位：模块级缓存会跨用例存活。 */
+export function resetCuaPermissionStatusStoreForTest(): void {
+  for (const slot of slots.values()) clearTransientRetry(slot);
+  slots.clear();
+  listeners.clear();
+  initialSnapshotCache = null;
 }
 
 function ensureSlot(key: string): Slot {
@@ -231,7 +240,7 @@ function scheduleTransientRetry(slot: Slot, params: FetchCuaPermissionStatusPara
   return true;
 }
 
-interface FetchCuaPermissionStatusParams {
+export interface FetchCuaPermissionStatusParams {
   service: ICuaPermissionService;
   workspacePath: string;
   workspaceIdentity?: string;

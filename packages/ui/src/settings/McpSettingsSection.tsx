@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- MCP 设置页集中维护列表、插件分组、表单入口和标题行模式切换，拆分会增加跨状态传递复杂度。 */
 /**
  * MCP Settings Section
@@ -78,23 +79,25 @@ const MCP_OAUTH_AUTHORIZATION_STATUS_REFRESH_MS = 1_000;
 const MCP_OAUTH_AUTHORIZATION_STATUS_REFRESH_DURATION_MS = 5 * 60_000;
 const MCP_OAUTH_AUTHORIZATION_FOLLOWUP_REFRESH_ATTEMPTS = 10;
 
-function createMcpOAuthAuthorizationStatusRefreshDeadline(now: () => number = Date.now): number {
+export function createMcpOAuthAuthorizationStatusRefreshDeadline(
+  now: () => number = Date.now,
+): number {
   return now() + MCP_OAUTH_AUTHORIZATION_STATUS_REFRESH_DURATION_MS;
 }
 
-function isMcpOAuthAuthorizationStatusRefreshExpired(
+export function isMcpOAuthAuthorizationStatusRefreshExpired(
   deadline: number,
   now: () => number = Date.now,
 ): boolean {
   return now() >= deadline;
 }
 
-type McpServerStatusListRefreshOutcome =
+export type McpServerStatusListRefreshOutcome =
   | "refreshed"
   | "stale-workspace"
   | "status-mode-unsupported";
 
-async function refreshMcpServerStatusList({
+export async function refreshMcpServerStatusList({
   beginServerStatusListRefresh,
   markServerStatusListRefreshFailed,
   mergeServerStatusSnapshots,
@@ -159,13 +162,13 @@ async function refreshMcpServerStatusList({
   }
 }
 
-interface McpOAuthAuthorizationPendingRefresh {
+export interface McpOAuthAuthorizationPendingRefresh {
   mcpServers: ZCodeAgentMcpServer[];
   pendingKey: string;
   workspaceKey: string;
 }
 
-function transitionMcpAutoStatusListRefreshKey(
+export function transitionMcpAutoStatusListRefreshKey(
   previousKey: string,
   nextKey: string,
 ): { lastRefreshKey: string; shouldRefresh: boolean } {
@@ -180,13 +183,13 @@ function transitionMcpAutoStatusListRefreshKey(
   };
 }
 
-interface McpOAuthAuthorizationFollowupRefresh {
+export interface McpOAuthAuthorizationFollowupRefresh {
   mcpServers: ZCodeAgentMcpServer[];
   refreshKey: string;
   workspaceKey: string;
 }
 
-function transitionMcpOAuthAuthorizationPendingRefresh({
+export function transitionMcpOAuthAuthorizationPendingRefresh({
   activeWorkspaceKey,
   existingFollowup = null,
   mcpServers,
@@ -240,9 +243,9 @@ interface McpStatusListRefreshQueue {
 }
 
 /** 刷新来源：manual 是用户点了刷新按钮，auto 是列表/配置变化驱动的自动刷新。 */
-type McpStatusListRefreshTrigger = "auto" | "manual";
+export type McpStatusListRefreshTrigger = "auto" | "manual";
 
-interface McpStatusListRefreshInput {
+export interface McpStatusListRefreshInput {
   activeWorkspaceKey: string;
   activeWorkspacePath?: string;
   configReadyWorkspaceKey: string;
@@ -251,7 +254,7 @@ interface McpStatusListRefreshInput {
   storeWorkspaceKey: string;
 }
 
-function resolveMcpStatusListRefreshSkipReason({
+export function resolveMcpStatusListRefreshSkipReason({
   input,
   requestedWorkspaceKey,
   trigger,
@@ -280,7 +283,7 @@ function resolveMcpStatusListRefreshSkipReason({
   return undefined;
 }
 
-function createMcpStatusListRefreshQueue(): McpStatusListRefreshQueue {
+export function createMcpStatusListRefreshQueue(): McpStatusListRefreshQueue {
   let inFlight: Promise<void> | null = null;
   let latestRun: (() => Promise<void>) | null = null;
   let rerunAfterCurrent = false;
@@ -312,7 +315,7 @@ function createMcpStatusListRefreshQueue(): McpStatusListRefreshQueue {
   };
 }
 
-function buildMcpOAuthAuthorizationStatusRefreshServers(
+export function buildMcpOAuthAuthorizationStatusRefreshServers(
   servers: ZCodeMcpServer[],
   statusSnapshots: Record<string, ZCodeMcpServerStatusSnapshot> = {},
 ): ZCodeAgentMcpServer[] {
@@ -344,7 +347,7 @@ function buildMcpOAuthAuthorizationStatusRefreshServers(
   return result;
 }
 
-function buildMcpOAuthAuthorizationStatusRefreshOptions(mcpServers: ZCodeAgentMcpServer[]): {
+export function buildMcpOAuthAuthorizationStatusRefreshOptions(mcpServers: ZCodeAgentMcpServer[]): {
   mode: "status";
   mcpServers: ZCodeAgentMcpServer[];
 } {
@@ -355,7 +358,7 @@ function buildMcpOAuthAuthorizationStatusRefreshOptions(mcpServers: ZCodeAgentMc
   };
 }
 
-function buildMcpServerStatusListKey(servers: ZCodeMcpServer[]): string {
+export function buildMcpServerStatusListKey(servers: ZCodeMcpServer[]): string {
   return servers
     .filter((server) => server.source === "zcodeagentmcp")
     .map((server) => {
@@ -365,7 +368,7 @@ function buildMcpServerStatusListKey(servers: ZCodeMcpServer[]): string {
     .join("|");
 }
 
-function buildPluginMcpServerStatusListKey(plugins: ZCodePluginInfo[]): string {
+export function buildPluginMcpServerStatusListKey(plugins: ZCodePluginInfo[]): string {
   return plugins
     .map((plugin) => {
       const declaredNames = plugin.declaredMcpServerNames ?? [];
@@ -390,11 +393,11 @@ function buildPluginMcpServerStatusListKey(plugins: ZCodePluginInfo[]): string {
     .join("|");
 }
 
-function shouldShowPluginMcpServersInMcpSettings(isRemoteSyncContext: boolean): boolean {
+export function shouldShowPluginMcpServersInMcpSettings(isRemoteSyncContext: boolean): boolean {
   return !isRemoteSyncContext;
 }
 
-function buildPendingMcpOAuthAuthorizationRefreshKey(
+export function buildPendingMcpOAuthAuthorizationRefreshKey(
   servers: ZCodeMcpServer[],
   statusSnapshots: Record<string, ZCodeMcpServerStatusSnapshot> = {},
 ): string {
@@ -539,6 +542,7 @@ interface McpSettingsSectionProps {
   remoteSessionId?: string;
   remoteTarget?: RemoteTarget;
   localWorkspacePath?: string;
+  isWebRemoteControl?: boolean;
   scopeFilter: "user" | "workspace";
   parentScopeKey: string;
   workspaceTabs: WorkspaceTabState[];
@@ -556,6 +560,7 @@ export function McpSettingsSection({
   remoteSessionId,
   remoteTarget,
   localWorkspacePath,
+  isWebRemoteControl = false,
   scopeFilter,
   parentScopeKey,
   workspaceTabs,
@@ -594,7 +599,7 @@ export function McpSettingsSection({
   const activeWorkspaceIdentity = workspaceIdentity ?? storeActiveWorkspaceIdentity;
   const activeWorkspaceKey = activeWorkspaceIdentity?.trim() || activeWorkspacePath || "";
   const currentMcpStoreWorkspaceKey = currentWorkspaceIdentity?.trim() || currentProjectPath;
-  // active tab 会先于异步 MCP 目录加载切换；过渡帧不能把 A 的配置和
+  // 修复原因：active tab 会先于异步 MCP 目录加载切换；过渡帧不能把 A 的配置和
   // snapshot 投影到 B，更不能让后续 effect 把这些敏感配置发送给 B 的 Agent。
   const mcpStoreMatchesActiveWorkspace =
     Boolean(activeWorkspaceKey) && currentMcpStoreWorkspaceKey === activeWorkspaceKey;
@@ -780,7 +785,7 @@ export function McpSettingsSection({
             workspacePath: requestedWorkspacePath,
           });
           if (trigger === "manual") {
-            // 手动刷新失败过去只进日志，用户看到的仍是旧状态且毫无提示。
+            // Bugfix：手动刷新失败过去只进日志，用户看到的仍是旧状态且毫无提示。
             const message = error instanceof Error ? error.message : String(error);
             toast(intl.formatMessage({ id: "settings.mcp.refreshFailed" }, { error: message }), {
               durationMs: 8_000,
@@ -996,7 +1001,7 @@ export function McpSettingsSection({
           pendingKey: pendingMcpOAuthAuthorizationRefreshKey,
           workspacePath: activeWorkspacePath,
         });
-        // mcp/list 为了尽快返回 authorizationUrl 会让 agent 在后台等待 OAuth
+        // 修复原因：mcp/list 为了尽快返回 authorizationUrl 会让 agent 在后台等待 OAuth
         // 回调并重连；如果当前设置页不继续拉取 snapshot，UI 会停留在 connecting，直到切 tab 重挂载。
         // OAuth 轮询是高频请求，只能走 status-only，避免 pending 子集触发 replace 语义断开无关 MCP。
         void requestMcpServerStatusList(
@@ -1144,7 +1149,7 @@ export function McpSettingsSection({
     shouldShowRemoteSyncActions({
       remoteSessionId,
       remoteTarget,
-      clientMode: "desktop-continuous" as const,
+      clientMode: isWebRemoteControl ? "web-remote-replayable" : "desktop-continuous",
       hasLocalSourceService: Boolean(baseServices.mcpSyncService),
     }) && activeWorkspacePath
       ? remoteTarget

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // ============================================================
 // Context Builder - System prompt assembly
 // ============================================================
@@ -133,7 +133,7 @@ export class ContextBuilder {
     // guidance——契约里已把 Report outcomes faithfully 搬过去），保留 memory 与其后各段。
     if (!hasCustomSystemPrompt) {
       if (!isWorkflowActor && this.config.presentationSurface === "zcode_desktop") {
-        sections.push(buildDesktopContextSection());
+        sections.push(buildDesktopContextSection(this.config.genUiOutputDirectory));
       }
 
       // behaviour part right after stable sp...
@@ -249,7 +249,6 @@ export class ContextBuilder {
       messages.push({
         role: "system",
         content: cliPrefixContent,
-        cacheControl: EPHEMERAL_CACHE_CONTROL,
       });
     }
 

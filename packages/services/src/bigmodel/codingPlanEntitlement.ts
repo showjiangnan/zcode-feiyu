@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ApiClient } from "@zcode/shared";
 import { z } from "zod";
 import { readApiJson } from "#src/providers/api/apiJson.js";
@@ -27,8 +28,8 @@ const teamSchema = z.object({
   subscribeEndTime: z.string().nullish(),
   subscribePeriod: z.string().nullish(),
 });
-type PersonalCodingPlanSubscription = z.infer<typeof personalSchema>;
-type TeamCodingPlanSubscription = z.infer<typeof teamSchema>;
+export type PersonalCodingPlanSubscription = z.infer<typeof personalSchema>;
+export type TeamCodingPlanSubscription = z.infer<typeof teamSchema>;
 export type CodingPlanEntitlement<T> =
   | { kind: "available"; subscription: T }
   | { kind: "unavailable"; reason?: "expired" | "unassigned" }

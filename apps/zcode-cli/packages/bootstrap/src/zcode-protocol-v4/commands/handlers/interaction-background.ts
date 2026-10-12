@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { PERMISSION_FULL_ACCESS_OPTION_ID } from "@zcode/shared/zcode-protocol-v4";
 // 权限/后台命令组：resolveInteraction / cancelBackgroundWork。
 // - resolveInteraction：前向命令收口反向请求（permission/AskUserQuestion），经
@@ -78,7 +79,7 @@ async function snoozeInteractionAutoResolution(
   return undefined;
 }
 
-class V4WorkspaceHookReviewRejectedError extends Error {
+export class V4WorkspaceHookReviewRejectedError extends Error {
   constructor(readonly reasonCode: string) {
     super(`Workspace Hook review command rejected: ${reasonCode}`);
     this.name = "V4WorkspaceHookReviewRejectedError";

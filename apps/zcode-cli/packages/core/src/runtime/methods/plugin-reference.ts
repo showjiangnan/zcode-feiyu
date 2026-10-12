@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // plugin_reference reminder 的 turn-start 注入。
 // 契约：解析 canonical text → 冻结 catalog →
 // 与 live Skill/MCP/Subagent inventory 取交集 → 生成本轮 model-only reminder。
@@ -66,7 +67,7 @@ function collectLivePluginSkills(runtime: AgentRuntimeInternal): LivePluginSkill
 
 function collectLivePluginSubagents(runtime: AgentRuntimeInternal): LivePluginSubagent[] {
   const subagents: LivePluginSubagent[] = [];
-  for (const profile of runtime.config.subagents?.profiles ?? []) {
+  for (const profile of runtime.getAgentDefinitions().activeAgents) {
     const name = profile.name.trim();
     const path = profile.path?.trim();
     // Plugin profile 由 bootstrap 从 Markdown 成功解析后才进入 config，且一定携带 path。

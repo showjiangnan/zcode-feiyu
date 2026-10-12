@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 所有 transport 生命周期共享同一个 registry 状态机，必须原子演进。 */
 import {
   buildSshRemoteHostKey,
@@ -7,7 +8,7 @@ import {
   type WindowHostRemoteWorkspaceDescriptor,
 } from "@zcode/shared";
 
-interface WindowRemoteAssetDirs {
+export interface WindowRemoteAssetDirs {
   mockCdnDir?: string;
   remoteCdnBaseUrl?: string;
   remoteCdnBaseUrls?: string[];
@@ -27,15 +28,20 @@ export interface WindowRemoteConnectionHandle<TServices, TCapabilities = never> 
   onDidClose?(listener: (event: WindowRemoteConnectionCloseEvent) => void): { dispose(): void };
 }
 
-interface WindowRemoteConnectionConnectRequest {
+export interface WindowRemoteConnectionConnectRequest {
   target: RemoteTarget;
   remoteAssets: WindowRemoteAssetDirs;
   signal: AbortSignal;
 }
 
-type WindowRemoteConnectionState = "connecting" | "online" | "closing" | "failed" | "disconnected";
+export type WindowRemoteConnectionState =
+  | "connecting"
+  | "online"
+  | "closing"
+  | "failed"
+  | "disconnected";
 
-interface WindowRemoteLogicalSessionSnapshot {
+export interface WindowRemoteLogicalSessionSnapshot {
   remoteSessionId: string;
   requestId: string;
   target: RemoteTarget;
@@ -46,14 +52,14 @@ interface WindowRemoteLogicalSessionSnapshot {
   sourceAvailability: "online" | "offline";
 }
 
-class WindowRemoteConnectCancelledError extends Error {
+export class WindowRemoteConnectCancelledError extends Error {
   constructor() {
     super("远程连接已取消");
     this.name = "WindowRemoteConnectCancelledError";
   }
 }
 
-class WindowRemoteConnectionUnavailableError extends Error {
+export class WindowRemoteConnectionUnavailableError extends Error {
   constructor(remoteSessionId: string) {
     super(`远程连接当前不可用，remoteSessionId=${remoteSessionId}`);
     this.name = "WindowRemoteConnectionUnavailableError";
@@ -120,7 +126,8 @@ function buildConnectionKey(target: RemoteTarget, remoteSessionId: string): stri
     case "wsl":
       return `wsl:${normalizeWslSegment(target.distro)}\0${normalizeWslSegment(target.user)}`;
     case "docker":
-      // Docker 保持现有 dedicated logical session 生命周期，不按 target 复用。
+    case "server":
+      // Docker/Server 保持现有 dedicated logical session 生命周期，不按 target 复用。
       return `${target.kind}:dedicated:${remoteSessionId}`;
   }
 }
@@ -542,7 +549,10 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
         entry.sessions.delete(remoteSessionId);
         session.state = "failed";
         session.sourceAvailability = "offline";
-        if (entry.sessions.size === 0 && entry.target.kind === "docker") {
+        if (
+          entry.sessions.size === 0 &&
+          (entry.target.kind === "docker" || entry.target.kind === "server")
+        ) {
           await disposeEntry(entry);
         }
       }
@@ -573,7 +583,7 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
     session.rejectCancellation(new WindowRemoteConnectCancelledError());
     if (session.entry.sessions.size === 0) {
       if (session.entry.target.kind === "ssh" && session.entry.state === "connecting") {
-        // 最后一个 waiter 取消后，旧 entry 仍以 connecting 留在复用表；立即重连会
+        // Bug 根因：最后一个 waiter 取消后，旧 entry 仍以 connecting 留在复用表；立即重连会
         // 继续等待已经 aborted 的 readiness，并沿用上一次凭据。先按对象身份退休旧 entry，
         // 再触发底层取消；迟到的旧 completion 不能删除或复活同 key 的新连接。
         if (entriesByKey.get(session.entry.key) === session.entry) {
@@ -698,6 +708,17 @@ export function createWindowRemoteConnectionRegistry<TServices, TCapabilities = 
     },
     listSessions(): WindowRemoteLogicalSessionSnapshot[] {
       return Array.from(sessionsById.values(), toSessionSnapshot);
+    },
+    /**
+     * 已就绪、未释放的连接（按连接去重，同一 SSH 连接上的多个 logical session 只出现一次）。
+     * 供窗口级事实广播给每个远程 Host，例如动态工作流的用户选择（launch.md「The user's choice」）。
+     */
+    listReadyConnections(): Array<{ target: RemoteTarget; services: TServices }> {
+      return Array.from(entriesByKey.values()).flatMap((entry) =>
+        entry.handle && !entry.disposed
+          ? [{ target: entry.target, services: entry.handle.services }]
+          : [],
+      );
     },
     findSessionForWorkspace(params: {
       workspacePath: string;

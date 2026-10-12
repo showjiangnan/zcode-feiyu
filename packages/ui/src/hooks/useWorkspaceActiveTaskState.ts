@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useMemo, useRef } from "react";
 import type { ZCodeProvider, ZCodeTaskMeta } from "@zcode/shared";
 import { useActiveTaskSnapshotMeta } from "@/hooks/useActiveTaskSnapshotMeta.js";
@@ -56,12 +57,13 @@ function areResolvedTaskMetasEqual(left: ZCodeTaskMeta | null, right: ZCodeTaskM
     left.unreadAt === right.unreadAt &&
     left.status === right.status &&
     areTaskMetaJsonFieldsEqual(left.lastError, right.lastError) &&
+    areTaskMetaJsonFieldsEqual(left.repairState, right.repairState) &&
     areTaskMetaJsonFieldsEqual(left.changeSummary, right.changeSummary) &&
     areTaskMetaJsonFieldsEqual(left.target, right.target)
   );
 }
 
-function useStableResolvedActiveTaskMeta(taskMeta: ZCodeTaskMeta | null) {
+export function useStableResolvedActiveTaskMeta(taskMeta: ZCodeTaskMeta | null) {
   const stableTaskMetaRef = useRef<ZCodeTaskMeta | null>(null);
   const stableTaskMeta = stableTaskMetaRef.current;
   // stream chunk 只更新消息流时，active task meta 经列表/乐观层重新合成后可能字段相同但引用变了。

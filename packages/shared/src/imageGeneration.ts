@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 
 export const IMAGE_MAX_BYTES = 20 * 1024 * 1024;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- Model Provider 导航需要集中计算分组、选中项与 Coding Plan 权益态，后续拆分时再收敛。 */
 import { useEffect, useMemo } from "react";
 import type { ProviderSettingsFormProvider } from "@/lib/providerSettingsFormTypes.js";
@@ -84,7 +85,9 @@ export function useModelProviderNavigation({
 }: UseModelProviderNavigationOptions) {
   const customProviders = useMemo(() => {
     const allCustomProviders = modelProviders.filter(
-      (provider) => provider.config.group === "standard-personal",
+      (provider) =>
+        provider.config.group === "standard-personal" &&
+        provider.config.access?.type !== "chatgpt-subscription",
     );
     // 这里复用模型菜单的展示排序，确保设置页和聊天框供应商顺序一致。
     return sortModelProvidersForDisplay(allCustomProviders, displayOrder);
@@ -209,6 +212,17 @@ export function useModelProviderNavigation({
             };
           }),
           ...codingPlanItems.filter((item) => isStartPlanModelProviderId(item.presetId)),
+        ],
+      },
+      {
+        id: "chatgpt-subscription",
+        title: intl.formatMessage({ id: "chatgptSubscription.entry" }),
+        items: [
+          {
+            key: "chatgpt-subscription",
+            type: "chatgpt-subscription",
+            label: intl.formatMessage({ id: "chatgptSubscription.title" }),
+          },
         ],
       },
       {
@@ -381,7 +395,7 @@ function resolvePresetFamilyStatusProvider({
   );
 }
 
-function resolveFallbackModelProviderNodeKey({
+export function resolveFallbackModelProviderNodeKey({
   selectedNodeKey,
   selectableNavigationItems,
 }: {
@@ -528,6 +542,40 @@ function pickFamilyModeNavigationItem(
       connectionSelectionMatchesNavigationItem(familyId, selection, item),
     ) ?? null
   );
+}
+
+export function resolveSelectedFamilyModeNodeKey({
+  selectedNavItem,
+  selectableNavigationItems,
+  connectionSelections = {},
+  pendingConnectionSelections = {},
+}: {
+  selectedNavItem: Exclude<
+    ModelProviderNavGroup["items"][number],
+    { type: "codingPlanLoading" }
+  > | null;
+  selectableNavigationItems: Array<
+    Exclude<ModelProviderNavGroup["items"][number], { type: "codingPlanLoading" }>
+  >;
+  connectionSelections?: ProviderFamilyConnectionSelectionSettings;
+  pendingConnectionSelections?: ProviderFamilyConnectionSelectionSettings;
+}): string | null {
+  if (
+    selectedNavItem?.type !== "preset" &&
+    selectedNavItem?.type !== "codingPlan" &&
+    selectedNavItem?.type !== "teamPlan"
+  ) {
+    return null;
+  }
+  const familySpec = resolveModelProviderFamilySpecByProviderId(selectedNavItem.presetId);
+  if (!familySpec) {
+    return null;
+  }
+  const savedItem = pickFamilyModeNavigationItem(selectableNavigationItems, familySpec.id, {
+    ...connectionSelections,
+    ...pendingConnectionSelections,
+  });
+  return savedItem && savedItem.key !== selectedNavItem.key ? savedItem.key : null;
 }
 
 export function connectionSelectionMatchesNavigationItem(

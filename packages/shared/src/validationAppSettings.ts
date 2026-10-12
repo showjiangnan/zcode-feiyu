@@ -1,16 +1,18 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- AppSettings schema 聚合历史迁移、默认值和 patch 校验，拆分会削弱设置迁移的单一入口。 */
 import { z } from "zod";
-import type { AppSettings } from "./protocol.js";
-import { REMOTE_ASSET_INSTALL_MODES } from "./remoteAssetInstallMode.js";
-import { isKnownRemoteResourcePackageId } from "./remoteResourcePackages.js";
-import { wslUserSchema } from "./wslUserValidation.js";
-import { normalizeZCodeEndpointOrigin } from "./zcodeEndpoint.js";
 import {
   DEFAULT_EMBEDDED_BROWSER_VIEWPORT_PREFERENCE,
   embeddedBrowserViewportPreferenceSchema,
 } from "./browser-use/command-metadata.js";
+import { continuityPolicySchema } from "./continuity-policy.js";
+import { DYNAMIC_WORKFLOW_MODES } from "./dynamic-workflow-feature.js";
+import { imageGenerationConfigSchema } from "./imageGeneration.js";
 import { providerFamilyConnectionSelectionSettingsSchema } from "./provider-family-connection-selection.js";
+import { REMOTE_ASSET_INSTALL_MODES } from "./remoteAssetInstallMode.js";
+import { isKnownRemoteResourcePackageId } from "./remoteResourcePackages.js";
+import { wslUserSchema } from "./wslUserValidation.js";
+import { normalizeZCodeEndpointOrigin } from "./zcodeEndpoint.js";
 
 /** 引导职业枚举；单独导出供 onboarding 记录回填 settings 时做窄化校验。 */
 const appSettingsOccupationSchema = z.enum([
@@ -34,8 +36,11 @@ export const appSettingsOccupationEnum = appSettingsOccupationSchema;
 const nonEmptyStringSchema = z.string().trim().min(1);
 
 export const localeSchema = z.enum(["zh-CN", "en-US"]);
-const localePreferenceSchema = z.enum(["system", "zh-CN", "en-US"]);
+export const localePreferenceSchema = z.enum(["system", "zh-CN", "en-US"]);
 const zcodeInteractionBehaviorSchema = z.enum(["queue", "guide"]);
+// launch.md「The user's choice」：读文件时未知取值（降级后读到新版本写的值）按「跟随」处理，
+// 不能让一个偏好字段把整份设置读坏。
+const dynamicWorkflowModeSettingSchema = z.enum(DYNAMIC_WORKFLOW_MODES).optional().catch(undefined);
 const electronReleaseChannelSchema = z.enum(["stable", "preview"]);
 const desktopZoomLevelSchema = z.number().int().min(-3).max(5);
 const desktopWindowSizeSchema = z.object({
@@ -101,6 +106,14 @@ const remoteWorkspaceTargetSchema = z.discriminatedUnion("kind", [
     kind: z.literal("docker"),
     container: nonEmptyStringSchema,
   }),
+  z.object({
+    kind: z.literal("server"),
+    url: z.string().url(),
+    name: nonEmptyStringSchema.optional(),
+    workspacePath: z.string().optional(),
+    serverId: nonEmptyStringSchema.optional(),
+    tokenCredentialKey: nonEmptyStringSchema.optional(),
+  }),
 ]);
 
 const appWorkspaceSessionEntrySchema = z.discriminatedUnion("kind", [
@@ -121,6 +134,14 @@ const appWorkspaceSessionEntrySchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+const webRemoteControlExternalRelayDeviceSchema = z.object({
+  deviceSid: nonEmptyStringSchema,
+});
+const webRemoteControlLastEnabledContextSchema = z.object({
+  workspacePath: nonEmptyStringSchema,
+  workspaceIdentity: nonEmptyStringSchema.optional(),
+  initialTaskId: nonEmptyStringSchema.optional(),
+});
 const zcodeEndpointOriginSchema = z.preprocess((value) => {
   if (typeof value !== "string") {
     return undefined;
@@ -443,6 +464,8 @@ const appSettingsObjectSchema = z.object({
   taskAutoArchiveOlderThanDays: z.number().int().positive().max(365).default(7),
   closeToTrayOnWindows: z.boolean().default(true),
   closeToTrayOnWindowsMigrationInitialized: z.boolean().default(true),
+  // default(false)：新装与存量用户首次启动都视为未归位，由 main 进程按平台决定是否迁移。
+  closeToTrayLinuxMigrationInitialized: z.boolean().default(false),
   keepAwakeWhileRunning: z.boolean().default(false),
   continueAfterCloseOnMac: z.boolean().default(false),
   desktopZoomLevel: desktopZoomLevelSchema.optional(),
@@ -457,6 +480,7 @@ const appSettingsObjectSchema = z.object({
   zcodeInteractionBehavior: zcodeInteractionBehaviorSchema.default("queue"),
   askUserQuestionAutoResolutionEnabled: z.boolean().default(true),
   modelIoFullRetentionEnabled: z.boolean().default(false),
+  dynamicWorkflowMode: dynamicWorkflowModeSettingSchema,
   startPlanRecommendationDismissed: z.boolean().default(false),
   providerFamilyConnectionSelections: providerFamilyConnectionSelectionSettingsSchema.default({}),
   providerFamilyDomain: providerFamilyDomainSchema.optional(),
@@ -479,6 +503,8 @@ const appSettingsObjectSchema = z.object({
   autoDownloadAndInstallUpdates: z.boolean().default(false),
   skippedElectronUpdateVersions: skippedElectronUpdateVersionsSchema,
   settingsSyncFirstRunPromptHandled: z.boolean().optional(),
+  webRemoteControlExternalRelayDevice: webRemoteControlExternalRelayDeviceSchema.optional(),
+  webRemoteControlLastEnabledContext: webRemoteControlLastEnabledContextSchema.optional(),
   zcodeEndpointOrigin: zcodeEndpointOriginSchema.optional(),
 });
 
@@ -530,6 +556,7 @@ export const appSettingsPatchSchema = z.object({
   keepAwakeWhileRunning: z.boolean().optional(),
   continueAfterCloseOnMac: z.boolean().optional(),
   closeToTrayOnWindowsMigrationInitialized: z.boolean().optional(),
+  closeToTrayLinuxMigrationInitialized: z.boolean().optional(),
   desktopZoomLevel: desktopZoomLevelSchema.optional(),
   desktopWindowSize: desktopWindowSizeSchema.optional(),
   desktopChromiumHardwareAccelerationEnabled: z.boolean().optional(),
@@ -542,6 +569,8 @@ export const appSettingsPatchSchema = z.object({
   zcodeInteractionBehavior: zcodeInteractionBehaviorSchema.optional(),
   askUserQuestionAutoResolutionEnabled: z.boolean().optional(),
   modelIoFullRetentionEnabled: z.boolean().optional(),
+  // 空串是「删除选择、回到跟随」的哨兵：RPC 会吞掉 undefined，normalizeSettingsPatch 把它归一成删除。
+  dynamicWorkflowMode: z.union([z.enum(DYNAMIC_WORKFLOW_MODES), z.literal("")]).optional(),
   startPlanRecommendationDismissed: z.boolean().optional(),
   providerFamilyConnectionSelections: providerFamilyConnectionSelectionSettingsSchema.optional(),
   providerFamilyDomain: z.union([providerFamilyDomainSchema, z.literal("")]).optional(),
@@ -582,7 +611,7 @@ export const appSettingsPatchSchema = z.object({
     .partialRecord(electronReleaseChannelSchema, nonEmptyStringSchema)
     .optional(),
   settingsSyncFirstRunPromptHandled: z.boolean().optional(),
+  webRemoteControlExternalRelayDevice: webRemoteControlExternalRelayDeviceSchema.optional(),
+  webRemoteControlLastEnabledContext: webRemoteControlLastEnabledContextSchema.optional(),
   zcodeEndpointOrigin: zcodeEndpointOriginSchema.optional(),
 });
-import { imageGenerationConfigSchema } from "./imageGeneration.js";
-import { continuityPolicySchema } from "./continuity-policy.js";

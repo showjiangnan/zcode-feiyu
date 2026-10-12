@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useEffect, useRef } from "react";
 import type { ControlPresentation } from "@zcode/zcode-cua/control-contract";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";

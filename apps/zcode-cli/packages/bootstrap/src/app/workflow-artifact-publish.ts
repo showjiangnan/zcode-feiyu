@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
 // ============================================================
@@ -24,6 +25,381 @@
 // 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
 // 的前提就是这些拒绝到得了脚本手上。
 
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
+// ============================================================
+// 产物发布的执行侧（Boundary B 的 executeArtifactPublish）
+// ============================================================
+// ⚠ 术语：本文件里的 artifact 一律指**用户面
+// 产物**——脚本经 `artifact.file` / `artifact.markdown` 交付给**用户**看的字节；不是引擎内部
+// 那个 artifact（`RunSettlement.artifact`、`serializeWorkflowArtifact` 的顶层返回值，那是给
+// **模型**看的）。本文件不触及后者。
+//
+// 与 workflow-world-read.ts 同一条分工线：driver 本体（workflow-driver.ts）做 actor 会话与
+// turn 的编排，这一半把一次 `(op, id, path | content, opts)` 变成一次真实的**字节拷贝**，
+// 且完全不碰会话、模型与 journal。四件事在这里，而且只在这里：
+//   1. **实参与 opts 的形状校验**。引擎只保证 `id` 与 payload 是非空字符串（运行期护栏），
+//      `opts` 是脚本原样透传的第三实参——「一个 title 长什么样」归这一侧，纪律与
+//      `worldReadStringArgs` 相同：大声失败，绝不 `String(...)` 强转。
+//   2. **路径解析与越界判定**。解析器复用 world-read 的那一个（`resolveWithinWorkspace`），
+//      再加一次 realpath 复核，见 {@link resolveWorkspaceFile}。
+//   3. **上限的执行**。常量在纯包（`ARTIFACT_CAPS`），执行在这里，因为只有这一侧读得到
+//      字节；超限一律**拒绝不截断**（与 world-read 同 house policy——一份被悄悄截断的 PDF
+//      是一件坏交付物，而一条指名上限的拒绝是脚本能据以改写自己的契约）。
+//   4. **写 tool-artifact store**，并把 store 的回执归一成 `ArtifactVersionRecord`。
+//
+// 拒绝一律是结构化 `WorkflowError`（错误码：ArtifactSourceMissing /
+// ArtifactPathOutsideWorkspace / ArtifactTooLarge / ArtifactStoreUnavailable），因为内容成员
+// 在脚本里是一个可 `catch` 的 promise——门控习语 `try { await artifact.file(…) } catch { … }`
+// 的前提就是这些拒绝到得了脚本手上。
 import { realpath } from "node:fs/promises";
 import { basename } from "node:path";
 import {
@@ -81,9 +457,7 @@ export async function executeArtifactPublish(
   const opts = artifactPublishOptions(request);
   const store = requireArtifactStore(deps, request);
   const payload =
-    request.op === "file"
-      ? await readFilePayload(deps, request, opts)
-      : markdownPayload(request);
+    request.op === "file" ? await readFilePayload(deps, request, opts) : markdownPayload(request);
   const written = await writePayload(store, request, payload);
   return {
     id: request.id,
@@ -157,7 +531,8 @@ function artifactPublishOptions(request: ArtifactPublishRequest): ArtifactPublis
     bag.description,
     ARTIFACT_CAPS.maxDescriptionLength,
   );
-  const contentType = request.op === "file" ? optionalContentType(request, bag.contentType) : undefined;
+  const contentType =
+    request.op === "file" ? optionalContentType(request, bag.contentType) : undefined;
   return {
     ...(title === undefined ? {} : { title }),
     ...(description === undefined ? {} : { description }),
@@ -325,7 +700,11 @@ async function readCappedBytes(
     if (isFileSystemPortError(cause)) {
       if (cause.code === "too_large") throw tooLarge(given, cap);
       // not_found / is_directory / not_file 都是"这里没有一个可发布的普通文件"。
-      if (cause.code === "not_found" || cause.code === "is_directory" || cause.code === "not_file") {
+      if (
+        cause.code === "not_found" ||
+        cause.code === "is_directory" ||
+        cause.code === "not_file"
+      ) {
         throw sourceMissing(given, cause);
       }
     }

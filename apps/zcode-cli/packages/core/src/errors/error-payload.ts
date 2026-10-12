@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import type {
   ErrorAttribution,
   ModelApiErrorPhase,
   ModelFailureExceptionKind,
 } from "@zcode/contracts";
 
-interface ExecutionErrorPayloadProjection {
+export interface ExecutionErrorPayloadProjection {
   attribution?: ErrorAttribution;
   code?: string;
   detail?: string;

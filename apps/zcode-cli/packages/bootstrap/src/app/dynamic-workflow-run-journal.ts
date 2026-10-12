@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Dynamic Workflow Run Service：journal 能力探测与 store 窄化
 // ============================================================
@@ -8,9 +9,144 @@
 // 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
 // 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
 
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
+// ============================================================
+// Dynamic Workflow Run Service：journal 能力探测与 store 窄化
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把 journal /
+// task link store 的结构性窄化与四组能力探测拆到本文件；公开面仍从 dynamic-workflow-run-service.ts
+// 导出。
+//
+// 这里的每一条探测都遵守同一条纪律：store 是端口、实现可替换，所以按能力探测而不是 instanceof；
+// 缺席即**可见降级**（对应读面不实现 / 回空 / 不构造），绝不静默退回内存实现。
 import type { DwfRunIntrospectionQueries, DwfRunSessionListItem } from "@zcode/adapters/storage";
 import type { CreateSessionTaskLinkInput, Logger, SessionStorePort } from "@zcode/contracts";
-import type { JournalStorePort, RunRecord } from "@zcode/dynamic-workflow";
+import type { JournalStorePort, RunRecord, StoredEvent } from "@zcode/dynamic-workflow";
 
 /** task link 落库面（生产是 SqliteSessionStore；测试传 spy）。 */
 export interface DynamicWorkflowTaskLinkStore {
@@ -105,7 +241,8 @@ export interface DynamicWorkflowIntrospectableJournal
   extends JournalStorePort, DwfRunIntrospectionQueries {}
 
 /**
- * journal 是否带「每一世的活动区间」读面（完成卡的时长口径）。
+ * journal 是否带「每一世的活动区间」读面（完成卡的时长口径，见
+ * `docs/dynamic-workflow/transcript-and-notifications.md`「How long it took」）。
  *
  * **独立探测，不并入 {@link supportsRunIntrospection} 的四条**：那四条一起探是因为它们共同
  * 支撑两个工具的可用性，而这一条只支撑一个数字。缺它的后果是时长退回「本世墙钟」——一个更
@@ -116,6 +253,37 @@ export function supportsRunLifeSpans(
   journal: JournalStorePort,
 ): journal is JournalStorePort & Pick<DwfRunIntrospectionQueries, "listRunLifeSpans"> {
   return typeof (journal as Partial<DwfRunIntrospectionQueries>).listRunLifeSpans === "function";
+}
+
+/**
+ * journal 是否带「按条数与字节两道界翻一页事件」的读面（事件日志，docs/execution-engine.md
+ * 「Reading the journal」）。独立探测，理由同 {@link supportsRunLifeSpans}：缺它时事件日志退回
+ * 只按条数翻页（内存 journal 的情形，它的 run 活不过进程，也不会攒出大页）。
+ */
+export function supportsEventPages(
+  journal: JournalStorePort,
+): journal is JournalStorePort & Pick<DwfRunIntrospectionQueries, "listEventPage"> {
+  return typeof (journal as Partial<DwfRunIntrospectionQueries>).listEventPage === "function";
+}
+
+/**
+ * 没有 {@link supportsEventPages} 读面的 journal 上的事件页：只按条数，多取一条判定 `hasMore`。
+ * 字节界在这里兑现不了——要知道一条事件多大就得先把它读出来——而这类 journal（内存实现）
+ * 本来就攒不出大页。
+ */
+export function pageByCountOnly(
+  journal: JournalStorePort,
+  runId: string,
+  page: { afterSequence?: number; limit: number },
+): { events: StoredEvent[]; hasMore: boolean } {
+  const read = journal.listEvents(runId, {
+    types: "all",
+    reportItems: "all",
+    ...(page.afterSequence === undefined ? {} : { afterSequence: page.afterSequence }),
+    limit: page.limit + 1,
+  });
+  const hasMore = read.length > page.limit;
+  return { events: hasMore ? read.slice(0, page.limit) : read, hasMore };
 }
 
 /**

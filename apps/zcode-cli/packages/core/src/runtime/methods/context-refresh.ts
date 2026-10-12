@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { countContextPrefixMessages } from "../deps.js";
 import type { Model } from "../deps.js";
 import type { RuntimeMessageEntry } from "../../agent/message-history.js";

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { app, BrowserWindow, Notification } from "electron";
 import type { IpcMainEvent, IpcMainInvokeEvent } from "electron";
 import type { TaskNotificationPayload } from "@zcode/shared";
@@ -60,7 +61,16 @@ function releaseTaskNotification(notification: Notification) {
   activeTaskNotifications.delete(notification);
 }
 
-function focusTaskNotificationWindow(senderWindow: BrowserWindow) {
+export function getActiveTaskNotificationCountForTest() {
+  return activeTaskNotifications.size;
+}
+
+export function resetActiveTaskNotificationsForTest() {
+  activeTaskNotifications.clear();
+  recentTaskNotificationTimestamps.clear();
+}
+
+export function focusTaskNotificationWindow(senderWindow: BrowserWindow) {
   if (senderWindow.isMinimized()) {
     senderWindow.restore();
   }

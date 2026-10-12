@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { BundledLanguage, BundledTheme, HighlighterGeneric, ThemedToken } from "shiki";
 import { bundledLanguages, bundledLanguagesInfo, createHighlighter } from "shiki";
 import { logger } from "@/logger.js";
@@ -102,7 +103,7 @@ const getHighlighter = (
   return highlighterPromise;
 };
 
-const createRawCodeTokens = (code: string): TokenizedCode => ({
+export const createRawCodeTokens = (code: string): TokenizedCode => ({
   bg: "transparent",
   fg: "inherit",
   tokens: code.split("\n").map((line) =>

@@ -1,8 +1,10 @@
+// Modified by ZCode Feiyu.
 import type {
   AppUsageRequest,
   AppUsageSnapshot,
   CodingPlanUsageRequest,
   CodingPlanUsageSnapshot,
+  CodingPlanRegularTpsRequest,
   CodingPlanResetOpportunityRequest,
   CodingPlanResetOpportunityResult,
   CodingPlanResetScopeRequest,
@@ -20,6 +22,7 @@ import { createServiceDescriptor } from "../descriptors.js";
 export interface IUsageStatsService {
   getAppUsageSnapshot(request: AppUsageRequest): Promise<AppUsageSnapshot>;
   getCodingPlanUsageSnapshot(request: CodingPlanUsageRequest): Promise<CodingPlanUsageSnapshot>;
+  getCodingPlanRegularTps?(request: CodingPlanRegularTpsRequest): Promise<number | undefined>;
   getCodingPlanResetStatus(
     request: CodingPlanResetScopeRequest,
   ): Promise<CodingPlanResetStatusSnapshot>;

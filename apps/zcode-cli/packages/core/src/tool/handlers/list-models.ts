@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // ListModels Tool Handler
 // ============================================================
@@ -11,6 +12,18 @@
 // 连同候选一起退回），这条是主动的（「我们有哪些模型可用？」）。两条读的是同一份**活**目录
 // ——端口每次调用现读注册表视图，绝不返回构造期的冻结拷贝。
 
+// ============================================================
+// ListModels Tool Handler
+// ============================================================
+// 列出本宿主已配置的模型。
+//
+// 存在的理由只有一个：主代理要给一次 workflow run 挑子代理模型（`subagent_model`）。它**不是选模
+// 开关**——本工具改不了会话自己的模型，描述里必须把这句话说穿，否则模型会把它当成
+// 「切换我自己」的入口，然后向用户报告一个没有发生过的切换。
+//
+// 与解析器（model-reference.ts）是两条互补的路：那条是被动的（用户说了个名字，解不出来时
+// 连同候选一起退回），这条是主动的（「我们有哪些模型可用？」）。两条读的是同一份**活**目录
+// ——端口每次调用现读注册表视图，绝不返回构造期的冻结拷贝。
 import {
   LIST_MODELS_TOOL_NAME,
   ListModelsInputJsonSchema,
@@ -114,7 +127,9 @@ function formatListModelsModelContent(output: unknown): ModelMessageContent {
     if (model.reasoningLevels.length > 0) {
       const levels = model.reasoningLevels.join(",");
       const fallback =
-        model.defaultReasoningLevel === undefined ? "" : ` (default ${model.defaultReasoningLevel})`;
+        model.defaultReasoningLevel === undefined
+          ? ""
+          : ` (default ${model.defaultReasoningLevel})`;
       parts.push(`; levels: ${levels}${fallback}`);
     }
     // current 与 disabled 排在行尾且各用方括号：它们是模型据以**排除**一行的两个标记，

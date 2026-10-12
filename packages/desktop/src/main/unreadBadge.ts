@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 type AppBadgeSetter = (count: number) => void;
 
 export function parseWindowUnreadCount(payload: unknown): number | null {
@@ -18,7 +19,7 @@ export function sumWindowUnreadCounts(windowUnreadCountMap: ReadonlyMap<number, 
   return totalUnreadCount;
 }
 
-function supportsAppUnreadBadge(platform: NodeJS.Platform): boolean {
+export function supportsAppUnreadBadge(platform: NodeJS.Platform): boolean {
   return platform === "darwin" || platform === "linux";
 }
 

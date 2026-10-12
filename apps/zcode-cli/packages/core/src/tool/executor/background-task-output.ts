@@ -1,4 +1,5 @@
-interface BackgroundTaskOutputMetadata {
+// Modified by ZCode Feiyu.
+export interface BackgroundTaskOutputMetadata {
   childSessionId?: string;
   outputBytes?: number;
   outputFile?: string;

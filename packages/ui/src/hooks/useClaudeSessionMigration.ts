@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useMemo, useState } from "react";
 import type { ZCodeImportSessionsResult, ZCodeImportableSessionCandidate } from "@zcode/shared";
 import { logger } from "@/logger.js";
@@ -26,7 +27,7 @@ function resolveModifiedSince(range: ClaudeMigrationRange): number | undefined {
   return Date.now() - RANGE_TO_DURATION_MS[range];
 }
 
-function resolveClaudeMigrationScanLimit(limitInput: string): number | undefined {
+export function resolveClaudeMigrationScanLimit(limitInput: string): number | undefined {
   if (limitInput === UNLIMITED_SCAN_LIMIT_INPUT) {
     return undefined;
   }
@@ -209,7 +210,7 @@ export function useClaudeSessionMigration(params: {
         );
         if (result.imported.length > 0) {
           const importedWorkspacePaths = new Set(result.imported.map((item) => item.workspacePath));
-          // Claude 导入之前通过 bumpTaskListVersion 让各处任务列表整轮重查，
+          // Bugfix: Claude 导入之前通过 bumpTaskListVersion 让各处任务列表整轮重查，
           // 但这里真正需要的只是把受影响 workspace 的查询结果失效并重新拉取。
           // 改成局部失效后，仍然能让新导入任务出现在侧边栏，同时避免把无关 workspace 一起带着刷新。
           const importedWorkspaceScopes = result.imported.map((item) => ({

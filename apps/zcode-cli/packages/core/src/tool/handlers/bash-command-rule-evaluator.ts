@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu.
 import type { PermissionRuleBehavior, PermissionRuleValue } from "@zcode/contracts";
 import { wildcardToRegExp } from "../../permission/rule-matching.js";
 
-interface BashRuleEvaluationInput {
+export interface BashRuleEvaluationInput {
   allSubjectGroups: readonly (readonly string[])[];
   behavior: PermissionRuleBehavior;
   exactCommands: readonly string[];

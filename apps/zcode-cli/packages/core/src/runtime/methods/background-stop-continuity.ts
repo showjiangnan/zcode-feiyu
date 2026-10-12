@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // ============================================================
 // 连续工作（记忆提取 / 记忆整理 / 主动执行）的后台停止分支
 // （runtime.stopBackgroundTask 的 memory_extraction / memory_review / proactive 分派）

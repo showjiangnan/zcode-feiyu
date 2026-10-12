@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 发行包 staging 流程按步骤线性组装，oxfmt 换行后略超 400 行，拆分会增加跨步骤状态同步。 */
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -14,7 +15,7 @@ const NODE_BUILTIN_MODULES = new Set(builtinModules);
  * 结果只做语法归一化（scoped 包取前两段），是否为真实 npm 包由调用方与
  * workspace node_modules 求交集决定；node 内置模块在这里直接过滤。
  */
-function collectBareModuleSpecifiers(source: string): Set<string> {
+export function collectBareModuleSpecifiers(source: string): Set<string> {
   const names = new Set<string>();
   const specifierPattern =
     /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)["']([^"'\n]+)["']/g;
@@ -65,7 +66,7 @@ async function findDependencyDir(fromDir: string, name: string): Promise<string 
  * 返回 包名 → 真实目录。同名包解析到不同真实目录时报错：扁平发行布局放不下两个版本，
  * 静默选一个会把版本漂移带进发行包。optional 依赖缺失时跳过。
  */
-async function resolveProductionPackageClosure(
+export async function resolveProductionPackageClosure(
   entryPackageNames: readonly string[],
   nodeModulesDir: string,
   workspacePackageDirs: ReadonlyMap<string, string> = new Map(),
@@ -126,9 +127,10 @@ async function resolveProductionPackageClosure(
  * 交叉打包时留下 build/ 会让目标机优先载入错误架构的 pty.node 直接崩溃。
  * 非目标平台的 prebuilds 一并剔除，控制发行包体积。
  */
-function isNodePtyRuntimePath(relativePath: string, target: ServerTarget): boolean {
+export function isNodePtyRuntimePath(relativePath: string, target: ServerTarget): boolean {
   const normalized = relativePath.split(sep).join("/");
   if (normalized === "" || normalized === "package.json") return true;
+  // 修复：node-pty 的运行时白名单曾漏掉包内许可文件，发行包里只有代码没有声明。
   if (/^(?:LICENSE|NOTICE|COPYING)(?:[._-].*)?$/iu.test(normalized)) return true;
   if (normalized === "lib" || normalized.startsWith("lib/")) return true;
   if (normalized === "typings" || normalized.startsWith("typings/")) return true;
@@ -147,7 +149,7 @@ function isTargetSpecificPackage(packageName: string, target: ServerTarget): boo
   return packageName === `@mbears/opentui-core-${target}`;
 }
 
-interface StageOptions {
+export interface StageOptions {
   target: ServerTarget;
   appVersion: string;
   /** tsup 产物目录（server-cli.js / server-core.js） */
@@ -156,7 +158,7 @@ interface StageOptions {
   agentBundlePath: string;
   /** 已准备好的目标平台 Node 二进制 */
   nodeBinaryPath: string;
-  /** 构建入口从统一合规 owner 核验后传入；组件组装不能自行拼凑许可。 */
+  /** 构建入口从统一合规 owner（scripts/third-party-notices.mjs）读取后传入；组件组装不能自行拼凑许可。 */
   notices: { thirdParty: string; node: string; nodeSource: string };
   /** 依赖闭包解析与复制的来源 node_modules */
   workspaceNodeModulesDir: string;
@@ -172,7 +174,7 @@ interface StageOptions {
   archive?: boolean;
 }
 
-interface StagedRelease {
+export interface StagedRelease {
   releaseDir: string;
   archivePath: string | null;
   componentArchivePaths: string[];
@@ -391,6 +393,7 @@ export async function stageRelease(options: StageOptions): Promise<StagedRelease
   await rm(join(outputRoot, ".components"), { force: true, recursive: true });
   await mkdir(join(releaseDir, "bin"), { recursive: true });
   await mkdir(runtimeDir, { recursive: true });
+  // 每个可独立下载的组件都要带适用声明，并在计算组件哈希前写入。
   await writeFile(join(runtimeDir, "THIRD-PARTY-NOTICES.md"), options.notices.thirdParty);
   await writeFile(join(runtimeDir, "LICENSE.node.txt"), options.notices.node);
   await writeFile(join(runtimeDir, "NODE-SOURCES.json"), options.notices.nodeSource);

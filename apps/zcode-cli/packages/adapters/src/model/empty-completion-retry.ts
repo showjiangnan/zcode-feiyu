@@ -1,15 +1,16 @@
-import { ModelErrorCode, ModelFailureReason, ModelRetryReason } from "@zcode/contracts";
+// Modified by ZCode Feiyu.
 import type { Logger, ModelStatusSink } from "@zcode/contracts";
+import { ModelErrorCode, ModelFailureReason, ModelRetryReason } from "@zcode/contracts";
 import type { ClassifiedModelFailure } from "./failure-classifier.js";
+import type { ResolvedAiSdkModelRetryOptions } from "./retry-policy.js";
 import { calculateRetryDelay, logRetryDelayDecision, sleep } from "./runner-retry.js";
 import { publishModelStatus, type ModelStatusContext } from "./runner-status.js";
-import type { ResolvedAiSdkModelRetryOptions } from "./retry-policy.js";
 
-const EMPTY_COMPLETION_MAX_RETRIES = 1;
-const EMPTY_COMPLETION_MESSAGE =
+export const EMPTY_COMPLETION_MAX_RETRIES = 1;
+export const EMPTY_COMPLETION_MESSAGE =
   "Model returned no text, no tool calls, and no usage before completing the turn.";
 
-function createEmptyCompletionFailure(): ClassifiedModelFailure {
+export function createEmptyCompletionFailure(): ClassifiedModelFailure {
   return {
     code: ModelErrorCode.InvalidModelResponse,
     message: EMPTY_COMPLETION_MESSAGE,

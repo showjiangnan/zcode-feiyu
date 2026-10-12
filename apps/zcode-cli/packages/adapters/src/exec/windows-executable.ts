@@ -1,11 +1,9 @@
+// Modified by ZCode Feiyu.
 import { extname, win32 } from "node:path";
 
 const DEFAULT_WINDOWS_PATHEXT = [".COM", ".EXE", ".BAT", ".CMD"];
 
-export function getWindowsEnvValue(
-  env: NodeJS.ProcessEnv,
-  key: string,
-): string | undefined {
+export function getWindowsEnvValue(env: NodeJS.ProcessEnv, key: string): string | undefined {
   const lowerKey = key.toLowerCase();
   const match = Object.keys(env).find((envKey) => envKey.toLowerCase() === lowerKey);
   return match ? env[match] : undefined;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export type CommandCenterSearchScope = "all" | "commands" | "conversations" | "files";
 
 export interface CommandCenterSearchHistoryEntry {
@@ -61,7 +62,7 @@ export function readCommandCenterSearchHistory(
   }
 }
 
-function writeCommandCenterSearchHistory(
+export function writeCommandCenterSearchHistory(
   workspaceKey: string,
   entries: CommandCenterSearchHistoryEntry[],
 ) {

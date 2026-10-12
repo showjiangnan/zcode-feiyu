@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { CuaError, contextKey, LIMITS } from "../domain/protocol.js";
 
 export function setControlVisibility(owner, ids, subscriber = "default") {

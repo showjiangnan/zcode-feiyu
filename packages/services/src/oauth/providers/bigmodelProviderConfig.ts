@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { BIGMODEL_PROVIDER_ID, buildBigModelApiUrl } from "@zcode/shared";
 import type { OAuthProviderRuntimeConfig } from "../runtimeConfig.js";
 import {
@@ -10,7 +11,7 @@ import {
 const BIGMODEL_USERINFO_PATH = "/api/biz/customer/getCustomerInfo";
 const BIGMODEL_AUTHORIZE_PATH = "/login";
 
-const BIGMODEL_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
+export const BIGMODEL_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
   id: BIGMODEL_PROVIDER_ID,
   displayName: "BigModel",
   enabled: true,

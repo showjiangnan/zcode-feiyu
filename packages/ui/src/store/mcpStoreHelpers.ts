@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   McpConfig,
   McpServerConfig,
@@ -6,12 +7,17 @@ import type {
   ZCodeMcpServer,
 } from "@zcode/shared";
 
-const MCP_CONFIG_KEY = "zcode-mcp-config";
+export const MCP_CONFIG_KEY = "zcode-mcp-config";
+export const MCP_ENABLED_STATES_KEY = "zcode-mcp-enabled-states";
 export const MCP_DELETED_PRELOAD_KEY = "zcode-mcp-deleted-preload";
 
 export const DEFAULT_MCP_CONFIG: McpConfig = {
   mcp: { mcpServers: {} },
   zcodeagentmcp: { mcpServers: {}, projects: {} },
+  claudeclimcp: { mcpServers: {}, projects: {} },
+  geminiclimcp: { mcpServers: {}, projects: {} },
+  codexclimcp: { mcpServers: {}, projects: {} },
+  opencodemcp: { mcpServers: {}, projects: {} },
 };
 
 export function safeReadJson<T>(key: string, fallback: T): T {

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // AgentRuntime-backed WorkflowDriver：纯辅助
 // ============================================================
@@ -5,6 +6,96 @@
 // 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
 // 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
 
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：纯辅助
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把不碰 driver 状态的纯函数与
+// 常量（deferred、actor 会话 id 铸造、升级预算与 qid 片段、nudge / schema 尾注、裁决与统计的
+// 映射、turn 失败归一）拆到本文件；公开面（mintActorSessionId）仍从 workflow-driver.ts 导出。
 import {
   CoreErrorType,
   createSessionId,
@@ -181,7 +272,7 @@ export function rejectWith(message: string): ContractsSubmitVerdict {
  * 的判定压在这个 0 上，关门之后每条缓存条目都会被当成纯的照常命中，恰好放掉关门要防的那一类。计数因此
  * 改由 driver 的工具活动面从**会话事件流**数（那里是工具调用真正现身的地方），按 ask 累加后传进来。
  */
-function statsFromTurn(result: TurnResult, toolCounts: ActorToolCounts): AskStats {
+export function statsFromTurn(result: TurnResult, toolCounts: ActorToolCounts): AskStats {
   const usage = result.usage;
   return {
     tokens: usage?.totalTokens ?? 0,

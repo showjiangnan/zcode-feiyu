@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { promisify } from "node:util";
 import { spawn, execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";

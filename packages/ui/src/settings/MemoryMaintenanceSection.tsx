@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { WorkspaceMemoryResult } from "@zcode/shared";
 import { DEFAULT_CONTINUITY_POLICY } from "@zcode/shared";

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { UNPHASED_ID } from "./constants.js";
 import type { OrderEvent, PhaseInfo } from "./causality-order.js";
 import { KIND_RANK, reduceOrdering, type OrderKind } from "./causality-reduce.js";
@@ -61,7 +62,10 @@ export interface PhaseSourceFact {
  * 交集在实践中等于 `toPhases` 自己（屏障事实的见证阶段必然是头站点的认领阶段），交集写出来
  * 是为了让「阶段被丢弃/收窄」这类上游变化不会把边挂到不存在的阶段上。
  */
-function headPhasesOf(claiming: readonly string[], toPhases: ReadonlySet<string> | undefined): string[] {
+function headPhasesOf(
+  claiming: readonly string[],
+  toPhases: ReadonlySet<string> | undefined,
+): string[] {
   if (toPhases === undefined) return [...claiming];
   const narrowed = claiming.filter((phase) => toPhases.has(phase));
   return narrowed.length > 0 ? narrowed : [...claiming];
@@ -284,7 +288,12 @@ export function projectPhaseGraph(
   for (const phase of phases) {
     // 成员为零的阶段丢掉（may-set 收窄可能把某阶段的全部 step 拿走）——空节点没有家可指。
     if (!members.has(phase.id)) continue;
-    phaseList.push({ id: phase.id, loc: phase.loc, name: phase.name });
+    phaseList.push({
+      id: phase.id,
+      loc: phase.loc,
+      name: phase.name,
+      ...(phase.fill === undefined ? {} : { fill: phase.fill }),
+    });
   }
   const live = new Set(phaseList.map((phase) => phase.id));
 
@@ -365,7 +374,8 @@ function dedupePhaseFacts(facts: readonly PhaseSourceFact[]): PhaseSourceFact[] 
       continue;
     }
     if (KIND_RANK[fact.kind] > KIND_RANK[existing.kind]) existing.kind = fact.kind;
-    if (existing.carryOf === undefined && fact.carryOf !== undefined) existing.carryOf = fact.carryOf;
+    if (existing.carryOf === undefined && fact.carryOf !== undefined)
+      existing.carryOf = fact.carryOf;
     if (fact.certainty === "maybe") existing.certainty = "maybe";
   }
   return [...byPair.values()];

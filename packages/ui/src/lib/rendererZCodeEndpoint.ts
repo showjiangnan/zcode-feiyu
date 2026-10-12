@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   buildRuntimeZCodeEndpointUrls,
   ZCODE_ENV,
@@ -14,7 +15,7 @@ function readRendererImportMetaEnv(): RendererImportMetaEnv {
     {}) as RendererImportMetaEnv;
 }
 
-function createRendererZCodeEndpointEnv(
+export function createRendererZCodeEndpointEnv(
   env: RendererImportMetaEnv = readRendererImportMetaEnv(),
 ): RuntimeZCodeEndpointEnv {
   return {

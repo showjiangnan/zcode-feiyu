@@ -1,10 +1,16 @@
+// Modified by ZCode Feiyu.
 import { pathFields, safeSettings, safeBroadcasts } from "./rcsPolicy.js";
 import { redactConfiguration, preserveSecrets, filterRcsControllerFrame } from "./rcsProjection.js";
 import { createHash } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep, posix, win32 } from "node:path";
 import { type Event, type IServerChannel } from "@zcode/rpc";
-import { RCS_SERVICE_MANIFEST, type AppSettings, type RcsGrant } from "@zcode/shared";
+import {
+  RCS_SERVICE_MANIFEST,
+  chatGPTSubscriptionCommandSchema,
+  type AppSettings,
+  type RcsGrant,
+} from "@zcode/shared";
 import {
   type IFileService,
   type IZCodeTaskService,
@@ -170,6 +176,15 @@ export function createRcsAuthorization(options: {
         if (!entry.methods.includes(method)) denied();
         let args = bind(rawArgs ?? []) as unknown[];
         const first = object(args[0]);
+        if (name === "chatgpt-subscription") {
+          const command = chatGPTSubscriptionCommandSchema.safeParse(first);
+          if (
+            args.length !== 1 ||
+            !command.success ||
+            !["read", "refresh-models"].includes(command.data.type)
+          )
+            denied();
+        }
         if (
           ["zcode-task", "zcode-agent", "zcode-session"].includes(name) &&
           first &&

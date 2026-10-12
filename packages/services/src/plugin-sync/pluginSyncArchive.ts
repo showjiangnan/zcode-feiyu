@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { chmod, lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, posix, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -11,7 +12,7 @@ const TAR_END_BLOCK_BYTES = TAR_BLOCK_SIZE * 2;
 
 export const PLUGIN_SYNC_METADATA_ARCHIVE_PATH = ".zcode-plugin-sync.json";
 
-type PluginSyncArchiveEntry =
+export type PluginSyncArchiveEntry =
   | {
       sourcePath: string;
       archivePath: string;
@@ -36,7 +37,7 @@ export interface PluginSyncArchiveMetadata {
   }>;
 }
 
-interface PluginSyncArchiveExtractOptions {
+export interface PluginSyncArchiveExtractOptions {
   maxExtractedBytes?: number;
 }
 

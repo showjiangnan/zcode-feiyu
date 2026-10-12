@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines */
 import { createHash } from "node:crypto";
 import { atomicWriteText } from "../fs/atomicFileUtils.js";
@@ -117,7 +118,7 @@ function validateScratchWorkspaceName(name: string): string {
 function normalizeRelativePath(rootPath: string, targetPath: string): string {
   return relative(rootPath, targetPath).split(sep).join("/");
 }
-function isSkippableWorkspaceFileListError(error: unknown): boolean {
+export function isSkippableWorkspaceFileListError(error: unknown): boolean {
   const code = (error as { code?: unknown } | null)?.code;
   return code === "EACCES" || code === "EPERM" || code === "ENOENT";
 }
@@ -127,7 +128,7 @@ interface FileExistenceCacheEntry {
   expiresAt: number;
 }
 
-class FileExistenceCache {
+export class FileExistenceCache {
   private readonly entries = new Map<string, FileExistenceCacheEntry>();
 
   get size(): number {

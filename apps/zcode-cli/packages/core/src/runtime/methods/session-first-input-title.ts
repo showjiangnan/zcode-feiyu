@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { SessionEventType, type TraceContext } from "@zcode/contracts";
 import { titleFromInput } from "../helpers/project.js";
 import type { AgentRuntimeInternal } from "../internal.js";

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { redactFeedbackText } from "@zcode/shared";
 import { useCallback, useEffect, useRef } from "react";
 import { AlertTriangleIcon, LoaderIcon } from "lucide-react";
@@ -68,7 +69,7 @@ export function RemoteConnectionConnectingStep({
       type: "bug",
       module: kind === "ssh" ? "SSH连接失败" : kind === "wsl" ? "WSL连接失败" : "Agent任务执行失败",
       severity: "P2-中",
-      includeLogs: false,
+      includeLogs: true,
       description: buildRemoteConnectionFeedbackDescription(errorMessage, logs, (id, values) =>
         intl.formatMessage({ id }, values),
       ),

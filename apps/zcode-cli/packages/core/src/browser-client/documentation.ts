@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BrowserBackendDescriptor } from "@zcode/contracts/browser-control";
@@ -66,8 +67,8 @@ const FALLBACK_DOCUMENTATION = [
   // 模型每次对同站 URL 都走 tabs.new()，任务结束后 IAB 堆满标签页。
   // open() 现在内置同站复用（激活 + 原地跳转），文档必须把 open() 教成默认导航入口。
   "`agent.browsers.open(url)` is the default navigation entry: it reuses an existing same-site controlled tab (same hostname), activates it so the user sees it, and navigates in place instead of stacking new tabs. Only pass `{ reuseTab: false }` (or use `browser.tabs.new()`) when the task genuinely needs a parallel independent tab.",
-  "For a genuinely new URL with no intended existing page, use `const tab = await browser.tabs.new()`, run `await tab.goto(url)`, then run `await tab.playwright.waitForLoadState({ state: \"domcontentloaded\" })` before returning the first title, URL, or DOM observation.",
-  "After every successful `tab.goto(url)`, explicitly call `await tab.playwright.waitForLoadState({ state: \"domcontentloaded\" })` before the first title, URL, or DOM observation. Keep this confirmation in the model-visible trajectory even when goto() has already settled the backend navigation. Do not replace it with networkidle or a fixed sleep; routine URL/load-state waits remain capped at 3000ms.",
+  'For a genuinely new URL with no intended existing page, use `const tab = await browser.tabs.new()`, run `await tab.goto(url)`, then run `await tab.playwright.waitForLoadState({ state: "domcontentloaded" })` before returning the first title, URL, or DOM observation.',
+  'After every successful `tab.goto(url)`, explicitly call `await tab.playwright.waitForLoadState({ state: "domcontentloaded" })` before the first title, URL, or DOM observation. Keep this confirmation in the model-visible trajectory even when goto() has already settled the backend navigation. Do not replace it with networkidle or a fixed sleep; routine URL/load-state waits remain capped at 3000ms.',
   "If the latest domSnapshot already contains the target, use its facts directly. Do not use evaluate() to rediscover related elements, enumerate inputs, dump HTML, walk the DOM, or probe guessed selectors.",
   "Never guess locator labels, accessible names, placeholders, selectors, or URL patterns. If count() is 0, do not action-wait: take a fresh domSnapshot() and rebuild. After timeout/strict/parse failure, never retry the same locator.",
   // 快照里的 heading/text 可能由祖先卡片处理点击，不能因缺少 link role 就放弃或猜测新角色。

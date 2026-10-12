@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { getVisibleTaskMetas } from "@/store/zcodeSessionStoreSelectors.js";
 import type { WorkspaceZCodeUIState } from "@/store/zcodeSessionStoreTypes.js";
 
@@ -6,6 +7,15 @@ type WorkspaceUnreadState = Pick<
   "optimisticTaskListByTaskId" | "taskListCache"
 > &
   Partial<Pick<WorkspaceZCodeUIState, "taskUnreadByTaskId">>;
+
+export function countWorkspaceUnreadTasks(workspace: WorkspaceUnreadState): number {
+  const visibleTasks = getVisibleTaskMetas(workspace);
+  if (visibleTasks.length > 0) {
+    return visibleTasks.filter((task) => Boolean(task.unreadAt)).length;
+  }
+
+  return Object.keys(workspace.taskUnreadByTaskId ?? {}).length;
+}
 
 export function countAllUnreadTasks(workspaces: Record<string, WorkspaceUnreadState>): number {
   const countedTaskKeys = new Set<string>();

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { orchestrationStateSchema } from "@zcode/shared/zcode-protocol-v4";
 import {
   isTaskRoot,

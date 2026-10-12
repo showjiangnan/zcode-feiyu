@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -30,7 +31,6 @@ export const officialSeaPlugins = [
     version: "0.6.0",
   },
   {
-
     marketplace: "zcode-plugins-official",
     name: "browser-use",
     packageName: "@zcode/browser-use-plugin",

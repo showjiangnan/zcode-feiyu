@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Tool Scheduler - Tool execution scheduling
 // ============================================================
@@ -63,7 +64,8 @@ export class ToolScheduler {
       toolName: tool.toolName,
       dependencies: tool.dependsOn,
       canRunParallel: this.canRunInParallel(tool),
-      readOnly: tool.readOnly ?? (tool.toolName ? this.readOnlyTools.has(tool.toolName) : undefined),
+      readOnly:
+        tool.readOnly ?? (tool.toolName ? this.readOnlyTools.has(tool.toolName) : undefined),
       destructive: tool.destructive,
       concurrentSafe: tool.concurrentSafe,
       sideEffectScope: tool.sideEffectScope,
@@ -94,7 +96,8 @@ export class ToolScheduler {
       return true;
     }
 
-    const readOnly = tool.readOnly ?? (hasToolName ? this.readOnlyTools.has(tool.toolName!) : false);
+    const readOnly =
+      tool.readOnly ?? (hasToolName ? this.readOnlyTools.has(tool.toolName!) : false);
     if (tool.destructive) return false;
     if (tool.concurrentSafe === true) return true;
     if (tool.concurrentSafe === false) return false;

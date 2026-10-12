@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { IPlatformService, LocalTtftRecord } from "@zcode/shared";
 import { LocalTtftObserver, setLocalTtftObserver } from "@zcode/ui";
 

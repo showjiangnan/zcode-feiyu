@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /** `perf_process_window` 的属性投影（纯函数，属性 key 与白名单一一对应）。 */
 
 import type { ArmsRumEnv } from "@zcode/shared";
@@ -18,7 +19,7 @@ export interface ProcessResourceReportContext {
 }
 
 /** ARMS 的 `platform` 维度只有这三个取值，看板按它分组。 */
-type ProcessResourceOsCategory = "macos" | "windows" | "linux";
+export type ProcessResourceOsCategory = "macos" | "windows" | "linux";
 
 export function normalizeOsCategory(platform: NodeJS.Platform): ProcessResourceOsCategory {
   switch (platform) {

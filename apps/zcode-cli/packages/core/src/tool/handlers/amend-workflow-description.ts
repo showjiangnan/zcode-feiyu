@@ -1,10 +1,17 @@
-// AmendWorkflow 的常驻描述。
+// Modified by ZCode Feiyu.
+// AmendWorkflow 的常驻描述（docs/dynamic-workflow/launch.md「What the model is told」）。
 //
-// 缓存如何命中、省略即沿用的三个字段、`path` 与 `script` 两条来路、确认窗
+// 2026-09-21 起收短：缓存如何命中、省略即沿用的三个字段、`path` 与 `script` 两条来路、确认窗
 // 何时出现，都在 `dynamic-workflows` 技能的「Tool reference」里，由技能门保证读过。这里只留
 // 路由——什么情况该来修订而不是重建、不要先停、不要等——因为它决定的是「要不要调这个工具」，
 // 必须在技能加载之前就被读到。
 
+// AmendWorkflow 的常驻描述（docs/dynamic-workflow/launch.md「What the model is told」）。
+//
+// 2026-09-21 起收短：缓存如何命中、省略即沿用的三个字段、`path` 与 `script` 两条来路、确认窗
+// 何时出现，都在 `dynamic-workflows` 技能的「Tool reference」里，由技能门保证读过。这里只留
+// 路由——什么情况该来修订而不是重建、不要先停、不要等——因为它决定的是「要不要调这个工具」，
+// 必须在技能加载之前就被读到。
 import { DYNAMIC_WORKFLOW_SKILL_NAME } from "@zcode/contracts";
 
 export const AMEND_WORKFLOW_TOOL_DESCRIPTION = [

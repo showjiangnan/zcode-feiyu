@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
 import { spawn } from "node:child_process";
 import { access } from "node:fs/promises";
-import { dirname, join, normalize, posix as posixPath, sep } from "node:path";
+import { dirname, normalize, posix as posixPath, sep } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";

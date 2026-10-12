@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu.
 import type { UsageEntitlementSnapshot } from "@zcode/shared";
 import { hasActiveCodingPlanSnapshot } from "@/CodingPlanUsageRemainingPanel.js";
 
-type SidebarFooterProfilePlanBadge =
+export type SidebarFooterProfilePlanBadge =
   | {
       audience: "individual";
       snapshot: UsageEntitlementSnapshot;

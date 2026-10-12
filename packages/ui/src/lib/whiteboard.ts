@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createUuid } from "@zcode/shared";
 
 export type WhiteboardTool = "pen" | "eraser";
@@ -26,7 +27,7 @@ export interface WhiteboardDocument {
   updatedAt: number;
 }
 
-interface WhiteboardAddToChatPayload {
+export interface WhiteboardAddToChatPayload {
   workspacePath: string;
   workspaceIdentity?: string;
   boardId: string;

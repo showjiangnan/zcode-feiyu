@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 import {
   lstat,
@@ -88,6 +89,7 @@ export async function sourceFingerprint(root) {
     "web",
     "provider",
     "provider-node",
+    "model-option-map",
     "zcode-cua",
   ])
     inputs.push(`packages/${name}`);

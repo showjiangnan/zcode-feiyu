@@ -1,3 +1,34 @@
+// Modified by ZCode Feiyu.
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
+// Composer Skill 只读 catalog。
+// 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
 // Composer Skill 只读 catalog。
 // 与 Skills Settings 管理接口分离：这里的 sessionId 决定 authority，不提供启停/删除能力。
 import {
@@ -29,6 +60,7 @@ export async function getSkillReferenceCatalog(
   // 每次新打开引用面板都读取当前 workspace catalog。
   const outcome = await listZCodeSkills({
     env: context.deps.env,
+    includeVisualize: true,
     logger: context.logger,
     workingDirectory: params.workspace.workspacePath,
   });

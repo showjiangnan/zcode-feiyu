@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- pinned 列表现在同时承载本地查询、远端主动注入结果和任务操作分发，先集中保持交互一致。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
@@ -49,6 +49,7 @@ export function WorkspacePinnedTasksSection({
   activeWorkspaceIdentity,
   activeTaskId,
   taskSortBy,
+  mobileActiveTaskKey,
   onSelectTask,
   pinnedProjects,
 }: {
@@ -57,6 +58,7 @@ export function WorkspacePinnedTasksSection({
   activeWorkspaceIdentity?: string;
   activeTaskId: string | null;
   taskSortBy: "created" | "updated";
+  mobileActiveTaskKey?: string | null;
   onSelectTask: (
     targetWorkspacePath: string,
     taskId: string,
@@ -556,6 +558,7 @@ export function WorkspacePinnedTasksSection({
                     buildTaskWorkspaceKey(item.workspacePath, item.workspaceIdentity) ===
                       activeWorkspaceKey && item.taskId === activeTaskId
                   }
+                  isMobileActive={mobileActiveTaskKey === itemKey}
                   onSelectTask={handlers.onSelectTask}
                   onArchiveTaskInline={handlers.onArchiveTaskInline}
                   onCancelArchiveConfirm={handleCancelArchiveConfirm}

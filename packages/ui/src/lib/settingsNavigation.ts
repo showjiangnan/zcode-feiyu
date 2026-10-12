@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 设置导航意图集中管理 sessionStorage、事件桥接和解析校验，拆分会让一次性意图消费顺序更难保证。 */
 import { logger } from "@/logger.js";
 
@@ -26,9 +26,9 @@ export type SettingsSectionId =
   | "automations"
   | "shortcuts";
 
-type SettingsUsageTabTarget = "app" | "codingPlan";
-type SettingsPluginTabTarget = "plugins" | "mcps" | "skills" | "commands";
-type SettingsPluginNavigationOrigin = "plugin-store";
+export type SettingsUsageTabTarget = "app" | "codingPlan";
+export type SettingsPluginTabTarget = "plugins" | "mcps" | "skills" | "commands";
+export type SettingsPluginNavigationOrigin = "plugin-store";
 
 const SETTINGS_SECTION_INTENT_KEY = "zcode-settings-section-intent",
   SETTINGS_USAGE_TAB_INTENT_KEY = "zcode-settings-usage-tab-intent",
@@ -46,7 +46,7 @@ const HIDDEN_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "plugins",
 ]);
 
-interface SettingsSectionIntentEventDetail {
+export interface SettingsSectionIntentEventDetail {
   section: SettingsSectionId;
   pluginTab?: SettingsPluginTabTarget;
   pluginOrigin?: SettingsPluginNavigationOrigin;
@@ -114,7 +114,7 @@ function getLocalStorage(): Storage | null {
   }
 }
 
-function readLastSettingsSectionPreference(
+export function readLastSettingsSectionPreference(
   fallbackSection: SettingsSectionId = "general",
 ): SettingsSectionId {
   const storage = getLocalStorage();
@@ -294,7 +294,7 @@ function clearPendingSettingsSectionIntent(): void {
   }
 }
 
-function consumePendingSettingsSection(
+export function consumePendingSettingsSection(
   fallbackSection: SettingsSectionId = "general",
 ): SettingsSectionId {
   if (typeof window === "undefined") {

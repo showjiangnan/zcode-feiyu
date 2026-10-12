@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /** Legacy bootstrap helper; pass the active REPL global explicitly. */
 export function createComputerUseClient(runtimeGlobal) {
   const client = runtimeGlobal?.cua;

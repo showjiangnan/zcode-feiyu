@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Edit Tool - File Editing Tool
 // ============================================================
@@ -19,9 +20,7 @@ export const EditInputSchema = z.object({
   /**
    * The absolute path to the file to modify.
    */
-  file_path: z
-    .string()
-    .describe("The absolute path to the file to modify"),
+  file_path: z.string().describe("The absolute path to the file to modify"),
   /**
    * The text to replace
    */

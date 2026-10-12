@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Zod -> provider-neutral JSON Schema for tool contracts
 // ============================================================
@@ -6,13 +7,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { ZodTypeAny } from "zod";
 import type { JsonSchema } from "../model/index.js";
 
-const STRIPPED_SCHEMA_KEYS = new Set([
-  "$schema",
-  "$id",
-  "$ref",
-  "$defs",
-  "definitions",
-]);
+const STRIPPED_SCHEMA_KEYS = new Set(["$schema", "$id", "$ref", "$defs", "definitions"]);
 export const TOOL_JSON_SCHEMA_VERSION = "https://json-schema.org/draft/2020-12/schema";
 
 /**
@@ -100,7 +95,11 @@ function inferSchemaType(schema: Record<string, unknown>): string | undefined {
   if (isRecord(schema.properties) || Array.isArray(schema.required)) {
     return "object";
   }
-  if (schema.items !== undefined || typeof schema.minItems === "number" || typeof schema.maxItems === "number") {
+  if (
+    schema.items !== undefined ||
+    typeof schema.minItems === "number" ||
+    typeof schema.maxItems === "number"
+  ) {
     return "array";
   }
   if (Array.isArray(schema.enum)) {

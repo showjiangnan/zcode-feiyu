@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * composer 自动聚焦决策（纯函数，脱离 React/DOM 便于单测）。
  *
@@ -9,7 +10,7 @@
  *   暂存，待 disabled→false 可编辑后兑现一次。
  * - `focus-now`：已启用且可编辑，立即聚焦。
  */
-type ComposerAutoFocusDecision = "focus-now" | "defer" | "skip";
+export type ComposerAutoFocusDecision = "focus-now" | "defer" | "skip";
 
 export interface ComposerAutoFocusOptions {
   /** 宿主门控（SessionPane.focused）：仅焦点 pane 自动聚焦。 */

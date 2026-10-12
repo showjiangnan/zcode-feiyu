@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import { randomUUID } from "node:crypto";
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ServicePlatform } from "../platform/serviceManager.js";
 import type { ServerLayout } from "./paths.js";
 
-interface StableLauncherBootstrap {
+export interface StableLauncherBootstrap {
   command: string;
   entry: string;
 }

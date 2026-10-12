@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export function isControlSnapshot(value) {
   return Boolean(
     value &&

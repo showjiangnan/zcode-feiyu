@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useEffect, useRef, useState } from "react";
 import { ActivityIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import {
@@ -39,6 +39,15 @@ type Props = {
   onControl: (input: CommandPayloadMap["controlProactiveWork"]) => Promise<void>;
 };
 export function V4ComposerContinuityControl(props: Props) {
+  const { settings } = useSettings();
+  // 允许位是设置服务的事实；未开启或尚在加载时不展示“主动已停止”入口。
+  // 关闭时卸载交互子树，避免再次开启后自动恢复一个旧弹层。
+  return settings?.continuityPolicy?.proactiveWorkAllowed === true ? (
+    <EnabledContinuityControl {...props} />
+  ) : null;
+}
+
+function EnabledContinuityControl(props: Props) {
   const { intl } = useZCodeIntl();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);

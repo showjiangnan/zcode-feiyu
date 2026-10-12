@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- Controller source 聚合、路由、订阅与生命周期属于同一个 Host 边界。 */
 import { Emitter } from "@zcode/rpc";
 import type { ZCodeTaskMeta } from "@zcode/shared";
@@ -29,7 +30,7 @@ import {
   type WindowHostSessionsIndexObserver,
 } from "./windowHostSessionsIndexObserver.js";
 
-interface ResolvedWindowHostControllerSource {
+export interface ResolvedWindowHostControllerSource {
   scope: WindowHostControllerSourceScope;
   taskService?: IZCodeTaskService;
   agentService?: IZCodeAgentService;

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createRuntime } from "./src/app/runtime.js";
 import { request } from "./src/adapters/ipc-client.js";
 export function createComputerUseRuntime(options = {}) {

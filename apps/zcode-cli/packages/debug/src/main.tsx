@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";

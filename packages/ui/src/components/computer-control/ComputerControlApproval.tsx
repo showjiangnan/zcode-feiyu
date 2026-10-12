@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog.js";
 import { Button } from "@/components/ui/button.js";
 import type { ControlSnapshot } from "@zcode/zcode-cua/control-contract";

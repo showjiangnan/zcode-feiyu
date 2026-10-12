@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { SessionStorePort } from "@zcode/contracts";
 import type { CommandAck } from "@zcode/shared/zcode-protocol-v4";
 import { queueItemIdForCommand } from "./command-inbox.js";

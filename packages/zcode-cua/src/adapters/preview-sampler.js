@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // 新来源变为可见时立即唤醒空闲采样；逐帧投影不唤醒，避免形成无界循环。
 export function createPreviewSampler({
   sample,

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { CSSProperties } from "react";
 
 const WORKSPACE_FILE_TREE_HIERARCHY_GUIDE_BACKGROUND =

@@ -1,4 +1,5 @@
-type AccountProviderCredentialScope = {
+// Modified by ZCode Feiyu.
+export type AccountProviderCredentialScope = {
   readonly providerId: string;
   readonly accountIdentity: string;
 } & (

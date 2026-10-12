@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // pane ↔ session 绑定的本地持久化（pane 绑定属 Layout 层本地 UI 态）。
 // 动机：旧链路靠 useTaskRestore（已删）
 // 恢复选中 task；v4 下 renderer 刷新后 zustand 选择态归零，若不持久化，刷新会把用户
@@ -14,7 +15,7 @@ function storageKey(workspaceKey: string): string {
   return `${STORAGE_PREFIX}${workspaceKey}`;
 }
 
-function readPersistedPaneSession(workspaceKey: string): string | null {
+export function readPersistedPaneSession(workspaceKey: string): string | null {
   try {
     return localStorage.getItem(storageKey(workspaceKey));
   } catch {
@@ -22,7 +23,7 @@ function readPersistedPaneSession(workspaceKey: string): string | null {
   }
 }
 
-function persistPaneSession(workspaceKey: string, sessionId: string | null): void {
+export function persistPaneSession(workspaceKey: string, sessionId: string | null): void {
   try {
     if (sessionId) {
       localStorage.setItem(storageKey(workspaceKey), sessionId);
@@ -34,7 +35,7 @@ function persistPaneSession(workspaceKey: string, sessionId: string | null): voi
   }
 }
 
-interface UsePaneSessionPersistenceParams {
+export interface UsePaneSessionPersistenceParams {
   workspaceKey: string;
   activeSessionId: string | null;
   /** startDraft 的显式用户意图代次；大于 0 时 null 表示草稿，不是待恢复。 */
@@ -45,7 +46,7 @@ interface UsePaneSessionPersistenceParams {
   selectSession: (sessionId: string) => void;
 }
 
-function shouldRestorePersistedPaneSession(params: {
+export function shouldRestorePersistedPaneSession(params: {
   activeSessionId: string | null;
   draftFocusVersion: number;
   enabled: boolean;

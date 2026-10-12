@@ -1,5 +1,6 @@
-import { execFile } from "node:child_process";
+// Modified by ZCode Feiyu.
 import type { ExecFileOptionsWithStringEncoding } from "node:child_process";
+import { execFile } from "node:child_process";
 
 const PROCESS_LOOKUP_TIMEOUT_MS = 1_000;
 const POSIX_PROCESS_TREE_GRACE_MS = 250;
@@ -22,7 +23,7 @@ type ExecFileFn = (
   options: ExecFileOptionsWithStringEncoding,
 ) => Promise<CommandResult>;
 
-interface McpStdioProcessTreeTerminatorOptions {
+export interface McpStdioProcessTreeTerminatorOptions {
   execFile?: ExecFileFn;
   kill?: KillFn;
   now?: () => number;

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export declare const BROKER_SOCKET_ENV: string;
 export declare const BROKER_UNAVAILABLE_ENV: string;
 

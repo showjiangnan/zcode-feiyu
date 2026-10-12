@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   analyzeBashCommand,
   isBashCommandPermissionSafe,
@@ -27,7 +28,7 @@ const GREP_ALLOWED_LONG_FLAGS = new Set([
   "--color=auto",
 ]);
 
-interface BashReadFileSource {
+export interface BashReadFileSource {
   filePath: string;
   startLine?: number;
   endLine?: number;
@@ -35,7 +36,7 @@ interface BashReadFileSource {
   requiresExitZero?: boolean;
 }
 
-interface SelectedReadContent {
+export interface SelectedReadContent {
   content: string;
   offset?: number;
   limit?: number;

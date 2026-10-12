@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCodingPlanEntryGate } from "@/settings/CodingPlanEntryButton.js";
 /* eslint-disable max-lines -- footer 套餐徽标、升级入口与 entitlement 探测共用同一份
    provider 选择与 family 过滤上下文，拆文件会让 zai/bigmodel 对称性难以追踪。 */
@@ -411,7 +412,7 @@ export function useWorkspaceSidebarFooterUsageSummaryState({
   };
 }
 
-type WorkspaceSidebarFooterUsageSummaryState = ReturnType<
+export type WorkspaceSidebarFooterUsageSummaryState = ReturnType<
   typeof useWorkspaceSidebarFooterUsageSummaryState
 >;
 

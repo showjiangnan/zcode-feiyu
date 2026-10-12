@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import type {
@@ -180,7 +181,11 @@ function collectInlineHookEvents(value: unknown): string[] {
 }
 
 /** 默认目录约定 + manifest 字符串/数组路径声明，合并成去重的待扫描目录列表。 */
-function collectComponentDirs(rootPath: string, manifestField: unknown, defaultDir: string): string[] {
+function collectComponentDirs(
+  rootPath: string,
+  manifestField: unknown,
+  defaultDir: string,
+): string[] {
   const dirs: string[] = [];
   const seen = new Set<string>();
   const add = (raw: string): void => {

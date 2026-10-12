@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 进程内扫描 runner：walker + domain 累加器 + 卷探测。
  * Worker 入口（desktop main）与单测都调用这里的 runStorageScan，保证只有一条扫描路径。
@@ -8,7 +9,7 @@ import { createStorageUsageAccumulator } from "../domain/usageAggregate.js";
 import { walkStorageRoot } from "./fsWalker.js";
 import { createFsVolumeProbe } from "./volumeProbe.js";
 
-interface RunStorageScanOptions {
+export interface RunStorageScanOptions {
   roots: StorageRootSpec[];
   signal: AbortSignal;
   onProgress: (progress: StorageScanProgress) => void;

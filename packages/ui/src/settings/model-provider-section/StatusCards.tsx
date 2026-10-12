@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
 /* eslint-disable max-lines -- Coding Plan/Start Plan 状态卡集中编排状态、动作和套餐区块，当前先保持同一文件避免拆散状态语义。 */
 import {
@@ -17,15 +18,16 @@ import { logger } from "@/logger.js";
 import { LocalizedCodingPlanQuotaResetAction } from "@/components/coding-plan-quota-reset/CodingPlanQuotaResetAction.js";
 import { CodingPlanQuotaResetOpportunity } from "@/components/coding-plan-quota-reset/CodingPlanQuotaResetOpportunity.js";
 import { buildCodingPlanQuotaResetDialogConfig } from "@/components/coding-plan-quota-reset/buildCodingPlanQuotaResetDialogConfig.js";
+import {
+  CodingPlanBillingDiscountBadge,
+  useCodingPlanBillingDiscount,
+} from "@/CodingPlanBillingDiscount.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useCodingPlanQuotaResetUi } from "@/hooks/useCodingPlanQuotaResetUi.js";
-import {
-  formatQuotaResetTime,
-  isCodingPlanQuotaLimitFull,
-  isSameLimitCategory,
-} from "@/lib/codingPlanQuotaPresentation.js";
+import { formatQuotaResetTime, isSameLimitCategory } from "@/lib/codingPlanQuotaPresentation.js";
 import {
   mergeCodingPlanQuotaResetOpportunityBadges,
+  resolveCodingPlanQuotaResetActionCompletedAt,
   resolveCodingPlanQuotaResetLimit,
 } from "@/lib/codingPlanQuotaResetUi.js";
 import {
@@ -217,6 +219,7 @@ export function CodingPlanStatusPanel({
   onQuotaResetEntitlementRefresh?: () => void | Promise<void>;
 }) {
   const { intl } = useZCodeIntl();
+  const billingDiscount = useCodingPlanBillingDiscount();
   const [internalUpgradePlansVisible, setInternalUpgradePlansVisible] = useState(false);
   const [startPlanEntitlementRefreshing, setStartPlanEntitlementRefreshing] = useState(false);
   const upgradePlansVisible = controlledUpgradePlansVisible ?? internalUpgradePlansVisible;
@@ -373,6 +376,8 @@ export function CodingPlanStatusPanel({
           ? "settings.modelProvider.codingPlan.renew"
           : "settings.modelProvider.codingPlan.upgrade"
       }
+      billingDiscountActive={isStartPlanProvider && billingDiscount.active}
+      billingDiscountConfig={billingDiscount.config}
       onUpgradePlansVisibleChange={(visible) => {
         if (visible) {
           openUpgradePlans(
@@ -432,6 +437,7 @@ export function CodingPlanStatusPanel({
       id: "settings.modelProvider.planCard.codingPlan",
     }),
   });
+  const titleBillingDiscountVisible = !isStartPlanProvider && billingDiscount.active;
   const notPurchasedStatusLabel = isNotPurchased ? (
     <span className="flex w-fit items-center gap-1.5 text-foreground-subtle">
       <InfoIcon className="size-3 shrink-0" aria-hidden="true" />
@@ -604,6 +610,11 @@ export function CodingPlanStatusPanel({
           <PlanStatusCardSurface
             key="current-plan"
             planTitle={planTitle}
+            titleAccessory={
+              titleBillingDiscountVisible ? (
+                <CodingPlanBillingDiscountBadge config={billingDiscount.config} size="compact" />
+              ) : undefined
+            }
             statusMeta={statusContent}
             trailingAction={trailingAction}
             usageContent={
@@ -647,7 +658,7 @@ export function CodingPlanStatusPanel({
   );
 }
 
-function hasStartPlanEntitlementQuota(
+export function hasStartPlanEntitlementQuota(
   entitlements: UsageEntitlementSubscriptionDetail["entitlements"],
   limits: readonly UsageQuotaLimit[],
 ): boolean {
@@ -662,9 +673,9 @@ function hasStartPlanEntitlementQuota(
   return limits.some((limit) => entitlementIds.has(limit.type.trim().toLowerCase()));
 }
 
-function resolveCodingPlanStatusCardTitle({
+export function resolveCodingPlanStatusCardTitle({
   isPurchased,
-  isUnavailable = false,
+  isUnavailable: _isUnavailable = false,
   isStartPlanProvider,
   inactivePlanTitle,
   rawPlanLevel,
@@ -738,9 +749,6 @@ function CodingPlanUsageSummaryCards({
     findUsageLimit(limits, "TOKENS_LIMIT", 6),
     resetUi.week.entry,
   );
-  // 额度剩余 100% 时重置没有收益:隐藏重置按钮与机会徽标(纯展示,不影响发放与轮询)。
-  const fiveHourQuotaFull = isCodingPlanQuotaLimitFull(fiveHourLimit);
-  const weeklyQuotaFull = isCodingPlanQuotaLimitFull(weeklyLimit);
   const standardCards = [
     createCodingPlanUsageSummaryCard({
       key: "fiveHour",
@@ -799,21 +807,22 @@ function CodingPlanUsageSummaryCards({
   const fiveHourCardVisible = cards.some((card) => card.key === "fiveHour");
   const weeklyCardVisible = cards.some((card) => card.key === "weekly");
   // 五小时与周机会合并为一个徽标,次数累加,倒计时取最早到期的一档。
+  // Bugfix：曾用「剩余 100% 则重置无收益」隐藏徽标与按钮。核销会把剩余改写成 100%，
+  // 同类型余下的机会随即被藏掉，用户以为卡丢了。只要额度卡在且有可用机会就展示。
   const opportunityBadge = mergeCodingPlanQuotaResetOpportunityBadges([
     {
       count: resetUi.entry?.opportunityCount ?? 0,
       expiresAt: resetUi.entry?.opportunityExpiresAt ?? null,
-      visible: fiveHourCardVisible && resetUi.opportunityVisible && !fiveHourQuotaFull,
+      visible: fiveHourCardVisible && resetUi.opportunityVisible,
     },
     {
       count: resetUi.week.entry?.opportunityCount ?? 0,
       expiresAt: resetUi.week.entry?.opportunityExpiresAt ?? null,
-      visible: weeklyCardVisible && resetUi.week.opportunityVisible && !weeklyQuotaFull,
+      visible: weeklyCardVisible && resetUi.week.opportunityVisible,
     },
   ]);
   const quotaResetDialog = buildCodingPlanQuotaResetDialogConfig({
     fiveHourEnabled: Boolean(fiveHourLimit),
-    fiveHourQuotaFull,
     resetUi,
     usageItems: cards.map((card) => {
       const percentage = resolveLimitRemainingPercentage(card.limit);
@@ -832,7 +841,6 @@ function CodingPlanUsageSummaryCards({
       };
     }),
     weekEnabled: Boolean(weeklyLimit),
-    weekQuotaFull: weeklyQuotaFull,
   });
 
   return (
@@ -859,25 +867,26 @@ function CodingPlanUsageSummaryCards({
             key={card.key}
             action={
               // 额度标题旁入口只打开统一弹窗；真正核销由弹窗内对应类型按钮触发。
+              // Bugfix：这里曾额外要求 opportunityBadge.count <= 1，多张机会时反而把
+              // 卡上的重置入口藏掉（Usage 页已修，此处遗漏）。与 Usage 页口径对齐：
+              // 有可用机会就展示，不因满额或多张隐藏。
               card.key === "fiveHour" &&
               resetUi.entry &&
-              ((resetUi.opportunityVisible && !fiveHourQuotaFull && opportunityBadge.count <= 1) ||
+              (resetUi.opportunityVisible ||
                 resetUi.processing ||
                 resetUi.entry.status === "completed") ? (
                 <LocalizedCodingPlanQuotaResetAction
-                  completedAt={resetUi.entry.completedAt}
+                  completedAt={resolveCodingPlanQuotaResetActionCompletedAt(resetUi)}
                   processing={resetUi.processing}
                   onOpenDialog={() => setQuotaResetDialogOpen(true)}
                 />
               ) : card.key === "weekly" &&
                 resetUi.week.entry &&
-                ((resetUi.week.opportunityVisible &&
-                  !weeklyQuotaFull &&
-                  opportunityBadge.count <= 1) ||
+                (resetUi.week.opportunityVisible ||
                   resetUi.week.processing ||
                   resetUi.week.entry.status === "completed") ? (
                 <LocalizedCodingPlanQuotaResetAction
-                  completedAt={resetUi.week.entry.completedAt}
+                  completedAt={resolveCodingPlanQuotaResetActionCompletedAt(resetUi.week)}
                   processing={resetUi.week.processing}
                   resetType="WEEK"
                   onOpenDialog={() => setQuotaResetDialogOpen(true)}

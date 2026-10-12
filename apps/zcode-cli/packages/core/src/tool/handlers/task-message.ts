@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 import {
   LIST_WORKSPACE_TASKS_TOOL_NAME,

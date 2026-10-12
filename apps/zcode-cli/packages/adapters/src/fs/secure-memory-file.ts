@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createRequire } from "node:module";
 import { isAbsolute, relative } from "node:path";
 import { Worker } from "node:worker_threads";

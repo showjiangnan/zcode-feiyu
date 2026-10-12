@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * IStorageService 实现：扫描 job、最近快照、清理的唯一 owner。
  * 不做 IO；根目录、遍历、删除、系统定位全部通过 ports 注入。
@@ -10,7 +11,7 @@ import type { StorageRootId, StorageRootSpec, StorageUsageSnapshot } from "@zcod
 import type { FsCleanerPort, RootsResolverPort, ScanRunnerPort } from "./ports.js";
 import { createScanJob, type ScanJob } from "./scanJob.js";
 
-interface StorageServiceDependencies {
+export interface StorageServiceDependencies {
   roots: RootsResolverPort;
   scanRunner: ScanRunnerPort;
   cleaner: FsCleanerPort;
@@ -19,7 +20,7 @@ interface StorageServiceDependencies {
   progressThrottleMs?: number;
 }
 
-const DEFAULT_STORAGE_PROGRESS_THROTTLE_MS = 300;
+export const DEFAULT_STORAGE_PROGRESS_THROTTLE_MS = 300;
 
 export function createStorageService(deps: StorageServiceDependencies): IStorageService {
   const now = deps.now ?? Date.now;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 远端 workspace 历史目前需要在一个 hook 内同时收口恢复、重连、持久化和清理流程，先保留同文件协作边界，避免为过 lint 临时拆分后引入状态回归。*/
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -48,7 +49,7 @@ import { markRemoteWorkspaceRunningTasksFailed } from "@/lib/remoteWorkspaceSess
 
 export { reconnectRemoteWorkspaceHistoryEntry };
 
-async function bindRemoteWorkspaceContextAndGetSession(params: {
+export async function bindRemoteWorkspaceContextAndGetSession(params: {
   platform: Pick<IPlatformService, "bindRemoteWorkspaceSessionContext">;
   sessionId: string;
   workspacePath: string;
@@ -71,7 +72,7 @@ async function bindRemoteWorkspaceContextAndGetSession(params: {
   return currentSession;
 }
 
-function resolveBotRemoteWorkspaceReconnectedIdentity(params: {
+export function resolveBotRemoteWorkspaceReconnectedIdentity(params: {
   event: Pick<BotRemoteWorkspaceReconnectedEvent, "workspaceIdentity">;
   resolvedWorkspacePath: string;
   target: BotRemoteWorkspaceReconnectedEvent["target"];
@@ -85,7 +86,7 @@ function resolveBotRemoteWorkspaceReconnectedIdentity(params: {
   return buildRemoteWorkspaceIdentity(params.resolvedWorkspacePath, params.target);
 }
 
-function shouldPersistRemoteWorkspaceFailure(params: {
+export function shouldPersistRemoteWorkspaceFailure(params: {
   pendingReconnectRequestIds: ReadonlyMap<string, string>;
   sessionEntry: RemoteWorkspaceSessionEntry;
   workspaceKey: string;
@@ -153,7 +154,7 @@ interface ReconnectRemoteWorkspaceByKeyParams {
   options?: ReconnectRemoteWorkspaceOptions;
 }
 
-async function reconnectRemoteWorkspaceByKey({
+export async function reconnectRemoteWorkspaceByKey({
   workspaceKey,
   canUseRemoteWorkspace,
   getRemoteSessions,
@@ -175,7 +176,7 @@ async function reconnectRemoteWorkspaceByKey({
   return true;
 }
 
-function collectSshReconnectGroup(params: {
+export function collectSshReconnectGroup(params: {
   selected: RemoteWorkspaceSessionEntry;
   sessions: RemoteWorkspaceSessionEntry[];
   tabs: WindowTabState[];
@@ -211,7 +212,7 @@ function collectSshReconnectGroup(params: {
   ];
 }
 
-async function reconnectRemoteWorkspaceGroup(params: {
+export async function reconnectRemoteWorkspaceGroup(params: {
   selected: RemoteWorkspaceSessionEntry;
   reconnectGroup: RemoteWorkspaceSessionEntry[];
   reconnectEntry: (
@@ -326,7 +327,7 @@ function shouldKeepRemoteWorkspaceInTabs(params: {
     );
 }
 
-async function cancelPendingRemoteReconnectsForWorkspaceKeys(params: {
+export async function cancelPendingRemoteReconnectsForWorkspaceKeys(params: {
   workspaceKeys: string[];
   pendingRequestIds: Map<string, string>;
   cancelPendingRemoteConnection?: (requestId?: string) => Promise<void>;
@@ -360,7 +361,7 @@ async function cancelPendingRemoteReconnectsForWorkspaceKeys(params: {
   );
 }
 
-async function openRemoteWorkspaceFromHistoryEntry({
+export async function openRemoteWorkspaceFromHistoryEntry({
   workspaceKey,
   tabStoreApi,
   getRemoteSessions,
@@ -457,7 +458,7 @@ async function openRemoteWorkspaceFromHistoryEntry({
   }
 }
 
-async function selectRemoteWorkspaceProjectFromDialog({
+export async function selectRemoteWorkspaceProjectFromDialog({
   canUseRemoteWorkspace,
   sessionId,
   path,

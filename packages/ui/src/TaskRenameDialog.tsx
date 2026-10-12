@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useRef } from "react";
 import type { RefObject } from "react";
 import { Button } from "@/components/ui/button.js";

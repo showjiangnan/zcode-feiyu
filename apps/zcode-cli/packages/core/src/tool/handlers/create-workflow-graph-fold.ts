@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // 阶段边的折叠与归约 - 显示图阶段层的唯一删边点
 // ============================================================
@@ -5,12 +6,13 @@
 // 强连通分量 + 在缩点上跑分析器的归约），而裁剪层其余部分讲的是引用完整性与上限。拆开后
 // 这段逻辑可以单独读、单独钉住，也给 bounds 文件留出 max-lines 余量。
 
-import {
-  reduceOrdering,
-  type ReducibleEdge,
-  // 与 bounds 同一条理由：走 /projections 子路径而非根桶，根桶会把 typescript 编译器
-  // 一起拖进浏览器包（作品集回放在浏览器里复用这条链路）。
-} from "@zcode/dynamic-workflow/projections";
+// ============================================================
+// 阶段边的折叠与归约 - 显示图阶段层的唯一删边点
+// ============================================================
+// 从 create-workflow-graph-bounds.ts 拆出：折叠本身是一段自洽的纯图论（有序对折叠 +
+// 强连通分量 + 在缩点上跑分析器的归约），而裁剪层其余部分讲的是引用完整性与上限。拆开后
+// 这段逻辑可以单独读、单独钉住，也给 bounds 文件留出 max-lines 余量。
+import { reduceOrdering, type ReducibleEdge } from "@zcode/dynamic-workflow/projections";
 
 /** 折叠前的一条边：种类已经坍缩成「是不是回边」。 */
 export interface RawEdge {

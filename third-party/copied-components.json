@@ -7,12 +7,10 @@
     "sha256": "1564074e13439397221ffd522e2e504d56561994a23d371aa5e3ad43e4f5423f",
     "importRevision": null,
     "provenance": "The original copy revision is not recorded in the current checkout; this pinned license reference is not asserted to be the original import version.",
-    "roots": [
-      "packages/ui/src/components/ui",
-      "packages/ui/src/styles.css"
-    ],
+    "roots": ["packages/ui/src/components/ui", "packages/ui/src/styles.css"],
     "scope": "Upstream-derived portions only; ZCode-specific files in the same directory are not attributed to the upstream project.",
-    "license": "MIT"
+    "license": "MIT",
+    "modifiedFiles": []
   },
   {
     "id": "ai-elements",
@@ -22,10 +20,8 @@
     "sha256": "b4f9adb7c568904834d0dd6cc98d16c390d21ca32fc17ae7a267715269bd5529",
     "importRevision": null,
     "provenance": "The original copy revision is not recorded in the current checkout; this pinned license reference is not asserted to be the original import version.",
-    "roots": [
-      "packages/ui/src/components/ai-elements"
-    ],
-    "scope": "Upstream-derived portions of the distributed roots only; development-only instructions and tools are excluded.",
+    "roots": ["packages/ui/src/components/ai-elements"],
+    "scope": "Upstream-derived UI components, skill instructions, reference documentation and example scripts only; locally adapted for ZCode imports, styling and agent workflow. Original import revision not recorded.",
     "license": "Apache-2.0",
     "modifiedFiles": [
       "packages/ui/src/components/ai-elements/agent.tsx",
@@ -67,15 +63,14 @@
   },
   {
     "id": "Fig autocomplete registry",
-    "roots": [
-      "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts"
-    ],
+    "roots": ["apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts"],
     "license": "MIT",
     "source": "https://raw.githubusercontent.com/withfig/autocomplete/aef52acff84c45edde61ae610cc2c964802b9a38/LICENSE",
     "file": "third-party/upstream/5129f8779dca579cfcb235570688a2f15822b270575e04f27ef906aabbcc0355.txt",
     "sha256": "5129f8779dca579cfcb235570688a2f15822b270575e04f27ef906aabbcc0355",
     "referenceRevision": "aef52acff84c45edde61ae610cc2c964802b9a38",
-    "importRevision": null
+    "importRevision": null,
+    "modifiedFiles": []
   },
   {
     "id": "Material Icon Theme",
@@ -88,7 +83,8 @@
     "file": "third-party/upstream/cdab3014d4f69b49dde2b85e81792208c72de613aa6aed7f7a9b5c6609b89670.txt",
     "sha256": "cdab3014d4f69b49dde2b85e81792208c72de613aa6aed7f7a9b5c6609b89670",
     "referenceRevision": "cb1dfb6d9cb73b15681a93939983d75dbba7bf5b",
-    "importRevision": null
+    "importRevision": null,
+    "modifiedFiles": []
   },
   {
     "id": "Visual Studio Code IPC and common utilities",
@@ -104,7 +100,8 @@
       "packages/shared/src/zcode-protocol-v4/wire-codec.ts"
     ],
     "scope": "Upstream-derived IPC, serialization, buffer, lifecycle and event portions only. Local RPC extensions, transports and envelope measurement are ZCode adaptations; inclusion does not attribute all local code to Microsoft.",
-    "license": "MIT"
+    "license": "MIT",
+    "modifiedFiles": []
   },
   {
     "id": "Superpowers skill description adaptations",
@@ -119,7 +116,8 @@
       "apps/zcode-cli/packages/superpowers-plugin/LICENSE"
     ],
     "scope": "Superpowers-derived skill descriptions and their translations only; unrelated descriptions from other projects in this file are not covered. The former bundled plugin implementation has been removed; only its retained license remains.",
-    "license": "MIT"
+    "license": "MIT",
+    "modifiedFiles": []
   },
   {
     "id": "nlohmann-json",
@@ -129,10 +127,9 @@
     "sha256": "46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603",
     "importRevision": "v3.12.0",
     "provenance": "Unmodified single-header JSON parser for the owned Windows computer-control runtime.",
-    "roots": [
-      "packages/zcode-cua/native/windows/vendor/json.hpp"
-    ],
+    "roots": ["packages/zcode-cua/native/windows/vendor/json.hpp"],
     "scope": "The vendored JSON header only.",
-    "license": "MIT"
+    "license": "MIT",
+    "modifiedFiles": []
   }
 ]

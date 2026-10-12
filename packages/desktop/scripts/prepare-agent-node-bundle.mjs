@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
+import { createOfficialPluginBundles } from "./official-plugin-bundles.mjs";
 
 // 桌面打包态的 agent 运行时资产：把 agent 的 JS bundle（zcode.cjs）放进 bundled-agents/<platform>/glm，
 // 由 app 内置的 Electron Node runtime（ELECTRON_RUN_AS_NODE）执行，替代以前随包内置的独立 Node 二进制。
@@ -13,13 +14,17 @@
 // 远端（SSH/WSL/Docker）没有 Electron，仍走 prepare:remote-assets 的原生二进制，互不影响。
 
 import { cpSync, existsSync, mkdirSync } from "node:fs";
-import { access, cp, mkdir } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { stageAgentBundle } from "./stage-agent-bundle.mjs";
 import { verifyComputerControlVersions } from "./computer-control-versions.mjs";
+import {
+  isSharpRequiredByComputerUse,
+  stageSharpIntoBundledAgents,
+} from "./sharp-package-assets.mjs";
+import { stageKoffiIntoBundledAgents } from "./koffi-package-assets.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
@@ -34,6 +39,8 @@ const pnpmRunEnv = {
   PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "false",
 };
 const BROWSER_USE_PLUGIN_PACKAGE_NAME = "@zcode/browser-use-plugin";
+const NODE_REPL_HOST_PACKAGE_NAME = "@zcode/node-repl-host";
+const CUA_PLUGIN_PACKAGE_NAME = "@zcode/zcode-cua-plugin";
 
 // 平台目录命名：darwin/win32/linux + x64/arm64，
 // 支持 ZCODE_TARGET_OS / ZCODE_TARGET_ARCH 覆盖（交叉打包时由 CI 注入）。
@@ -92,44 +99,10 @@ const browserUseRequiredRuntimePaths = [
   "skills/control-browser/SKILL.md",
   "skills/web-gui-tester/SKILL.md",
 ];
-const officialPluginPackages = [
-  {
-    packageName: "@zcode/zcode-cua-plugin",
-    relativePath: "packages/zcode-cua-plugin",
-    requiresRuntime: false,
-    requiredRuntimePaths: [
-      "docs/computer-use.md",
-      "scripts/computer-use-client.mjs",
-      "skills/computer-use/SKILL.md",
-    ],
-    stagedPath: "packages/zcode-cua-plugin",
-  },
-  {
-    // browser-use 只携带自己的 client script 与 skill/docs；node_repl MCP runtime 归
-    // @zcode/node-repl-host（见上方常量注释）。
-    packageName: "@zcode/browser-use-plugin",
-    relativePath: "apps/zcode-cli/packages/browser-use-plugin",
-    requiresRuntime: true,
-    requiredRuntimePaths: browserUseRequiredRuntimePaths,
-    runtimeBuildScript: "scripts/build.mjs",
-    stagedPath: "packages/browser-use-plugin",
-  },
-
-  {
-    // node_repl 宿主：Browser Use 与 Computer Use 共用的 MCP runtime，本轮抽成独立包。
-    // 它没有 listing（不进插件市场展示面），但生产包首启 seed 必须拿到它的 dist runtime，
-    // 否则 bua/cua 任一开启时都会连不上 node_repl。
-    packageName: "@zcode/node-repl-host",
-    relativePath: "apps/zcode-cli/packages/node-repl-host",
-    requiresRuntime: true,
-    requiredRuntimePaths: ["dist/mcp/server.js"],
-    runtimeBuildScript: "scripts/build.mjs",
-    stagedPath: "packages/node-repl-host",
-  },
-];
+const officialPluginPackages = createOfficialPluginBundles(browserUseRequiredRuntimePaths);
 // 随 CLI 内置的技能包（不是插件）：bootstrap 的 resolveBundledSkillRoots 沿官方插件同款候选目录
 // 在 zcode.cjs 旁找 packages/bundled-skills 并原地读取。漏 stage 它，桌面包的 /workflow 会展开成
-// 「先加载 dynamic-workflows 技能」而技能文件不存在，因此必须随 Agent 一起打包。
+// 「先加载 dynamic-workflows 技能」而技能不存在——这正是把它从可卸载的 zcode-guide 插件搬出来要修的事故形态。
 const bundledSkillPack = {
   relativePath: "apps/zcode-cli/packages/bundled-skills",
   requiredPaths: [
@@ -138,7 +111,7 @@ const bundledSkillPack = {
     "skills/dynamic-workflows/examples.md",
   ],
   stagedPath: "packages/bundled-skills",
-  topLevelPaths: ["skills"],
+  topLevelPaths: ["README.md", "skills"],
 };
 const includedOfficialPluginTopLevelPaths = new Set([
   ".mcp.json",
@@ -278,25 +251,80 @@ function stageOfficialPlugins() {
   }
 }
 
-async function stageBundledSkillPack() {
+function stageBundledSkillPack() {
   const sourceRoot = resolve(repoRoot, bundledSkillPack.relativePath);
   const targetRoot = resolve(glmDir, bundledSkillPack.stagedPath);
-  await mkdir(targetRoot, { recursive: true });
+  mkdirSync(targetRoot, { recursive: true });
   for (const entryName of bundledSkillPack.topLevelPaths) {
     const sourcePath = resolve(sourceRoot, entryName);
-    await cp(sourcePath, resolve(targetRoot, entryName), {
+    if (!existsSync(sourcePath)) continue;
+    cpSync(sourcePath, resolve(targetRoot, entryName), {
       recursive: true,
       filter: shouldCopyOfficialPluginAsset,
     });
   }
   for (const relativePath of bundledSkillPack.requiredPaths) {
     const stagedAssetPath = resolve(targetRoot, ...relativePath.split("/"));
-    await access(stagedAssetPath);
+    if (!existsSync(stagedAssetPath)) {
+      throw new Error(
+        `[prepare:agent-bundle] missing staged bundled skill asset: ${stagedAssetPath}`,
+      );
+    }
   }
   console.log(`[prepare:agent-bundle] staged bundled skill pack ${bundledSkillPack.stagedPath}`);
 }
 
-// Electron 生产包只带 resources/glm/zcode.cjs 时，app-server 进程的
+function stageSharpForNodeReplPlugin() {
+  if (!isSharpRequiredByComputerUse({ desktopPackageRoot: desktopRoot })) {
+    console.log(
+      "[prepare:agent-bundle] Computer Use package does not declare sharp, skip sharp staging",
+    );
+    return;
+  }
+  // `sharp` 仍然外部化——它包含无法内联的 native .node，运行时从**所在包**的 node_modules
+  // 解析。2026-09-11 起 node_repl 宿主的 bundle 归 @zcode/node-repl-host，所以 sharp 必须
+  // stage 到宿主目录，否则宿主里的 `import sharp` 在打包后的 app 里解析不到。
+  // CUA screenshot / get_app_state 的 native 依赖仍要放进 CUA plugin 自己的 node_modules；
+  // Browser Use 目录保留一份兼容 staging。三份 staging 都位于 plugin 子目录下，避免
+  // electron-builder 过滤 extraResources 根目录的 node_modules。
+  const pluginStagedDirs = [
+    [NODE_REPL_HOST_PACKAGE_NAME, resolve(glmDir, "packages", "node-repl-host")],
+    [BROWSER_USE_PLUGIN_PACKAGE_NAME, resolve(glmDir, "packages", "browser-use-plugin")],
+    [CUA_PLUGIN_PACKAGE_NAME, resolve(glmDir, "packages", "zcode-cua-plugin")],
+  ];
+  for (const [packageName, pluginStagedDir] of pluginStagedDirs) {
+    if (!existsSync(resolve(pluginStagedDir, ".zcode-plugin", "plugin.json"))) {
+      console.log(`[prepare:agent-bundle] ${packageName} not staged, skip sharp staging`);
+      continue;
+    }
+    stageSharpIntoBundledAgents({
+      desktopPackageRoot: desktopRoot,
+      glmDir: pluginStagedDir,
+      targetPlatform: { os: platform, arch },
+    });
+    console.log(
+      `[prepare:agent-bundle] staged sharp into ${resolve(pluginStagedDir, "node_modules")} (${platform}-${arch})`,
+    );
+  }
+}
+
+function stageKoffiForCuaPlugin() {
+  const cuaPluginStagedDir = resolve(glmDir, "packages", "zcode-cua-plugin");
+  if (!existsSync(resolve(cuaPluginStagedDir, ".zcode-plugin", "plugin.json"))) {
+    console.log("[prepare:agent-bundle] zcode-cua-plugin not staged, skip koffi staging");
+    return;
+  }
+  stageKoffiIntoBundledAgents({
+    koffiPackageRoot: adaptersRoot,
+    glmDir: cuaPluginStagedDir,
+    targetPlatform: { os: platform, arch },
+  });
+  console.log(
+    `[prepare:agent-bundle] staged koffi into ${resolve(cuaPluginStagedDir, "node_modules")} (${platform}-${arch})`,
+  );
+}
+
+// 修复原因：Electron 生产包只带 resources/glm/zcode.cjs 时，app-server 进程的
 // __dirname 附近没有官方插件目录，启动时 seed 找不到 source，用户侧不会自动得到内置插件。
 // 这里把官方插件按 bootstrap 的 rootCandidates 期望放到 glm/packages/*-plugin，
 // 让 Electron Node 运行 zcode.cjs 时复用同一套 filesystem seed 逻辑。
@@ -306,4 +334,6 @@ buildCliBundle();
 buildOfficialPluginRuntimes();
 stageBundle();
 stageOfficialPlugins();
-await stageBundledSkillPack();
+stageBundledSkillPack();
+stageKoffiForCuaPlugin();
+stageSharpForNodeReplPlugin();

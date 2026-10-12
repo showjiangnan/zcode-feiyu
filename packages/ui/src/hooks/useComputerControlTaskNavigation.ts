@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useCallback } from "react";
 import { buildTaskEntityKey } from "@/lib/taskQueryCache.js";
 import { useTaskQueryCacheStore } from "@/store/taskQueryCacheStore.js";

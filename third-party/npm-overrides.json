@@ -447,36 +447,6 @@
     "evidence": "The package does not declare a license field; its license contains the MIT grant and copyright notice."
   },
   {
-    "package": "@rrweb/types@2.1.6",
-    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
-    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
-    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE"
-  },
-  {
-    "package": "@rrweb/utils@2.1.6",
-    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
-    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
-    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE"
-  },
-  {
-    "package": "rrdom@2.1.6",
-    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
-    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
-    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE"
-  },
-  {
-    "package": "rrweb-snapshot@2.1.6",
-    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
-    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
-    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE"
-  },
-  {
-    "package": "rrweb@2.1.6",
-    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
-    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
-    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE"
-  },
-  {
     "package": "keyv@4.5.4",
     "file": "third-party/upstream/6f7e6eae2a2afbaa67b266650f7342e7bf8e82cb57f6ab98148b3d6e0fb4450a.txt",
     "sha256": "6f7e6eae2a2afbaa67b266650f7342e7bf8e82cb57f6ab98148b3d6e0fb4450a",
@@ -507,5 +477,35 @@
     "source": "https://registry.npmjs.org/%40arms%2frum-electron%400.0.3",
     "evidenceKind": "publisher-license-identifier-and-standard-terms",
     "license": "MIT"
+  },
+  {
+    "package": "@rrweb/types@2.0.0",
+    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
+    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
+    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE"
+  },
+  {
+    "package": "@rrweb/utils@2.0.0",
+    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
+    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
+    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE"
+  },
+  {
+    "package": "rrdom@2.0.0",
+    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
+    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
+    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE"
+  },
+  {
+    "package": "rrweb-snapshot@2.0.0",
+    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
+    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
+    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE"
+  },
+  {
+    "package": "rrweb@2.0.0",
+    "file": "third-party/upstream/e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c.txt",
+    "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c",
+    "source": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE"
   }
 ]

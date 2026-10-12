@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { ZCodeTaskMode } from "./zcode-task-types-core.js";
 import type { ZCodeAutomationBotDeliveryTarget } from "./bots.js";
 import type { ModelSelection } from "./model-selection.js";

@@ -21,5 +21,7 @@
   "dependencies": {
     "@zcode/contracts": "workspace:*"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "vitest": "^4.1.5"
+  }
 }

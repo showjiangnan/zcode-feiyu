@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   type BashInput,
   type BashOutput,
@@ -13,6 +14,7 @@ import {
   interpretBashReturnCode,
   isBashProviderErrorStatus,
   isSilentBashCommand,
+  stripClaudeCodeHintLines,
 } from "./bash-semantics.js";
 import {
   attachToolExecutionTelemetry,
@@ -54,7 +56,9 @@ export async function toBashOutput(
     returnCodeInterpretation,
     status: result.status,
   });
-  const providerStdout = result.stdout.text;
+  const providerStdout = providerError
+    ? result.stdout.text
+    : stripClaudeCodeHintLines(result.stdout.text);
   const imageOutput = providerError
     ? undefined
     : await prepareBashImageOutput(
@@ -160,9 +164,7 @@ export function createEmptyBashPerformanceTelemetry(
   });
 }
 
-function resolveBashCommandStatus(
-  result: ExecutionResult,
-): ToolCommandStatus {
+function resolveBashCommandStatus(result: ExecutionResult): ToolCommandStatus {
   if (result.timedOut) return "timed_out";
   if (result.cancelled) return "cancelled";
   if (result.status === "completed" && result.exitCode !== undefined && result.exitCode !== 0) {

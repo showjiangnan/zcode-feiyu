@@ -1,6 +1,6 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- Provider/Model 的原子配置生命周期共享一次 Repository 更新边界，拆开会重复顺序与规范化逻辑。 */
 import type {
-  ModelConfigRules,
   ModelId,
   ProviderConfig,
   ProviderId,
@@ -11,6 +11,7 @@ import type {
 import {
   ApiKeyAccessConfig,
   ModelConfig,
+  ModelConfigRules,
   ProviderConfigMap,
   ProviderConfig as ProviderConfigValue,
   ProviderTemplateMap,
@@ -46,6 +47,8 @@ export interface PersonalProviderConfigRepository extends ProviderSource<Provide
 export interface ProviderConfigServiceDependencies {
   readonly zcodeBuiltinSource: ProviderSource<ProviderConfigLayerSnapshot>;
   readonly personalRepository: PersonalProviderConfigRepository;
+  /** 应用受管供应商的只读事实，不写入用户 Personal 配置。 */
+  readonly managedSource?: ProviderSource<ProviderConfigLayerSnapshot>;
 }
 
 export interface PersonalProviderCreation {
@@ -73,6 +76,8 @@ function assertMembershipCurrent(
   providerId: ProviderId,
   current: ProviderConfigLayerSnapshot,
 ): void {
+  if (providerId.startsWith("chatgpt-subscription:"))
+    throw new Error("managed_subscription_readonly");
   if (!membership) return;
   membership.assertCurrent();
   if (membership.providerId !== providerId || membership.personalRevision !== current.revision) {
@@ -96,6 +101,7 @@ function writableProviderOverlay(
 export class ProviderConfigService implements ProviderSource<ProviderConfigSnapshot> {
   readonly #zcodeBuiltinSource: ProviderSource<ProviderConfigLayerSnapshot>;
   readonly #personalRepository: PersonalProviderConfigRepository;
+  readonly #managedSource?: ProviderSource<ProviderConfigLayerSnapshot>;
   readonly #listeners = new Set<(reason: string) => void>();
   readonly #sourceDisposers: Array<() => void>;
   #disposed = false;
@@ -103,27 +109,38 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
   constructor(dependencies: ProviderConfigServiceDependencies) {
     this.#zcodeBuiltinSource = dependencies.zcodeBuiltinSource;
     this.#personalRepository = dependencies.personalRepository;
+    this.#managedSource = dependencies.managedSource;
     this.#sourceDisposers = [
       this.#zcodeBuiltinSource.onDidChange((reason) => this.#emit(`zcodeBuiltin:${reason}`)),
       this.#personalRepository.onDidChange((reason) => this.#emit(`personal:${reason}`)),
+      ...(this.#managedSource
+        ? [this.#managedSource.onDidChange((reason) => this.#emit(`managed:${reason}`))]
+        : []),
     ];
   }
 
   async read(): Promise<ProviderConfigSnapshot> {
     this.#assertNotDisposed();
-    const [zcodeBuiltin, personal] = await Promise.all([
+    const [zcodeBuiltin, personal, managed] = await Promise.all([
       this.#zcodeBuiltinSource.read(),
       this.#personalRepository.read(),
+      this.#managedSource?.read(),
     ]);
     return Object.freeze({
-      revision: JSON.stringify([zcodeBuiltin.revision, personal.revision]),
+      revision: managed
+        ? JSON.stringify([zcodeBuiltin.revision, personal.revision, managed.revision])
+        : JSON.stringify([zcodeBuiltin.revision, personal.revision]),
       zcodeBuiltinRevision: zcodeBuiltin.revision,
       personalRevision: personal.revision,
       zcodeBuiltinProviders: zcodeBuiltin.providers,
       zcodeBuiltinProviderTemplates: zcodeBuiltin.providerTemplates ?? ProviderTemplateMap.empty(),
-      personalProviders: personal.providers,
+      personalProviders: managed
+        ? personal.providers.overlay(managed.providers)
+        : personal.providers,
       zcodeBuiltinModelRules: zcodeBuiltin.models,
-      personalModels: personal.models,
+      personalModels: managed
+        ? ModelConfigRules.composeEffective(personal.models, managed.models)
+        : personal.models,
       personalProviderOrder: personal.providerOrder ?? [],
     });
   }
@@ -693,6 +710,8 @@ function normalizePersonalProviderMembership(
 }
 
 function assertNonEmptyId(label: string, value: string): void {
+  if (label === "providerId" && value.startsWith("chatgpt-subscription:"))
+    throw new Error("managed_subscription_readonly");
   if (!value.trim()) throw new Error(`${label} 不能为空`);
 }
 

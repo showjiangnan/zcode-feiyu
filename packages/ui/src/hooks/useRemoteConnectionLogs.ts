@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useEffect, useRef, useState } from "react";
 import type { RemoteConnectionRuntimeLog } from "@zcode/shared";
 import { usePlatform } from "@/hooks/usePlatform.js";
@@ -85,7 +86,7 @@ export function appendRemoteConnectionRuntimeLog(
   ];
 }
 
-function shouldAcceptRemoteConnectionRuntimeLog(
+export function shouldAcceptRemoteConnectionRuntimeLog(
   entry: Pick<RemoteConnectionRuntimeLog, "requestId">,
   activeRequestId?: string | null,
 ): boolean {

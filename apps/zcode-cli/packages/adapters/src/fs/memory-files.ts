@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { join, relative, sep } from "node:path";
 import type {
   FileSystemReadTextRequest,

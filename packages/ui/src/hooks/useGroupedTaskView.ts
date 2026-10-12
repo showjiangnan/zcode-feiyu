@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- Grouped 视图 hook 集中维护 optimistic overlay、排序保存和 ungroup 持久化，拆开会让同一份 view 状态在多个 hook 间漂移。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ZCodeTaskMeta } from "@zcode/shared";
@@ -126,7 +127,7 @@ function collectViewWorkspaceScopes(
   return [...workspaceScopes.values()];
 }
 
-function mergeGroupedTaskViewWithOptimistic(params: {
+export function mergeGroupedTaskViewWithOptimistic(params: {
   view: ZCodeGroupedTaskView;
   optimisticOverlays: Iterable<WorkspaceOptimisticTaskOverlay>;
   visibleMissingTaskKeys: ReadonlySet<string>;
@@ -322,7 +323,7 @@ export function shouldHideGroupedTaskContent(params: {
   return !params.initialized || (params.loading && !params.hasNodes);
 }
 
-function isGroupedTaskViewInitialized(params: {
+export function isGroupedTaskViewInitialized(params: {
   remoteDataInitialized: boolean;
   hydratingEndpointKeys: readonly string[];
   /**
@@ -345,7 +346,7 @@ function isGroupedTaskViewInitialized(params: {
  * 已完成结果，所有 cache miss 都各自请求一遍全部 workspace，导致 RPC 风暴并让 loading 不断换代。
  * 这里同时保存进行中的 Promise，并用 generation/sequence 阻止失效或旧 key 的迟到结果回填缓存。
  */
-class GroupedRemoteDataSingleFlight<T> {
+export class GroupedRemoteDataSingleFlight<T> {
   private generation = 0;
   private requestSequence = 0;
   private completed: { key: string; value: T } | null = null;
@@ -409,7 +410,7 @@ class GroupedRemoteDataSingleFlight<T> {
   }
 }
 
-function prependTaskGroupToView(
+export function prependTaskGroupToView(
   view: ZCodeGroupedTaskView,
   group: ZCodeTaskGroup,
 ): ZCodeGroupedTaskView {
@@ -433,7 +434,7 @@ function prependTaskGroupToView(
   };
 }
 
-function reconcileGroupedOptimisticTaskKeys(params: {
+export function reconcileGroupedOptimisticTaskKeys(params: {
   view: ZCodeGroupedTaskView;
   optimisticOverlays: Iterable<WorkspaceOptimisticTaskOverlay>;
   previousVisibleMissingTaskKeys: ReadonlySet<string>;
@@ -581,6 +582,10 @@ function writeCachedGroupedView(signature: string, view: ZCodeGroupedTaskView): 
     if (oldestKey === undefined) break;
     groupedViewCacheBySignature.delete(oldestKey);
   }
+}
+
+export function clearCachedGroupedViewsForTest(): void {
+  groupedViewCacheBySignature.clear();
 }
 
 export function useGroupedTaskView(params: { workspaceTabs: WorkspaceTabState[] }) {

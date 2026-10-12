@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export const PROACTIVE_EVENTS_SCHEMA = `
   create table if not exists proactive_event (event_id text primary key, workspace_key text not null,
     source_session_id text not null, source_id text not null, kind text not null, depth integer not null, created_at integer not null);

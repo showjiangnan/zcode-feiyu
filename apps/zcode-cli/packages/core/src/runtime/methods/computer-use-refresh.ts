@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { McpServerConfig, SkillPort, TraceContext } from "../deps.js";
 import type { AgentRuntimeConfig } from "../types.js";
 import { registerMcpTools } from "../deps.js";

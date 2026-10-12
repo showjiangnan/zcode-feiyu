@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /** Windows 与 POSIX 使用相同的句柄能力边界，逐段 NtCreateFile 并拒绝 reparse point。 */
 export const SECURE_MEMORY_WINDOWS_WORKER = String.raw`
 const {parentPort, workerData} = require('node:worker_threads');

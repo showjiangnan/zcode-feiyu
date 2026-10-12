@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
 // ============================================================
@@ -38,18 +39,604 @@
 //      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
 //      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
 
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
+// ============================================================
+// Dynamic Workflow Run Service（DynamicWorkflowRunPort 的生产实现）
+// ============================================================
+// 本服务负责：
+// 编译一次 → 注册 AbortController → 启动引擎（fire-and-forget，执行体在
+// dynamic-workflow-run-launch.ts）→ 把 run 的观察面（快照 / 等待 / 取消 / 恢复 / 枚举 /
+// 事件分页）经窄端口交出去。
+//
+// 七条不变式，违反任何一条都会以「离成因很远」的方式表现，所以写在文件头：
+//
+//   1. **引擎独占 createRun**。本服务绝不预插 dwf_run 行。预先存在的行会把引擎构造函数翻进
+//      resume 分支（engine.ts）：节点计数按已完结记录重算、预算从记录恢复、状态被
+//      updateRunStatus 覆写。一个全新的 run 走 resume 分支不报错，只会静默从一份空 journal
+//      「恢复」。resume 恰恰反过来**依赖**这条机制：它对既有 runId 重新 launch，让引擎命中
+//      已存在的行。两个入口方向相反，绝不共用门。
+//   2. **编译恰好一次**。一个 ts.Program 同时喂站点表、schema 合成与 lowering；scriptHash 由
+//      本服务算（harness 刻意不算——它若哈希「自己看到的文本」，lowered 路径落库的就是
+//      lowered 函数体的哈希，resume 校验的比对对象就静默错了）。
+//   3. **没有 journal 就不构造本服务**。durability 是 run 的前提：一个静默丢失持久化的 run
+//      比没有 run 更糟（resume 无据、详情页无源、取消后无记录）。narrowing 失败时
+//      {@link createDynamicWorkflowRunService} 的调用方拿到 undefined，CreateWorkflow 因此
+//      回到占位诊断路径——这是一个可见的降级，而不是一个坏掉的功能。
+//   4. **构造时收敛本会话的孤儿 run，且只收敛本会话的**。见 {@link reconcileOrphanRuns}：
+//      死进程留下的 `running` 行只有在这一刻才可判定，而「本会话」是唯一安全的作用域。
+//      收敛写成 `stopped(interrupted)`（携 `Interrupted` 失败编码），与其余 stopped 同为可恢复。
+//   5. **resume 先替换注册表条目，再启动**。`waitForTask` 对不在注册表里的 runId 直接回
+//      journal 快照——条目晚一步，重臂的通知 watcher 会立刻对着旧的终态行结算。
+//   6. **每次启动都在启动的同一同步片登记为常驻阻塞工作**。引擎是父会话 App 的闭包，不进
+//      runtime task registry；常驻池因此只看见「registry 已退休」而把带着在飞引擎的
+//      App 按 idle 关掉（10 分钟），resume 又起了第二个引擎。登记点只有一个——
+//      {@link trackSettlement}，submit / amend / resume 共用它——计数在 launch 的同一同步片
+//      增加、在结算的 finally 释放。
+//   7. **close 停下自己拥有的每一个 run，而那一笔由引擎自己写**。App 关闭时本服务以
+//      `"interrupted"` abort 每个在飞条目并**等它们结算**（不是超时、不是轮询），harness 把
+//      这个原因归一成 `engine.stop("interrupted", Interrupted)`，于是行经引擎正常的 finishRun
+//      尾巴落成可 resume 的 `stopped(interrupted)`。service 绝不自己写终态行：绕过引擎写，就会
+//      造出 dwf_run 的第二个写入者（同不变式 1 的论证），且 journal 里不会有对应的 run-settled。
+//      关闭之后 submit / amend / resume 直接抛——常驻池的关闭闸门本就挡住了命令，走到这里是
+//      接线错误，不该让 contracts 的拒绝枚举为它变宽（同不变式 1 的论证）。
 import type { DwfRunSessionListItem } from "@zcode/adapters/storage";
 import type {
+  CollaborationMode,
   TraceContext,
-  DynamicWorkflowRunEvent,
   DynamicWorkflowRunArtifact,
   DynamicWorkflowRunArtifactBytes,
-  DynamicWorkflowRunArtifactItem,
   DynamicWorkflowRunArtifactItemPage,
+  DynamicWorkflowRunArtifactItemsResult,
   DynamicWorkflowRunWorkspaceNode,
   DynamicWorkflowRunWorkspaceNodeResult,
   DynamicWorkflowRunWorkspaceNodeResultQuery,
   DynamicWorkflowRunEventPage,
+  DynamicWorkflowRunEventsResult,
   DynamicWorkflowResolveQuestionResult,
   DynamicWorkflowRunPort,
   DynamicWorkflowRunProgressPayload,
@@ -61,8 +648,10 @@ import type {
   DynamicWorkflowRunAmendRequest,
   DynamicWorkflowRunAmendResult,
   DynamicWorkflowRunCancelInitiator,
+  DynamicWorkflowRunFillHoleRequest,
   DynamicWorkflowRunSubmitRequest,
   DynamicWorkflowRunSubmitResult,
+  FillWorkflowHoleResult,
   ExecutionPort,
   FileSystemPort,
   Logger,
@@ -74,7 +663,10 @@ import type {
   WorkflowSubmitPort,
 } from "@zcode/contracts";
 import type { AgentRuntime } from "@zcode/core";
-import { WORKFLOW_RUNS_LIMITS } from "@zcode/shared/zcode-protocol-v4";
+import {
+  WORKFLOW_RUN_EVENTS_PAGE_LIMITS,
+  WORKFLOW_RUNS_LIMITS,
+} from "@zcode/shared/zcode-protocol-v4";
 import type {
   ActorSubmitProfile,
   ActorRef,
@@ -87,6 +679,8 @@ import { readWorkflowArtifactBytes } from "./dynamic-workflow-run-artifact-read.
 import { replayRunProgress } from "./dynamic-workflow-run-replay.js";
 import { listArtifactItemsFrom } from "./dynamic-workflow-run-artifact-queries.js";
 import {
+  pageByCountOnly,
+  supportsEventPages,
   supportsRunEnumeration,
   supportsRunIntrospection,
   type DynamicWorkflowTaskLinkStore,
@@ -115,12 +709,15 @@ import {
   type DynamicWorkflowRunSettledNotice,
 } from "./dynamic-workflow-run-lifecycle.js";
 import { retuneRunConcurrency } from "./dynamic-workflow-run-retune.js";
+import { fillDynamicWorkflowHole } from "./dynamic-workflow-run-fill.js";
+import { runHolesOf } from "./dynamic-workflow-run-holes.js";
 import type { ActorTranscriptStore } from "./workflow-actor-transcript.js";
 import {
-  clampRunConcurrency,
-  resolveWorkflowConcurrencyCeiling,
-} from "./workflow-concurrency-ceiling.js";
+  normalizeRunConcurrency,
+  resolveWorkflowDefaultConcurrency,
+} from "./workflow-default-concurrency.js";
 import type { WorkflowConcurrencyPort } from "./workflow-concurrency-governor.js";
+import type { WorkflowSubagentPermissionMode } from "./workflow-actor-permission.js";
 import type { AgentRuntimeWorkflowDriverDeps } from "./workflow-driver-types.js";
 import {
   createWorkflowEscalationRegistry,
@@ -167,7 +764,19 @@ export interface DynamicWorkflowActorRuntimeInput {
    */
   runSubagentModel?: ModelSelection;
   /**
-   * 该 actor runtime 的模型请求准入端口：
+   * 这个 actor 的 persona 点名的模型，已按本 run 的绑定表（run-launched 的 `modelBindings`）解析成整条
+   * 选择（docs/dynamic-workflow/launch.md「Models the script names」）。优先级在 {@link runSubagentModel}
+   * 之上：它是为这一个子代理写下的选择。缺席即 persona 没点名模型。
+   */
+  actorModel?: ModelSelection;
+  /**
+   * 本 run 子代理的权限模式（journal 的 `run-launched` 上的那一个；docs/dynamic-workflow/launch.md
+   * 「Permissions inside a run」）。工厂让 actor 跑在这个模式上（workflow-actor-permission.ts），
+   * 缺席即 YOLO。
+   */
+  subagentPermissionMode?: WorkflowSubagentPermissionMode;
+  /**
+   * 该 actor runtime 的模型请求准入端口（docs/dynamic-workflow/concurrency.md「One ticket per request attempt」）：
    * driver 在治理器端口在场时给出；工厂原样放进 runtime deps。缺席即不受闸门约束。
    */
   modelRequestAdmission?: ModelRequestAdmission;
@@ -190,6 +799,13 @@ export interface DynamicWorkflowRunServiceDeps {
    * （就是那个「run 永远停在 running」的 bug）。宁可让接线错误在编译期出现。
    */
   parentSessionId: string;
+  /**
+   * 父会话**此刻**的权限模式（create-app 接 `runtime.getMode()`）。只在建 run 那一世读一次
+   * （submit / amend），记进 `run-launched`（docs/dynamic-workflow/launch.md
+   * 「Permissions inside a run」）；resume 只读事件、不读它。惰性：run service 先于 runtime 构造。
+   * 缺席即宿主没有模式概念（CLI 测试装配），子代理照旧 YOLO。
+   */
+  permissionMode?: () => CollaborationMode;
   /** world-read（files.glob / files.read / files.grep）落到的文件系统端口。 */
   fileSystemPort: FileSystemPort;
   /** git.* world-read 落到的子进程执行端口（cwd = run 的工作区）。 */
@@ -258,6 +874,17 @@ export interface DynamicWorkflowRunServiceDeps {
    * 20 分钟的 stall 窗缩到毫秒级）；生产装配永不设置，缺席即 driver 用真时间。
    */
   driverClock?: AgentRuntimeWorkflowDriverDeps["clock"];
+  /**
+   * 按内联规则铸一份草稿（docs/dynamic-workflow/launch.md「The draft after a fill」）：一次补全
+   * 落在一个没有草稿的 run 上时，有效脚本要有个家。规则（slug、`-2`/`-3` 顺延、独占创建、目录
+   * 的 `.gitignore`）只在工具层有一份实现，宿主装配时注入，本服务不复制它。写不成回 `undefined`
+   * （绝不抛）。缺席即不铸——补全照常成功，只是回话里没有路径。
+   */
+  writeWorkflowDraft?: (input: {
+    cwd: string;
+    name: string;
+    source: string;
+  }) => Promise<{ path: string } | undefined>;
 }
 
 export {
@@ -273,7 +900,7 @@ export {
  * 子代理共用父会话的 live adapter，一个在飞的 run 就是父会话的一段 active Loop——
  * registry replace 必须等它结算。
  */
-interface DynamicWorkflowRunService extends DynamicWorkflowRunPort {
+export interface DynamicWorkflowRunService extends DynamicWorkflowRunPort {
   /** 此刻仍未结算的 run 数（registry 里 `terminal === undefined` 的条目）。 */
   countLiveRuns(): number;
   /**
@@ -305,27 +932,29 @@ export function createDynamicWorkflowRunService(
    * 后 actor 重新提问自愈；持久化一张 pending 表只会说谎）。
    */
   const escalations: WorkflowEscalationRegistry = createWorkflowEscalationRegistry();
+  /** 每个 run 的补全串行链（dynamic-workflow-run-fill.ts 文件头）；排空即删键。 */
+  const fillQueues = new Map<string, Promise<unknown>>();
 
   // 构造即收敛：本实例名下此刻零个在飞 run，所以本会话的非终态行都是死进程的遗物。
   // 见文件头不变式 4 与 {@link reconcileOrphanRuns}。
   reconcileOrphanRuns(deps);
 
   /**
-   * 本进程的并发天花板。
-   * 与进程级治理器的桶天花板同一份实现：run 上界与桶天花板永远对得上。
+   * 本进程的默认并发 D（docs/dynamic-workflow/concurrency.md「Two bounds on a run」）。
+   * 与进程级治理器的桶起点同一份实现（决策 30）：run 的默认上界与桶的起点永远对得上。
    *
-   * 本服务里它有四个读者，全部经这一个函数：新 run 的 caps 起点、端口上的
-   * {@link DynamicWorkflowRunPort.concurrencyCeiling}（工具层据它钳制与判断「值不值得一提」）、
+   * 本服务里它有四个读者，全部经这一个函数：新 run 的 caps 缺省、端口上的
+   * {@link DynamicWorkflowRunPort.defaultConcurrency}（工具层据它写「（默认）」与判断「值不值得一提」）、
    * 两条读面的 `maxConcurrency` 判据，以及 `run-started` 载荷上的派生字段。
    */
-  const concurrencyCeiling = (): number =>
-    resolveWorkflowConcurrencyCeiling(deps.availableParallelism);
+  const defaultConcurrency = (): number =>
+    resolveWorkflowDefaultConcurrency(deps.availableParallelism);
 
-  // caps 只含并发上界，无墙钟超时；取消是唯一的停止手段。
-  // 上界**起于天花板**，只能被请求压低、永不抬高——
-  // 缺席即天花板，给了就钳到 [1, 天花板]。
+  // caps 只剩并发上界（docs/dynamic-workflow/authoring.md：token 预算与节点上限整体移除，
+  // 无墙钟超时；取消是唯一的停止手段）。缺席即默认并发；给了就照用（向下取整、至少 1），
+  // 高于默认也照用——没有上限（docs/dynamic-workflow/concurrency.md）。
   const caps = (requested?: number): Caps => {
-    return { maxConcurrency: clampRunConcurrency(requested, concurrencyCeiling()) };
+    return { maxConcurrency: normalizeRunConcurrency(requested, defaultConcurrency()) };
   };
 
   // 内省面按能力探测接上（那四条查询不在引擎端口上）。缺席时下面两个**可选成员整个不实现**：
@@ -382,11 +1011,11 @@ export function createDynamicWorkflowRunService(
     },
 
     /**
-     * 本进程的并发天花板（端口契约见 {@link DynamicWorkflowRunPort.concurrencyCeiling}）。
-     * 与 caps 的起点是**同一个** {@link concurrencyCeiling}：工具层钳出来的值必须与端口随后
-     * 落库的值相等，否则确认窗显示的就不是将要生效的那个数。
+     * 本进程的默认并发（端口契约见 {@link DynamicWorkflowRunPort.defaultConcurrency}）。
+     * 与 caps 的缺省是**同一个** {@link defaultConcurrency}：确认窗写的「默认 N」必须就是一个没设
+     * 上界的 run 将要跑的那个数。
      */
-    concurrencyCeiling,
+    defaultConcurrency,
 
     /**
      * 就地改一个在飞 run 自己的并发上界（端口契约见
@@ -398,7 +1027,7 @@ export function createDynamicWorkflowRunService(
     async retuneConcurrency(
       request: DynamicWorkflowRunRetuneRequest,
     ): Promise<DynamicWorkflowRunRetuneResult> {
-      return retuneRunConcurrency({ runs, journal: deps.journal, concurrencyCeiling }, request);
+      return retuneRunConcurrency({ runs, journal: deps.journal, defaultConcurrency }, request);
     },
 
     async resume(runId: string): Promise<DynamicWorkflowRunResumeResult> {
@@ -454,8 +1083,8 @@ export function createDynamicWorkflowRunService(
         // 调用方内存里已有事件的 run（本进程跑过）与注册表在飞的 run 都不回放：
         // 它们的事件全在内存 store 里，再喂一遍只会让 run-started 把相位打回起点。
         if (input.excludeRunIds.has(row.runId) || runs.has(row.runId)) continue;
-        // 天花板与 live 侧同源：冷回放的 `run-started` 载荷必须与 live 那一条逐字节相等。
-        payloads.push(...replayRunProgress(row, deps.journal, concurrencyCeiling()));
+        // 默认并发与 live 侧同源：冷回放的 `run-started` 载荷必须与 live 那一条逐字节相等。
+        payloads.push(...replayRunProgress(row, deps.journal, defaultConcurrency()));
       }
       return payloads;
     },
@@ -467,8 +1096,19 @@ export function createDynamicWorkflowRunService(
         runs,
         deps.journal,
         escalations.pendingFor(taskId),
-        concurrencyCeiling(),
+        defaultConcurrency(),
+        // 留白与停驻问题同规由这里投影好递进去：`waiting` 读的是引擎的停驻表（经条目的控制面）。
+        runHolesOf(taskId, runs.get(taskId), deps.journal),
       );
+    },
+
+    /**
+     * 给一处正在等的留白补上函数体（端口契约见 {@link DynamicWorkflowRunPort.fillHole}；实现体在
+     * dynamic-workflow-run-fill.ts）。与 `retuneConcurrency` 同规地**不过关闭门**：它什么都不起，
+     * 关闭中的 service 里引擎自己会以 `settled` 拒绝。
+     */
+    async fillHole(request: DynamicWorkflowRunFillHoleRequest): Promise<FillWorkflowHoleResult> {
+      return fillDynamicWorkflowHole({ deps, runs, fillQueues }, request);
     },
 
     /**
@@ -493,7 +1133,8 @@ export function createDynamicWorkflowRunService(
           runs,
           deps.journal,
           escalations.pendingFor(taskId),
-          concurrencyCeiling(),
+          defaultConcurrency(),
+          runHolesOf(taskId, undefined, deps.journal),
         );
       }
       if (entry.terminal === undefined) await settleOrAbort(entry.settlement, options?.signal);
@@ -503,7 +1144,8 @@ export function createDynamicWorkflowRunService(
         runs,
         deps.journal,
         escalations.pendingFor(taskId),
-        concurrencyCeiling(),
+        defaultConcurrency(),
+        runHolesOf(taskId, entry, deps.journal),
       );
     },
 
@@ -542,12 +1184,22 @@ export function createDynamicWorkflowRunService(
     async listEvents(
       runId: string,
       options: DynamicWorkflowRunEventPage,
-    ): Promise<DynamicWorkflowRunEvent[]> {
-      const page = deps.journal.listEvents(runId, {
+    ): Promise<DynamicWorkflowRunEventsResult> {
+      // 审计面要的是逐字节的事件（report 的 item 也在内，线上再经载荷界裁剪），但一页的条数与
+      // 字节数都有界（docs/execution-engine.md「Reading the journal」）：调用方不给时取协议的
+      // 两道上限。网关总是给全两者，这里的缺省只防别的调用方写出一次无界读。
+      const page = {
         ...(options.afterSequence === undefined ? {} : { afterSequence: options.afterSequence }),
-        ...(options.limit === undefined ? {} : { limit: options.limit }),
-      });
-      return page.map((stored) => toProtocolEvent(stored.sequence, stored.event));
+        limit: options.limit ?? WORKFLOW_RUN_EVENTS_PAGE_LIMITS.maxEvents,
+        maxBytes: options.maxBytes ?? WORKFLOW_RUN_EVENTS_PAGE_LIMITS.maxBytes,
+      };
+      const { events, hasMore } = supportsEventPages(deps.journal)
+        ? deps.journal.listEventPage(runId, page)
+        : pageByCountOnly(deps.journal, runId, page);
+      return {
+        events: events.map((stored) => toProtocolEvent(stored.sequence, stored.event)),
+        hasMore,
+      };
     },
 
     /**
@@ -575,11 +1227,8 @@ export function createDynamicWorkflowRunService(
       runId: string,
       artifactId: string,
       page: DynamicWorkflowRunArtifactItemPage,
-    ): Promise<readonly DynamicWorkflowRunArtifactItem[]> {
-      return listArtifactItemsFrom(deps.journal, runId, artifactId, {
-        ...(page.afterSequence === undefined ? {} : { afterSequence: page.afterSequence }),
-        limit: page.limit,
-      });
+    ): Promise<DynamicWorkflowRunArtifactItemsResult> {
+      return listArtifactItemsFrom(deps.journal, runId, artifactId, page);
     },
 
     /**
@@ -644,7 +1293,7 @@ export function createDynamicWorkflowRunService(
           parentSessionId: deps.parentSessionId,
           runs,
           escalations,
-          concurrencyCeiling,
+          defaultConcurrency,
         })),
   };
 }

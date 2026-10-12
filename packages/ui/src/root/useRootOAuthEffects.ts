@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- OAuth lifecycle effects intentionally share one coordination point. */
 import { useEffect, useRef } from "react";
 import type {
@@ -29,7 +30,7 @@ import { useAccountConnectionLossNotification } from "@/root/useAccountConnectio
 
 export { refreshRestoredOAuthProviderFamilyAfterStartup } from "@/root/oauthProviderFamilySelectionRefresh.js";
 
-async function handleOAuthCallbackSuccess(params: {
+export async function handleOAuthCallbackSuccess(params: {
   result: OAuthSessionCallbackResult;
   platform: Pick<IPlatformService, "reportTelemetryEvent">;
   refreshLatestModelProviderFamilySelection?: (

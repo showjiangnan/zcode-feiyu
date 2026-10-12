@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { TuiSubmitPromptResult } from "@zcode/tui";
 import type { CommandCenterDeps, TuiSubmitOptions } from "../types.js";
 
@@ -62,7 +63,7 @@ export async function handleExpertCommand(
         response: "Expert workflow is not available in this client.",
       };
     }
-    if (deps.setMode) {
+    if (deps.setMode && (deps.getMode?.() ?? app.getMode?.()) !== "guarded") {
       await deps.setMode("yolo");
     }
     const result = await app.resumeExpertWorkflow({
@@ -83,7 +84,7 @@ export async function handleExpertCommand(
       response: "Expert workflow is not available in this client.",
     };
   }
-  if (deps.setMode) {
+  if (deps.setMode && (deps.getMode?.() ?? app.getMode?.()) !== "guarded") {
     await deps.setMode("yolo");
   }
   const task = parsed.action === "start" ? parsed.task : "";

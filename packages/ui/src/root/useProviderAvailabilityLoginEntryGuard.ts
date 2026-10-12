@@ -1,10 +1,14 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { UserInfo } from "@zcode/shared";
 import type { ModelSelectionView } from "@zcode/services";
-import { resolveProviderAvailabilityState } from "@/lib/modelProviderAvailability.js";
+import {
+  resolveProviderAvailabilityState,
+  shouldOpenProviderLoginEntry,
+} from "@/lib/modelProviderAvailability.js";
 import { logger } from "@/logger.js";
 
-interface ProviderAvailabilityLoginEntryGuardResult {
+export interface ProviderAvailabilityLoginEntryGuardResult {
   hasUsableProvider: boolean;
   providerCount: number;
   shouldOpenLoginEntry: boolean;
@@ -54,7 +58,11 @@ export function useProviderAvailabilityLoginEntryGuard({
         : modelSelectionView;
       const availability = resolveProviderAvailabilityState({ modelSelectionView: refreshedView });
       const { hasUsableProvider, providerCount } = availability;
-      const shouldOpenLoginEntry = !providerFamilyDomain || (!user && !hasUsableProvider);
+      const shouldOpenLoginEntry = shouldOpenProviderLoginEntry({
+        availability,
+        providerFamilyDomain,
+        hasUser: Boolean(user),
+      });
 
       // 未登录且没有可用模型配置时必须引导用户连接账号或填写 API Key。
       // 启动检查、API Key 设置回流等入口统一走这里，避免各处复制判断后语义分叉。

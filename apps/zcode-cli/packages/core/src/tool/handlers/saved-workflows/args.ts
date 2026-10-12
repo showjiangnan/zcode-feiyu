@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Saved workflows - 参数校验
 // ============================================================
@@ -6,6 +7,13 @@
 // 用一次无效决策打断模型自己的改错回路。这与 CreateWorkflow 对编不过的脚本的处理是同一条
 // 原则（create-workflow.ts 的 `prepareApproval` 注释）。
 
+// ============================================================
+// Saved workflows - 参数校验
+// ============================================================
+//
+// 校验发生在**确认窗之前**：参数传错了没有任何值得用户裁决的东西，弹一个注定失败的窗只是
+// 用一次无效决策打断模型自己的改错回路。这与 CreateWorkflow 对编不过的脚本的处理是同一条
+// 原则（create-workflow.ts 的 `prepareApproval` 注释）。
 import type { SavedWorkflowArgDeclaration, SavedWorkflowArgsDeclaration } from "@zcode/contracts";
 
 export type WorkflowArgsValidation =

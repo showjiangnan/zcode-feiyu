@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { ModelToolSideEffectScope } from "@zcode/contracts";
 import type { PermissionToolCapability } from "../../permission/service.js";
 import type { ToolEntry, ToolRuntimePermissionCapabilityContext } from "../types.js";

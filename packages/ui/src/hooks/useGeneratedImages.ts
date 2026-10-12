@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useEffect, useState } from "react";
 import { generatedImageSchema, type GeneratedImage } from "@zcode/shared";
 import { useV4Conversation } from "@/v4/V4ConversationContext.js";

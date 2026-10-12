@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ClientSceneConfig, ClientSceneItem } from "@zcode/services";
 import type { AutomationScheduledTemplateIconName } from "@/settings/AutomationScheduledTemplateIcon.js";
 import type { OffPeakTemplateIconName } from "@/settings/OffPeakTemplateIcon.js";
@@ -175,6 +176,23 @@ function mapOffPeakTemplates(scenes: readonly ClientSceneConfig[]): OffPeakAutom
       icon: offPeakIcon(item.id, customize),
     };
   });
+}
+
+const HOMEPAGE_REMOTE_OFF_PEAK_TEMPLATE_LIMIT = 2;
+
+/**
+ * New task 首页专用选择规则；Automations 模板区必须保持远程目录原样。
+ * 首页始终使用本地 Customize，避免远程同名项占用两条远程模板名额或改变最后一项的位置。
+ */
+export function appendLocalCustomizeTemplate(
+  templates: readonly OffPeakAutomationTemplate[],
+): OffPeakAutomationTemplate[] {
+  return [
+    ...templates
+      .filter((template) => !template.customize)
+      .slice(0, HOMEPAGE_REMOTE_OFF_PEAK_TEMPLATE_LIMIT),
+    CUSTOMIZE_TEMPLATE,
+  ];
 }
 
 export function mapClientScenesToAutomationTemplates(

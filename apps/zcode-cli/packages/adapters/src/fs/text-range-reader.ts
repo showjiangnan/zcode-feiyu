@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createReadStream } from "node:fs";
 import { open, readFile } from "node:fs/promises";
 import type { Stats } from "node:fs";
@@ -184,9 +185,15 @@ function normalizeLimitLines(limitLines: number | undefined): number | undefined
   return Math.max(0, Math.trunc(limitLines));
 }
 
-function selectLines(lines: string[], offsetLine: number, limitLines: number | undefined): string[] {
+function selectLines(
+  lines: string[],
+  offsetLine: number,
+  limitLines: number | undefined,
+): string[] {
   const limit = normalizeLimitLines(limitLines);
-  return limit === undefined ? lines.slice(offsetLine) : lines.slice(offsetLine, offsetLine + limit);
+  return limit === undefined
+    ? lines.slice(offsetLine)
+    : lines.slice(offsetLine, offsetLine + limit);
 }
 
 function shouldSelectLine(

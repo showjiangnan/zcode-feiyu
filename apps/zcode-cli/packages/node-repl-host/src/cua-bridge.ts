@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createComputerUseSDK } from "@zcode/zcode-cua/sdk";
 import { randomUUID } from "node:crypto";
 import { createConnection } from "node:net";

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { SESSION_ENTRY_TARGET_COMPLETION_VERIFICATION } from "../deps.js";
 import type {
   MessageId,
@@ -39,8 +40,7 @@ export async function persistStableForkCompletionBoundary(
       message.info.time.completed !== undefined,
   );
   const startIndex = messages.findLastIndex(
-    (message, index) =>
-      index <= boundaryIndex && message.info.id === input.startMessageId,
+    (message, index) => index <= boundaryIndex && message.info.id === input.startMessageId,
   );
   const boundary = messages[boundaryIndex];
   if (
@@ -60,9 +60,7 @@ export async function persistStableForkCompletionBoundary(
     .slice(startIndex, boundaryIndex + 1)
     .map((message) => message.info.id);
   const prefixMessageIds = new Set(
-    messages
-      .slice(0, boundaryIndex + 1)
-      .map((message) => String(message.info.id)),
+    messages.slice(0, boundaryIndex + 1).map((message) => String(message.info.id)),
   );
   const target =
     typeof store.readTarget === "function"
@@ -131,23 +129,13 @@ async function verificationEntryIdsAtBoundary(
   });
 }
 
-function verificationEntryPayload(
-  entry: SessionEntryInfo,
-): VerificationEntryPayload | null {
-  if (
-    !entry.data ||
-    typeof entry.data !== "object" ||
-    Array.isArray(entry.data)
-  )
-    return null;
+function verificationEntryPayload(entry: SessionEntryInfo): VerificationEntryPayload | null {
+  if (!entry.data || typeof entry.data !== "object" || Array.isArray(entry.data)) return null;
   const payload = (entry.data as { payload?: unknown }).payload;
-  if (!payload || typeof payload !== "object" || Array.isArray(payload))
-    return null;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
   const record = payload as Record<string, unknown>;
   return {
-    ...(typeof record.targetId === "string"
-      ? { targetId: record.targetId }
-      : {}),
+    ...(typeof record.targetId === "string" ? { targetId: record.targetId } : {}),
     ...(typeof record.anchorAssistantMessageId === "string"
       ? { anchorAssistantMessageId: record.anchorAssistantMessageId }
       : {}),

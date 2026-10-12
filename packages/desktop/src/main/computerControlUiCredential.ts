@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { randomBytes } from "node:crypto";
 import type { BrowserWindow } from "electron";
 

@@ -1,6 +1,7 @@
-type LoafInvokerType = "user-callback" | "event-listener" | "script" | "unknown";
+// Modified by ZCode Feiyu.
+export type LoafInvokerType = "user-callback" | "event-listener" | "script" | "unknown";
 
-interface LongTaskAttributionSummary {
+export interface LongTaskAttributionSummary {
   loaf_script_count: number;
   loaf_top_duration_ms: number;
   loaf_top_invoker_type: LoafInvokerType;

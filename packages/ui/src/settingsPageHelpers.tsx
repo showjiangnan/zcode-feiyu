@@ -1,22 +1,7 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- settings helper 聚合多个设置分组；终端、网络与自动归档多侧能力暂时超过行数限制。 */
-import type {
-  IntegratedTerminalShellOption,
-  IntegratedTerminalShellSelection,
-  LocalePreference,
-  ZCodeInteractionBehavior,
-} from "@zcode/shared";
-import {
-  TID_SETTINGS_ASK_USER_QUESTION_AUTO_RESOLUTION_SWITCH,
-  TID_SETTINGS_NATIVE_SEARCH_SWITCH,
-} from "@zcode/shared";
-import { useState, useCallback, useEffect } from "react";
-import type { IPlatformService } from "@zcode/shared";
-import {
-  TID_SETTINGS_LOCALE_SELECT_ITEM,
-  TID_SETTINGS_LOCALE_SELECT_TRIGGER,
-  testId,
-} from "@zcode/shared";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
 import {
   Select,
   SelectContent,
@@ -25,24 +10,37 @@ import {
   SelectValue,
 } from "@/components/ui/select.js";
 import { Switch } from "@/components/ui/switch.js";
-import { Input } from "@/components/ui/input.js";
-import { Button } from "@/components/ui/button.js";
-import { SettingsBadge, SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
-import { DataBaseDirControl } from "@/settings/DataBaseDirControl.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
-import { ProactiveSuggestionsSetting } from "@/settings/ProactiveSuggestionsSetting.js";
-import { BackgroundContinuityStatusRow } from "@/settings/BackgroundContinuityStatusRow.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { normalizeInterfaceMode, type InterfaceMode } from "@/lib/interfaceMode.js";
+import { BackgroundContinuityStatusRow } from "@/settings/BackgroundContinuityStatusRow.js";
+import { DataBaseDirControl } from "@/settings/DataBaseDirControl.js";
+import { DynamicWorkflowModeSetting } from "@/settings/DynamicWorkflowModeSetting.js";
+import { ProactiveSuggestionsSetting } from "@/settings/ProactiveSuggestionsSetting.js";
 import {
   createSettingsPageConfig,
   resolveSettingsSectionForPlatform,
   type SettingsSectionId,
 } from "@/settings/settingsPageConfig.js";
+import { SettingsBadge, SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
+import type {
+  IPlatformService,
+  IntegratedTerminalShellOption,
+  IntegratedTerminalShellSelection,
+  LocalePreference,
+  ZCodeInteractionBehavior,
+} from "@zcode/shared";
+import {
+  TID_SETTINGS_ASK_USER_QUESTION_AUTO_RESOLUTION_SWITCH,
+  TID_SETTINGS_LOCALE_SELECT_ITEM,
+  TID_SETTINGS_LOCALE_SELECT_TRIGGER,
+  TID_SETTINGS_NATIVE_SEARCH_SWITCH,
+  testId,
+} from "@zcode/shared";
+import { useCallback, useEffect, useState } from "react";
 
 export type { Locale, LocalePreference } from "@zcode/shared";
-export { type SettingsSectionId };
-export { createSettingsPageConfig, resolveSettingsSectionForPlatform };
+export { createSettingsPageConfig, resolveSettingsSectionForPlatform, type SettingsSectionId };
 
 const TASK_AUTO_ARCHIVE_DAY_OPTIONS = [3, 7, 14, 30] as const;
 const ZCODE_INTERACTION_BEHAVIOR_OPTIONS: readonly ZCodeInteractionBehavior[] = ["queue", "guide"];
@@ -74,6 +72,8 @@ export function GeneralSectionContent({
   isDesktop,
   isWindowsDesktop,
   isMacDesktop,
+  isLinuxDesktop,
+  linuxCloseToTray,
   showIntegratedTerminalShell = false,
   setLocalePreference,
   setNotificationEnabled,
@@ -147,6 +147,17 @@ export function GeneralSectionContent({
   isDesktop?: boolean;
   isWindowsDesktop?: boolean;
   isMacDesktop?: boolean;
+  /** Linux 桌面端（isDesktop 且非 win/mac）；关闭驻留托盘设置在 Linux 上按能力自适应展示 */
+  isLinuxDesktop?: boolean;
+  /** Linux 关闭驻留托盘能力状态（spec：docs/desktop/linux-close-to-tray.md）；Windows 不传 */
+  linuxCloseToTray?: {
+    /** 能力探测中或确认不可用，开关锁定 */
+    disabled: boolean;
+    /** 确认不可用（描述文案切换为"未提供系统托盘"） */
+    unavailable: boolean;
+    /** GNOME 系桌面且无托盘（追加 AppIndicator 扩展安装提示） */
+    gnomeLikeHint: boolean;
+  };
   showIntegratedTerminalShell?: boolean;
   platform?: IPlatformService;
   setLocalePreference: (locale: LocalePreference) => void;
@@ -656,15 +667,24 @@ export function GeneralSectionContent({
             />
           }
         />
-        {isWindowsDesktop ? (
+        {isWindowsDesktop || isLinuxDesktop ? (
           <SettingsRow
             label={intl.formatMessage({ id: "settings.closeToTrayOnWindows" })}
-            description={intl.formatMessage({
-              id: "settings.closeToTrayOnWindowsDescription",
-            })}
+            description={
+              linuxCloseToTray?.unavailable
+                ? linuxCloseToTray.gnomeLikeHint
+                  ? `${intl.formatMessage({ id: "settings.closeToTrayUnavailable" })} ${intl.formatMessage({ id: "settings.closeToTrayGnomeHint" })}`
+                  : intl.formatMessage({ id: "settings.closeToTrayUnavailable" })
+                : intl.formatMessage({
+                    id: "settings.closeToTrayOnWindowsDescription",
+                  })
+            }
             control={
               <Switch
                 checked={closeToTrayOnWindows}
+                // Linux 上托盘能力未知（探测中）或确认不可用时都锁定，防止误开导致关窗失联
+                //（spec：docs/desktop/linux-close-to-tray.md）。
+                disabled={Boolean(linuxCloseToTray?.disabled)}
                 onCheckedChange={(checked) => {
                   void onCloseToTrayOnWindowsChange(checked);
                 }}
@@ -770,6 +790,8 @@ export function GeneralSectionContent({
             />
           }
         />
+        {/* docs/dynamic-workflow/launch.md「The user's choice」：服务端未提供时整行不渲染。 */}
+        {hasServices ? <DynamicWorkflowModeSetting /> : null}
         <SettingsRow
           label={intl.formatMessage({ id: "settings.modelIoFullRetention" })}
           description={intl.formatMessage({

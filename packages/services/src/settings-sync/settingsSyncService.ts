@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- settings-sync 需要集中维护外部 skills/commands/plugins/MCP 扫描、去重和导入状态机，后续按资源类别拆分 */
 import type {
   McpServerConfig,
@@ -560,13 +561,13 @@ async function importSkillDirectory(
   });
 }
 
-function getSkillDirectorySymlinkType(
+export function getSkillDirectorySymlinkType(
   platform: NodeJS.Platform | string = process.platform,
 ): "dir" | "junction" {
   return platform === "win32" ? "junction" : "dir";
 }
 
-function getCommandFileSymlinkType(): "file" {
+export function getCommandFileSymlinkType(): "file" {
   return "file";
 }
 

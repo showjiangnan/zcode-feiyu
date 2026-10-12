@@ -1,4 +1,5 @@
-import type { StorageRootSpec } from "@zcode/services";
+// Modified by ZCode Feiyu.
+import type { StorageRootSpec } from "@zcode/shared";
 import type { StorageScanProgress } from "@zcode/services/node";
 
 export interface StorageScanWorkerData {
@@ -6,7 +7,7 @@ export interface StorageScanWorkerData {
   progressIntervalMs: number;
 }
 
-type StorageScanWorkerCommand = { type: "abort" };
+export type StorageScanWorkerCommand = { type: "abort" };
 
 export type StorageScanWorkerMessage =
   | { type: "progress"; progress: StorageScanProgress }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { IServiceAccessor } from "@zcode/services";
 import { createUuid } from "@zcode/shared";
 
@@ -84,9 +85,9 @@ export function formatTerminalTabTitle(projectName: string, index: number): stri
   return index === 1 ? projectName : `${projectName} ${index}`;
 }
 
-type TerminalSessionCloseAction = "none" | "close-panel" | "close-session";
+export type TerminalSessionCloseAction = "none" | "close-panel" | "close-session";
 
-interface TerminalSessionExitResult {
+export interface TerminalSessionExitResult {
   state: TerminalPanelState;
   action: TerminalSessionCloseAction;
 }

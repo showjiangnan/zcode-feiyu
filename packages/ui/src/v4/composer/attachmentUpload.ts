@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 附件命令面（UI 侧）：ZCodePromptAttachment（composer 序列化产物）→ AttachmentRef
 // （v4 sendText/createSession attachments 引用模型）。
 //
@@ -45,6 +46,10 @@ export async function uploadComposerAttachment(
 ): Promise<AttachmentRef | null> {
   const fileName = attachment.filename;
   const mime = attachment.mimeType;
+  const source =
+    attachment.kind === "file" && attachment.sourceKind
+      ? { sourceKind: attachment.sourceKind, messageCount: attachment.messageCount }
+      : {};
   // audio 变体无 sizeBytes 字段；统一经窄化读取。
   const sizeBytes =
     "sizeBytes" in attachment && typeof attachment.sizeBytes === "number"
@@ -52,6 +57,7 @@ export async function uploadComposerAttachment(
       : undefined;
   if (attachment.localPath) {
     return {
+      ...source,
       ref: attachment.localPath,
       fileName,
       mime,
@@ -72,9 +78,28 @@ export async function uploadComposerAttachment(
   }
   const { ref } = await put({ sessionId, fileName, mime, dataBase64 }, options);
   return {
+    ...source,
     ref,
     fileName,
     mime,
     bytes: sizeBytes ?? base64ByteLength(dataBase64),
   };
+}
+
+/**
+ * 附件数组 → AttachmentRef[]（顺序保持）。put 失败原样抛出（调用方中止发送，草稿保留）。
+ */
+export async function uploadComposerAttachments(
+  put: AttachmentPutFn,
+  sessionId: string,
+  attachments: readonly ZCodePromptAttachment[],
+): Promise<AttachmentRef[]> {
+  const refs: AttachmentRef[] = [];
+  for (const attachment of attachments) {
+    const ref = await uploadComposerAttachment(put, sessionId, attachment);
+    if (ref) {
+      refs.push(ref);
+    }
+  }
+  return refs;
 }

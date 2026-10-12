@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   isZCodeAgentProvider,
   resolveModelProviderFamilySpecByProviderId,
@@ -54,8 +55,12 @@ export function buildRegistryModelSelectGroups(
         items: provider.models.map(({ modelId, config }) => ({
           key: `registry-provider:${provider.providerId}:${modelId}`,
           value: encodeCustomModelValue(provider.providerId, modelId),
-          name: modelId,
-          ...(shouldShowModelVisionBadge(
+          name:
+            provider.config.access?.type === "chatgpt-subscription"
+              ? (provider.config.access.modelDisplayNames?.[modelId] ?? modelId)
+              : modelId,
+          ...(provider.config.access?.type !== "chatgpt-subscription" &&
+          shouldShowModelVisionBadge(
             modelId,
             config.properties?.inputFormat?.supportsImage,
             provider.config.access,

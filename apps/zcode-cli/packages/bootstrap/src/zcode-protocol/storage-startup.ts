@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createHash, randomUUID } from "node:crypto";
 import { SqliteSessionStore, type SqliteMigrationProgress } from "@zcode/adapters/storage";
 import {
@@ -96,6 +97,8 @@ export async function prepareProtocolStartupStorage(options: {
   void acknowledgement.catch(() => {});
   let store: SqliteSessionStore | undefined;
   let failure: unknown;
+  let closeFailure: unknown;
+  let hasCloseFailure = false;
   const write = (frame: unknown) =>
     new Promise<void>((resolve, reject) => {
       options.output.write(`${JSON.stringify(frame)}\n`, (error?: Error | null) =>
@@ -141,7 +144,12 @@ export async function prepareProtocolStartupStorage(options: {
     try {
       store?.close();
     } catch (error) {
-      if (!failure) throw error;
+      // 清理失败不能在 finally 中覆盖原存储异常；成功路径在清理后单独传播。
+      if (!failure) {
+        closeFailure = error;
+        hasCloseFailure = true;
+      }
     }
   }
+  if (hasCloseFailure) throw closeFailure;
 }

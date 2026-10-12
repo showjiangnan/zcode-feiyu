@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { SendInputResult } from "../../../app/types.js";
 import type { CommandResult } from "@zcode/shared/zcode-protocol-v4";
 

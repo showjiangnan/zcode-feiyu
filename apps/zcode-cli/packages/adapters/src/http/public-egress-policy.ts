@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { lookup as defaultDnsLookup } from "node:dns/promises";
 import http from "node:http";
 import {
@@ -49,9 +50,10 @@ export function createPublicEgressLookup(
     resolvePublicEgressAddresses(new URL(url), hostname, dnsLookup, egressOptions).then(
       (addresses) => {
         if (wantsAll) {
-          (
-            done as (error: NodeJS.ErrnoException | null, addresses: DnsLookupAddress[]) => void
-          )(null, addresses);
+          (done as (error: NodeJS.ErrnoException | null, addresses: DnsLookupAddress[]) => void)(
+            null,
+            addresses,
+          );
           return;
         }
         const first = addresses[0];
@@ -61,13 +63,11 @@ export function createPublicEgressLookup(
           );
           return;
         }
-        (
-          done as (
-            error: NodeJS.ErrnoException | null,
-            address: string,
-            family: number,
-          ) => void
-        )(null, first.address, first.family);
+        (done as (error: NodeJS.ErrnoException | null, address: string, family: number) => void)(
+          null,
+          first.address,
+          first.family,
+        );
       },
       (error: unknown) => {
         (done as (error: NodeJS.ErrnoException) => void)(toLookupError(error));

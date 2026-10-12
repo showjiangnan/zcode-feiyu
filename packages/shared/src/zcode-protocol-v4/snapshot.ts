@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* oxlint-disable max-lines -- v4 snapshot schema is a frozen cross-process contract; additions stay grouped here. */
 // ConversationSnapshot A 区。
 // A 区更新语义 = 字段级整体替换（state.updated），绝不深合并——深合并是错乱之母。
@@ -62,6 +62,7 @@ export const activeWorkSummarySchema = z.object({
     "turnSteer",
   ]),
   foregroundExecutionId: z.string().min(1).optional(),
+  sourceCommandId: z.string().min(1).optional(),
   startedAt: timestampSchema,
 });
 export type ActiveWorkSummary = z.infer<typeof activeWorkSummarySchema>;
@@ -546,6 +547,8 @@ export const conversationSnapshotSchema = z.object({
   // 旧快照/旧发送端不携带此字段 → 解析得 null,不破坏兼容性(遵守冻结规则)。
   // pendingCount === 0 时投影层置 null(提示条消失)。
   workspaceHookAdmission: workspaceHookAdmissionStateSchema.nullable().default(null),
+  // （2026-09-12）：原 additive 字段 pluginUiSurfaces 已删除，插件面板 widgetState 只留在
+  // 宿主 renderer 内存。
   // B 区
   rows: rowsWindowSchema,
 });

@@ -1,7 +1,12 @@
+// Modified by ZCode Feiyu.
 import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
 import { decodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
 
-export function shouldShowManageModelsAction(onManageModels?: () => void): boolean {
+export function shouldShowManageModelsAction(
+  onManageModels?: () => void,
+  options: { isWebRemoteControl?: boolean } = {},
+): boolean {
+  if (options.isWebRemoteControl) return false;
   return typeof onManageModels === "function";
 }
 

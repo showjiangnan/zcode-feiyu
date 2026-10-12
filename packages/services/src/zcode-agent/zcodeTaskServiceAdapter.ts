@@ -1,6 +1,13 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
+import { createBotTopicAdmission } from "#src/zcode-agent/botTopicAdmission.js";
+import {
+  readBotGroupRuntimeSnapshot,
+  waitBotGroupExecutionEnd,
+} from "#src/zcode-agent/groupRuntimeSnapshot.js";
+import { uploadBotGroupAttachments } from "./groupAttachmentUpload.js";
 /* oxlint-disable eslint(max-lines) -- 迁移期需要在一个门面里集中维护旧 task projection 到 ZCode session 的协议适配。 */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { createZCodeAgentConnectionScope } from "#src/zcode-agent/zcodeAgentConnectionScope.js";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -53,6 +60,7 @@ import {
   type ZCodeBackgroundTurnAttribution,
   type ZCodeAutomationBotDeliveryTarget,
   type ZCodeCancelTaskCommandResult,
+  type ZCodeCodexConnectivityCheckResult,
   type ZCodeConfigOption,
   type ZCodeEnqueueTaskCommandResult,
   type ZCodeError,
@@ -72,6 +80,8 @@ import {
   type ZCodePlanStep,
   type ZCodeSlashCommand,
   type ZCodeStreamEvent,
+  type ZCodeSwitchAgentResult,
+  type ZCodeSyncTaskSessionBindingResult,
   type ZCodeTaskCreateResult,
   type ZCodeTaskMeta,
   type ZCodeTaskClientMode,
@@ -255,21 +265,39 @@ function resolveZCodeAgentCurrentLogFilePath(now = new Date()): string {
 export function createZCodeTaskServiceAdapter(
   options: CreateZCodeTaskServiceAdapterOptions,
 ): IZCodeTaskService {
+  // Bot 原来绕过连接 facade，导致真实附件 admission 缺少可信身份；复用既有 scope，
+  // 同一 Bot 接入的附件、命令及对账共用连接，不改变桌面与手机各自的传输模式。
+  const botConnectionScopes = new Map<string, ReturnType<typeof createZCodeAgentConnectionScope>>();
+  function botAgent(workspace: ZCodeAgentWorkspaceTarget) {
+    const key = JSON.stringify([resolveWorkspaceKey(workspace), workspace.remoteSessionId ?? ""]);
+    let scope = botConnectionScopes.get(key);
+    if (!scope) {
+      scope = createZCodeAgentConnectionScope(options.zcodeAgentService, {
+        connectionId: `bot-${randomUUID()}`,
+        clientMode: "desktop-continuous",
+        role: "trusted-host-relay",
+      });
+      botConnectionScopes.set(key, scope);
+    }
+    return scope.service;
+  }
   const errorEmitter = new Emitter<ZCodeError>();
   const taskEmitters = new Map<string, Emitter<ZCodeStreamEvent>>();
   const globalTaskEmitters = new Map<string, Emitter<ZCodeStreamEvent>>();
   const overlays = new Map<string, TaskOverlay>();
   const taskTargets = new Map<string, TaskTarget>();
+  const topicAdmission = createBotTopicAdmission();
   const runtimeCommands = new Map<string, ZCodeTaskRuntimeCommand[]>();
   const runtimeCommandDrains = new Map<string, Promise<void>>();
   const apiRetryByTaskKey = new Map<string, ZCodeApiRetryStatus | null>();
   const backgroundTaskControlsByTaskKey = new Map<string, ZCodeBackgroundTaskControlItem[]>();
-  const streamedTurnKeys = new Set<string>();
+  const streamedTurnText = new Map<string, { messageId?: string; text: string }>();
   const activePromptInputIds = new Map<string, InputId>();
   const toolProjectionMemoryByTaskKey = new Map<string, ZCodeToolProjectionMemory>();
   const liveToolProjectionsByTaskKey = new Map<string, Map<string, LiveToolProjection>>();
   let liveToolProjectionOrder = 0;
-  // 内存诊断计数器：只读各 per-task 表的 size。
+  // 内存诊断计数器（docs/monitoring/memory-diagnostics-log.md）：对应审计里 closeTask/deleteTask
+  // 不清理的 per-task 表，只读 size。
   const memoryDiagnostics = registerMemoryDiagnosticsProvider("task", () => ({
     runtimeCommands: runtimeCommands.size,
     toolMemoryTasks: toolProjectionMemoryByTaskKey.size,
@@ -1640,6 +1668,10 @@ export function createZCodeTaskServiceAdapter(
       return;
     }
 
+    if (event.type === "providerRuntimeHeaders.request") {
+      return;
+    }
+
     if (event.type === "session.event") {
       recordAgentModelNetworkTelemetry(event.event);
       if (event.event.type === "turn.started") {
@@ -1657,7 +1689,7 @@ export function createZCodeTaskServiceAdapter(
     const streamEvents = mapSessionEvent(
       params,
       event.event,
-      streamedTurnKeys,
+      streamedTurnText,
       activePromptInputId,
       getToolProjectionMemory(params),
       backgroundTaskControlsByTaskKey,
@@ -1743,6 +1775,7 @@ export function createZCodeTaskServiceAdapter(
     taskEmitters.clear();
     globalTaskEmitters.clear();
     runtimeCommandDrains.clear();
+    streamedTurnText.clear();
   }
 
   async function disposeZCodeAgentServiceAndWait(): Promise<void> {
@@ -1797,6 +1830,10 @@ export function createZCodeTaskServiceAdapter(
       // 关闭 workspace UI 只会释放 RPC 使用方，不会自动终止已预热的 Agent。
       // WSL Host 共享后 Host 会继续存活，因此必须按 workspaceKey 显式回收对应 runtime。
       await options.zcodeAgentService.disposeWorkspace(normalizeWorkspaceParams(params));
+    },
+
+    async checkCodexConnectivity(): Promise<ZCodeCodexConnectivityCheckResult> {
+      return { target: "zcode-agent", reachable: true };
     },
 
     async createTask(params): Promise<ZCodeTaskCreateResult> {
@@ -1878,6 +1915,7 @@ export function createZCodeTaskServiceAdapter(
                 sessionId: null,
                 payload: {
                   workspaceId: target.workspaceIdentity?.trim() || target.workspacePath,
+                  ...(params.permissionScope ? { permissionScope: params.permissionScope } : {}),
                   config: {
                     ...(model ? { provider: model.providerId, model: model.modelId } : {}),
                     ...(model?.options?.reasoningLevel
@@ -1958,6 +1996,233 @@ export function createZCodeTaskServiceAdapter(
       };
     },
 
+    async readBotTopicSummaries(params) {
+      const target = taskTargets.get(params.taskId);
+      if (target && taskKey(target) !== taskKey(params))
+        throw new Error("Topic task workspace mismatch");
+      const messages = await options.zcodeAgentService.readSessionMessages({
+        workspacePath: params.workspacePath,
+        workspaceIdentity: params.workspaceIdentity,
+        remoteSessionId: params.remoteSessionId ?? target?.remoteSessionId,
+        sessionId: params.taskId,
+        limit: 200,
+      });
+      return messages
+        .flatMap(({ info, parts }) => {
+          if (info.role !== "user" || info.source !== "bot_topic_context") return [];
+          return [
+            {
+              checkpoint: String(info.metadata?.checkpoint ?? ""),
+              text:
+                typeof info.metadata?.displayText === "string"
+                  ? info.metadata.displayText
+                  : textFromParts(parts),
+            },
+          ];
+        })
+        .slice(-20);
+    },
+
+    async invalidateBotTopicInputs(params) {
+      const target = getTaskTarget(params.taskId);
+      if (taskKey(target) !== taskKey(params)) throw new Error("Group task workspace mismatch");
+      const key = JSON.stringify([
+        taskKey(params),
+        params.remoteSessionId ?? target.remoteSessionId ?? null,
+      ]);
+      await topicAdmission.invalidate(key);
+    },
+    async readBotTopicExecution(params) {
+      const target = getTaskTarget(params.taskId);
+      if (taskKey(target) !== taskKey(params)) throw new Error("Group task workspace mismatch");
+      const workspace = {
+        ...params,
+        remoteSessionId: params.remoteSessionId ?? target.remoteSessionId,
+      };
+      const snapshot = await readBotGroupRuntimeSnapshot(botAgent(workspace), {
+        ...workspace,
+        sessionId: params.taskId,
+      });
+      if (snapshot.control.stopState === "idle") return undefined;
+      const execution = snapshot.control.activeWorks.find((work) => work.foregroundExecutionId);
+      if (!execution?.foregroundExecutionId)
+        throw new Error("Topic execution identity is unavailable");
+      return {
+        executionId: execution.foregroundExecutionId,
+        sourceCommandId: execution.sourceCommandId,
+      };
+    },
+    async stopBotTopicExecution(params) {
+      const target = getTaskTarget(params.taskId);
+      if (taskKey(target) !== taskKey(params)) throw new Error("Group task workspace mismatch");
+      const workspace = {
+        workspacePath: params.workspacePath,
+        workspaceIdentity: params.workspaceIdentity,
+        remoteSessionId: params.remoteSessionId ?? target.remoteSessionId,
+      };
+      const agent = botAgent(workspace);
+      // 先注册终态监听再停止，避免快速结束发生在 ACK 与订阅之间。
+      const observation = new AbortController();
+      const ended = waitBotGroupExecutionEnd(
+        agent,
+        { ...workspace, sessionId: params.taskId },
+        params.executionId,
+        observation.signal,
+      );
+      void ended.catch(() => undefined);
+      try {
+        const ack = await agent.sendConversationCommandV4({
+          ...workspace,
+          envelope: createHostCommandEnvelope({
+            type: "stop",
+            sessionId: params.taskId,
+            payload: { expectedForegroundExecutionId: params.executionId },
+          }),
+        });
+        assertV4CommandAckOk("stop", ack, `session=${params.taskId}`);
+        await ended;
+      } finally {
+        observation.abort();
+      }
+    },
+
+    async getBotGroupTaskBlockReason(params) {
+      const target = taskTargets.get(params.taskId);
+      if (target && taskKey(target) !== taskKey({ ...params, taskId: params.taskId }))
+        throw new Error("Group task workspace mismatch");
+      const snapshot = await readBotGroupRuntimeSnapshot(botAgent(params), {
+        ...params,
+        ...((params.remoteSessionId ?? target?.remoteSessionId)
+          ? { remoteSessionId: params.remoteSessionId ?? target?.remoteSessionId }
+          : {}),
+        sessionId: params.taskId,
+      });
+      if (snapshot.pendingInteractions.length > 0) return "interaction";
+      if (snapshot.control.phase === "running" || snapshot.control.phase === "prewarming")
+        return "running";
+      if (snapshot.queue.items.length > 0) return "queued";
+      return null;
+    },
+    async cancelBotGroupInput(params) {
+      const target = getTaskTarget(params.taskId);
+      if (
+        params.workspacePath &&
+        taskKey(target) !== taskKey({ ...params, workspacePath: params.workspacePath })
+      )
+        throw new Error("Group task workspace mismatch");
+      const workspace = {
+        workspacePath: params.workspacePath ?? target.workspacePath,
+        workspaceIdentity: params.workspaceIdentity ?? target.workspaceIdentity,
+        ...((params.remoteSessionId ?? target.remoteSessionId)
+          ? { remoteSessionId: params.remoteSessionId ?? target.remoteSessionId }
+          : {}),
+      };
+      const snapshot = await readBotGroupRuntimeSnapshot(botAgent(workspace), {
+        ...workspace,
+        sessionId: target.taskId,
+      });
+      const item = snapshot.queue.items.find(
+        (entry) => entry.sourceCommandId === params.sourceCommandId,
+      );
+      if (!item || item.dispatch.state !== "queued") throw new Error("Input is no longer queued");
+      const source = item.botGroupSource;
+      if (
+        !source ||
+        source.botId !== params.botId ||
+        source.chatId !== params.chatId ||
+        (params.actorId !== params.ownerId && source.senderId !== params.actorId)
+      )
+        throw new Error("Queue cancellation is not authorized");
+      return botAgent(workspace).sendConversationCommandV4({
+        ...workspace,
+        envelope: createHostCommandEnvelope({
+          type: "deleteQueueItem",
+          sessionId: target.taskId,
+          commandId: params.commandId,
+          baseRevision: snapshot.revision,
+          payload: { queueItemId: item.queueItemId },
+        }),
+      });
+    },
+
+    async submitBotGroupInput(params) {
+      const target = getTaskTarget(params.taskId);
+      if (
+        params.workspacePath &&
+        taskKey(target) !== taskKey({ ...params, workspacePath: params.workspacePath })
+      )
+        throw new Error("Group task workspace mismatch");
+      const workspace = {
+        workspacePath: params.workspacePath ?? target.workspacePath,
+        workspaceIdentity: params.workspaceIdentity ?? target.workspaceIdentity,
+        ...((params.remoteSessionId ?? target.remoteSessionId)
+          ? { remoteSessionId: params.remoteSessionId ?? target.remoteSessionId }
+          : {}),
+      };
+      const admissionKey = JSON.stringify([
+        taskKey({ ...workspace, taskId: target.taskId }),
+        workspace.remoteSessionId ?? null,
+      ]);
+      const version = topicAdmission.capture(admissionKey);
+      // Bug 原因：Host 重启后任务索引仍在，但 CLI 尚未加载原会话；直接 admission
+      // 会返回 sessionNotFound。复用后台订阅的冷恢复屏障，不依赖 Desktop 打开任务。
+      await readBotGroupRuntimeSnapshot(botAgent(workspace), {
+        ...workspace,
+        sessionId: target.taskId,
+      });
+      const attachments = await uploadBotGroupAttachments(
+        botAgent(workspace),
+        { ...workspace, sessionId: target.taskId },
+        params.attachments ?? [],
+      );
+      // 停止可以发生在附件上传期间；完成上传不代表旧输入仍允许被接受。
+      if (params.source.threadId && version !== topicAdmission.capture(admissionKey)) {
+        throw new Error("Topic input was cancelled during preparation");
+      }
+      const envelope = createHostCommandEnvelope({
+        type: "sendText",
+        sessionId: target.taskId,
+        commandId: params.commandId,
+        clientId: `bot:${params.source.botId}:${params.source.chatId}:${params.source.senderId}`,
+        payload: {
+          text: params.content,
+          attachments,
+          requestedDelivery: params.source.threadId ? "startNow" : "queue",
+          botGroupSource: params.source,
+          conversationQuotes: params.conversationQuotes,
+          botDeliveryTarget: {
+            provider: params.source.provider,
+            botId: params.source.botId,
+            providerUserId: params.source.chatId,
+            chatType: "group",
+            ...(params.source.threadId
+              ? { threadId: params.source.threadId, rootMessageId: params.source.rootMessageId }
+              : {}),
+          },
+        },
+      });
+      const send = async () => {
+        try {
+          return await botAgent(workspace).sendConversationCommandV4({
+            ...workspace,
+            envelope,
+          });
+        } catch (error) {
+          // ACK 丢失时查询同一个命令，不能生成新 ID 重发输入。
+          const query = await botAgent(workspace)
+            .queryConversationCommandsV4({
+              ...workspace,
+              commands: [{ sessionId: target.taskId, commandId: params.commandId }],
+            })
+            .catch(() => null);
+          const result = query?.results[0]?.result;
+          if (result && result !== "unknown") return result;
+          throw error;
+        }
+      };
+      return params.source.threadId ? topicAdmission.run(admissionKey, version, send) : send();
+    },
+
     async sendPrompt(params): Promise<void> {
       const storedTarget = getTaskTarget(params.taskId);
       const target = {
@@ -2022,7 +2287,7 @@ export function createZCodeTaskServiceAdapter(
       }
       // 列表读取也会缓存 taskTarget，但不意味着该 Host 的 CLI 已加载 B。
       // session/resume 对已活动会话是幂等读，对未加载会话先完成冷恢复。
-      const snapshot = await resumeTaskSnapshot({
+      const snapshot = await resumeSnapshot({
         taskId: target.taskId,
         workspacePath: target.workspacePath,
         workspaceIdentity: target.workspaceIdentity,
@@ -2196,7 +2461,10 @@ export function createZCodeTaskServiceAdapter(
         workspaceIdentity: target.workspaceIdentity,
         envelope: createHostCommandEnvelope({
           type: "stop",
-          payload: {},
+          // 话题停止必须保留已观察到的执行身份；日志 traceId 不能替代 CLI 执行身份。
+          payload: params.expectedForegroundExecutionId
+            ? { expectedForegroundExecutionId: params.expectedForegroundExecutionId }
+            : {},
           sessionId: params.taskId,
         }),
       });
@@ -2750,6 +3018,14 @@ export function createZCodeTaskServiceAdapter(
       return snapshot;
     },
 
+    async syncTaskSessionBinding(): Promise<ZCodeSyncTaskSessionBindingResult> {
+      unsupported("syncTaskSessionBinding");
+    },
+
+    async switchAgent(): Promise<ZCodeSwitchAgentResult> {
+      unsupported("switchAgent");
+    },
+
     async scanImportableClaudeSessions(params: {
       workspacePath?: string;
       workspaceIdentity?: string;
@@ -2928,6 +3204,14 @@ export function createZCodeTaskServiceAdapter(
       const snapshot = await resumeSnapshot(target);
       await syncTaskIndexSnapshot(snapshot);
       return settingsToConfigOptions(snapshot.settings);
+    },
+
+    async getWorkspaceProviderConfigFile(params) {
+      return {
+        provider: GLM_PROVIDER,
+        path: params.workspacePath,
+        exists: false,
+      };
     },
 
     async getTaskNativeSessionLogFile() {
@@ -3204,12 +3488,12 @@ export function createZCodeTaskServiceAdapter(
       rememberTaskTarget(target);
       return (listener) => {
         const localDisposable = getTaskEmitter(target).event(listener);
-        // 这里仍是 services/ 内旧 session/subscribe 词表的
-        // 最后消费点（replayable 的 stream 投影源）。写路径（send/stop/交互回执）
-        // 已收敛 v4 命令；读路径消费方是
-        // host 镜像 taskRealtimePort（词表同为 ZCodeStreamEvent），镜像换 v4 帧 = relay
-        // 协议与手机 store 整链重做。
-        // 过渡归宿 = replayable 读路径 v4 store，与 host/index.ts 镜像、
+        // M5 ③-2 复核（2026-07-06）：这里仍是 services/ 内旧 session/subscribe 词表的
+        // 最后消费点（replayable/bots 的 stream 投影源）。写路径（send/stop/交互回执）
+        // 本波已收敛 v4 命令；读路径消费方是 bots handleStreamEvent（10 种事件词表）与
+        // host 镜像 taskRealtimePort（词表同为 ZCodeStreamEvent），二者换 v4 帧 = relay
+        // 协议 + 手机 store + bots 投影整波重做（且 ui/store 本波由并行 agent 主修，避让）。
+        // 死期改判 = replayable 读路径 v4 store 波次（波次 3），与 host/index.ts 镜像、
         // mapStateUpdated/mapServiceEvent、agentService.onDynamicSessionEvent 同批摘除。
         const upstreamDisposable = options.zcodeAgentService.onDynamicSessionEvent({
           workspacePath: params.workspacePath,
@@ -3244,6 +3528,8 @@ export function createZCodeTaskServiceAdapter(
       // 必须在 agentService.disposeAll 前释放，否则 emitter dispose 时仍会回调到已失效的 syncer。
       // workspaceEmitters 已下沉到 syncer，由 syncer.disposeAll 统一回收。
       taskIndexSyncer.disposeAll();
+      for (const scope of botConnectionScopes.values()) void scope.dispose();
+      botConnectionScopes.clear();
       options.zcodeAgentService.disposeAll();
       disposeLocalTaskState();
     },
@@ -3257,6 +3543,8 @@ export function createZCodeTaskServiceAdapter(
       // app 退出必须先断开 task index syncer 的订阅，再等待 agent 进程树完成清理；
       // 否则 host 退出时会把 zcode-cli 的 SIGKILL 兜底 timer 一起带走。
       taskIndexSyncer.disposeAll();
+      await Promise.all([...botConnectionScopes.values()].map((scope) => scope.dispose()));
+      botConnectionScopes.clear();
       await disposeZCodeAgentServiceAndWait();
       disposeLocalTaskState();
     },
@@ -3388,11 +3676,17 @@ function toZCodeMode(mode: ZCodeTaskMode | undefined): ZCodeSessionMode | undefi
       // automation UI 保存的“自动编辑”使用 canonical edit。旧映射漏掉该值，
       // 调用方的 ?? build 会把权限模式静默降级成“变更前确认”。
       return "edit";
+    case "guarded":
+      return "guarded";
     case "yolo":
+    case "bypassPermissions":
+    case "dontAsk":
       return "yolo";
     case "auto":
       return "auto";
     case "build":
+    case "default":
+    case "acceptEdits":
     case "autoEdit":
       return "build";
     default:
@@ -4039,7 +4333,7 @@ function mapStateUpdated(
 function mapSessionEvent(
   params: TaskTarget,
   event: ZCodeSessionEvent,
-  streamedTurnKeys: Set<string>,
+  streamedTurnText: Map<string, { messageId?: string; text: string }>,
   activePromptInputId?: InputId,
   toolProjectionMemory?: ZCodeToolProjectionMemory,
   backgroundTaskControlsByTaskKey?: Map<string, ZCodeBackgroundTaskControlItem[]>,
@@ -4059,11 +4353,13 @@ function mapSessionEvent(
       `对齐 ZCode prompt inputId eventType=${event.type} protocolTrace=${protocolTraceId}`,
     );
   }
-  const turnKey = `${event.sessionId}:${event.turnId ?? eventInputId ?? traceId}`;
+  const turnKey = `${resolveWorkspaceKey(params)}:${event.sessionId}:${event.turnId ?? eventInputId ?? traceId}`;
 
   if (event.type === "turn.started") {
-    streamedTurnKeys.delete(turnKey);
+    streamedTurnText.delete(turnKey);
+    const inputOrigin = asRecord(payload.intent).inputOrigin;
     const runStartedEvent: ZCodeStreamEvent = {
+      ...(inputOrigin === "desktop" || inputOrigin === "mobile" ? { inputOrigin } : {}),
       type: "task_run_started",
       taskId: params.taskId,
       traceId,
@@ -4101,7 +4397,6 @@ function mapSessionEvent(
 
   const compactTimeline = mapCompactTimelinePayload(params.taskId, traceId, eventInputId, payload);
   if (compactTimeline) {
-    streamedTurnKeys.add(turnKey);
     return [compactTimeline];
   }
 
@@ -4112,7 +4407,6 @@ function mapSessionEvent(
     payload,
   );
   if (partTimeline) {
-    streamedTurnKeys.add(turnKey);
     return [partTimeline];
   }
 
@@ -4131,8 +4425,14 @@ function mapSessionEvent(
     payload,
   );
   if (modelStreaming) {
-    if (modelStreaming.type === "agent_message_chunk") {
-      streamedTurnKeys.add(turnKey);
+    if (modelStreaming.type === "agent_message_chunk" && !modelStreaming.parentToolUseId) {
+      const previous = streamedTurnText.get(turnKey);
+      const messageId = modelStreaming.messageId;
+      const sameMessage = !messageId || !previous?.messageId || messageId === previous.messageId;
+      streamedTurnText.set(turnKey, {
+        messageId: messageId ?? previous?.messageId,
+        text: (sameMessage ? (previous?.text ?? "") : "") + modelStreaming.content,
+      });
     }
     return apiRetryClearEvent ? [apiRetryClearEvent, modelStreaming] : [modelStreaming];
   }
@@ -4141,6 +4441,10 @@ function mapSessionEvent(
   }
 
   if (event.type === "tool.updated") {
+    // 工具调用前的前言不是最终回答；下一条模型消息需要独立核对已接收正文。
+    if (payload.kind === "scheduled" && !parentToolUseIdFromToolPayload(payload)) {
+      streamedTurnText.delete(turnKey);
+    }
     return mapToolUpdated(params.taskId, traceId, eventInputId, payload, toolProjectionMemory);
   }
 
@@ -4213,13 +4517,19 @@ function mapSessionEvent(
   if (event.type === "turn.completed") {
     const events: ZCodeStreamEvent[] = [];
     const response = stringValue(payload.response);
-    if (response && !streamedTurnKeys.has(turnKey)) {
+    // Bugfix: 只记录“本轮收到过文字”会让工具前言屏蔽最终回答兜底。
+    // 在终态之前补齐当前模型消息缺少的后缀；完整正文已到达时不重复投递。
+    const streamed = streamedTurnText.get(turnKey)?.text ?? "";
+    const missingResponse = response?.startsWith(streamed)
+      ? response.slice(streamed.length)
+      : response;
+    if (missingResponse) {
       events.push({
         type: "agent_message_chunk",
         taskId: params.taskId,
         traceId,
         ...(eventInputId ? { inputId: eventInputId } : {}),
-        content: response,
+        content: missingResponse,
       });
     }
     events.push({
@@ -4231,13 +4541,13 @@ function mapSessionEvent(
       usage: usageFromPayload(payload.usage),
     });
     toolProjectionMemory?.streamingToolInputById?.clear();
-    streamedTurnKeys.delete(turnKey);
+    streamedTurnText.delete(turnKey);
     return events;
   }
 
   if (event.type === "turn.failed") {
     toolProjectionMemory?.streamingToolInputById?.clear();
-    streamedTurnKeys.delete(turnKey);
+    streamedTurnText.delete(turnKey);
     const errorPayload = asRecord(payload.error);
     if (stringValue(payload.turnPhase) === "compact") {
       return [
@@ -4936,7 +5246,17 @@ function isSubagentDispatchToolName(toolName: string | undefined): boolean {
 function parentToolUseIdFromToolPayload(payload: Record<string, unknown>): string | null {
   // ZCode Protocol 发送的父级字段叫 parentToolCallId；
   // UI stream 模型统一消费 parentToolUseId，必须在服务投影层完成一次性归一。
-  return stringValue(payload.parentToolUseId) ?? stringValue(payload.parentToolCallId) ?? null;
+  return (
+    stringValue(payload.parentToolUseId) ??
+    stringValue(payload.parentToolCallId) ??
+    rawClaudeParentToolUseId(payload)
+  );
+}
+
+function rawClaudeParentToolUseId(raw: unknown): string | null {
+  const meta = asRecord(raw)._meta;
+  const claudeCode = asRecord(meta).claudeCode;
+  return stringValue(asRecord(claudeCode).parentToolUseId) ?? null;
 }
 
 function normalizeToolResultContent(

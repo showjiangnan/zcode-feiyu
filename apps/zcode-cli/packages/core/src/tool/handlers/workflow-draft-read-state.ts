@@ -1,5 +1,7 @@
+// Modified by ZCode Feiyu.
 // ============================================================
-// 内联草稿记作「模型写过的文件」
+// 内联草稿记作「模型写过的文件」（docs/dynamic-workflow/launch.md「Script files」→
+// 「An inline draft counts as written by the model」）
 // ============================================================
 // Edit / Write 拒绝会话没读过的文件（FILE_NOT_READ）：模型不能改它没见过的字节。内联草稿恰好是
 // 这条已经成立的文件——它的字节就是产生它的那次调用的 `script` 入参。不记这一笔，NOTE 要求的
@@ -12,11 +14,25 @@
 //
 // 与草稿本身一样**尽力而为**：stat 不到就不记，模型的第一次 Edit 退回「先 Read」的老路。
 
+// ============================================================
+// 内联草稿记作「模型写过的文件」（docs/dynamic-workflow/launch.md「Script files」→
+// 「An inline draft counts as written by the model」）
+// ============================================================
+// Edit / Write 拒绝会话没读过的文件（FILE_NOT_READ）：模型不能改它没见过的字节。内联草稿恰好是
+// 这条已经成立的文件——它的字节就是产生它的那次调用的 `script` 入参。不记这一笔，NOTE 要求的
+// 第一次 `Edit` 必然失败，补救是把模型自己刚写的两万 token 脚本整个 `Read` 一遍，正是草稿文件
+// 要省掉的那笔开销。
+//
+// **只由内联分支调用**：saved 拷贝（带模型没见过的元数据块）、沿用前驱脚本的新草稿（脚本可能
+// 来自别的会话或压缩之前）、中枢直接启动与 GUI 设置修订写下的草稿都不是模型本次亲手写的字节，
+// 记了就是替模型担保它没看过的内容。
+//
+// 与草稿本身一样**尽力而为**：stat 不到就不记，模型的第一次 Edit 退回「先 Read」的老路。
 import { createReadFileStateMetadataFromEntry } from "../read-file-state-metadata.js";
 import { createReadFileStateKey, normalizeReadFileStateMtimeMs } from "../read-file-state.js";
 import type { ReadFileStateEntry, ToolExecutionContext } from "../types.js";
 
-export type WorkflowDraftAuthoringTool = "CreateWorkflow" | "AmendWorkflow";
+export type WorkflowDraftAuthoringTool = "CreateWorkflow" | "AmendWorkflow" | "FillWorkflowHole";
 
 const CRLF_PATTERN = /\r\n/gu;
 const LF = "\n";

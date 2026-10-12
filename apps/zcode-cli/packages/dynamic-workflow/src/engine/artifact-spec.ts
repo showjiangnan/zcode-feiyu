@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 预置产物 spec 的形状校验。
  *
@@ -78,7 +79,8 @@ function checkShape(op: ArtifactPresetOp, spec: Record<string, unknown>): Artifa
   }
   if (op === "metrics") return checkFieldList(spec.metrics, "metrics");
   // board
-  if (!isNonEmptyString(spec.key)) return "board spec key must be a non-empty string (the field that identifies a card)";
+  if (!isNonEmptyString(spec.key))
+    return "board spec key must be a non-empty string (the field that identifies a card)";
   if (!isNonEmptyString(spec.status)) {
     return "board spec status must be a non-empty string (the field that picks a card's column)";
   }
@@ -100,7 +102,8 @@ function checkShape(op: ArtifactPresetOp, spec: Record<string, unknown>): Artifa
 /** 公共的展示元数据（`ArtifactOptions`）：类型与长度。 */
 function checkOptions(spec: Record<string, unknown>): ArtifactSpecProblem {
   if (spec.title !== undefined) {
-    if (typeof spec.title !== "string") return `spec title must be a string, got ${describe(spec.title)}`;
+    if (typeof spec.title !== "string")
+      return `spec title must be a string, got ${describe(spec.title)}`;
     if (spec.title.length > ARTIFACT_CAPS.maxTitleLength) {
       return `spec title is ${spec.title.length} characters, over the ${ARTIFACT_CAPS.maxTitleLength} limit`;
     }
@@ -110,8 +113,10 @@ function checkOptions(spec: Record<string, unknown>): ArtifactSpecProblem {
       return `spec description must be a string, got ${describe(spec.description)}`;
     }
     if (spec.description.length > ARTIFACT_CAPS.maxDescriptionLength) {
-      return `spec description is ${spec.description.length} characters, over the ` +
-      `${ARTIFACT_CAPS.maxDescriptionLength} limit`;
+      return (
+        `spec description is ${spec.description.length} characters, over the ` +
+        `${ARTIFACT_CAPS.maxDescriptionLength} limit`
+      );
     }
   }
   if (spec.primary !== undefined && typeof spec.primary !== "boolean") {

@@ -1,8 +1,9 @@
+// Modified by ZCode Feiyu.
 import type { DockerContainerInfo, IPlatformService } from "@zcode/shared";
 
 type DockerOptionsPlatform = Pick<IPlatformService, "isDockerAvailable" | "listDockerContainers">;
 
-interface RemoteConnectionDockerOptionsResult {
+export interface RemoteConnectionDockerOptionsResult {
   dockerAvailable: boolean | null;
   dockerContainers: DockerContainerInfo[];
   error: string;

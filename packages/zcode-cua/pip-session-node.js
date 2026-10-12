@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { request } from "./src/adapters/ipc-client.js";
 export function createPipSessionClient(options = {}) {
   let closed = false;

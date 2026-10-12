@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 远端 Skill 同步弹窗集中维护加载、选择、预检和结果状态，拆分会增加跨状态传递复杂度。 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, UploadCloud } from "lucide-react";
@@ -45,7 +46,7 @@ interface RemoteSkillSyncDialogProps {
   onSynced: () => Promise<void> | void;
 }
 
-function buildRemoteSkillSyncRows(
+export function buildRemoteSkillSyncRows(
   candidates: readonly SkillSyncCandidate[],
   statuses: readonly SkillSyncRemoteStatus[],
 ): RemoteSkillSyncRow[] {
@@ -56,11 +57,13 @@ function buildRemoteSkillSyncRows(
   }));
 }
 
-function resolveDefaultRemoteSkillSyncSelection(rows: readonly RemoteSkillSyncRow[]): Set<string> {
+export function resolveDefaultRemoteSkillSyncSelection(
+  rows: readonly RemoteSkillSyncRow[],
+): Set<string> {
   return new Set(rows.filter((row) => !row.exists).map((row) => row.candidate.id));
 }
 
-function filterRemoteSkillSyncRows(
+export function filterRemoteSkillSyncRows(
   rows: readonly RemoteSkillSyncRow[],
   showExistingRemoteSkills: boolean,
 ): RemoteSkillSyncRow[] {
@@ -80,7 +83,7 @@ export function formatRemoteSkillSyncTarget(
   return workspacePath ? `${target} · ${workspacePath}` : target;
 }
 
-function formatRemoteSkillSyncError(
+export function formatRemoteSkillSyncError(
   error: unknown,
   intl: Pick<IntlInstance, "formatMessage">,
 ): string {
@@ -136,7 +139,7 @@ function formatSkillSyncBytes(bytes: number): string {
   return `${Number.isInteger(mebibytes) ? mebibytes : mebibytes.toFixed(1)} MiB`;
 }
 
-function getRemoteSkillSyncBulkSelectionState({
+export function getRemoteSkillSyncBulkSelectionState({
   selectedCount,
   totalSelectable,
 }: {
@@ -149,7 +152,7 @@ function getRemoteSkillSyncBulkSelectionState({
   return { checked, disabled, indeterminate };
 }
 
-function RemoteSkillSyncExistingFilterCheckbox({
+export function RemoteSkillSyncExistingFilterCheckbox({
   checked,
   onCheckedChange,
 }: {
@@ -171,7 +174,7 @@ function RemoteSkillSyncExistingFilterCheckbox({
   );
 }
 
-function RemoteSkillSyncTargetRow({
+export function RemoteSkillSyncTargetRow({
   targetLabel,
   showExistingRemoteSkills,
   showExistingFilter,
@@ -201,7 +204,7 @@ function RemoteSkillSyncTargetRow({
   );
 }
 
-function RemoteSkillSyncBulkSelectionCheckbox({
+export function RemoteSkillSyncBulkSelectionCheckbox({
   selectedCount,
   totalSelectable,
   onSelectAll,
@@ -421,7 +424,7 @@ export function RemoteSkillSyncDialog(props: RemoteSkillSyncDialogProps) {
           />
         </DialogHeader>
 
-        {/* 筛选会改变可见 rows 数量，DialogContent 固定高度后由列表区内部滚动；
+        {/* 修复原因：筛选会改变可见 rows 数量，DialogContent 固定高度后由列表区内部滚动；
             否则空态按内容收缩会造成弹窗跳动，长列表也会把底部操作栏挤出窗口。 */}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {error ? (

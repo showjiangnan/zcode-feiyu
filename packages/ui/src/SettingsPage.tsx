@@ -1,16 +1,75 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) */
-import { ArrowLeft, Rocket, type LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button.js";
+import { toast } from "@/components/ui/toast.js";
+import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
+import { usePlatform } from "@/hooks/usePlatform.js";
+import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
+import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ButtonHTMLAttributes,
-  type ReactNode,
-} from "react";
+  resolveEntitledAccountProviderAccess,
+  resolveEntitledAccountProviderAccessFingerprint,
+} from "@/lib/accountProviderAccess.js";
+import { buildPersonalCodingPlanUsageSource } from "@/lib/codingPlanUsageSources.js";
+import {
+  finishMarketingNavigation,
+  marketingNavigation,
+  marketingSettingsSections,
+} from "@/lib/marketingNavigation.js";
+import { getPathLeaf } from "@/lib/path.js";
+import {
+  addPendingSettingsSectionListener,
+  clearPendingSettingsPluginOrigin,
+  clearPendingSettingsPluginScopeKey,
+  consumeInitialSettingsSection,
+  consumePendingSettingsModelProviderTarget,
+  consumePendingSettingsPluginOrigin,
+  consumePendingSettingsPluginScopeKey,
+  consumePendingSettingsPluginTab,
+  consumePendingSettingsUsageTab,
+  resolveSettingsSection,
+  shouldFallbackSettingsUsageTabToApp,
+  writeLastSettingsSectionPreference,
+  type SettingsModelProviderTarget,
+} from "@/lib/settingsNavigation.js";
+import { readSidebarUsageCodingPlanSourcePreference } from "@/lib/sidebarUsageCodingPlanProviderPreference.js";
+import { buildUsageEntitlementCacheKey } from "@/lib/usageEntitlementCache.js";
+import { AutomationsSection } from "@/settings/AutomationsSection.js";
+import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
+import { useCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
+import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
+import { HooksSection } from "@/settings/HooksSection.js";
+import { ImageGenerationSettingsSection } from "@/settings/ImageGenerationSettingsSection.js";
+import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
+import { MigrationSection } from "@/settings/MigrationSection.js";
+import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
+import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
+import { PluginsSection } from "@/settings/PluginsSection.js";
+import { SegmentPill } from "@/settings/PluginStoreListView.js";
+import {
+  SettingsBreadcrumbProvider,
+  SettingsHeaderBreadcrumb,
+  type SettingsBreadcrumbItem,
+} from "@/settings/SettingsHeaderBreadcrumb.js";
+import { SETTINGS_FRAME_CONTENT_CLASSNAME } from "@/settings/SettingsPageParts.js";
+import { ShortcutSettingsSection } from "@/settings/ShortcutSettingsSection.js";
+import { SubagentsSection } from "@/settings/SubagentsSection.js";
+import {
+  buildCodingPlanUsageSources,
+  type CodingPlanUsageSource,
+} from "@/settings/usage-stats/CodingPlanUsagePanel.js";
+import { UsageStatsSection, type UsageStatsSectionTab } from "@/settings/UsageStatsSection.js";
+import { WorkspaceFileSearchSection } from "@/settings/WorkspaceFileSearchSection.js";
+import { useZCodeStore } from "@/store/StoreProvider.js";
+import { isWorkspaceTab } from "@/store/tabStore.js";
+import { useTabStore } from "@/store/TabStoreProvider.js";
+import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
+import type { Theme } from "@/useTheme.js";
+import { WindowsTopLeftLogo } from "@/WindowsTopLeftLogo.js";
 import type {
   AppSettings,
+  DesktopCloseToTrayCapability,
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
   Locale,
@@ -20,99 +79,34 @@ import type {
 } from "@zcode/shared";
 import {
   BUILTIN_MODEL_PROVIDER_IDS,
+  testId,
   TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_PAGE,
   TID_SETTINGS_SECTION_NAV,
   TID_SETTINGS_USAGE_TAB,
-  testId,
 } from "@zcode/shared";
-import { Button } from "@/components/ui/button.js";
-import { toast } from "@/components/ui/toast.js";
-import { DesktopWindowFrame } from "@/DesktopWindowFrame.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { usePlatform } from "@/hooks/usePlatform.js";
-import { getPathLeaf } from "@/lib/path.js";
-import { useProviderSettingsView } from "@/hooks/useProviderSettingsView.js";
-import { useUsageEntitlement } from "@/hooks/useUsageEntitlement.js";
+import { ArrowLeft, Rocket, type LucideIcon } from "lucide-react";
 import {
-  addPendingSettingsSectionListener,
-  clearPendingSettingsPluginOrigin,
-  clearPendingSettingsPluginScopeKey,
-  consumeInitialSettingsSection,
-  consumePendingSettingsPluginOrigin,
-  consumePendingSettingsPluginScopeKey,
-  consumePendingSettingsPluginTab,
-  consumePendingSettingsModelProviderTarget,
-  consumePendingSettingsUsageTab,
-  resolveSettingsSection,
-  shouldFallbackSettingsUsageTabToApp,
-  writeLastSettingsSectionPreference,
-  type SettingsModelProviderTarget,
-} from "@/lib/settingsNavigation.js";
-import { readSidebarUsageCodingPlanSourcePreference } from "@/lib/sidebarUsageCodingPlanProviderPreference.js";
-import {
-  resolveEntitledAccountProviderAccess,
-  resolveEntitledAccountProviderAccessFingerprint,
-} from "@/lib/accountProviderAccess.js";
-import { buildUsageEntitlementCacheKey } from "@/lib/usageEntitlementCache.js";
-import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
-import { useCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
-import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
-import { UsageStatsSection, type UsageStatsSectionTab } from "@/settings/UsageStatsSection.js";
-import {
-  buildCodingPlanUsageSources,
-  type CodingPlanUsageSource,
-} from "@/settings/usage-stats/CodingPlanUsagePanel.js";
-import { buildPersonalCodingPlanUsageSource } from "@/lib/codingPlanUsageSources.js";
-import { SubagentsSection } from "@/settings/SubagentsSection.js";
-import { AutomationsSection } from "@/settings/AutomationsSection.js";
-import { SegmentPill } from "@/settings/PluginStoreListView.js";
-import { PluginsSection } from "@/settings/PluginsSection.js";
-import { HooksSection } from "@/settings/HooksSection.js";
-import { WorkspaceFileSearchSection } from "@/settings/WorkspaceFileSearchSection.js";
-import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
-import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
-import { ImageGenerationSettingsSection } from "@/settings/ImageGenerationSettingsSection.js";
-import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
-import { ShortcutSettingsSection } from "@/settings/ShortcutSettingsSection.js";
-import { MigrationSection } from "@/settings/MigrationSection.js";
-import { SETTINGS_FRAME_CONTENT_CLASSNAME } from "@/settings/SettingsPageParts.js";
-import {
-  SettingsBreadcrumbProvider,
-  SettingsHeaderBreadcrumb,
-  type SettingsBreadcrumbItem,
-} from "@/settings/SettingsHeaderBreadcrumb.js";
-import { useZCodeStore } from "@/store/StoreProvider.js";
-import { useTabStore } from "@/store/TabStoreProvider.js";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-import { isWorkspaceTab } from "@/store/tabStore.js";
-import type { Theme } from "@/useTheme.js";
-import { WindowsTopLeftLogo } from "@/WindowsTopLeftLogo.js";
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from "react";
+import { useStore } from "zustand";
 
-import { DesktopWindowControls } from "@/DesktopWindowControls.js";
-import { WorkspaceHelpMenuButton } from "@/WorkspaceHelpMenuButton.js";
-import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import type { CreateTaskRequest } from "@/app-shell/types.js";
 import { cn } from "@/components/lib/utils.js";
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { DesktopWindowControls } from "@/DesktopWindowControls.js";
 import { useSelectDirectory } from "@/hooks/usePlatform.js";
 import { ServiceProvider, useServices } from "@/hooks/useServices.js";
-import type { IServiceAccessor } from "@zcode/services";
-import { RcsSettingsSection } from "@/settings/RcsSettingsSection.js";
-import { SshSettingsSection } from "@/settings/SshSettingsSection.js";
-import { BotsSettingsSection } from "@/settings/BotsSettingsSection.js";
 import { useSettings } from "@/hooks/useSettingService.js";
-import type { CreateTaskRequest } from "@/app-shell/types.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { resolveModelProviderConnectivityWorkspacePath } from "@/lib/modelProviderConnectivityTarget.js";
-import {
-  createSettingsPageConfig,
-  GeneralSectionContent,
-  GeneralSectionHeader,
-  resolveSettingsSectionForPlatform,
-} from "./settingsPageHelpers.js";
-import { AppearanceSectionContent } from "./settingsCodePreview.js";
-import type { SettingsSectionId } from "@/lib/settingsNavigation.js";
 import { requestPluginStoreOpen } from "@/lib/pluginStoreNavigation.js";
+import type { SettingsSectionId } from "@/lib/settingsNavigation.js";
 import {
   runUserAction,
   runUserActionAsync,
@@ -120,6 +114,19 @@ import {
   type UserActionTrigger,
 } from "@/lib/userActionTelemetry.js";
 import type { SettingsUserActionFeatureId } from "@/lib/userActionTraceCatalog.js";
+import { BotsSettingsSection } from "@/settings/BotsSettingsSection.js";
+import { RcsSettingsSection } from "@/settings/RcsSettingsSection.js";
+import { SshSettingsSection } from "@/settings/SshSettingsSection.js";
+import { WorkspaceHelpMenuButton } from "@/WorkspaceHelpMenuButton.js";
+import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
+import type { IServiceAccessor } from "@zcode/services";
+import { AppearanceSectionContent } from "./settingsCodePreview.js";
+import {
+  createSettingsPageConfig,
+  GeneralSectionContent,
+  GeneralSectionHeader,
+  resolveSettingsSectionForPlatform,
+} from "./settingsPageHelpers.js";
 
 function runSettingsActionAsync<T>(options: {
   featureId: SettingsUserActionFeatureId;
@@ -280,12 +287,13 @@ export function SettingsPage({
   isDesktop,
   isWindowsDesktop,
   isMacDesktop,
+  isWebRemoteControl = false,
   windowsWindowControlsRightPaddingPx: _windowsWindowControlsRightPaddingPx,
   captionWorkspacePath,
   onBack,
   onCreateTask,
-  onOpenWorkspace,
-  allowOpenWorkspace = true,
+  onOpenWorkspace: _onOpenWorkspace,
+  allowOpenWorkspace: _allowOpenWorkspace = true,
   onLogin,
   onLogout,
   user,
@@ -295,6 +303,7 @@ export function SettingsPage({
   isDesktop?: boolean;
   isWindowsDesktop?: boolean;
   isMacDesktop?: boolean;
+  isWebRemoteControl?: boolean;
   windowsWindowControlsRightPaddingPx?: number;
   captionWorkspacePath?: string | null;
   onBack?: () => void;
@@ -330,6 +339,49 @@ export function SettingsPage({
     return visibleInitialSection;
   });
   const [pluginTab, setPluginTab] = useState(() => consumePendingSettingsPluginTab());
+  // Linux 关闭驻留托盘能力查询（spec：docs/desktop/linux-close-to-tray.md）：打开设置页时
+  // 经 platform IPC 触发 main 侧探测（带 stale 缓存），用户装完 AppIndicator 扩展重开
+  // 设置页即可解除置灰；Web/远控无桥不查询。
+  const [linuxCloseToTrayCapability, setLinuxCloseToTrayCapability] =
+    useState<DesktopCloseToTrayCapability | null>(null);
+  useEffect(() => {
+    if (!isLinuxDesktop) {
+      return;
+    }
+    let cancelled = false;
+    platform
+      .getCloseToTrayCapability?.()
+      .then((capability) => {
+        if (!cancelled) {
+          setLinuxCloseToTrayCapability(capability);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isLinuxDesktop, platform]);
+  const linuxCloseToTray = isLinuxDesktop
+    ? {
+        // 探测中按不可用锁定，防止查询完成前误开导致关窗失联
+        disabled: linuxCloseToTrayCapability === null || !linuxCloseToTrayCapability.supported,
+        unavailable: linuxCloseToTrayCapability?.supported === false,
+        gnomeLikeHint:
+          linuxCloseToTrayCapability?.supported === false &&
+          linuxCloseToTrayCapability.gnomeLikeWithoutTray,
+      }
+    : undefined;
+  const marketingRequest = useStore(marketingNavigation, (state) => state.request);
+  useEffect(() => {
+    if (marketingRequest?.target.page !== "settings") return;
+    const target = marketingRequest.target;
+    const section = target.section ? marketingSettingsSections[target.section] : activeSection;
+    if (!settingsSections.some((item) => item.id === section)) {
+      finishMarketingNavigation(marketingRequest.id, new Error("marketing_navigation_unavailable"));
+    } else if (activeSection === section && !target.provider_id) {
+      finishMarketingNavigation(marketingRequest.id);
+    }
+  }, [activeSection, marketingRequest, settingsSections]);
   const [pluginNavigationOrigin, setPluginNavigationOrigin] = useState(() =>
     consumePendingSettingsPluginOrigin(),
   );
@@ -638,7 +690,7 @@ export function SettingsPage({
   const activeWorkspaceIdentity = useTabStore(
     (state) => state.activeWorkspaceIdentity ?? undefined,
   );
-  const activeTaskId = useZCodeSessionStore((state) =>
+  const _activeTaskId = useZCodeSessionStore((state) =>
     activeWorkspacePath
       ? state.getWorkspaceState(activeWorkspacePath, activeWorkspaceIdentity).activeTaskId
       : null,
@@ -732,7 +784,7 @@ export function SettingsPage({
     useState(false);
   const [taskAutoArchiveEnabled, setTaskAutoArchiveEnabled] = useState(false);
   const [taskAutoArchiveOlderThanDays, setTaskAutoArchiveOlderThanDays] = useState(7);
-  const [closeToTrayOnWindows, setCloseToTrayOnWindows] = useState(true);
+  const [closeToTrayOnWindows, setCloseToTrayOnWindows] = useState(Boolean(isWindowsDesktop));
   const [
     desktopChromiumHardwareAccelerationEnabled,
     setDesktopChromiumHardwareAccelerationEnabled,
@@ -817,7 +869,7 @@ export function SettingsPage({
         );
         setTaskAutoArchiveEnabled(settings.taskAutoArchiveEnabled ?? false);
         setTaskAutoArchiveOlderThanDays(settings.taskAutoArchiveOlderThanDays ?? 7);
-        setCloseToTrayOnWindows(settings.closeToTrayOnWindows ?? true);
+        setCloseToTrayOnWindows(settings.closeToTrayOnWindows ?? Boolean(isWindowsDesktop));
         setDesktopChromiumHardwareAccelerationEnabled(
           settings.desktopChromiumHardwareAccelerationEnabled ?? true,
         );
@@ -850,7 +902,7 @@ export function SettingsPage({
           });
       })
       .catch(() => {});
-  }, [localHostServices.systemService, services.settingService]);
+  }, [localHostServices.systemService, services.settingService, isWindowsDesktop]);
 
   useEffect(() => {
     if (!sharedSettings) {
@@ -1483,7 +1535,7 @@ export function SettingsPage({
 
           {usesInlineWindowControls ? (
             <div className="absolute right-1 top-1 z-30 mt-px mr-px flex h-12 items-center gap-0.5 px-2 pointer-events-auto [app-region:no-drag]">
-              {/* Windows/Linux 设置页仍保留旧 caption 下箭头，与主界面和 macOS 的帮助入口不一致。
+              {/* Bug 原因：Windows/Linux 设置页仍保留旧 caption 下箭头，与主界面和 macOS 的帮助入口不一致。
                   统一复用问号帮助按钮，并让它在普通 flex 流中紧邻自绘窗控。
                   Settings 的独立标题层还需计入 4px 外层留白和 1px 边框，才能与 Workspace 控制组对齐。 */}
               <WorkspaceHelpMenuButton isDesktop={Boolean(isDesktop)} />
@@ -1764,6 +1816,8 @@ export function SettingsPage({
                             isDesktop={isDesktop}
                             isWindowsDesktop={isWindowsDesktop}
                             isMacDesktop={isMacDesktop}
+                            isLinuxDesktop={isLinuxDesktop}
+                            linuxCloseToTray={linuxCloseToTray}
                             platform={platform}
                             notificationEnabled={notificationEnabled}
                             notificationSoundEnabled={notificationSoundEnabled}
@@ -1966,6 +2020,7 @@ export function SettingsPage({
                             isDesktop={Boolean(isDesktop)}
                             isMacDesktop={Boolean(isMacDesktop)}
                             isWindowsDesktop={Boolean(isWindowsDesktop)}
+                            isWebRemoteControl={isWebRemoteControl}
                             initialTab={pluginTab}
                             initialScopeKey={pluginScopeKey}
                             workspacePath={activeWorkspacePath}
@@ -1982,6 +2037,7 @@ export function SettingsPage({
                           <PluginsSection
                             key={`mcp:${settingsSectionNavigationVersion}`}
                             mode="mcp"
+                            isWebRemoteControl={isWebRemoteControl}
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                             onCreateTask={onCreateTask}
@@ -1995,6 +2051,7 @@ export function SettingsPage({
                           <PluginsSection
                             key={`skill:${settingsSectionNavigationVersion}`}
                             mode="skill"
+                            isWebRemoteControl={isWebRemoteControl}
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                             onCreateTask={onCreateTask}
@@ -2032,6 +2089,7 @@ export function SettingsPage({
                         ) : activeSection === "commands" ? (
                           <PluginsSection
                             mode="command"
+                            isWebRemoteControl={isWebRemoteControl}
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                             onCreateTask={onCreateTask}

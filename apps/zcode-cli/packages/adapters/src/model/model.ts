@@ -1,15 +1,15 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import {
   ModelErrorCode,
   ModelFailureReason,
   ModelProtocolError,
   type Model,
   type ModelEvent,
+  type ModelId,
   type ModelOptionSpecs,
   type ModelOptions,
   type ModelProperties,
   type ModelPropertiesInput,
-  type ModelId,
   type ModelProviderId,
   type ModelRequest,
   type ModelResult,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // ListWorkflowRuns Tool Handler
 // ============================================================
@@ -7,6 +8,14 @@
 // （端口的 `DynamicWorkflowRunListItem` 注释解释了为什么原料不过边界）。这里只做三件事：
 // 取端口、把 cwd 钉成本会话的工作目录、把结果投影成契约形状。
 
+// ============================================================
+// ListWorkflowRuns Tool Handler
+// ============================================================
+// 按项目（= 会话的工作目录）枚举 workflow run，含跨会话历史。
+//
+// handler 刻意**很薄**：标签、归属标注、状态合成、时间戳都由 run service 烹熟了交出来
+// （端口的 `DynamicWorkflowRunListItem` 注释解释了为什么原料不过边界）。这里只做三件事：
+// 取端口、把 cwd 钉成本会话的工作目录、把结果投影成契约形状。
 import {
   LIST_WORKFLOW_RUNS_TOOL_NAME,
   ListWorkflowRunsInputJsonSchema,
@@ -183,7 +192,8 @@ export const listWorkflowRunsToolEntry: ToolEntry = {
   cancellation: {
     supported: false,
     cleanup: "none",
-    userVisibleMessage: "ListWorkflowRuns reads the run journal synchronously and cannot be cancelled",
+    userVisibleMessage:
+      "ListWorkflowRuns reads the run journal synchronously and cannot be cancelled",
   },
   trace: {
     required: true,

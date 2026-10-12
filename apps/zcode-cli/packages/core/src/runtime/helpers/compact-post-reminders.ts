@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { ESTIMATED_TOKEN_CHAR_DIVISOR } from "@zcode/shared";
 import type { ReadFileStateEntry, ReadFileStateMap } from "../deps.js";
 import {
@@ -114,7 +115,11 @@ function addReadLineNumbers(content: string, startLine: number): string {
 
 function shouldSkipPostCompactReadStatePath(filePath: string): boolean {
   const normalized = normalizePostCompactReadStatePath(filePath);
-  return normalized.includes("/.git/");
+  return (
+    normalized.includes("/.codex/memories/") ||
+    normalized.includes("/docs/superpowers/plans/") ||
+    normalized.includes("/.git/")
+  );
 }
 
 function normalizePostCompactReadStatePath(filePath: string): string {

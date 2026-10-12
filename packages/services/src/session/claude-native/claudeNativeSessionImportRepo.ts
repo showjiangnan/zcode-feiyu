@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { copyFile, mkdir, readdir, rename, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, normalize, resolve, sep } from "node:path";
@@ -45,7 +46,7 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-class ClaudeNativeSessionImportRepo {
+export class ClaudeNativeSessionImportRepo {
   private getNativeProjectsRoots(): string[] {
     const homes = new Set<string>();
     homes.add(homedir());

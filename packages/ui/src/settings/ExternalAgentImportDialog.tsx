@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 外部 Agent 导入弹窗复用 skills/commands 的交互状态机，业务扫描与导入在服务层按类别分开 */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -123,7 +124,7 @@ function readResourceSelectionKey(key: string): ResourceSelectionKeyPayload | nu
   }
 }
 
-function buildExternalAgentImportSelections(
+export function buildExternalAgentImportSelections(
   selectedKeys: string[],
   targetScope: SettingsSyncSourceScope,
   importMode: SettingsSyncImportMode,
@@ -328,6 +329,10 @@ export function SkillsImportDialog(props: ExternalAgentImportDialogProps) {
 
 export function CommandsImportDialog(props: ExternalAgentImportDialogProps) {
   return <ExternalAgentImportDialog {...props} category="commands" />;
+}
+
+export function PluginsImportDialog(props: ExternalAgentImportDialogProps) {
+  return <ExternalAgentImportDialog {...props} category="plugins" />;
 }
 
 export function McpServersImportDialog(props: ExternalAgentImportDialogProps) {

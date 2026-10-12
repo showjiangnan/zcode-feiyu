@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { createUuid } from "@zcode/shared";
 import { getAppConfigDir } from "@zcode/services/node";
 
-interface EnsureDesktopDeviceMidSyncOptions {
+export interface EnsureDesktopDeviceMidSyncOptions {
   /** state 文件所在目录，默认 getAppConfigDir()（即 ~/.zcode/v2）。仅测试注入 */
   configDir?: string;
   /** UUID 生成器，默认 createUuid。仅测试注入 */
@@ -33,14 +34,14 @@ export function ensureDesktopDeviceMidSync(options?: EnsureDesktopDeviceMidSyncO
     const configDir = options?.configDir ?? getAppConfigDir();
     const stateFile = join(configDir, "telemetry-state.json");
 
-    const state = readDeviceStateSync(stateFile);
+    const state = readTelemetryStateSync(stateFile);
     if (typeof state.deviceMid === "string" && state.deviceMid) {
       return state.deviceMid;
     }
 
     const deviceMid = createId();
     state.deviceMid = deviceMid;
-    writeDeviceStateSync(stateFile, state);
+    writeTelemetryStateSync(stateFile, state);
     return deviceMid;
   } catch {
     // fs / JSON 异常兜底：保证一定有返回值，窗口创建不阻塞
@@ -48,7 +49,7 @@ export function ensureDesktopDeviceMidSync(options?: EnsureDesktopDeviceMidSyncO
   }
 }
 
-function readDeviceStateSync(stateFile: string): Record<string, unknown> {
+function readTelemetryStateSync(stateFile: string): Record<string, unknown> {
   try {
     const raw = readFileSync(stateFile, "utf-8");
     const parsed = JSON.parse(raw) as unknown;
@@ -58,7 +59,7 @@ function readDeviceStateSync(stateFile: string): Record<string, unknown> {
   }
 }
 
-function writeDeviceStateSync(stateFile: string, state: Record<string, unknown>): void {
+function writeTelemetryStateSync(stateFile: string, state: Record<string, unknown>): void {
   const dir = dirname(stateFile);
   mkdirSync(dir, { recursive: true });
   const tempFile = `${stateFile}.${process.pid}.tmp`;

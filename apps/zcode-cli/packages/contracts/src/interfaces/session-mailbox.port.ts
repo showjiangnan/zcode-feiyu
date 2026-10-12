@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { SessionId } from "./shared.js";
 
 export interface SessionMailboxEnvelope {

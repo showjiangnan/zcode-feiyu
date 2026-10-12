@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
@@ -20,7 +21,7 @@ export interface ServerLayout {
   readonly updateTransactionFile: string;
 }
 
-function getDefaultServerDataRoot(): string {
+export function getDefaultServerDataRoot(): string {
   const configured = process.env.ZCODE_DATA_BASE_DIR?.trim();
   return join(configured || homedir(), ".zcode", "server");
 }
@@ -104,7 +105,7 @@ export function isPathWithin(rootPath: string, candidatePath: string): boolean {
   return diff === "" || (!diff.startsWith("..") && !diff.split(sep).includes(".."));
 }
 
-interface UninstallTargetValidation {
+export interface UninstallTargetValidation {
   ok: boolean;
   reason?: "outside-server-root" | "home-directory" | "non-absolute";
   canonicalPath?: string;
@@ -128,10 +129,18 @@ export function validateUninstallTarget(
   return { ok: true, canonicalPath };
 }
 
-function assertServerDataRoot(serverRoot: string): string {
+export async function canonicalExistingPath(pathValue: string): Promise<string> {
+  return await realpath(pathValue);
+}
+
+export function assertServerDataRoot(serverRoot: string): string {
   const resolved = resolve(serverRoot);
   if (!isAbsolute(resolved) || resolved === dirname(resolved)) {
     throw new Error("Invalid server data root");
   }
   return resolved;
+}
+
+export function serverDataRootFromBase(baseDir: string): string {
+  return join(resolve(baseDir), ".zcode", "server");
 }

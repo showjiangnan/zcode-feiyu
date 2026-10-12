@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * dwf_* journal 表的行 ↔ 记录映射。
  *
@@ -431,7 +432,9 @@ export function decodeNode(row: DwfNodeRow): NodeRecord {
   return record;
 }
 
-export function decodeEvent(row: DwfEventRow): StoredEvent {
+export function decodeEvent(
+  row: Pick<DwfEventRow, "payload_json" | "sequence" | "time_created">,
+): StoredEvent {
   return {
     sequence: row.sequence,
     event: JSON.parse(row.payload_json) as RunEvent,

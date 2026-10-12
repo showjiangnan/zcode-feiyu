@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 工作流一族工具的**按名字**识别，三处原本各自一份同款匹配器的合并：
  * - 可复用工作流：`SaveWorkflow` / `ListSavedWorkflows`；
@@ -96,4 +97,13 @@ export function isCreateWorkflowToolCall(source: WorkflowToolNameSource): boolea
  */
 export function isAmendWorkflowToolCall(source: WorkflowToolNameSource): boolean {
   return matchesToolName(source, "amendworkflow");
+}
+
+/**
+ * 留白补全（docs/dynamic-workflow/launch.md「The `FillWorkflowHole` tool」）。与修订同一条路：已登记进
+ * workflow family（确认窗按 family 选运行确认块），工具行由 create-workflow 渲染器换一套留白词汇
+ * ——「正在补全留白 / 留白补全草稿 / 留白已补全」（docs/dynamic-workflow/presentation.md「The fill row」）。
+ */
+export function isFillWorkflowHoleToolCall(source: WorkflowToolNameSource): boolean {
+  return matchesToolName(source, "fillworkflowhole");
 }

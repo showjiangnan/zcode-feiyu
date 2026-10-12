@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * useStorageUsage —— 资源管理器「存储」tab 的数据源，输入是 preload 暴露的 StorageManagementBridge。
  * 生命周期与 tab 绑定：enabled 时开始扫描并订阅进度，卸载 / 切走时取消；
@@ -13,9 +14,9 @@ import type {
 } from "@zcode/shared";
 import { logger } from "@/logger.js";
 
-const STORAGE_SCAN_BLUR_CANCEL_MS = 60_000;
+export const STORAGE_SCAN_BLUR_CANCEL_MS = 60_000;
 
-interface StorageUsageState {
+export interface StorageUsageState {
   snapshot: StorageUsageSnapshot | null;
   scanning: boolean;
   rescan: () => Promise<void>;

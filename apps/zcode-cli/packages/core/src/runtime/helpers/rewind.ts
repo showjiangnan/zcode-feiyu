@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   RewindScope,
   SessionEventType,
@@ -127,7 +128,7 @@ export function selectCheckpointsForMessages(
     );
 }
 
-function selectCheckpointForMessages(
+export function selectCheckpointForMessages(
   events: readonly SessionEvent[],
   targetMessageIds: Iterable<MessageId>,
 ): CheckpointCreatedPayload | undefined {
@@ -204,6 +205,24 @@ export function buildRewindEvaluationItems(
     }
   }
   return items;
+}
+
+export function formatConversationRewindNoticeBody(options: {
+  keptMessageCount: number;
+  preview?: string;
+  rewindId: string;
+  targetMessageId: MessageId;
+}): string {
+  return sanitizeSystemReminderBody(
+    [
+      "Conversation rewind applied.",
+      `rewindId: ${options.rewindId}`,
+      `targetMessageId: ${options.targetMessageId}`,
+      `keptMessageCount: ${options.keptMessageCount}`,
+      options.preview ? `rewoundPromptPreview: ${options.preview}` : undefined,
+      "Continue from the conversation state before the target user message. Do not assume messages after that target happened in this active branch.",
+    ].filter((line): line is string => typeof line === "string" && line.length > 0),
+  );
 }
 
 export function formatWorkspaceRewindNoticeBody(options: {

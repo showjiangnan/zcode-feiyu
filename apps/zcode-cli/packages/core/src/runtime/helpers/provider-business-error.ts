@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { CoreErrorType, createCoreError } from "../deps.js";
 import { isPlainRecord } from "./data.js";
 
@@ -69,9 +70,7 @@ export function createCoreErrorFromProviderBusinessLike(
   return createCoreError(CoreErrorType.ModelError, failure.message, {
     context: {
       ...(failure.providerCode ? { providerCode: failure.providerCode } : {}),
-      ...(failure.responseBodySummary
-        ? { responseBodySummary: failure.responseBodySummary }
-        : {}),
+      ...(failure.responseBodySummary ? { responseBodySummary: failure.responseBodySummary } : {}),
     },
     recoverable: true,
     retryable: false,

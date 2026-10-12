@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { PipSessionEvent } from "@zcode/zcode-cua/pip-session";
 import {
   createPipSessionClient,

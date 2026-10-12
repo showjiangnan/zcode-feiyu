@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 编辑器检测需要集中维护跨平台路径、图标解析和缓存逻辑。 */
 /**
  * 编辑器检测与打开 —— 检测系统中已安装的编辑器/终端，获取图标，打开路径
@@ -25,7 +26,7 @@ import { logger } from "./logger.js";
 const require = createRequire(import.meta.url);
 const WINDOWS_EXPLORER_PATH = pathWin32.join(process.env.WINDIR ?? "C:/Windows", "explorer.exe");
 
-interface EditorDef {
+export interface EditorDef {
   id: string;
   name: string;
   /** macOS .app bundle 路径 */

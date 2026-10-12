@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ProviderConfigObject } from "@zcode/provider";
 import { PackageIcon } from "lucide-react";
 import { useState } from "react";
@@ -45,7 +46,7 @@ const BUILTIN_PROVIDER_LOGO_ASSETS: Readonly<Record<string, BuiltinProviderLogoA
   opencode: { light: opencodeLight, dark: opencodeDark },
 };
 
-function resolveBuiltinProviderLogoAsset(
+export function resolveBuiltinProviderLogoAsset(
   logo: ProviderLogoRef | null | undefined,
   theme: ResolvedTheme,
 ): string | null {

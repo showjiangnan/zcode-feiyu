@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   CoreErrorType,
   createCoreError,
@@ -127,12 +128,7 @@ export async function fetchAndExtractContent(options: {
           error,
         );
       }
-      throw webFetchError(
-        "FetchFailed",
-        errorMessage,
-        { url: currentUrl.toString() },
-        error,
-      );
+      throw webFetchError("FetchFailed", errorMessage, { url: currentUrl.toString() }, error);
     }
 
     // 网络层按响应类别收口，避免重定向/HTTP 错误误进入正文抽取和模型处理。

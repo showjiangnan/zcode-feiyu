@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ModelSelection } from "@zcode/shared";
 import { modelOptionValue } from "./app-model-ref.js";
 import type {
@@ -163,7 +164,7 @@ export function visibleModelOptionWindow(
   };
 }
 
-function effortCommandQuery(draft: string): string | undefined {
+export function effortCommandQuery(draft: string): string | undefined {
   for (const commandName of EFFORT_COMMAND_NAMES) {
     const commandWithSpace = `${commandName} `;
     if (draft === commandName) return "";

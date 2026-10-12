@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type {
   CollaborationMode,
   Model,
@@ -277,6 +277,7 @@ export interface AgentRuntimeCoreMethods {
   ): Promise<void>;
   startMcpStartup(traceContext: TraceContext): Promise<McpConnectionSnapshot> | undefined;
   initializeMcp(traceContext: TraceContext): Promise<void>;
+  refreshMcpToolsIfChanged(traceContext: TraceContext): Promise<void>;
   discoverSkillsForContext(traceContext: TraceContext): Promise<SkillLoadOutcome | undefined>;
   createConfigOnlyContextSnapshot(workingDirectory: string): ContextSourceSnapshot;
   initializeMessageHistoryFromContext(

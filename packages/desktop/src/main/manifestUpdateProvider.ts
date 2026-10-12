@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { posix } from "node:path";
 import type { CustomPublishOptions, PackageFileInfo } from "builder-util-runtime";
 import {
@@ -19,11 +20,11 @@ import {
 import type { ProviderRuntimeOptions } from "electron-updater/out/providers/Provider.js";
 import { parse as parseYaml } from "yaml";
 
-const ELECTRON_MANIFEST_API_PATH = "/api/v1/releases/electron/manifest";
+export const ELECTRON_MANIFEST_API_PATH = "/api/v1/releases/electron/manifest";
 
 const MANIFEST_ACCEPT_HEADER = "application/x-yaml,text/yaml,text/plain,*/*";
 
-interface ManifestUpdateProviderOptions extends CustomPublishOptions {
+export interface ManifestUpdateProviderOptions extends CustomPublishOptions {
   endpointOrigin?: string;
   manifestUrl?: string;
   deviceMid?: string;
@@ -74,7 +75,7 @@ export function getElectronReleasePlatform(
   return `${mapElectronReleasePlatform(platform)}-${mapElectronReleaseArch(arch)}`;
 }
 
-function buildElectronManifestUrl(options: {
+export function buildElectronManifestUrl(options: {
   endpointOrigin: string;
   manifestUrl?: string;
   platform: string;
@@ -231,7 +232,7 @@ export class ManifestUpdateProvider extends Provider<UpdateInfo> {
     }
 
     return {
-      ...(parsed as UpdateInfo),
+      ...(parsed as unknown as UpdateInfo),
       // preview/stable 切换时旧 manifest 请求可能晚于新请求返回。
       // electron-updater 的 update-available 事件默认不带请求通道，main 进程无法识别过期结果；
       // 这里把本次请求通道随 UpdateInfo 带回去，避免旧通道覆盖更新弹窗内容。

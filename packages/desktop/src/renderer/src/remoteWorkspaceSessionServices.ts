@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { IServiceAccessor } from "@zcode/services";
 
 export function buildRemoteWorkspaceSessionServices(
@@ -49,4 +50,13 @@ export function buildRemoteWorkspaceSessionServices(
     // hooks 读写（loadHooks/saveHooks）与 grantWorkspaceHookTrust 授权都必须打到远端 host。
     hooksService: remoteServices.hooksService,
   };
+}
+
+export function buildServerRemoteWorkspaceSessionServices(
+  _baseServices: IServiceAccessor,
+  remoteServices: IServiceAccessor,
+): IServiceAccessor {
+  // Server remote 连接的是完整运行中的 ZCode server；workspace/runtime/model-provider
+  // 等状态以 server 为准，本地 renderer 只保留窗口与 UI shell 状态。
+  return remoteServices;
 }

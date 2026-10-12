@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useRef, useState } from "react";
 import { ImageIcon, LoaderCircle } from "lucide-react";
 import type { GeneratedImage } from "@zcode/shared";

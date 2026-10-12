@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 #include "CaptureColor.hpp"
 #include "Control.hpp"
 #include <d3d11.h>

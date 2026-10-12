@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { backgroundContinuityStatusSchema } from "@zcode/shared";
 import { usePlatform } from "./usePlatform.js";

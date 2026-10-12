@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { Message, TimelineMessage } from "./app-model.js";
 import type React from "react";
 import { asRecord, numberField, stringField } from "./state.js";
@@ -12,6 +13,10 @@ export function compactCommandFromText(text: string): string | undefined {
   if (!match) return undefined;
   const instructions = match[1]?.trim();
   return instructions ? `/compact ${instructions}` : "/compact";
+}
+
+export function isCompactSlashCommand(text: string): boolean {
+  return compactCommandFromText(text) !== undefined;
 }
 
 export function createLocalCompactTimelineMessage(input: {
@@ -31,7 +36,9 @@ export function createLocalCompactTimelineMessage(input: {
   });
 }
 
-function compactTimelineMessageFromPayload(payload: Record<string, unknown>): Message | null {
+export function compactTimelineMessageFromPayload(
+  payload: Record<string, unknown>,
+): Message | null {
   const operationId = stringField(payload, "operationId");
   const status = timelineStatusValue(payload.status ?? payload.timelineStatus);
   if (!operationId || !status) {
@@ -153,7 +160,7 @@ function isRunningCompactTimelineStatus(status: TimelineMessage["status"]): bool
   return status === "started" || status === "retrying";
 }
 
-function compactErrorMessage(errorPayload: unknown): string {
+export function compactErrorMessage(errorPayload: unknown): string {
   const payload = asRecord(errorPayload);
   const nestedError = asRecord(payload.error);
   return (

@@ -1,68 +1,71 @@
-// Modified by ZCode Feiyu contributors (2026).
-import { PermissionService, ToolScheduler } from "./deps.js";
+// Modified by ZCode Feiyu.
+import type { OrchestrationState } from "@zcode/shared/zcode-protocol-v4";
+import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-runtime-admission.js";
+import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
+import type { RuntimeTelemetryFacade } from "../telemetry/runtime-telemetry.js";
+import type { RuntimeCommandQueue } from "./command-queue.js";
 import type {
-  Logger,
-  ModelSelection,
+  ContextBuilder,
+  ContextBuildResult,
+  ContextSourcePort,
+  ContextSourceSnapshot,
+  DynamicWorkflowRunPort,
   EventReducer,
+  ExecutionPort,
+  FileSystemPort,
+  HookRunner,
+  ImageProcessorPort,
+  Logger,
+  McpConnectionSnapshot,
+  McpPort,
+  MessageHistory,
   MessageId,
-  TurnId,
+  ModelCatalogPort,
+  ModelSelection,
   ModelToolContract,
+  PdfDocumentPort,
   PermissionBrokerPort,
+  ReadFileStateMap,
   SessionEventSink,
   SessionEventStorePort,
   SessionId,
   SessionMailboxPort,
   SessionStorePort,
-  ContextSourcePort,
-  ContextSourceSnapshot,
-  ExecutionPort,
-  FileSystemPort,
-  HookRunner,
-  ImageProcessorPort,
-  PdfDocumentPort,
-  McpConnectionSnapshot,
   SkillLoadOutcome,
   SkillPort,
-  McpPort,
-  DynamicWorkflowRunPort,
-  ModelCatalogPort,
   SubagentPort,
   ToolArtifactStorePort,
-  TraceContext,
-  MessageHistory,
-  ReadFileStateMap,
   ToolExecutor,
   ToolRegistry,
-  ContextBuilder,
-  ContextBuildResult,
+  TraceContext,
+  TurnId,
 } from "./deps.js";
+import { PermissionService, ToolScheduler } from "./deps.js";
+import type { ProjectMemoryExtractionScheduler } from "./helpers/project-memory-extraction.js";
+import type { ProjectMemoryReviewOutcome } from "./helpers/project-memory-review.js";
+import type { AgentRuntimeHookMethods } from "./internal-hook-methods.js";
+import type { AgentRuntimeCoreMethods } from "./internal-methods.js";
+import type { AgentRuntimeTurnMethods } from "./internal-turn-methods.js";
+import type { DynamicWorkflowActivationSource } from "./methods/dynamic-workflow-activation.js";
+import type { TeamMessageLedger } from "./team-message-ledger.js";
 import type {
-  ActiveTurnSteeringState,
-  ActiveTurnStartReservation,
   ActiveForegroundExecutionState,
-  ForegroundPromotionLeaseState,
+  ActiveTurnStartReservation,
+  ActiveTurnSteeringState,
   AgentRuntimeConfig,
   AgentRuntimeDeps,
   BackgroundTaskNotificationSealReason,
+  ForegroundPromotionLeaseState,
+  MainTurnCacheHitAggregate,
   PendingModelChangeTimeline,
   ProviderRuntimeHeadersPort,
-  MainTurnCacheHitAggregate,
   RuntimeTurnFileChangeMap,
 } from "./types.js";
-import type { RuntimeCommandQueue } from "./command-queue.js";
-import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
-import type { AgentRuntimeCoreMethods } from "./internal-methods.js";
-import type { AgentRuntimeTurnMethods } from "./internal-turn-methods.js";
-import type { AgentRuntimeHookMethods } from "./internal-hook-methods.js";
-import type { ProjectMemoryExtractionScheduler } from "./helpers/project-memory-extraction.js";
-import type { ProjectMemoryReviewOutcome } from "./helpers/project-memory-review.js";
-import type { OrchestrationState } from "@zcode/shared/zcode-protocol-v4";
-import type { TeamMessageLedger } from "./team-message-ledger.js";
-import type { RuntimeTelemetryFacade } from "../telemetry/runtime-telemetry.js";
-import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-runtime-admission.js";
 
 export interface AgentRuntimeInternal
   extends AgentRuntimeCoreMethods, AgentRuntimeTurnMethods, AgentRuntimeHookMethods {
+  beginShutdown(): void;
+  memoryPreferenceRevision: number;
   sessionId: SessionId;
   turnNumber: number;
   config: AgentRuntimeConfig;
@@ -92,6 +95,9 @@ export interface AgentRuntimeInternal
   messageHistory: MessageHistory;
   readFileState: ReadFileStateMap;
   cachedTools: ModelToolContract[] | null;
+  /** 工作流工具面是否已注册（launch.md「On demand: activation」）；非 onDemand 会话出生即 true。 */
+  dynamicWorkflowToolsActivated: boolean;
+  dynamicWorkflowActivationSource?: DynamicWorkflowActivationSource;
   contextBuilder: ContextBuilder | null;
   contextInitialized: boolean;
   contextSourceSnapshot?: ContextSourceSnapshot;
@@ -122,9 +128,19 @@ export interface AgentRuntimeInternal
   residencyBlockingWorkCount: number;
   mcpInitialized: boolean;
   mcpToolsRegistered: boolean;
+  /** 初始化 / 上次刷新时注册的 MCP 工具名与集合签名。 */
+  registeredMcpToolNames?: string[];
+  mcpToolsSignature?: string;
+  mcpToolListRevision?: number;
   subagentPort?: SubagentPort;
   teamBoardPort?: import("@zcode/contracts").TeamBoardPort;
   teamMessageLedger?: TeamMessageLedger;
+  getAgentDefinitions: NonNullable<AgentRuntimeDeps["getAgentDefinitions"]>;
+  prepareAgentDefinitions: (input: {
+    signal: AbortSignal;
+    traceContext: TraceContext;
+  }) => Promise<void>;
+
   dynamicWorkflowRunPort?: DynamicWorkflowRunPort;
   modelCatalogPort?: ModelCatalogPort;
   runtimeTaskRegistry: RuntimeTaskRegistry;

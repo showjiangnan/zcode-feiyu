@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 interface ConversationFindState {
   currentIndex: number;
   total: number;
@@ -35,7 +36,7 @@ export function getConversationFindState(
   };
 }
 
-function moveConversationFindSelection(
+export function moveConversationFindSelection(
   state: ConversationFindState,
   direction: ConversationFindDirection,
 ): number {

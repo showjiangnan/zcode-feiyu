@@ -1,6 +1,5 @@
-import {
-  type ZCodeProvider,
-} from "@zcode/shared";
+// Modified by ZCode Feiyu.
+import { type ZCodeProvider } from "@zcode/shared";
 
 const BOT_NATIVE_MODEL_PROVIDER_PREFIX = "native:";
 

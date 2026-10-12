@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   validateModelSelectionOptions,
   type ModelSelection,
@@ -14,6 +15,7 @@ export type InitialModelSelectionResolution =
 interface ModelSelectionCompletionView {
   readonly providers: readonly {
     readonly providerId: string;
+    readonly config?: { readonly access?: { readonly type: string } | null };
     readonly models: readonly {
       readonly modelId: string;
       readonly config: {
@@ -29,6 +31,30 @@ export function resolveInitialModelSelection(input: {
   readonly configuredDefault?: ModelSelection;
   readonly registry: ProviderRegistryView;
 }): InitialModelSelectionResolution {
+  // 当前订阅连接只影响全新草稿推荐，历史/在途选择由 runtime 自己冻结。
+  const subscription = input.registry.providers.find(
+    (provider) =>
+      provider.config.visibility !== "hidden" &&
+      provider.config.access.type === "chatgpt-subscription" &&
+      provider.config.access.entitled,
+  );
+  if (subscription) {
+    const preferred = input.configuredDefault;
+    if (
+      preferred?.providerId === subscription.providerId &&
+      isSelectable(input.registry, preferred)
+    ) {
+      return { source: "configured-default", selection: freezeSelection(preferred) };
+    }
+    const model = subscription.models[0];
+    const selection =
+      model &&
+      completeNewModelSelection(input.registry, {
+        providerId: subscription.providerId,
+        modelId: model.modelId,
+      });
+    if (selection) return { source: "registry-fallback", selection: freezeSelection(selection) };
+  }
   // 这里只构造 Host 的初始推荐，不解析已有会话意图。失效默认是可丢弃偏好，
   // 应继续按 Registry 顺序推荐；不能把历史选择留空的规则误用于新草稿初始化。
   if (input.configuredDefault) {
@@ -59,10 +85,16 @@ export function completeNewModelSelection(
   registry: ModelSelectionCompletionView,
   selection: ModelSelection,
 ): ModelSelection | undefined {
-  const model = registry.providers
-    .find((provider) => provider.providerId === selection.providerId)
-    ?.models.find((candidate) => candidate.modelId === selection.modelId);
-  const reasoningLevel = model?.config.optionSpecs.reasoningLevel.values.at(-1);
+  const provider = registry.providers.find(
+    (candidate) => candidate.providerId === selection.providerId,
+  );
+  const model = provider?.models.find((candidate) => candidate.modelId === selection.modelId);
+  const values = model?.config.optionSpecs.reasoningLevel.values;
+  // 目录没有官方 effort 默认字段，auto 省略参数；普通供应商仍沿用最高档默认。
+  const reasoningLevel =
+    provider?.config?.access?.type === "chatgpt-subscription" && values?.includes("auto")
+      ? "auto"
+      : values?.at(-1);
   if (!reasoningLevel) return undefined;
   return {
     providerId: selection.providerId,

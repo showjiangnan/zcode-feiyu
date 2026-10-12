@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export const ZCODE_BUILTIN_PROVIDER_CONFIG_FILE_ENV = "ZCODE_BUILTIN_PROVIDER_CONFIG_FILE";
 export const ZCODE_BUILTIN_PROVIDER_BUNDLED_CONFIG_FILE_ENV =
   "ZCODE_BUILTIN_PROVIDER_BUNDLED_CONFIG_FILE";
@@ -7,6 +8,7 @@ export const PERSONAL_PROVIDER_CONFIG_FILE_NAME = "provider_config.json";
 export interface NodeProviderRuntimePaths {
   readonly zcodeBuiltinFilePath: string;
   readonly personalFilePath: string;
+  readonly managedFilePath?: string;
 }
 
 export function createNodeProviderRuntimePathEnv(
@@ -15,6 +17,7 @@ export function createNodeProviderRuntimePathEnv(
   return {
     [ZCODE_BUILTIN_PROVIDER_CONFIG_FILE_ENV]: paths.zcodeBuiltinFilePath,
     [ZCODE_PERSONAL_PROVIDER_CONFIG_FILE_ENV]: paths.personalFilePath,
+    ...(paths.managedFilePath ? { ZCODE_MANAGED_PROVIDER_CONFIG_FILE: paths.managedFilePath } : {}),
   };
 }
 
@@ -27,5 +30,11 @@ export function resolveNodeProviderRuntimePaths(
   if (!zcodeBuiltinFilePath || !personalFilePath) {
     throw new Error("ZCode Built-in 与 Personal Provider Config 路径必须同时提供");
   }
-  return Object.freeze({ zcodeBuiltinFilePath, personalFilePath });
+  return Object.freeze({
+    zcodeBuiltinFilePath,
+    personalFilePath,
+    ...(env.ZCODE_MANAGED_PROVIDER_CONFIG_FILE
+      ? { managedFilePath: env.ZCODE_MANAGED_PROVIDER_CONFIG_FILE }
+      : {}),
+  });
 }

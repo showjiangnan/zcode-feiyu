@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu.
 import type { TuiModelOption } from "./types.js";
 
 const MODEL_REF_SEPARATOR = "/";
-const UNKNOWN_MODEL_FIELD = "-";
+export const UNKNOWN_MODEL_FIELD = "-";
 
 type ModelDisplayParts = {
   model: string;

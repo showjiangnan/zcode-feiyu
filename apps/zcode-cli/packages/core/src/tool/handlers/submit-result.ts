@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // submit_result Tool Handler
 // ============================================================
@@ -9,6 +10,16 @@
 // 具体 per-ask schema 不进工具声明，而是随 ask 指令的 epilogue 下发（frozen-tool 缓存
 // 不变式）；本 handler 只做通用转交，schema 校验由引擎在 port 侧完成。
 
+// ============================================================
+// submit_result Tool Handler
+// ============================================================
+// 工作流 actor（子 AgentRuntime）用它提交本次 ask 的结构化终态结果。handler 把结果交给
+// 注入的 WorkflowSubmitPort，阻塞等待引擎裁决：
+//   - accept → 返回成功 output；executor 会在成功结果上挂 turnControl 终止本 turn。
+//   - reject → 以 ToolHandlerFailure 形式返回违规列表；它成为一条 error tool_result，
+//     不带 turnControl，循环继续，模型在同一会话内重试——这就是修复通道。
+// 具体 per-ask schema 不进工具声明，而是随 ask 指令的 epilogue 下发（frozen-tool 缓存
+// 不变式）；本 handler 只做通用转交，schema 校验由引擎在 port 侧完成。
 import {
   CoreErrorType,
   SUBMIT_RESULT_TOOL_NAME,

@@ -1,15 +1,16 @@
+// Modified by ZCode Feiyu.
 import { createOpenInEditorRemoteTarget } from "@zcode/shared";
 import { useMemo } from "react";
 import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab, type WindowTabState, type WorkspaceTabState } from "@/store/tabStore.js";
 
-interface WorkspaceOpenInEditorScope {
+export interface WorkspaceOpenInEditorScope {
   workspacePath?: string;
   workspaceIdentity?: string;
   workspaceRemoteSessionId?: string;
 }
 
-function resolveWorkspaceOpenInEditorTarget(
+export function resolveWorkspaceOpenInEditorTarget(
   tabs: readonly WindowTabState[],
   scope: WorkspaceOpenInEditorScope,
 ) {
@@ -32,7 +33,7 @@ function resolveWorkspaceOpenInEditorTarget(
       (!requestedRemoteSessionId || tabRemoteSessionId === requestedRemoteSessionId)
     );
   });
-  // 远程文件动作以前只携带 Linux path，renderer 无法判断它属于哪个 SSH/WSL 目标；
+  // 修复原因：远程文件动作以前只携带 Linux path，renderer 无法判断它属于哪个 SSH/WSL 目标；
   // identity/session 已提供时精确匹配，旧调用仅在工作区匹配唯一时提取既有脱敏目标。
   const matchedTab = matches.length === 1 ? matches[0] : undefined;
   const hasRemoteMatch = matches.some((tab) =>

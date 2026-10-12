@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { RGBA, StyledText, type TextChunk } from "@mbears/opentui-core";
 import React from "react";
 import type { ToolResultDisplayHunk, ToolResultDisplayLine } from "./app-model.js";
@@ -97,7 +98,7 @@ export function diffViewForWidth(terminalWidth: number): ShikiDiffViewMode {
   return terminalWidth > SPLIT_DIFF_WIDTH_BREAKPOINT ? "split" : "unified";
 }
 
-function buildDiffRows(hunks: ToolResultDisplayHunk[]): DiffDisplayRow[] {
+export function buildDiffRows(hunks: ToolResultDisplayHunk[]): DiffDisplayRow[] {
   const rows: DiffDisplayRow[] = [];
 
   hunks.forEach((hunk, hunkIndex) => {
@@ -123,7 +124,7 @@ function buildDiffRows(hunks: ToolResultDisplayHunk[]): DiffDisplayRow[] {
   return rows;
 }
 
-function buildSplitDiffRows(rows: DiffDisplayRow[]): SplitDiffRow[] {
+export function buildSplitDiffRows(rows: DiffDisplayRow[]): SplitDiffRow[] {
   const splitRows: SplitDiffRow[] = [];
   let index = 0;
 

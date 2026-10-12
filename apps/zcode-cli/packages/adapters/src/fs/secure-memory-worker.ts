@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /** 原生元数据调用放在独立 Worker；应用事件循环只使用异步消息，不阻塞会话流。 */
 export const SECURE_MEMORY_WORKER = String.raw`
 const {parentPort, workerData} = require('node:worker_threads');

@@ -1,4 +1,5 @@
-interface SettingUpdatedEvent {
+// Modified by ZCode Feiyu.
+export interface SettingUpdatedEvent {
   readonly keys: readonly string[];
 }
 

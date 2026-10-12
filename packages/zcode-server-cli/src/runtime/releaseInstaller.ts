@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdtemp, readdir, readFile, rename, rm } from "node:fs/promises";
@@ -37,7 +38,7 @@ async function flattenArchiveRoot(extractDir: string): Promise<void> {
   }
 }
 
-interface InstallArchiveOptions {
+export interface InstallArchiveOptions {
   archivePath: string;
   target: ServerTarget;
   version: string;

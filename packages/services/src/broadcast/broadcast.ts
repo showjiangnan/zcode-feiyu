@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { Event } from "@zcode/rpc";
 import { ServiceChannels, type BroadcastDeliverySummary } from "@zcode/shared";
 import { createServiceDescriptor } from "../descriptors.js";

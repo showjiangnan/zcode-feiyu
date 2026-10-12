@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 import { modelSelectionSchema } from "../model-selection.js";
 import { DEFAULT_ORCHESTRATION_STATE, orchestrationStateSchema } from "./orchestration.js";

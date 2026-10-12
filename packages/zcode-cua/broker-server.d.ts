@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { CuaPermissionRestartOptions, CuaPermissionRestartResult } from "./broker.d.ts";
 import type { ControlPresentation } from "./control-contract.d.ts";
 

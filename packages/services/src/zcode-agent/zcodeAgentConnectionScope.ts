@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 三类 V4 topic 的同构 connection ownership 生命周期集中在单一 facade。 */
 // V4 connection-scoped service facade：每个 RPC attachment 独立持有 subscription
 // ownership；base service 仍只转发 CLI 事实，不在 host/main/relay 复制业务状态。
@@ -45,7 +45,7 @@ type TrustedConnectionCarrier = {
   [TRUSTED_CONNECTION_FIELD]?: ZCodeAgentV4ConnectionContext;
 };
 
-interface TrustedZCodeAgentV4UnsubscribeRoute {
+export interface TrustedZCodeAgentV4UnsubscribeRoute {
   topic: string;
   connectionId: string;
 }

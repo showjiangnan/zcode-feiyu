@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { Loader2Icon } from "lucide-react";
 import type { UsageEntitlementSubscriptionDetail, UsageQuotaLimit } from "@zcode/shared";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -135,7 +136,7 @@ function formatFullTokenUsage(locale: string, value: number): string {
   }).format(value);
 }
 
-interface StartPlanQuotaCardEntry {
+export interface StartPlanQuotaCardEntry {
   plan: UsageEntitlementSubscriptionDetail;
   limits: UsageQuotaLimit[];
 }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { join } from "node:path";
 import { prepareNativeSearchTools } from "../../../../../scripts/prepare-native-search-tools.mjs";
 import { resolveNativeSearchReleasePlan } from "../../../../../scripts/native-search-tools-config.mjs";
@@ -19,11 +20,7 @@ export const resolveSeaRuntimeToolPreparationPlan = ({ root, target }) => {
   };
 };
 
-export const prepareSeaRuntimeToolAssets = async ({
-  root,
-  target,
-  prebuiltPlan,
-}) => {
+export const prepareSeaRuntimeToolAssets = async ({ root, target, prebuiltPlan }) => {
   const plan = resolveSeaRuntimeToolPreparationPlan({ root, target });
 
   if (plan.enabled) {

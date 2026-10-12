@@ -1,4 +1,5 @@
-const PLAYWRIGHT_DEFAULT_TIMEOUT_MS = 3_000;
+// Modified by ZCode Feiyu.
+export const PLAYWRIGHT_DEFAULT_TIMEOUT_MS = 3_000;
 
 /**
  * 内置浏览器对常规 Playwright 操作使用短失败预算：默认 3s，且由调用点给出上限。

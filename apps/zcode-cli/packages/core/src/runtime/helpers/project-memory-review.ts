@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { collectVisibleHistory } from "./project-memory-review-history.js";
 import type { Model, TraceContext } from "../deps.js";
 import { type SessionId } from "@zcode/contracts";

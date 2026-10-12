@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   BIGMODEL_PROVIDER_ID,
   buildBigModelApiUrl,
@@ -22,7 +23,7 @@ export function generateId(): string {
 
 export const PRESET_SUBSCRIPTION_TIMEOUT_MS = 2 * 60 * 1000;
 export const BIGMODEL_REGISTRATION_URL = buildBigModelApiUrl({ ZCODE_ENV }, "/login");
-const BIGMODEL_CODING_PLAN_PERSONAL_MANAGE_URL = buildBigModelCodingPlanPersonalManageUrl({
+export const BIGMODEL_CODING_PLAN_PERSONAL_MANAGE_URL = buildBigModelCodingPlanPersonalManageUrl({
   ZCODE_ENV,
 });
 
@@ -134,6 +135,7 @@ export function resolveModelProviderDisplayName(
 }
 
 export type ModelProviderNavItem =
+  | { key: string; type: "chatgpt-subscription"; label: string }
   | {
       key: string;
       type: "sponsored";
@@ -227,7 +229,7 @@ export type ModelProviderNavItem =
       statusActive: boolean;
     };
 
-export type ModelProviderNavGroupId = "preset" | "sponsored" | "custom";
+export type ModelProviderNavGroupId = "preset" | "chatgpt-subscription" | "sponsored" | "custom";
 
 export interface ModelProviderNavGroup {
   id: ModelProviderNavGroupId;

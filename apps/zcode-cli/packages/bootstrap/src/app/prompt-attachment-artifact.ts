@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { ToolArtifactStorePort, TraceContext } from "@zcode/contracts";
 
 function decodeDataUrl(content: string, fallbackMime: string, maxBytes: number) {

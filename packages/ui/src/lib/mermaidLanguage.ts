@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export function isMermaidLanguage(language: string): boolean {
   const normalized = language.trim().toLowerCase();
   return normalized === "mermaid" || normalized === "mmd";
@@ -8,7 +9,7 @@ const MERMAID_LEADING_DIRECTIVE_PATTERN = /^---[\s\S]*?---\s*/;
 const MERMAID_DIAGRAM_START_PATTERN =
   /^(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|quadrantChart|requirementDiagram|gitGraph|mindmap|timeline|sankey-beta|xychart-beta|block-beta|packet-beta|architecture-beta|c4(?:Context|Container|Component|Dynamic|Deployment))/i;
 
-function isLikelyMermaidCode(code: string): boolean {
+export function isLikelyMermaidCode(code: string): boolean {
   const firstMeaningfulLine = code
     .trim()
     .replace(MERMAID_LEADING_DIRECTIVE_PATTERN, "")

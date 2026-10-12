@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { join } from "node:path";
 import type { AgentRuntimeConfig } from "@zcode/core";
 import type { PluginLoadOutcome } from "@zcode/contracts";
@@ -6,7 +7,7 @@ import {
   OFFICIAL_CUA_PLUGIN_ID,
 } from "./official-plugin-definitions.js";
 
-type RuntimeFeaturesConfig = NonNullable<AgentRuntimeConfig["runtimeFeatures"]>;
+export type RuntimeFeaturesConfig = NonNullable<AgentRuntimeConfig["runtimeFeatures"]>;
 
 export function resolvePluginRuntimeFeatures(
   pluginOutcome: Pick<PluginLoadOutcome, "plugins">,

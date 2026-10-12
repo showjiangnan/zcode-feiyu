@@ -1,3 +1,5 @@
+// Modified by ZCode Feiyu.
+import type { IStorageService } from "@zcode/services";
 /**
  * 资源管理器「存储」tab 的 main 侧接线：main 持有唯一的 StorageService 实例（Worker 线程遍历），
  * 通过 ipc invoke 暴露命令面，进度快照推给发起请求的资源管理器窗口；窗口关闭即取消扫描。
@@ -13,7 +15,6 @@ import {
   createStorageRootsResolver,
   createStorageService,
   getDataBaseDir,
-  type IStorageService,
 } from "@zcode/services/node";
 import { logger } from "./logger.js";
 import { createStorageScanWorkerRunner } from "./storageScanWorkerClient.js";
@@ -54,7 +55,7 @@ function bindSubscriber(event: IpcMainInvokeEvent): void {
 }
 
 /** 纯函数：定位路径必须落在某个数据根内，防止 renderer 传任意路径让系统文件管理器打开。 */
-function isPathInsideStorageRoots(absolutePath: string, roots: StorageRootSpec[]): boolean {
+export function isPathInsideStorageRoots(absolutePath: string, roots: StorageRootSpec[]): boolean {
   const target = resolve(absolutePath);
   return roots.some((root) => {
     const back = relative(resolve(root.path), target);

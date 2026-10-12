@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- ProviderSettingsCard 集中维护 Bot 凭据、二维码和绑定状态机展示；后续拆分 provider 子组件后移除。 */
 import {
   CircleAlert,
@@ -20,6 +21,7 @@ import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js"
 import { cn } from "@/components/lib/utils.js";
 import { logger } from "@/logger.js";
 import type { BindCodeState, FeishuRegistrationState, WeixinRegistrationState } from "./shared.js";
+import { PrivateDeliveryRetry } from "@/BotsDialog/PrivateDeliveryRetry.js";
 import { TELEGRAM_BOTFATHER_URL, formatBindCountdown } from "./shared.js";
 
 function DetailPanel({ children }: { children: ReactNode }) {
@@ -460,6 +462,13 @@ export function ProviderSettingsCard({
                   <div className="whitespace-pre-wrap break-all text-foreground-subtle">
                     {runtime.deliveryError}
                   </div>
+                  {runtime.deliveryRetryId ? (
+                    <PrivateDeliveryRetry
+                      key={runtime.deliveryRetryId}
+                      botId={bot.id}
+                      deliveryId={runtime.deliveryRetryId}
+                    />
+                  ) : null}
                 </div>
               </DetailPanel>
               {detail}

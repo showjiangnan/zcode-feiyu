@@ -1,17 +1,37 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- subagent runtime wiring 集中衔接 child runtime、tool pool、权限、MCP 与 activity watchdog，拆分需单独迁移。 */
-import { RESPOND_TO_COORDINATOR_TOOL_NAME, SessionEventType } from "@zcode/contracts";
 import type { SubagentRunOptions } from "@zcode/contracts";
 import {
-  defaultScheduler,
-  PermissionService,
-  defaultPermissionConfig,
-  buildExploreAllowedTools,
-  buildExploreAgentPrompt,
-  createExploreSubagentPort,
-  createCoreError,
-  CoreErrorType,
-} from "../deps.js";
+  inheritPermissionMode,
+  parseModelSelectionValue,
+  RESPOND_TO_COORDINATOR_TOOL_NAME,
+  SESSION_ENTRY_MODEL_SELECTION,
+  SessionEventType,
+} from "@zcode/contracts";
+import { resolveEmbeddedSearchBranchCapability } from "../../embedded-search/capability.js";
+import { toMcpToolName } from "../../mcp/index.js";
+import { createBorrowedSubagentMcpAccess } from "../../subagent/borrowed-mcp-port.js";
+import {
+  createOfficialCuaPolicy,
+  SUBAGENT_COMPUTER_USE_UNAVAILABLE_CODE,
+  SUBAGENT_COMPUTER_USE_UNAVAILABLE_MESSAGE,
+  type OfficialCuaPolicy,
+} from "../../subagent/computer-use-policy.js";
+import { createCoordinatorResponsePort } from "../../subagent/coordinator-response.js";
+import {
+  extractRequiredMcpServerNames,
+  matchesRequiredMcpServer,
+} from "../../subagent/mcp-config.js";
+import { createSubagentMessageSink } from "../../subagent/message-steering.js";
+import { loadPersistentAgentMemory } from "../../subagent/persistent-memory.js";
+import { isBuiltInExploreAgentProfile } from "../../subagent/profile.js";
+import { mirrorSubagentToolEvent } from "../../subagent/tool-event-mirror.js";
+import {
+  buildSubagentChildDisallowRules,
+  filterSubagentChildToolNames,
+} from "../../subagent/tool-policy.js";
+import { isSubagentDispatchToolName } from "../../tool/compat.js";
+import { AgentRuntime } from "../agent-runtime.js";
 import type {
   ExploreSubagentRuntimeRequest,
   McpConnectionSnapshot,
@@ -24,45 +44,31 @@ import type {
   SkillPort,
   SubagentPort,
 } from "../deps.js";
-import { AgentRuntime } from "../agent-runtime.js";
-import type { AgentRuntimeInternal } from "../internal.js";
-import { cloneModelSelection } from "../model-selection.js";
+import {
+  buildExploreAgentPrompt,
+  buildExploreAllowedTools,
+  CoreErrorType,
+  createCoreError,
+  createExploreSubagentPort,
+  defaultPermissionConfig,
+  defaultScheduler,
+  PermissionService,
+} from "../deps.js";
+import { deriveChildClientPorts } from "../helpers/child-client-ports.js";
 import { resolveContinuityPolicy } from "../helpers/continuity-policy.js";
 import {
   resolveResumedChildSelection,
   resolveSubagentSelection,
 } from "../helpers/subagent-selection.js";
-import { sameModelSelection } from "./turn-model.js";
-import type { AgentRuntimeDeps } from "../types.js";
-import { toMcpToolName } from "../../mcp/index.js";
-import { createBorrowedSubagentMcpAccess } from "../../subagent/borrowed-mcp-port.js";
-import { createSubagentMessageSink } from "../../subagent/message-steering.js";
-import {
-  extractRequiredMcpServerNames,
-  matchesRequiredMcpServer,
-} from "../../subagent/mcp-config.js";
-import { mirrorSubagentToolEvent } from "../../subagent/tool-event-mirror.js";
-import { isBuiltInExploreAgentProfile } from "../../subagent/profile.js";
-import {
-  buildSubagentChildDisallowRules,
-  filterSubagentChildToolNames,
-} from "../../subagent/tool-policy.js";
-import { isSubagentDispatchToolName } from "../../tool/compat.js";
-import { resolveEmbeddedSearchBranchCapability } from "../../embedded-search/capability.js";
-import { getSessionShellEnvironment } from "./session-shell-environment.js";
-import { deriveChildClientPorts } from "../helpers/child-client-ports.js";
-import { createCoordinatorResponsePort } from "../../subagent/coordinator-response.js";
-import { isStaleBranchRuntimeTaskEvent } from "./runtime-command-generation.js";
-import { loadPersistentAgentMemory } from "../../subagent/persistent-memory.js";
-import {
-  createOfficialCuaPolicy,
-  SUBAGENT_COMPUTER_USE_UNAVAILABLE_CODE,
-  SUBAGENT_COMPUTER_USE_UNAVAILABLE_MESSAGE,
-  type OfficialCuaPolicy,
-} from "../../subagent/computer-use-policy.js";
-import { computeOfficialCuaServerNames } from "./mcp.js";
-import { createTeamMemberPorts } from "../team-member.js";
+import type { AgentRuntimeInternal } from "../internal.js";
+import { cloneModelSelection } from "../model-selection.js";
 import { persistTeamMemberEvent } from "../team-member-state.js";
+import { createTeamMemberPorts } from "../team-member.js";
+import type { AgentRuntimeDeps } from "../types.js";
+import { computeOfficialCuaServerNames } from "./mcp.js";
+import { isStaleBranchRuntimeTaskEvent } from "./runtime-command-generation.js";
+import { getSessionShellEnvironment } from "./session-shell-environment.js";
+import { persistRuntimeModelSelection, sameModelSelection } from "./turn-model.js";
 
 export function createDefaultSubagentPort(
   this: AgentRuntimeInternal,
@@ -77,7 +83,7 @@ export function createDefaultSubagentPort(
     inactivityTimeoutMs: this.config.subagents?.inactivityTimeoutMs,
     autoBackgroundMs: this.config.subagents?.autoBackgroundMs,
     outputRootDir: this.config.subagents?.outputRootDir,
-    profiles: this.config.subagents?.profiles,
+    getAgentDefinitions: this.getAgentDefinitions,
     builtInModelSelectionOverrides: this.config.subagents?.builtInModelSelectionOverrides,
     runtimeTaskRegistry: this.runtimeTaskRegistry,
     teamMessageLedger: this.teamMessageLedger,
@@ -250,6 +256,15 @@ export function createDefaultSubagentPort(
             : { parentTurnId: request.traceContext.turnId }),
         },
       );
+      // Browser Use：子代理与当前对话共用 tab（tabOwner: "parent"），用户能在面板里看到它开的 tab，
+      // 它也能看到对话里已有的 tab；workspace / clientMode 经 forChildSession 登记回父会话解析。
+      // 子代理结束只撤销登记，不关 tab。端口没有 forChildSession（CLI headless）时退回子会话自己的 scope。
+      const childBrowserControlPort =
+        this.browserControlPort?.forChildSession?.({
+          childSessionId: request.sessionId,
+          parentSessionId: this.sessionId,
+          tabOwner: "parent",
+        }) ?? this.browserControlPort;
       const mirroredToolNameByChildToolCallId = new Map<string, string>();
       let sessionReadyNotified = false;
       const notifySessionReady = async () => {
@@ -300,7 +315,13 @@ export function createDefaultSubagentPort(
           // 父 registry 可见的工具名）本来就够，但**自定义 agent profile 显式写
           // `allowedTools: ["CreateWorkflow"]` 时会跳过那次交集**，只剩这一道能挡住。
           dynamicWorkflowEnabled: this.config.dynamicWorkflowEnabled,
-          // 默认 subagent 已从 Explore 调整为 general-purpose。
+          // launch.md「On demand: activation」Children 段：子代理继承父会话**此刻**的工具面——
+          // 父未激活则子也按需（子会话里没有 `/workflow` 入口，实际等于没有工作流工具）；
+          // 父已激活则子出生即注册。
+          dynamicWorkflowToolsOnDemand:
+            this.config.dynamicWorkflowToolsOnDemand === true &&
+            !this.dynamicWorkflowToolsActivated,
+          // 修复原因：默认 subagent 已从 Explore 调整为 general-purpose。
           // toolset 不能再依赖 DEFAULT_SUBAGENT_TYPE，否则默认通用 agent 会被误降级为只读搜索工具面。
           toolset: builtInExplore ? "explore" : "main",
           toolAllowlist: childToolAllowlist,
@@ -336,6 +357,9 @@ export function createDefaultSubagentPort(
           // 桌面 UI 只认识父 task 的 sessionId。派生收敛在 deriveChildClientPorts 一处，
           // dwf actor 与 legacy workflow child 走同一条。
           ...childClientPorts,
+          ...(childBrowserControlPort === undefined
+            ? {}
+            : { browserControlPort: childBrowserControlPort }),
           coordinatorResponsePort: createCoordinatorResponsePort({
             agentId: request.agentId,
             agentType: request.agentType,
@@ -431,10 +455,33 @@ export function createDefaultSubagentPort(
       );
 
       const resumesExistingChild = request.resumeFromStore === true;
+      let previousSelection: ModelSelection | undefined;
       if (resumesExistingChild) {
+        const persistedMessages = await this.sessionStore?.messages({
+          sessionID: request.sessionId,
+        });
+        // terminal resume 只恢复已有历史；模型初始化前失败不能变成一次空 session 创建。
+        if (!persistedMessages?.length) {
+          throw createCoreError(
+            CoreErrorType.SessionNotFound,
+            `No transcript found for agent ${request.agentId}`,
+            { recoverable: true },
+          );
+        }
+        const entries = await this.sessionStore?.sessionEntries?.({
+          sessionID: request.sessionId,
+          type: SESSION_ENTRY_MODEL_SELECTION,
+        });
+        previousSelection = parseModelSelectionValue(entries?.at(-1)?.data);
         await childRuntime.resumeFromStore({
+          persistedMessages,
           traceContext: request.traceContext,
         });
+        // 恢复只导入历史；本轮 profile 选出的模型仍是执行权威，并更新冷恢复所用的选择记录。
+        await persistRuntimeModelSelection(
+          childRuntime as unknown as AgentRuntimeInternal,
+          childSelection,
+        );
       } else {
         // 父会话过去先发布 SubagentSpawned，child 的首轮 executeTurn 才落库。
         // 并发派生时目录查询会在两者之间读到少一个 child。这里把持久化提升为发布前闸门。
@@ -443,17 +490,25 @@ export function createDefaultSubagentPort(
         });
       }
       await notifySessionReady();
-      if (!resumesExistingChild) {
-        // 新 child 的最终模型可能来自继承、lite 或 profile 显式覆盖。它既是首轮
-        // 实时投影事实，也是冷恢复必须保留的 transcript 边界；resume 不重复写入。
+      if (
+        !resumesExistingChild ||
+        (previousSelection && !sameModelSelection(previousSelection, childSelection))
+      ) {
+        // 同模型恢复不重复插入分隔线；配置变化复用现有事件和 transcript 记录。
         childRuntime.recordPendingModelChange({
+          ...(previousSelection
+            ? {
+                fromModel: previousSelection,
+                fromModelLabel: `${previousSelection.providerId}/${previousSelection.modelId}`,
+              }
+            : {}),
           toModel: childSelection,
           toModelLabel: `${childSelection.providerId}/${childSelection.modelId}`,
         });
         await childRuntime.emitModelSelected({
           modelSelection: childSelection,
           effectiveReasoningLevel: childModel.options.reasoningLevel,
-          previousModelSelection: null,
+          previousModelSelection: previousSelection ?? null,
           traceContext: request.traceContext,
         });
       }
@@ -489,6 +544,14 @@ export function createDefaultSubagentPort(
             traceContext: request.traceContext,
           });
         }
+        await childBrowserControlPort
+          ?.closeSession?.({ sessionId: request.sessionId, traceContext: request.traceContext })
+          .catch((error: unknown) => {
+            this.logger?.warn("Subagent browser session cleanup failed", {
+              error: error instanceof Error ? error.message : String(error),
+              event: "browser.session_cleanup.failed",
+            });
+          });
       }
     },
   });
@@ -502,7 +565,7 @@ function resolveSubagentEmbeddedSearchEnabled(): boolean {
   return embeddedSearchDecision.useEmbeddedSearchBranch;
 }
 
-function createInheritedSubagentModelFactory(
+export function createInheritedSubagentModelFactory(
   inheritedSelection: ModelSelection,
   inheritedModel: Model,
   fallbackFactory: AgentRuntimeDeps["modelFactory"],
@@ -521,7 +584,7 @@ function createInheritedSubagentModelFactory(
   };
 }
 
-function modelSelectionFromActiveModel(model: Model): ModelSelection {
+export function modelSelectionFromActiveModel(model: Model): ModelSelection {
   const reasoningLevel = model.options.reasoningLevel;
   return {
     providerId: model.providerId,
@@ -549,12 +612,18 @@ function resolveSubagentPermissionMode(
   builtInExplore: boolean,
 ): AgentRuntimeInternal["config"]["mode"] {
   switch (permissionMode) {
+    case "bypassPermissions":
+    case "dontAsk":
+      return inheritPermissionMode(parentMode, "yolo");
+    case "acceptEdits":
+      return "edit";
     case "auto":
       return "auto";
     case "plan":
       return "plan";
+    case "default":
     case undefined:
-      return builtInExplore ? "yolo" : parentMode;
+      return inheritPermissionMode(parentMode, builtInExplore ? "yolo" : parentMode);
     default:
       return parentMode;
   }
@@ -950,7 +1019,7 @@ async function validateSubagentComputerUseConfiguration(
   );
 }
 
-function isUniqueOfficialSkillRequest(
+export function isUniqueOfficialSkillRequest(
   skills: readonly SkillContent["metadata"][],
   requestName: string,
   cuaPolicy: Pick<OfficialCuaPolicy, "isOfficialSkill">,

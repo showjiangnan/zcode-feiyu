@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
  *
@@ -6,6 +7,111 @@
  * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
  */
 
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
+/**
+ * workflow run 进度事件 → 父会话的追加汇（create-app 的 `onRunEvent` 就是它）。
+ *
+ * 单独成文件而不是留在 create-app 的闭包里，是为了让下面三条**降级路径**可被直接单测：
+ * 它们都属于「run 在飞、观察面出问题」这一类，任何一条把异常放出去都会打挂一个正在跑的 run，
+ * 而 run 的真相在 journal——进度面只是观察面，绝不该有能力终止它。
+ */
 import type { DynamicWorkflowRunProgressPayload, Logger, SessionId } from "@zcode/contracts";
 import type { AgentRuntime } from "@zcode/core";
 
@@ -57,12 +163,16 @@ export function createDynamicWorkflowRunProgressSink(
     // 缺席是合法的（submit 未带 parentSessionId）：本 app 的端口只可能被本会话触达，
     // 所以缺席等价于"就是本会话"。只有**明确不等**才是接线错误。
     if (parentSessionId !== undefined && parentSessionId !== deps.sessionId) {
-      warn("Dynamic workflow run progress dropped: parent session is not this app", progress.runId, {
-        event: "dynamic_workflow.run_progress.session_mismatch",
-        expectedSessionId: deps.sessionId,
-        parentSessionId,
-        reason: "run_parent_session_not_owned_by_this_app",
-      });
+      warn(
+        "Dynamic workflow run progress dropped: parent session is not this app",
+        progress.runId,
+        {
+          event: "dynamic_workflow.run_progress.session_mismatch",
+          expectedSessionId: deps.sessionId,
+          parentSessionId,
+          reason: "run_parent_session_not_owned_by_this_app",
+        },
+      );
       return;
     }
 

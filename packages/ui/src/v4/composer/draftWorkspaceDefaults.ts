@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // 工具条只展示 Composer 的下一次提交选择；Session 不是存活编辑器的补值来源。
 import type { ZCodeConfigOption } from "@zcode/shared";
 import type { ModelSelectionView } from "@zcode/services";

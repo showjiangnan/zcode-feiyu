@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { access, readFile, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -176,7 +177,7 @@ function descriptorNameFromContent(
   return entry.endsWith(".service") ? entry.slice(0, -".service".length) : null;
 }
 
-function serviceDescriptorBelongsToRoot(
+export function serviceDescriptorBelongsToRoot(
   content: string,
   platform: ServicePlatform,
   serverRoot: string,

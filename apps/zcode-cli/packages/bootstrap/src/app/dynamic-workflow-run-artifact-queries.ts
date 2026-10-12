@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
 // ============================================================
@@ -5,9 +6,100 @@
 // ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
 // `RunSettlement.artifact`（脚本顶层返回值）。
 
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
+// ============================================================
+// 用户面产物的 journal 读面（DynamicWorkflowRunPort 的三个产物方法共用的取数底座）
+// ============================================================
+//
+// ⚠ 术语：这里的 artifact 是脚本经 `artifact.*` 发布给**用户**看的产出，不是引擎内部的
+// `RunSettlement.artifact`（脚本顶层返回值）。
 import type { DwfArtifactItem, DwfRunIntrospectionQueries } from "@zcode/adapters/storage";
 import type { DynamicWorkflowRunArtifactItem } from "@zcode/contracts";
 import type { JournalStorePort, NodeRecord } from "@zcode/dynamic-workflow";
+import { WORKFLOW_ARTIFACT_LIMITS } from "@zcode/shared/zcode-protocol-v4";
 
 /**
  * 带产物读面的 journal。签名的**唯一来源**是 adapters 的 {@link DwfRunIntrospectionQueries}
@@ -16,7 +108,9 @@ import type { JournalStorePort, NodeRecord } from "@zcode/dynamic-workflow";
  * 只能靠能力探测接上。
  */
 interface ArtifactReadableJournal
-  extends JournalStorePort, Pick<DwfRunIntrospectionQueries, "listArtifactItems" | "listArtifactRows"> {}
+  extends
+    JournalStorePort,
+    Pick<DwfRunIntrospectionQueries, "listArtifactItems" | "listArtifactRows"> {}
 
 /**
  * journal 是否带产物读面。**刻意是 `supportsRunIntrospection` 的兄弟，而不是把它扩成六条。**
@@ -27,7 +121,9 @@ interface ArtifactReadableJournal
  * 继续把 `ListWorkflowRuns` / `GetWorkflowRun` 跑通，只是不提供产物。把它们并成一个探测，
  * 会让这类 journal 上两个早已工作的工具静默消失，而症状离成因极远。
  */
-export function supportsArtifactReads(journal: JournalStorePort): journal is ArtifactReadableJournal {
+export function supportsArtifactReads(
+  journal: JournalStorePort,
+): journal is ArtifactReadableJournal {
   const candidate = journal as Partial<DwfRunIntrospectionQueries>;
   return (
     typeof candidate.listArtifactItems === "function" &&
@@ -36,37 +132,47 @@ export function supportsArtifactReads(journal: JournalStorePort): journal is Art
 }
 
 /**
- * 喂给某个预置产物的 `report` 条目，按 journal sequence 升序。
+ * 喂给某个预置产物的 `report` 条目，按 journal sequence 升序的一页。
  *
- * 存储层**精确**兑现 limit 且从不自己钳——所以「多取一条判 hasMore」这件事
- * 由调用方（网关）传 limit+1 完成，这里原样透传。越界 cursor 得到空页而不是错误：翻到尾巴
- * 是正常的翻页结局，不是异常。
+ * 条数与字节两道界由调用方（网关）给定，存储层精确兑现、不再钳，并由它判定 `hasMore`
+ * （docs/execution-engine.md「Reading the journal」）。越界 cursor 得到空页而不是错误：翻到
+ * 尾巴是正常的翻页结局，不是异常。
  */
 export function listArtifactItemsFrom(
   journal: JournalStorePort,
   runId: string,
   artifactId: string,
-  page: { afterSequence?: number; limit: number },
-): DynamicWorkflowRunArtifactItem[] {
-  if (!supportsArtifactReads(journal)) return [];
-  const rows = journal.listArtifactItems(runId, artifactId, {
+  page: { afterSequence?: number; limit: number; maxBytes: number; fields?: readonly string[] },
+): { items: DynamicWorkflowRunArtifactItem[]; hasMore: boolean } {
+  if (!supportsArtifactReads(journal)) return { items: [], hasMore: false };
+  const { items, hasMore } = journal.listArtifactItems(runId, artifactId, {
     ...(page.afterSequence === undefined ? {} : { afterSequence: page.afterSequence }),
     limit: page.limit,
+    maxBytes: page.maxBytes,
+    // 只取字段：值的界是协议常量，存储层不自己定。
+    ...(page.fields === undefined
+      ? {}
+      : {
+          fields: {
+            paths: page.fields,
+            maxValueBytes: WORKFLOW_ARTIFACT_LIMITS.maxFieldValueBytes,
+          },
+        }),
   });
-  return rows.map(toArtifactItem);
+  return { items: items.map(toArtifactItem), hasMore };
 }
 
 /**
  * 存储层的一行 → 端口的一条。字段一一对应，刻意**不做预览序列化**：看板的纯函数要按字段
  * 路径（`ChartSpec.x.field` 形如 "timing.after"）取数，拿到一段 pretty JSON 文本就取不出来
- * 了。条目在线上已由 `REPORT_CAPS.maxItemSerializedBytes`（32KB）有界，不需要再叠一层。
+ * 了。单条由写入侧的 `REPORT_CAPS.maxItemSerializedBytes` 有界，一页由 `maxBytes` 有界。
  */
 function toArtifactItem(row: DwfArtifactItem): DynamicWorkflowRunArtifactItem {
   return {
     sequence: row.sequence,
     siteId: row.siteId,
     ordinal: row.ordinal,
-    item: row.item,
+    ...(row.fields === undefined ? { item: row.item } : { fields: row.fields }),
   };
 }
 

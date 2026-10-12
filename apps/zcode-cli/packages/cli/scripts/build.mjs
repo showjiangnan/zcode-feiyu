@@ -1,5 +1,9 @@
+// Modified by ZCode Feiyu.
 import { chmod, readFile, rm } from "node:fs/promises";
-import { readThirdPartyNotices, stageThirdPartyNotices } from "../../../../../scripts/third-party-notices.mjs";
+import {
+  readThirdPartyNotices,
+  stageThirdPartyNotices,
+} from "../../../../../scripts/third-party-notices.mjs";
 import { basename, dirname, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
@@ -140,6 +144,8 @@ export const resolveBuildAliases = ({
   // plugin-host 启动只需这些独立入口，不能经通用 alias 重新求值 shared 总入口。
   "@zcode/shared/runtime-env": resolve(rootDirectory, "../../packages/shared/src/runtimeEnv.ts"),
   "@zcode/shared/mcp": resolve(rootDirectory, "../../packages/shared/src/mcp.ts"),
+  // UI 插件新增独立协议入口，避免 esbuild 通用前缀把它拼到 index.ts 后。
+  "@zcode/shared/mcp-apps": resolve(rootDirectory, "../../packages/shared/src/mcp-apps/index.ts"),
   "@zcode/shared/runtime-tool-runtime": resolve(
     rootDirectory,
     "../../packages/shared/src/runtime-tool-runtime.ts",

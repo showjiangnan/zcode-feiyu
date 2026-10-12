@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ActorEdge, ActorGraph, ActorNode } from "./actor-graph.js";
 import type {
   CausalityGraph,
@@ -60,7 +61,8 @@ export function serializeGraph(graph: SiteGraph): string {
 function renderNode(node: SiteNode): string {
   if (node.loc === undefined) return `node ${node.id}`;
   let line = `node ${node.id} "${node.label}" @${node.loc.line}:${node.loc.column}`;
-  if (node.actors !== undefined && node.actors.length > 0) line += ` actors=${node.actors.join(",")}`;
+  if (node.actors !== undefined && node.actors.length > 0)
+    line += ` actors=${node.actors.join(",")}`;
   if (node.within !== undefined) line += ` within=${node.within}`;
   if (node.artifactType !== undefined) line += ` type=${quoteType(node.artifactType)}`;
   return line;
@@ -112,7 +114,9 @@ function compareEdges(a: SiteEdge, b: SiteEdge, position: Map<string, number>): 
 export function serializeActorGraph(graph: ActorGraph): string {
   const position = new Map<string, number>(graph.nodes.map((node, index) => [node.id, index]));
   const rank = (id: string): number => position.get(id) ?? Number.MAX_SAFE_INTEGER;
-  const edges = [...graph.edges].sort((a, b) => rank(a.from) - rank(b.from) || rank(a.to) - rank(b.to));
+  const edges = [...graph.edges].sort(
+    (a, b) => rank(a.from) - rank(b.from) || rank(a.to) - rank(b.to),
+  );
   const lines = [...graph.nodes.map(renderActorNode), ...edges.map(renderActorEdge)];
   return `${lines.join("\n")}\n`;
 }
@@ -192,6 +196,7 @@ function renderPhase(phase: Phase): string {
   let line = `phase ${phase.id}`;
   if (phase.name !== undefined) line += ` "${phase.name}"`;
   if (phase.loc !== undefined) line += ` @${phase.loc.line}:${phase.loc.column}`;
+  if (phase.fill !== undefined) line += ` fill=${phase.fill}`;
   return line;
 }
 
@@ -238,6 +243,7 @@ function renderStep(step: Step): string {
   if (step.phase !== undefined) line += ` phase=${step.phase}`;
   line += ` region=${step.region} ${step.certainty}`;
   if (step.repeat !== undefined) line += ` ${step.repeat}`;
+  if (step.fill !== undefined) line += ` fill=${step.fill}`;
   return line;
 }
 
@@ -253,6 +259,8 @@ function renderOrderEdge(edge: OrderEdge): string {
  *
  *   phase phase#1 "preflight"
  *   phase phase#2 "review" alongside=phase#1
+ *   phase hole#21b40fca "决定分组"
+ *   hole hole#cd7e8315 "评判" type="Verdict" phase=phase#2 tail
  *   node ask#1@1 issue site=ask#1 phase=phase#2
  *   node phase#6@1 mark phase=phase#6 alongside=phase#1,phase#2
  *   node ask#9@1 issue site=ask#9 phase=unphased detached
@@ -265,7 +273,9 @@ function renderOrderEdge(edge: OrderEdge): string {
  * terminals last). `phase` and `phase-edge` lines appear only when the script declares a
  * marker — the same all-or-nothing contract as the causality serializer's phase vocabulary.
  * `alongside` (a mark's, and its phase's union) names the phases whose strands were still
- * running when the marker was entered; it is a node fact, never an edge.
+ * running when the marker was entered; it is a node fact, never an edge. `fill=` on a phase
+ * names the filled hole whose body wrote it; a `hole` line is an OPEN hole with the phase it
+ * stands in and `tail` when it is the script's open end (docs/analysis.md「Sites」).
  */
 export function serializeControlFlow(flow: ControlFlowGraph): string {
   const edgeLine = (head: string, edge: FlowEdge): string =>
@@ -274,7 +284,14 @@ export function serializeControlFlow(flow: ControlFlowGraph): string {
     ...(flow.phases ?? []).map(
       (phase) =>
         `phase ${phase.id}${phase.name === undefined ? "" : ` ${quoteType(phase.name)}`}` +
-        (phase.alongside === undefined ? "" : ` alongside=${phase.alongside.join(",")}`),
+        (phase.alongside === undefined ? "" : ` alongside=${phase.alongside.join(",")}`) +
+        (phase.fill === undefined ? "" : ` fill=${phase.fill}`),
+    ),
+    ...(flow.holes ?? []).map(
+      (hole) =>
+        `hole ${hole.siteId} ${quoteType(hole.name)} type=${quoteType(hole.type)}` +
+        (hole.phase === undefined ? "" : ` phase=${hole.phase}`) +
+        (hole.tail ? " tail" : ""),
     ),
     ...flow.nodes.map(
       (node) =>
@@ -308,7 +325,8 @@ export function serializeHandoffGraph(graph: HandoffGraph, lanes: readonly Lane[
     let line = `participant ${participant.id}`;
     const name = nameOf.get(participant.lane);
     if (name !== undefined) line += ` ${quoteType(name)}`;
-    if (participant.member !== undefined) line += ` member=${participant.member.index}/${participant.member.of}`;
+    if (participant.member !== undefined)
+      line += ` member=${participant.member.index}/${participant.member.of}`;
     if (participant.many) line += " many";
     line += ` steps=${participant.steps.join(",")}`;
     lines.push(line);

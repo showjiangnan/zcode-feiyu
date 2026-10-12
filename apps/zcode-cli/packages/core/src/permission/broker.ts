@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Permission Broker - async client permission coordination
 // ============================================================
@@ -23,6 +24,13 @@ interface PendingBrokerRecord {
 
 export class DenyPermissionBroker implements PermissionBrokerPort {
   async requestPermission(request: PermissionBrokerRequest): Promise<PermissionBrokerResult> {
+    if (request.mode === "guarded") {
+      throw createCoreError(
+        CoreErrorType.ConfigurationError,
+        `No permission client configured for ${request.toolName}`,
+        { recoverable: true },
+      );
+    }
     return {
       decision: "deny",
       reason: `No permission client configured for ${request.toolName}`,

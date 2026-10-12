@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ZCodeProvider } from "./zcode-task-types-core.js";
 import { modelSelectionSchema, type ModelSelection } from "./model-selection.js";
 
@@ -26,7 +27,13 @@ export function parsePluginSubagentModelSelectionOverrides(
   );
 }
 
-export type AgentPermissionMode = "auto" | "plan";
+export type AgentPermissionMode =
+  | "acceptEdits"
+  | "auto"
+  | "bypassPermissions"
+  | "default"
+  | "dontAsk"
+  | "plan";
 
 export type AgentColor =
   | "red"

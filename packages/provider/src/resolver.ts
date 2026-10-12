@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- Resolver 同时产出 Settings 分层结果与唯一 Registry 完整类型证明。 */
 import type { z } from "zod";
 import type { completeModelConfigDataSchema } from "@zcode/shared/model-config";
@@ -16,6 +17,7 @@ import {
   type ProviderConfig,
   type ProviderConfigRule,
   ProviderConfigMap,
+  type ChatGPTSubscriptionAccessConfig,
   type ProviderTemplateMap,
   type ProviderId,
 } from "./config/index.js";
@@ -27,7 +29,8 @@ export type RegistryZhipuAccountAccessConfig = ZhipuAccountAccessConfig &
 
 export type RegistryProviderAccessConfig =
   | (ApiKeyAccessConfig & z.infer<typeof completeApiKeyAccessDataSchema>)
-  | RegistryZhipuAccountAccessConfig;
+  | RegistryZhipuAccountAccessConfig
+  | ChatGPTSubscriptionAccessConfig;
 
 export type RegistryProviderConfig = ProviderConfig &
   z.infer<typeof completeProviderConfigDataSchema> & {
@@ -43,20 +46,22 @@ export function serializeRegistryProviderConfig(
     group: config.group,
     ...(config.logo === undefined ? {} : { logo: config.logo }),
     access:
-      config.access.type !== "zhipu-account"
-        ? {
-            type: config.access.type,
-            apiKey: config.access.apiKey,
-            ...(config.access.apiKeyManagementUrl === undefined
-              ? {}
-              : { apiKeyManagementUrl: config.access.apiKeyManagementUrl }),
-          }
-        : {
-            type: config.access.type,
-            accountType: config.access.accountType,
-            mode: config.access.mode,
-            entitled: config.access.entitled,
-          },
+      config.access.type === "chatgpt-subscription"
+        ? config.access.toJSON()
+        : config.access.type !== "zhipu-account"
+          ? {
+              type: config.access.type,
+              apiKey: config.access.apiKey,
+              ...(config.access.apiKeyManagementUrl === undefined
+                ? {}
+                : { apiKeyManagementUrl: config.access.apiKeyManagementUrl }),
+            }
+          : {
+              type: config.access.type,
+              accountType: config.access.accountType,
+              mode: config.access.mode,
+              entitled: config.access.entitled,
+            },
     api: {
       type: config.api.type,
       baseUrl: config.api.baseUrl,
@@ -248,7 +253,9 @@ export class ProviderConfigResolver {
         config.modelOrder ?? [],
       );
       const accessEntitled =
-        config.access?.type !== "zhipu-account" || config.access.entitled === true;
+        (config.access?.type !== "zhipu-account" &&
+          config.access?.type !== "chatgpt-subscription") ||
+        config.access.entitled === true;
       // 账号权益与当前连接是两件事。非当前账号仍保留设置展示，不向普通 Registry 发布模型。
       // Off-Peak 不定义 current，沿用其独立调度、隐藏和鉴权规则。
       const accountCurrent = input.accountStates?.[providerId]?.current !== false;

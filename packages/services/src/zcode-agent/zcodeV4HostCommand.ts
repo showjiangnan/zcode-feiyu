@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // host（services 层）侧的 v4 命令信封构造与 ACK 收口共用件（send/交互回执收敛）。
 //
 // 与 renderer 的 packages/ui/src/v4/commandFactory.ts 平行：renderer 走浏览器
@@ -36,7 +36,11 @@ export function uuidv7(now: number = Date.now()): string {
 /** host services 进程稳定 clientId；pendingCommands 展示与幂等表以它区分提交端。 */
 const hostV4ClientId = `host-services-${uuidv7()}`;
 
-interface CreateHostCommandEnvelopeInput<T extends CommandType> {
+export function getHostV4ClientId(): string {
+  return hostV4ClientId;
+}
+
+export interface CreateHostCommandEnvelopeInput<T extends CommandType> {
   type: T;
   payload: CommandPayloadMap[T];
   /** createSession 时为 null。 */
@@ -59,7 +63,9 @@ export function createHostCommandEnvelope<T extends CommandType>(
   input: CreateHostCommandEnvelopeInput<T>,
 ): CommandEnvelope {
   if (COMMANDS_REQUIRING_BASE_REVISION.has(input.type) && input.baseRevision === undefined) {
-    throw new Error(`command ${input.type} 是 CAS 命令，必须携带 baseRevision`);
+    throw new Error(
+      `command ${input.type} 是 CAS 命令，必须携带 baseRevision（10-protocol-spec §6.4）`,
+    );
   }
   if (ROW_TARGETING_COMMANDS.has(input.type) && !input.baseLogEpoch) {
     throw new Error(`command ${input.type} 是 row target 命令，必须携带 baseLogEpoch`);

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 
 export const PERMISSION_FULL_ACCESS_ENTRY = "runtime/permission_full_access";
@@ -19,7 +20,7 @@ export const permissionFullAccessReceiptSchema = z
           .object({
             mode: z.literal("yolo"),
             planEnabled: z.boolean(),
-            previousMode: z.enum(["build", "edit", "yolo", "auto", "plan"]),
+            previousMode: z.enum(["build", "edit", "yolo", "guarded", "auto", "plan"]),
             previousPlanEnabled: z.boolean(),
             source: z.literal("command"),
             permissionGrant: z

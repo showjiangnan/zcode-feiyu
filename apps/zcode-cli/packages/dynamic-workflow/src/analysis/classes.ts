@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import {
   addPlaceholder,
@@ -96,7 +97,11 @@ function staticMemberKey(ev: Evaluator, name: ts.PropertyName): string | undefin
  * properties are Parameters, not PropertyDeclarations; their implicit field writes are not
  * explicit statements in the constructor body and must be modeled here.
  */
-function applyParameterProperties(ev: Evaluator, instance: AbstractValue, ctor: ts.ConstructorDeclaration): void {
+function applyParameterProperties(
+  ev: Evaluator,
+  instance: AbstractValue,
+  ctor: ts.ConstructorDeclaration,
+): void {
   const id = ev.s.fnId.get(ctor);
   if (id === undefined) return;
   ctor.parameters.forEach((param, index) => {
@@ -107,13 +112,23 @@ function applyParameterProperties(ev: Evaluator, instance: AbstractValue, ctor: 
   });
 }
 
-function mergeInstanceField(ev: Evaluator, instance: AbstractValue, key: string | undefined, value: AbstractValue): void {
+function mergeInstanceField(
+  ev: Evaluator,
+  instance: AbstractValue,
+  key: string | undefined,
+  value: AbstractValue,
+): void {
   // A dynamic (undefined) key smears into the container itself (collapse surfaces it).
   const field = key === undefined ? instance : liveField(instance, key);
   if (field !== value && mergeInto(field, value)) ev.s.changed = true;
 }
 
-function registerMember(ev: Evaluator, instance: AbstractValue, key: string | undefined, fn: ts.Node): void {
+function registerMember(
+  ev: Evaluator,
+  instance: AbstractValue,
+  key: string | undefined,
+  fn: ts.Node,
+): void {
   // A static-named method lives in a named field (`inst.run` dispatches via readField); a
   // dynamically-named one lives in the instance's TOP-LEVEL fns, reachable only through the
   // collapse a dynamic-key call (`inst[k]()`) performs — never picked up by a named field read,
@@ -137,17 +152,28 @@ export function resolveClassNode(ev: Evaluator, expr: ts.Expression): ts.Node | 
 }
 
 /** The class node a symbol declares, following alias / field bindings to a class. */
-export function classNodeOfSymbol(ev: Evaluator, sym: ts.Symbol, seen = new Set<ts.Symbol>()): ts.Node | undefined {
+export function classNodeOfSymbol(
+  ev: Evaluator,
+  sym: ts.Symbol,
+  seen = new Set<ts.Symbol>(),
+): ts.Node | undefined {
   if (seen.has(sym)) return undefined;
   seen.add(sym);
   for (const decl of sym.declarations ?? []) {
-    if ((ts.isClassDeclaration(decl) || ts.isClassExpression(decl)) && ev.s.classInstances.has(decl)) return decl;
+    if (
+      (ts.isClassDeclaration(decl) || ts.isClassExpression(decl)) &&
+      ev.s.classInstances.has(decl)
+    )
+      return decl;
     // A class bound through a variable alias (`const Alias = Cfg`) or stored in an
     // object-literal field (`{ C: class {} }`): resolve the initializer to the class node so
     // `new Alias(...)` / `new box.C()` applies the constructor and returns that class's shared
     // instance. Otherwise only the class's own symbol and a directly class-expression-initialized
     // variable would be recognized, and an alias / field binding would escape to emptyValue.
-    const init = ts.isVariableDeclaration(decl) || ts.isPropertyAssignment(decl) ? decl.initializer : undefined;
+    const init =
+      ts.isVariableDeclaration(decl) || ts.isPropertyAssignment(decl)
+        ? decl.initializer
+        : undefined;
     if (init !== undefined) {
       const via = classNodeFromExpr(ev, init, seen);
       if (via !== undefined) return via;
@@ -158,7 +184,11 @@ export function classNodeOfSymbol(ev: Evaluator, sym: ts.Symbol, seen = new Set<
 
 /** The class node an initializer expression denotes: a class expression, or an identifier /
  * property access aliasing another class binding (cycle-guarded through `seen`). */
-function classNodeFromExpr(ev: Evaluator, expr: ts.Expression, seen: Set<ts.Symbol>): ts.Node | undefined {
+function classNodeFromExpr(
+  ev: Evaluator,
+  expr: ts.Expression,
+  seen: Set<ts.Symbol>,
+): ts.Node | undefined {
   const e = peelPlace(expr);
   if (ts.isClassExpression(e) && ev.s.classInstances.has(e)) return e;
   if (ts.isIdentifier(e) || ts.isPropertyAccessExpression(e)) {

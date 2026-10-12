@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BackgroundBashOutput, BackgroundBashOutputResult } from "@zcode/shared";
 import { useZCodeAgentService } from "@/hooks/useZCodeAgentService.js";
 import { ensureAgentV4ConnectionHandshake } from "@/v4/agentV4ConnectionHandshake.js";
 import { logger } from "@/logger.js";
 
-interface BackgroundBashOutputTarget {
+export interface BackgroundBashOutputTarget {
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;

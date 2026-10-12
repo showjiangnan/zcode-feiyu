@@ -1,16 +1,17 @@
-// Modified by ZCode Feiyu contributors (2026).
-import type { RuntimeInputPresentation } from "@zcode/contracts";
+// Modified by ZCode Feiyu.
+import type { RuntimeInputPresentation, TurnExecutionModelFallbackReason } from "@zcode/contracts";
+import type { RequestVerificationReason } from "@zcode/shared";
+import type { GetAgentDefinitions, LoadAgentDefinitions } from "../subagent/definitions.js";
 /* eslint-disable max-lines -- Runtime 类型集中承载 core/runtime 对外结构，拆分需要单独迁移。 */
-import { PermissionService, ToolScheduler } from "./deps.js";
 import type {
-  JsonSchema,
   AgentExecutionTelemetryPort,
   AgentTelemetryCausation,
   BackgroundResultOriginMeta,
   ContextUsageBreakdownItem,
   CoordinatorResponsePort,
-  ForkCommitBundle,
   ForkChildSessionMetadata,
+  ForkCommitBundle,
+  JsonSchema,
   ModelRequestAuth,
   ModelRequestDependencies,
   ModelSelection,
@@ -18,100 +19,102 @@ import type {
   ResolvedUserInstructions,
   StableForkGoalBoundaryMetadata,
   StableForkTargetMetadata,
+  TaskMessagePort,
   WorkspaceHookBundleSnapshot,
   WorkspaceId,
-  TaskMessagePort,
 } from "@zcode/contracts";
 import type { ZCodeProviderAccountAccess } from "@zcode/shared";
 import type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
 import type { RuntimeMessageEntry } from "../agent/message-history.js";
+import type { PresentationSurface } from "../context/types.js";
+import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-runtime-admission.js";
+import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
+import type { AgentProfile } from "../subagent/profile.js";
+import type { BashTimeoutPolicy } from "../tool/bash-timeout-policy.js";
 import type {
+  AttachmentStorageMetadata,
+  AutoCompactPolicyConfig,
+  AutomationPort,
+  BrowserControlPort,
+  CheckpointCreatedPayload,
+  CollaborationMode,
   CompactPhase,
   CompactReason,
   CompactTrigger,
-  CollaborationMode,
+  ContextBuilder,
+  ContextSourcePort,
+  DynamicWorkflowRunPort,
+  DynamicWorkflowSnippetPort,
   EmbeddedSearchBackend,
+  EnvInfo,
+  ExecutionPort,
+  ExecutionShellSelection,
+  FilePartSource,
+  FileSystemPort,
+  HookRunner,
+  HooksRuntimeConfig,
+  HttpClientPort,
+  ImageProcessorPort,
   Logger,
-  AttachmentStorageMetadata,
+  McpPort,
+  McpServerConfig,
   MessageId,
   MessageVisibility,
-  FilePartSource,
-  ModelRequestAdmission,
+  MessageWithParts,
   Model,
-  ModelNetworkStatusEvent,
+  ModelAnomalyGuardConfig,
+  ModelCatalogPort,
+  ModelInputMessage,
   ModelMessageContentBlock,
+  ModelNetworkStatusEvent,
   ModelReasoningContentBlock,
+  ModelRequestAdmission,
   ModelStreamRecoveryStatus,
   ModelToolCall,
   ModelToolContract,
   ModelUsage,
   ModelUsageSummary,
-  ModelInputMessage,
-  MessageWithParts,
-  PendingTurnInput,
-  TurnInputIntentMetadata,
-  TurnSteerResult,
+  OffPeakPort,
+  OutputStylePromptConfig,
   PartId,
+  PdfDocumentPort,
+  PendingTurnInput,
   PermissionBrokerPort,
   PermissionUpdate,
+  ProjectContext,
   QueryId,
   RewindScope,
   RewindStrategy,
+  RewindTargetEvaluation,
   SessionEvent,
   SessionEventSink,
   SessionEventStorePort,
+  SessionHistoryHydrationResult,
   SessionId,
-  SessionTaskType,
   SessionMailboxPort,
   SessionProjection,
   SessionStorePort,
-  ContextSourcePort,
-  DynamicWorkflowRunPort,
-  DynamicWorkflowSnippetPort,
-  ModelCatalogPort,
-  ExecutionPort,
-  BrowserControlPort,
-  ExecutionShellSelection,
-  AutomationPort,
-  OffPeakPort,
-  FileSystemPort,
-  HttpClientPort,
-  ImageProcessorPort,
-  PdfDocumentPort,
-  HooksRuntimeConfig,
+  SessionTaskType,
   SkillPort,
-  McpPort,
-  McpServerConfig,
   SubagentPort,
+  SyntheticUserMessageSource,
   ToolArtifactStorePort,
   ToolCallId,
-  WorkflowPort,
-  WorkflowEscalatePort,
-  WorkflowSubmitPort,
-  TraceContext,
-  TraceId,
-  TurnId,
-  CheckpointCreatedPayload,
-  RewindTargetEvaluation,
-  SessionHistoryHydrationResult,
-  SyntheticUserMessageSource,
-  HookRunner,
   ToolExecutionResult,
   ToolExecutor,
   ToolRegistry,
-  ContextBuilder,
-  EnvInfo,
-  ProjectContext,
+  TopicResourcePort,
+  TraceContext,
+  TraceId,
+  TurnId,
+  TurnInputIntentMetadata,
+  TurnSteerResult,
   UserInstructionsOptions,
-  AutoCompactPolicyConfig,
-  ModelAnomalyGuardConfig,
-  OutputStylePromptConfig,
+  WorkflowEscalatePort,
+  WorkflowPort,
+  WorkflowSubmitPort,
 } from "./deps.js";
-import type { AgentProfile } from "../subagent/profile.js";
-import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
-import type { BashTimeoutPolicy } from "../tool/bash-timeout-policy.js";
-import type { PresentationSurface } from "../context/types.js";
-import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-runtime-admission.js";
+import { PermissionService, ToolScheduler } from "./deps.js";
 
 // -----------------------------------------------
 // Agent Runtime
@@ -126,6 +129,8 @@ export interface AgentRuntimeConfig {
   remoteSessionId?: string;
   bashTimeoutPolicy?: BashTimeoutPolicy;
   presentationSurface?: PresentationSurface;
+  /** Execution Host's output root, independent of the working repository. */
+  genUiOutputRoot?: string;
   mode?: CollaborationMode;
   planEnabled?: boolean;
   modelStreaming?: "off" | "on";
@@ -213,12 +218,20 @@ export interface AgentRuntimeConfig {
   parentSessionId?: SessionId;
   taskType?: SessionTaskType;
   /**
-   * 动态工作流开关：Host 判定后经
-   * ZCode Protocol 下发，runtime 只消费。**缺席即开启**，保留 TUI 默认值；
-   * headless 按 --enable-workflow 显式传 true/false（默认 false），workflow_child 继承父配置。
+   * 动态工作流灰度门（docs/dynamic-workflow/launch.md「Gray release」）：Host 判定后经
+   * ZCode Protocol 下发，runtime 只消费。**缺席即开启**（进程内嵌入方靠这个极性）；
+   * 独立 CLI 的 TUI 与 headless 按 --workflow-mode 显式传 true/false（缺省 disabled，DWG-04），
+   * workflow_child 继承父配置。
    * false 会关闭十个工作流工具，不改变其他工具的注册策略。
    */
   dynamicWorkflowEnabled?: boolean;
+  /**
+   * 灰度 mode `onDemand`（docs/dynamic-workflow/launch.md「On demand: activation」）：十个工作流
+   * 工具推迟到会话首次 `/workflow`（或 GUI 对本会话 run 的 Resume / 配置 / 直接启动、冷恢复时记录里
+   * 已有工作流）才注册。**缺席即立刻注册**，与 dynamicWorkflowEnabled 同极性；只有协议服务端在
+   * Host 下发的 mode 为 onDemand 时写 true。激活状态归 runtime（dynamicWorkflowToolsActivated）。
+   */
+  dynamicWorkflowToolsOnDemand?: boolean;
 
   // Context Builder config
   systemPrompt?: string;
@@ -251,8 +264,8 @@ export interface AgentRuntimeConfig {
   workspaceIdentity?: WorkspaceId;
   envInfo?: EnvInfo; // Optional, will be auto-detected if not provided
   currentDate?: string; // YYYY-MM-DD, resolved by adapter when omitted
-  userInstructions?: UserInstructionsOptions; // AGENTS.md
-  projectContext?: ProjectContext; // auto-detected if not provided
+  userInstructions?: UserInstructionsOptions; // P1: AGENTS.md
+  projectContext?: ProjectContext; // P2: auto-detected if not provided
   skillMetadataBudget?: number;
 }
 
@@ -316,6 +329,10 @@ export interface MemoryRuntimeConfig {
 }
 
 export interface AgentRuntimeDeps {
+  /** 只读目录入口；必须同步读取内存，不在请求收集阶段进行 I/O。 */
+  getAgentDefinitions?: GetAgentDefinitions;
+  /** 新父上下文读取一次；子执行不得继承此加载器。 */
+  loadAgentDefinitions?: LoadAgentDefinitions;
   agentTelemetry?: AgentExecutionTelemetryPort;
   agentTelemetryCausation?: AgentTelemetryCausation;
   agentTelemetryCausationMode?: "child" | "linked_root";
@@ -388,6 +405,7 @@ export interface AgentRuntimeDeps {
   offPeakPort?: OffPeakPort;
   taskMessagePort?: TaskMessagePort;
   imageGenerationPort?: import("@zcode/contracts").ImageGenerationPort;
+  topicResourcePort?: TopicResourcePort;
   contextSourcePort?: ContextSourcePort;
   eventSink?: SessionEventSink;
   logger?: Logger;
@@ -417,10 +435,12 @@ export interface ProviderRuntimeHeadersPort {
   shouldRefreshBeforeModelRequest?(input: { providerId: string; modelId: string }): boolean;
   refreshBeforeModelRequest(input: {
     accountAccess?: ZCodeProviderAccountAccess;
+    expectedAccountScope?: string;
+    rejectedProjectTokenFingerprint?: string;
     abortSignal?: AbortSignal;
     modelId: string;
     providerId: string;
-    reason: "model-request";
+    reason: RequestVerificationReason;
     sessionId: SessionId;
     traceContext: TraceContext;
     turnId?: TurnId;
@@ -451,6 +471,22 @@ export interface ModelExecutionContext {
   subagents?: {
     foregroundModel: "submission";
     background: "deny";
+  };
+  /**
+   * 本次执行的 Selection 失败时，同一 Turn 内退回原模型继续跑完（保留已提交历史，只替换后续请求的
+   * 模型），而不是让整轮直接失败。触发条件必须由发起方声明：`providerId` 限定只匹配本轮 execution
+   * Selection 指向的 provider，`rules` 按声明顺序匹配、首个命中决定退回原因，`providerErrorCode` 缺省
+   * 表示该 provider 的任何失败。core 不按 provider id、模型名或错误文案硬编码。
+   * 退回目标先取 `target`（发起方抽卡时的提交选择，即会话原模型），再取会话常驻 Session Selection；
+   * 两者都解析不出时无处可退，按真实错误失败。
+   */
+  selectionFallback?: {
+    providerId: string;
+    rules: Array<{
+      reason: TurnExecutionModelFallbackReason;
+      providerErrorCode?: string;
+    }>;
+    target?: ModelSelection;
   };
 }
 
@@ -507,6 +543,8 @@ export type PromptAdmissionOptions = ExecuteTurnOptions & {
   expectedTurnId?: TurnId;
   /** busy 时的产品队列语义；附件或不可 steer 时由 Core 回退 queue。 */
   queueDelivery?: "guide" | "queue";
+  /** 强制进入 FIFO；用于携带只能在未来独立 turn 安装的临时运行模型。 */
+  requireQueue?: boolean;
   /** queue promotion 等内部调用要求 admission 必须 idle，否则直接拒绝。 */
   requireIdle?: boolean;
 };

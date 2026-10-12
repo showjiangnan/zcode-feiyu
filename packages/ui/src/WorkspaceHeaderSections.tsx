@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { WorkspaceContextPath } from "@/WorkspaceHeaderSections/WorkspaceContextPath.js";
 import { WorkspaceLastActivity } from "@/WorkspaceHeaderSections/WorkspaceLastActivity.js";
 /* eslint-disable max-lines -- Header 标题区当前同时承载 task 菜单、路径上下文和 workspace 级状态提示，先保持单文件收口，避免菜单链路迁移时再引入回归。 */
@@ -62,7 +62,7 @@ export {
   type WorkspaceHeaderActionSectionProps,
 } from "@/WorkspaceHeaderSections/WorkspaceHeaderActionSection.js";
 
-function shouldShowRemoteSkillSyncAction(params: {
+export function shouldShowRemoteSkillSyncAction(params: {
   remoteSessionId?: string | null;
   remoteTarget?: RemoteTarget | null;
   clientMode?: "desktop-continuous" | "web-remote-replayable";
@@ -94,12 +94,16 @@ export function WorkspaceHeaderTitleSection({
   nativeSessionLogPath: _nativeSessionLogPath,
   nativeSessionLogExists: _nativeSessionLogExists,
   nativeSessionLogLoading: _nativeSessionLogLoading,
+  providerWorkspaceConfigPath: _providerWorkspaceConfigPath,
+  providerWorkspaceConfigExists: _providerWorkspaceConfigExists,
+  providerWorkspaceConfigLoading: _providerWorkspaceConfigLoading,
   reloadSessionPending,
   workspaceHeaderState,
   onRefreshGit: _onRefreshGit,
   isMacDesktop: _isMacDesktop,
   isMacFullscreen: _isMacFullscreen,
   isWindowsDesktop: _isWindowsDesktop,
+  isWebRemoteControl = false,
   selectedEditor: _selectedEditor,
   simplifyForNarrowRemote = false,
   compact = false,
@@ -169,9 +173,11 @@ export function WorkspaceHeaderTitleSection({
   const {
     taskSessionFile,
     taskNativeSessionLogFile,
+    providerConfigFile,
     fileManagerLabel,
     handleCopyText,
     handleOpenTaskPathInFileManager,
+    handleOpenProviderConfig,
   } = useTaskListItemContextActions({
     workspacePath: workspaceAbsPath,
     remoteSessionId,
@@ -205,7 +211,7 @@ export function WorkspaceHeaderTitleSection({
   const showRemoteSkillSyncAction = shouldShowRemoteSkillSyncAction({
     remoteSessionId,
     remoteTarget,
-    clientMode: "desktop-continuous" as const,
+    clientMode: isWebRemoteControl ? "web-remote-replayable" : "desktop-continuous",
     hasLocalSourceService: Boolean(
       baseServices.skillSyncService &&
       baseServices.mcpSyncService &&
@@ -238,7 +244,7 @@ export function WorkspaceHeaderTitleSection({
       type: "bug",
       module: "Agent任务执行失败",
       severity: "P2-中",
-      includeLogs: false,
+      includeLogs: true,
       description: buildTaskFeedbackDescription({
         taskTitle,
         taskId: resolvedTaskActionTaskId ?? undefined,
@@ -526,6 +532,7 @@ export function WorkspaceHeaderTitleSection({
                 taskSessionFile={taskSessionFile}
                 activeSessionId={activeSessionId}
                 taskNativeSessionLogFile={taskNativeSessionLogFile}
+                providerConfigFile={providerConfigFile}
                 disableTaskTargetActions={disableTaskTargetActions || taskMenuMembershipLoading}
                 disableTaskActions={Boolean(readOnlyReason)}
                 disabledReason={readOnlyReason}
@@ -539,7 +546,7 @@ export function WorkspaceHeaderTitleSection({
                   }
                   const optimisticTask = activeTaskMeta ?? null;
                   if (optimisticTask) {
-                    // Header 里切换 pin 以前只等 RPC 成功后更新列表缓存，
+                    // Bugfix: Header 里切换 pin 以前只等 RPC 成功后更新列表缓存，
                     // pinned 区会在请求期间被旧查询结果覆盖。先乐观切换，失败再回滚。
                     if (workspaceIdentity && !isPinned) {
                       useRemotePinnedTaskStore.getState().upsertTask(optimisticTask);
@@ -712,6 +719,9 @@ export function WorkspaceHeaderTitleSection({
                       }
                     : undefined
                 }
+                onOpenProviderConfig={() => {
+                  void handleOpenProviderConfig();
+                }}
               />
             </DropdownMenuContent>
           </DropdownMenu>

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { randomBytes, randomUUID } from "node:crypto";
 import { chmod, rm } from "node:fs/promises";
 import { createServer, type Socket } from "node:net";

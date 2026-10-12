@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- Coding Plan 套餐需要集中处理静态套餐、远端试算、缓存与登录态回退，避免把共享状态拆散。 */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -29,7 +30,7 @@ type CodingPlanProductsSnapshot = Omit<CodingPlanBatchPreviewResponse, "productL
 };
 
 const CODING_PLAN_OAUTH_REQUIRED_ERROR = "coding_plan_oauth_required";
-const ZAI_START_FREE_PRODUCT_ID = "zai-start-free";
+export const ZAI_START_FREE_PRODUCT_ID = "zai-start-free";
 const ZAI_START_FREE_PRODUCT_IDS = {
   month: `${ZAI_START_FREE_PRODUCT_ID}-monthly`,
   quarter: `${ZAI_START_FREE_PRODUCT_ID}-quarterly`,
@@ -152,7 +153,7 @@ export function useCodingPlanProducts(
   };
 }
 
-async function loadCodingPlanProductsForTest(
+export async function loadCodingPlanProductsForTest(
   providerId: CodingPlanProviderId,
   service: NonNullable<ReturnType<typeof useOptionalServices>>["codingPlanSubscriptionService"],
   force: boolean,
@@ -195,7 +196,7 @@ async function loadCodingPlanProductsForTest(
   }
 }
 
-async function loadCodingPlanStaticProductsSnapshotForTest(
+export async function loadCodingPlanStaticProductsSnapshotForTest(
   providerId: CodingPlanProviderId,
   service: NonNullable<ReturnType<typeof useOptionalServices>>["codingPlanSubscriptionService"],
 ): Promise<CodingPlanProductsSnapshot> {
@@ -205,11 +206,19 @@ async function loadCodingPlanStaticProductsSnapshotForTest(
 
 const loadCodingPlanProducts = loadCodingPlanProductsForTest;
 
-function resolveCodingPlanProductsFailureSnapshot(
+export function resolveCodingPlanProductsFailureSnapshot(
   currentSnapshot: CodingPlanProductsSnapshot | null,
   fallbackSnapshot: CodingPlanProductsSnapshot,
 ): CodingPlanProductsSnapshot {
   return currentSnapshot ?? fallbackSnapshot;
+}
+
+export function clearCodingPlanProductsCacheForTest() {
+  productRequestCache.clear();
+  productSnapshotCache.clear();
+  productCacheGeneration.clear();
+  staticProductsConfigCache = null;
+  staticProductsConfigRequest = null;
 }
 
 function invalidateCodingPlanProductsCache(providerId: CodingPlanProviderId) {
@@ -313,7 +322,7 @@ function formatStartPlanPreviewEntitlement(
   return [amount, unit, period].filter(Boolean).join(" ");
 }
 
-function isZaiStartFreeProductId(productId: string | null | undefined) {
+export function isZaiStartFreeProductId(productId: string | null | undefined) {
   if (!productId) {
     return false;
   }
@@ -362,7 +371,7 @@ function buildStaticProductDisplayList(
   });
 }
 
-async function loadCodingPlanStaticProductListForTest(
+export async function loadCodingPlanStaticProductListForTest(
   providerId: CodingPlanProviderId,
   service: NonNullable<ReturnType<typeof useOptionalServices>>["codingPlanSubscriptionService"],
 ): Promise<CodingPlanStaticProduct[]> {
@@ -498,6 +507,19 @@ export function normalizeErrorMessage(error: unknown): string {
     return CODING_PLAN_OAUTH_REQUIRED_ERROR;
   }
   return message;
+}
+
+export function isCodingPlanOAuthRequiredError(error: string): boolean {
+  return (
+    error === CODING_PLAN_OAUTH_REQUIRED_ERROR ||
+    error === "bigmodel_oauth_required" ||
+    error === "zai_oauth_required" ||
+    isCodingPlanOAuthRequiredMessage(error)
+  );
+}
+
+export function isCodingPlanSystemBusyError(error: string): boolean {
+  return error === CODING_PLAN_SYSTEM_BUSY || isCodingPlanSystemBusyMessage(error);
 }
 
 function readErrorMessage(error: unknown): string {

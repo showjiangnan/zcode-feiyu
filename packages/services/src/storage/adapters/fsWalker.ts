@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 数据根遍历器：异步、有界并发、可取消、不跟随符号链接。
  * 产出 (relativePath, bytes, mtimeMs)，分类与聚合由 domain 在调用方完成。
@@ -8,7 +9,7 @@ import { join, relative, sep } from "node:path";
 import type { StorageScanEntry } from "../domain/usageAggregate.js";
 import type { StoragePathError } from "@zcode/shared";
 
-interface WalkStorageRootOptions {
+export interface WalkStorageRootOptions {
   rootPath: string;
   onEntry: (entry: StorageScanEntry) => void;
   onError?: (error: StoragePathError) => void;
@@ -19,14 +20,14 @@ interface WalkStorageRootOptions {
   yieldEvery?: number;
 }
 
-interface WalkStorageRootResult {
+export interface WalkStorageRootResult {
   directoriesScanned: number;
   filesScanned: number;
   /** 根目录本身不存在时为 true（视为空根，不算错误）。 */
   missingRoot: boolean;
 }
 
-function createStorageAbortError(): Error {
+export function createStorageAbortError(): Error {
   return new DOMException("storage scan aborted", "AbortError");
 }
 

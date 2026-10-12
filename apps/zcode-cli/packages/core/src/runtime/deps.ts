@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export { basename, join, resolve as resolvePath } from "node:path";
 import {
   createChildTraceContext as createContractChildTraceContext,
@@ -116,6 +117,7 @@ export type {
   AttachmentStorageMetadata,
   AutomationPort,
   OffPeakPort,
+  TopicResourcePort,
   BackgroundExecutionSnapshot,
   BackgroundTaskCancelResult,
   BackgroundTaskInfo,

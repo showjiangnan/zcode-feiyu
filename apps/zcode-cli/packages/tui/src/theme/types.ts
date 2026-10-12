@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { UiThemeMode, UiThemePreference } from "@zcode/contracts";
 
 export type { UiThemeMode as TuiThemeMode, UiThemePreference as TuiThemePreference };
@@ -73,4 +74,3 @@ export type TuiLegacyPalette = {
   userMessageBackground: string;
   warning: string;
 };
-

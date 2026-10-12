@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { activeSessionMessages, modelMessageContentToText } from "../deps.js";
 import {
   buildPromptAttachmentBlocks,
@@ -160,7 +161,7 @@ export function buildRuntimeUserEntriesFromTurn(
   ];
 }
 
-function formatBrowserAmbientUserInput(
+export function formatBrowserAmbientUserInput(
   input: string,
   context?: { tabCount: number; currentUrl?: string },
 ): string {

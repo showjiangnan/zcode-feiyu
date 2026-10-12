@@ -1,4 +1,5 @@
-interface TeamPlanDisplayNameInput {
+// Modified by ZCode Feiyu.
+export interface TeamPlanDisplayNameInput {
   organizationId?: string | null;
   organizationName?: string | null;
   projectId?: string | null;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   SESSION_ENTRY_WORKSPACE_CHECKPOINT,
   SESSION_ENTRY_WORKSPACE_FILE_REWIND,
@@ -8,13 +9,7 @@ import {
   parseRewindTriggeredPayload,
   traceContextToLogContext,
 } from "../deps.js";
-import type {
-  SessionEntryInfo,
-  SessionEvent,
-  TraceContext,
-  TraceId,
-  TurnId,
-} from "../deps.js";
+import type { SessionEntryInfo, SessionEvent, TraceContext, TraceId, TurnId } from "../deps.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 
 interface PersistedWorkspaceEvent {

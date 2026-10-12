@@ -1,3 +1,6 @@
+// Modified by ZCode Feiyu.
+// Read 工具的视频分支：无转码/压缩依赖（CLI 不引 ffmpeg），只读 base64 + 大小校验。
+// wire 侧由 adapter 把 video block 转成 video_url / anthropic video block（见 transform.ts 与两个 AI SDK patch）。
 // Read 工具的视频分支：无转码/压缩依赖（CLI 不引 ffmpeg），只读 base64 + 大小校验。
 // wire 侧由 adapter 把 video block 转成 video_url / anthropic video block（见 transform.ts 与两个 AI SDK patch）。
 import {

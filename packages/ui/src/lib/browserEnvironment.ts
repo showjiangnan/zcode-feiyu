@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export interface BrowserReadableStorageLike {
   getItem(key: string): string | null;
 }
@@ -32,7 +33,7 @@ function isBrowserStorageLike(storage: unknown): storage is BrowserStorageLike {
   );
 }
 
-function getSafeReadableLocalStorage(): BrowserReadableStorageLike | null {
+export function getSafeReadableLocalStorage(): BrowserReadableStorageLike | null {
   const storage = getLocalStorageCandidate();
 
   if (!isBrowserReadableStorageLike(storage)) {

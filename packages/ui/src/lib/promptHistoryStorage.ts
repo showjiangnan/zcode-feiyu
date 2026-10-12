@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { MAX_PROMPT_HISTORY } from "@/lib/promptHistory.js";
 
 interface StorageLike {
@@ -19,7 +20,7 @@ function getBrowserStorage(): StorageLike | null {
   }
 }
 
-function getPromptHistoryStorageKey(workspacePath: string) {
+export function getPromptHistoryStorageKey(workspacePath: string) {
   return `${PROMPT_HISTORY_STORAGE_KEY_PREFIX}${workspacePath}`;
 }
 

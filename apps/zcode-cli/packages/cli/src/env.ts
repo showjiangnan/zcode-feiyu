@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
@@ -47,7 +48,7 @@ export function applyCliRuntimeEnvSanitization(
   applyCliRuntimeEnvDefaults(env, argv);
 }
 
-const findDotenv = (startDir: string): string | undefined => {
+export const findDotenv = (startDir: string): string | undefined => {
   let current = resolve(startDir);
   const root = parse(current).root;
 

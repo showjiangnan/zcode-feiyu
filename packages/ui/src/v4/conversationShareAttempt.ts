@@ -1,8 +1,9 @@
+// Modified by ZCode Feiyu.
 import type { ConversationShareAttempt } from "@/store/conversationShareSelectionStore.js";
 
 export type { ConversationShareAttempt } from "@/store/conversationShareSelectionStore.js";
 
-interface ConversationShareAttemptIdFactory {
+export interface ConversationShareAttemptIdFactory {
   now?: () => number;
   randomUUID?: () => string | undefined;
 }

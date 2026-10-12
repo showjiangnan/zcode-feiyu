@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- task realtime bus owns lease, stream batching, replay and command routing state in one main-process coordinator. */
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
 import { randomUUID } from "node:crypto";
@@ -272,7 +272,8 @@ export class TaskRealtimeBus {
 
     switch (parsed.data.type) {
       case HostResponseTypes.TaskRealtimePublish:
-        this.handleRealtimePublish(origin, parsed.data.event);
+        // 传输壳已校验；Main 原样转发未来事件，业务字段仍由目标 Host/投影校验。
+        this.handleRealtimePublish(origin, parsed.data.event as TaskRealtimeEvent);
         break;
       case HostResponseTypes.TaskRunLeaseAcquire:
         this.handleLeaseAcquire(origin, parsed.data.request);
@@ -281,7 +282,11 @@ export class TaskRealtimeBus {
         this.releaseLease(origin.hostId, parsed.data.target);
         break;
       case HostResponseTypes.TaskStreamOpPublish:
-        this.handleStreamOpPublish(origin, parsed.data.target, parsed.data.op);
+        this.handleStreamOpPublish(
+          origin,
+          parsed.data.target,
+          parsed.data.op as TaskStreamMirrorPublishOp,
+        );
         break;
       case HostResponseTypes.TaskOwnerCommandRequest:
         this.handleOwnerCommandRequest(origin, parsed.data.command);
@@ -622,7 +627,12 @@ export class TaskRealtimeBus {
     const coalesced: TaskStreamMirrorPublishOp[] = [];
     for (const op of ops) {
       const previous = coalesced[coalesced.length - 1];
-      if (this.canMergeTextChunk(previous, op)) {
+      if (
+        op.kind === "stream_event" &&
+        "content" in op.event &&
+        typeof op.event.content === "string" &&
+        this.canMergeTextChunk(previous, op)
+      ) {
         coalesced[coalesced.length - 1] = {
           kind: "stream_event",
           event: {

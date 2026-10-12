@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 工作流工具的结果卡 display 构造：观察类五件套（GetWorkflowRun / ListWorkflowRuns /
  * EvalWorkflowSnippet / ListSavedWorkflows / ListModels）+ ResumeWorkflowRun 恢复卡。
@@ -66,19 +67,20 @@ function createGetWorkflowRunDisplay(
   if (actors.length < data.actors.length) truncated = true;
 
   // 取尾巴：logTail 的价值在「最新进展」，截头不截尾。
-  const droppedLogEntries = Math.max(0, data.logTail.length - WORKFLOW_OBSERVATION_DISPLAY_MAX_LOG_ENTRIES);
-  const logTail = data.logTail
-    .slice(-WORKFLOW_OBSERVATION_DISPLAY_MAX_LOG_ENTRIES)
-    .map((entry) => {
-      const bounded = boundDisplayText(entry.message, WORKFLOW_OBSERVATION_DISPLAY_MAX_LOG_CHARS);
-      if (bounded.truncated) truncated = true;
-      // `at` 原样带上卡（有则带，无则缺席）：卡上的日志年龄与模型面的 `<log_tail>` 同一把尺。
-      return {
-        sequence: entry.sequence,
-        message: bounded.value,
-        ...(entry.at === undefined ? {} : { at: entry.at }),
-      };
-    });
+  const droppedLogEntries = Math.max(
+    0,
+    data.logTail.length - WORKFLOW_OBSERVATION_DISPLAY_MAX_LOG_ENTRIES,
+  );
+  const logTail = data.logTail.slice(-WORKFLOW_OBSERVATION_DISPLAY_MAX_LOG_ENTRIES).map((entry) => {
+    const bounded = boundDisplayText(entry.message, WORKFLOW_OBSERVATION_DISPLAY_MAX_LOG_CHARS);
+    if (bounded.truncated) truncated = true;
+    // `at` 原样带上卡（有则带，无则缺席）：卡上的日志年龄与模型面的 `<log_tail>` 同一把尺。
+    return {
+      sequence: entry.sequence,
+      message: bounded.value,
+      ...(entry.at === undefined ? {} : { at: entry.at }),
+    };
+  });
   if (droppedLogEntries > 0) truncated = true;
 
   let result: string | undefined;
@@ -103,7 +105,8 @@ function createGetWorkflowRunDisplay(
   const phases = data.phases?.slice(0, WORKFLOW_OBSERVATION_DISPLAY_MAX_PHASES);
   if (phases !== undefined && phases.length < data.phases!.length) truncated = true;
   const subagents = data.subagents.slice(0, WORKFLOW_OBSERVATION_DISPLAY_MAX_SUBAGENTS);
-  if (subagents.length < data.subagents.length || data.subagentsTruncated === true) truncated = true;
+  if (subagents.length < data.subagents.length || data.subagentsTruncated === true)
+    truncated = true;
 
   return {
     kind: "get_workflow_run",
@@ -211,7 +214,10 @@ function createEvalWorkflowSnippetDisplay(
   });
   if (droppedLogs > 0) truncated = true;
 
-  const boundedResponse = boundDisplayText(data.response, WORKFLOW_OBSERVATION_DISPLAY_MAX_RESULT_CHARS);
+  const boundedResponse = boundDisplayText(
+    data.response,
+    WORKFLOW_OBSERVATION_DISPLAY_MAX_RESULT_CHARS,
+  );
   if (boundedResponse.truncated) truncated = true;
 
   return {

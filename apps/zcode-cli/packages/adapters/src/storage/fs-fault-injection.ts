@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu.
 export const ZCODE_E2E_FS_FAULTS_ENV = "ZCODE_E2E_FS_FAULTS";
 export const ZCODE_E2E_FS_FAULTS_ALLOW_ENV = "ZCODE_E2E_FS_FAULTS_ALLOW";
 
-type StorageFsFaultOperation =
+export type StorageFsFaultOperation =
   | "appendFile"
   | "any"
   | "mkdir"
@@ -11,7 +12,7 @@ type StorageFsFaultOperation =
   | "sqliteRun"
   | "writeFile";
 
-interface StorageFsFaultRule {
+export interface StorageFsFaultRule {
   id: string;
   code: string;
   operations?: readonly StorageFsFaultOperation[];
@@ -22,7 +23,7 @@ interface StorageFsFaultRule {
   message?: string;
 }
 
-interface StorageFsFaultInput {
+export interface StorageFsFaultInput {
   operation: StorageFsFaultOperation;
   path: string;
 }
@@ -39,7 +40,7 @@ interface NormalizedStorageFsFaultRule {
   matchedCount: number;
 }
 
-interface InjectedStorageFsFaultError extends NodeJS.ErrnoException {
+export interface InjectedStorageFsFaultError extends NodeJS.ErrnoException {
   zcodeFsFaultId: string;
 }
 
@@ -172,12 +173,12 @@ function createInjectedError(input: {
   return error;
 }
 
-interface StorageFsFaultInjector {
+export interface StorageFsFaultInjector {
   maybeThrow(input: StorageFsFaultInput): void;
   reset(): void;
 }
 
-function createStorageFsFaultInjector(
+export function createStorageFsFaultInjector(
   rules: readonly StorageFsFaultRule[] = [],
 ): StorageFsFaultInjector {
   const normalizedRules = rules.map((rule, index) => normalizeRule(rule, index));
@@ -230,4 +231,13 @@ function getStorageFsFaultInjector(): StorageFsFaultInjector {
 
 export function maybeThrowStorageFsFault(input: StorageFsFaultInput): void {
   getStorageFsFaultInjector().maybeThrow(input);
+}
+
+export function setStorageFsFaultInjectorForTests(injector: StorageFsFaultInjector | null): void {
+  injectedForTests = injector;
+}
+
+export function resetStorageFsFaultInjectorForTests(): void {
+  envInjector = null;
+  injectedForTests = null;
 }

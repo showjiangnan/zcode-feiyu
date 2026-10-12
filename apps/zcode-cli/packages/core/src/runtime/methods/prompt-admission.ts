@@ -1,12 +1,15 @@
-// Modified by ZCode Feiyu contributors (2026).
-import { isTrustedUserInput } from "../trusted-user-input.js";
-import { createChildTraceContext, createQueryId, createTurnId } from "../deps.js";
-import type { QueryId, TurnInputIntentMetadata } from "../deps.js";
+// Modified by ZCode Feiyu.
 import type { PromptRuntimeCommand } from "../command-queue.js";
 import { createRuntimeCommandId } from "../command-queue.js";
-import { isProactiveCommandId, assertProactiveAdmission, resetProactiveForUserInput } from "../orchestration.js";
+import type { QueryId, TurnInputIntentMetadata } from "../deps.js";
+import { createChildTraceContext, createQueryId, createTurnId } from "../deps.js";
 import type { AgentRuntimeInternal } from "../internal.js";
-import { enqueueCancellableRuntimeCommand } from "./runtime-command-submit.js";
+import {
+  assertProactiveAdmission,
+  isProactiveCommandId,
+  resetProactiveForUserInput,
+} from "../orchestration.js";
+import { isTrustedUserInput } from "../trusted-user-input.js";
 import type {
   ActiveTurnStartReservation,
   ExecuteTurnOptions,
@@ -14,6 +17,7 @@ import type {
   PromptAdmissionReceipt,
   TurnResult,
 } from "../types.js";
+import { enqueueCancellableRuntimeCommand } from "./runtime-command-submit.js";
 
 /**
  * 每个 AgentRuntime 自己完成 prompt 的 admission：检查 busy 边界、建立 reservation、
@@ -29,6 +33,21 @@ export async function admitPrompt(
   const commandId = options?.intent?.sourceCommandId ?? options?.inputId;
   if (isProactiveCommandId(commandId)) await assertProactiveAdmission(this, commandId!);
   if (isTrustedUserInput(this, options)) await resetProactiveForUserInput(this);
+  if (options?.requireQueue === true) {
+    // Bug 根因：Highspeed 临时 provider 只能在独立 turn 的提升边界安装。如果仅依据
+    // Bootstrap 的 busy 快照决定是否排队，状态在跨层 await 期间转为空闲会误用普通模型启动。
+    return await this.enqueueDeferredInput({
+      attachments,
+      commandKind: options.commandKind,
+      delivery: "queue",
+      input,
+      inputId: options.inputId,
+      intent: admissionIntent(options.intent, "queue"),
+      queryId: options.queryId,
+      toolDisallowlist: options.toolDisallowlist,
+      traceContext: options.traceContext,
+    });
+  }
   const promotionLeaseOnly =
     options?.requireIdle === true &&
     this.foregroundPromotionLease !== undefined &&

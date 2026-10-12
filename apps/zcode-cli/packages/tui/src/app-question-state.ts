@@ -1,7 +1,5 @@
-import type {
-  AskUserQuestionAnnotation,
-  AskUserQuestionInput,
-} from "@zcode/contracts";
+// Modified by ZCode Feiyu.
+import type { AskUserQuestionAnnotation, AskUserQuestionInput } from "@zcode/contracts";
 import type { KeyEvent } from "@mbears/opentui-core";
 import type React from "react";
 import type { ApprovalPrompt, QuestionPromptState } from "./app-model.js";
@@ -328,7 +326,7 @@ function answerCurrentQuestion(
   if (!question) return undefined;
 
   const selectedLabels = question.multiSelect
-    ? state.multiSelections[question.question] ?? []
+    ? (state.multiSelections[question.question] ?? [])
     : [
         state.selectedOptionIndex === question.options.length
           ? "Other"

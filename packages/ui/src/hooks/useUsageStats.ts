@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AppUsageRange,
@@ -40,7 +41,7 @@ interface CodingPlanUsageCacheEntry {
 
 const codingPlanUsageAccessCache = new WeakMap<object, Map<string, CodingPlanUsageCacheEntry>>();
 
-function shouldRefreshCodingPlanUsageOnAccess(params: {
+export function shouldRefreshCodingPlanUsageOnAccess(params: {
   lastUpdatedAt: number | null;
   now: number;
 }): boolean {

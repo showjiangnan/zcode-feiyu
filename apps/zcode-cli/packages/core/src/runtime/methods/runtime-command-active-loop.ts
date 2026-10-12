@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { runtimeInputMetadata } from "../../agent/runtime-input-presentation.js";
 import type { MessageId } from "../deps.js";
 import type { RuntimeCommandId } from "../command-queue.js";
@@ -10,7 +11,7 @@ import { persistSubagentMessageCommand } from "./subagent-messages.js";
 import { isStaleBranchRuntimeCommand } from "./runtime-command-generation.js";
 import { createRuntimeUserEntry, type RuntimeMessageEntry } from "../../agent/message-history.js";
 
-interface ActiveLoopRuntimeCommandDrainResult {
+export interface ActiveLoopRuntimeCommandDrainResult {
   backgroundSubagentResultConsumed: boolean;
   workflowResultConsumed: boolean;
   consumedCommandIds: RuntimeCommandId[];

@@ -1,11 +1,19 @@
+// Modified by ZCode Feiyu.
 // ============================================================
-// 「这段历史里加载过某个技能吗」
+// 「这段历史里加载过某个技能吗」（docs/dynamic-workflow/authoring.md「The authoring surface」）
 // ============================================================
 // 工作流创作工具的技能门（tool/handlers/workflow-skill-gate.ts）问的是这一句。判据刻意取自
 // runtime 的 provider 可见历史，而不是另立一个会话级 Set：历史就是模型此刻记得的东西——
 // compaction 把那次 Skill 调用挤出去，技能正文也一起不在了，门理应重新关上；resume / rewind
 // 重建历史时，答案随之重建，不需要第二套 hydration。
 
+// ============================================================
+// 「这段历史里加载过某个技能吗」（docs/dynamic-workflow/authoring.md「The authoring surface」）
+// ============================================================
+// 工作流创作工具的技能门（tool/handlers/workflow-skill-gate.ts）问的是这一句。判据刻意取自
+// runtime 的 provider 可见历史，而不是另立一个会话级 Set：历史就是模型此刻记得的东西——
+// compaction 把那次 Skill 调用挤出去，技能正文也一起不在了，门理应重新关上；resume / rewind
+// 重建历史时，答案随之重建，不需要第二套 hydration。
 import type { RuntimeMessageEntry } from "./message-history.js";
 
 const SKILL_TOOL_NAME = "Skill";

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- MCP 同步服务集中维护用户目录读写、远端导入和 filesystem 路径改写，拆分会增加远端配置同步回归面。 */
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
@@ -69,7 +70,7 @@ const DIRECTORY_MCP_DESCRIPTORS: readonly DirectoryMcpDescriptor[] = [
   AGENTS_MCP_DESCRIPTOR,
 ];
 
-interface McpSyncServiceDependencies {
+export interface McpSyncServiceDependencies {
   /**
    * MCP server 运行态状态检查的执行面。真实 connect/listTools 必须发生在
    * agent 进程（workspace 的 PATH/cwd 环境），host 侧没有可替代实现；无该依赖的

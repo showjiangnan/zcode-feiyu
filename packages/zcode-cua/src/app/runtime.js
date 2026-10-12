@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { errorResult, validateCall, validateContext } from "../domain/protocol.js";
 
 export function createRuntime(options = {}) {

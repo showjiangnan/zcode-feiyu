@@ -1,4 +1,5 @@
-interface RendererNavigationEntry {
+// Modified by ZCode Feiyu.
+export interface RendererNavigationEntry {
   readonly type?: string;
 }
 

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useEffect, useRef } from "react";
 import type { ConversationTelemetrySupervisor } from "@/v4/telemetry/conversationTelemetrySupervisor.js";
 
@@ -8,7 +9,7 @@ const SUFFIX_REASON_CODE_PATTERN = /\((fault\.[A-Za-z0-9._-]+)\)\s*$/;
 
 type SubscriptionErrorReporter = Pick<ConversationTelemetrySupervisor, "reportVisibleChatError">;
 
-function resolveSessionSubscriptionErrorCode(message: string): string {
+export function resolveSessionSubscriptionErrorCode(message: string): string {
   const trimmedMessage = message.trim();
   // Bug 原因：recovery fail-closed 会把纯 reasonCode 直接写入 lastError，旧逻辑只识别
   // “正文 (reasonCode)” 形式，导致结构化错误被错误聚合为 fault.subscribe.unknown。

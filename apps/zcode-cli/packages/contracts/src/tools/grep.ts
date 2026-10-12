@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Grep Tool - Content Search Tool
 // ============================================================
@@ -23,18 +24,14 @@ export const GrepInputSchema = z.object({
   /**
    * Ripgrep-compatible regular expression pattern to search for in file contents.
    */
-  pattern: z
-    .string()
-    .describe("The regular expression pattern to search for in file contents"),
+  pattern: z.string().describe("The regular expression pattern to search for in file contents"),
   /**
    * Optional file or directory to search. Defaults to the current working directory.
    */
   path: z
     .string()
     .optional()
-    .describe(
-      "File or directory to search in (rg PATH). Defaults to current working directory.",
-    ),
+    .describe("File or directory to search in (rg PATH). Defaults to current working directory."),
   /**
    * Glob pattern to filter files.
    */
@@ -60,10 +57,7 @@ export const GrepInputSchema = z.object({
     .describe(
       'Number of lines to show after each match (rg -A). Requires output_mode: "content", ignored otherwise.',
     ),
-  "-C": z
-    .number()
-    .optional()
-    .describe("Alias for context."),
+  "-C": z.number().optional().describe("Alias for context."),
   context: z
     .number()
     .optional()

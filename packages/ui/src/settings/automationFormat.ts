@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // 定时任务展示层格式化：cron 表达式 → 人类可读的调度摘要 / 相对时间 / cron builder 组装。
 // 说明：croner 只在 services 侧用于算下次触发时间；UI 这里仅做「已知常见模式」的可读化，
 // 覆盖不到的表达式回退成原始 cron 文本，保证不误导。
@@ -28,6 +28,16 @@ export function hasAutomationFailureState(automation: AutomationFailureLike): bo
     automation.lifecycleStatus === "failed" ||
     automation.dispatchStatus === "failed_to_dispatch" ||
     Boolean(automation.lastError?.trim())
+  );
+}
+
+/** 派发失败进入退避队列时，失败态旁展示真实的重试排队信息。 */
+export function hasAutomationRetryQueueState(automation: AutomationFailureLike): boolean {
+  return (
+    hasAutomationFailureState(automation) &&
+    automation.dispatchStatus === "failed_to_dispatch" &&
+    (automation.dispatchAttempts ?? 0) > 0 &&
+    typeof automation.retryAt === "number"
   );
 }
 
@@ -76,6 +86,14 @@ export function isSessionCreatedAutomation(
   automation: { targetTaskId?: string } | null | undefined,
 ): boolean {
   return Boolean(automation?.targetTaskId?.trim());
+}
+
+export function buildAutomationEditCronExpr(
+  state: CronBuilderState,
+  automation: { cronExpr: string; targetTaskId?: string } | null | undefined,
+): string {
+  // Bugfix: 会话内创建的 cron 可能超出 UI builder 的表达能力，编辑其他字段时必须原样保留。
+  return isSessionCreatedAutomation(automation) ? automation!.cronExpr : buildCronExpr(state);
 }
 
 /** 组装 cron builder 状态 → 5 段 cron 表达式（分 时 日 月 周）。 */

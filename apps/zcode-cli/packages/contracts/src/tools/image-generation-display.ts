@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 import { IMAGE_MAX_BYTES, IMAGE_MAX_COUNT } from "@zcode/shared";
 

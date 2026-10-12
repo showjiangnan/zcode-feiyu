@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { create } from "zustand";
 import {
   getCodeCommentWorkspaceKey,
@@ -27,7 +28,7 @@ interface CodeCommentPreviewBucketParams {
   sourcePath: string;
 }
 
-function buildCodeCommentPreviewBucketKey({
+export function buildCodeCommentPreviewBucketKey({
   workspacePath,
   workspaceIdentity,
   sourcePath,

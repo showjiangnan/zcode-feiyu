@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // 常驻 cron scheduler 进程：由 desktop main 通过 electronUtilityProcess.fork 拉起。
 // 职责（tasks-index 属主方案）：
 //   - 轮询 tasks-index 的 automations，事务认领到期任务（AutomationRepo.claimDue：BEGIN IMMEDIATE + running 0→1）

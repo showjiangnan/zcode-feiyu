@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { ZCodeProtocolAgentServerContext } from "./server-types.js";
 import type { ZCodeApp } from "../app/types.js";
 

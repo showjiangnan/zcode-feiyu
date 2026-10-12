@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useEffect, useState } from "react";
 import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
 import { logger } from "@/logger.js";
@@ -5,7 +6,7 @@ import { pendingCommandRegistry, type PendingCommandEntry } from "@/v4/pendingCo
 import { isPendingCommandForWorkspace } from "@/v4/pendingCommandWorkspace.js";
 import type { SessionDataLayer } from "@/v4/sessionDataLayer.js";
 
-interface UsePendingCommandRecoveryOptions {
+export interface UsePendingCommandRecoveryOptions {
   layer: SessionDataLayer;
   sessionId: string | null;
   snapshot: ConversationSnapshot | null;

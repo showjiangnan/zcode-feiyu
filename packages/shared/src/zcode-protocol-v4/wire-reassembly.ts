@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // V4 physical wire reassembly：所有 fragment 只进入 staging；bytes、checksum、
 // UTF-8、JSON 与 schema 全部通过后，才产出一个可原子 apply 的 logical frame。
 import { z } from "zod";
@@ -69,7 +70,7 @@ export function reassembleTopicWireFrames<F>(
   }
 
   if (first.fragmentCount > PROTOCOL_V4_LIMITS.logicalFrameAssemblyMaxFragments) {
-    // fragmentCount 曾只受 logicalBytes 约束，恶意元数据可在
+    // 修复原因：fragmentCount 曾只受 logicalBytes 约束，恶意元数据可在
     // 缺片路径制造千万级 missingIndexes，先用协议硬上限阻断无界分配。
     return {
       kind: "rejected",

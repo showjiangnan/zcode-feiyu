@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 商店详情页把 hero/示例提示词/组件分区/信息区/高级折叠组织为一个连贯页面，与截图 1:1 对齐。 */
 import { useState, type ReactNode } from "react";
 import {
@@ -74,7 +74,7 @@ const EXAMPLE_PROMPT_DOCUMENT_ICON_URLS: Record<ExamplePromptDocumentIcon, strin
   spreadsheets: spreadsheetsIconUrl,
 };
 
-function resolveExamplePromptDocumentIcon(prompt: string): ExamplePromptDocumentIcon {
+export function resolveExamplePromptDocumentIcon(prompt: string): ExamplePromptDocumentIcon {
   if (/\bpdf\b/iu.test(prompt)) {
     return "pdf";
   }
@@ -234,7 +234,7 @@ export function PluginStoreDetailView({
         orderedGroups.map((group) => <ComponentSection key={group.kind} group={group} />)
       )}
 
-      {/* 信息区：listing 优先，manifest（运行时/describe）回退；无值整行省略。 */}
+      {/* 信息区：listing 优先，manifest（运行时/describe）回退；无值整行省略（ADR-0001）。 */}
       <InfoSection item={item} describeMetadata={describeMetadata} />
 
       {advanced}

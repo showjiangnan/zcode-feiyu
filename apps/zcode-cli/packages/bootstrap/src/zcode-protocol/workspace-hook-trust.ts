@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { resolve } from "node:path";
 import { workspaceHookPolicySchema } from "@zcode/contracts";
 import type { WorkspaceHookPolicyProvider } from "@zcode/core";
@@ -33,10 +34,7 @@ export async function grantWorkspaceHookTrustForProtocol(
   const grant = dependencies.grant ?? grantWorkspaceHookTrust;
   const workspaceIdentity =
     params.workspace.workspaceIdentity?.trim() || resolve(params.workspace.workspacePath);
-  const policyRejection = getPolicyRejectionReason(
-    dependencies.policyProvider,
-    workspaceIdentity,
-  );
+  const policyRejection = getPolicyRejectionReason(dependencies.policyProvider, workspaceIdentity);
   if (policyRejection) {
     return zcodeWorkspaceHookTrustGrantResultSchema.parse({
       accepted: false,
@@ -71,9 +69,7 @@ function getPolicyRejectionReason(
   workspaceIdentity: string,
 ): ZCodeWorkspaceHookTrustGrantReasonCode | undefined {
   try {
-    const policy = workspaceHookPolicySchema.parse(
-      policyProvider.getPolicy(workspaceIdentity),
-    );
+    const policy = workspaceHookPolicySchema.parse(policyProvider.getPolicy(workspaceIdentity));
     if (policy.mode === "user_decides") return undefined;
     return policy.mode === "allow_trusted_only"
       ? "workspace_hooks_policy_requires_pretrust"

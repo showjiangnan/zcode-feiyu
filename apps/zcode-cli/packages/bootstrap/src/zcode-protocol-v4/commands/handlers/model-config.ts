@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 模型配置命令组：switchModelConfig（自旧 server-operations.switchModelConfig 语义搬运）
 // + switchCollaborationMode（additive，UI 模式选择器）
 // + applyRequestedSessionConfig（createSession.config 消费共用件）。
@@ -9,7 +10,7 @@ import type {
   CommandPayloadMap,
   CommandResult,
 } from "@zcode/shared/zcode-protocol-v4";
-import { V4CommandNoopError } from "../../v4-gateway.js";
+import { V4CommandNoopError } from "../../v4-command-errors.js";
 import { runSessionModelConfigMutation } from "../../model-config-mutation.js";
 import { requireRecord } from "../record-access.js";
 import type { V4CommandCoreHost, V4SessionRecordView } from "../types.js";
@@ -64,7 +65,7 @@ function readActualThought(
 }
 
 /** switchCollaborationMode 命令值域（command.ts z.enum 同源；auto 非用户可切不在内）。 */
-const SWITCHABLE_MODES: ReadonlySet<string> = new Set(["build", "edit", "plan", "yolo"]);
+const SWITCHABLE_MODES: ReadonlySet<string> = new Set(["build", "edit", "plan", "yolo", "guarded"]);
 
 /**
  * switchModelConfig：切换会话模型选型。跨模型时 app.setModel 换 provider client + 模型，

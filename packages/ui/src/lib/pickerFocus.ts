@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export function isCoarseTouchDevice(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return false;

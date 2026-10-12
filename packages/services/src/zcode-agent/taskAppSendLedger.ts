@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 
 /** 与 CLI 每会话幂等表同量级；超出后淘汰最久未用的记录。 */

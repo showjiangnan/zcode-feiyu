@@ -1,10 +1,14 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { commitMemoryAwareFile } from "../../memory/commit-file.js";
 /* eslint-disable max-lines -- Edit 工具需要集中维护文本匹配、read-before-edit 与写回状态，避免 bugfix 期间拆分扩大行为面。 */
 // ============================================================
 // Edit Tool Handler
 // ============================================================
 
+/* eslint-disable max-lines -- Edit 工具需要集中维护文本匹配、read-before-edit 与写回状态，避免 bugfix 期间拆分扩大行为面。 */
+// ============================================================
+// Edit Tool Handler
+// ============================================================
 import { basename, dirname, extname } from "node:path";
 import type {
   ReadFileStateEntry,
@@ -84,7 +88,7 @@ function formatEditModelContent(output: unknown): string {
   return `The file ${filePath} has been updated successfully${modifiedNote}.${freshnessSuffix}`;
 }
 
-const editHandler: ToolHandler = async (input, context) => {
+export const editHandler: ToolHandler = async (input, context) => {
   const { file_path, old_string, new_string, replace_all } = EditInputSchema.parse(
     input,
   ) as EditInput;

@@ -1,4 +1,5 @@
-interface PdfJsDocumentOptions {
+// Modified by ZCode Feiyu.
+export interface PdfJsDocumentOptions {
   cMapPacked: true;
   cMapUrl: string;
 }

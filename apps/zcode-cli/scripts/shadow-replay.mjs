@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // 影子重放对账（交付 / 测试基建）。
 // 用途：把本机真实 CLI 库（默认 ~/.zcode/cli/db/db.sqlite）的历史会话全量喂给
 // 冷恢复管线（transcript 合成 → ProductProjection），输出守恒对账报告——

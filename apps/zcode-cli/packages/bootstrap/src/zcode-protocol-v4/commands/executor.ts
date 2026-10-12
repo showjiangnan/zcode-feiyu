@@ -1,3 +1,5 @@
+// Modified by ZCode Feiyu.
+import type { V4CommandAdmission, V4CommandExecutionContext } from "./execution-context.js";
 // v4 命令原生执行器。
 //
 // 逐命令原生化的推进方式：handlers/ 注册表列出已原生的命令；binder 只在 supports
@@ -17,7 +19,7 @@ const SELECTION_SIDE_CHAT_RESTRICTED_COMMANDS = new Set<CommandEnvelope["type"]>
   "discardSharedContext",
 ]);
 
-class V4SelectionSideChatRestrictedCommandError extends Error {
+export class V4SelectionSideChatRestrictedCommandError extends Error {
   readonly reasonCode = "guard.selectionSideChatRestrictedCommand";
 
   constructor(command: CommandEnvelope["type"]) {
@@ -59,35 +61,9 @@ export class V4CommandExecutor {
     });
   }
 }
-
-interface V4CommandAdmission {
-  admissionSeq: number;
-  admittedAt: number;
-  queueItemId: string;
-}
-
-interface V4CommandExecutionContext {
-  /** 内部 auto-drain 必须在 reserve 前由 handler 原子校验 Core idle。 */
-  autoDrainPromotion?: true;
-}
-
-type V4AdmittedCommandEnvelope = CommandEnvelope & {
-  __v4Admission?: V4CommandAdmission;
-  __v4ExecutionContext?: V4CommandExecutionContext;
-};
-
-export function commandAdmissionOf(envelope: CommandEnvelope): V4CommandAdmission {
-  return (
-    (envelope as V4AdmittedCommandEnvelope).__v4Admission ?? {
-      admissionSeq: 0,
-      admittedAt: Date.now(),
-      queueItemId: `queue_${envelope.commandId}`,
-    }
-  );
-}
-
-export function commandExecutionContextOf(
-  envelope: CommandEnvelope,
-): V4CommandExecutionContext | undefined {
-  return (envelope as V4AdmittedCommandEnvelope).__v4ExecutionContext;
-}
+export { commandAdmissionOf, commandExecutionContextOf } from "./execution-context.js";
+export type {
+  V4CommandAdmission,
+  V4CommandExecutionContext,
+  V4AdmittedCommandEnvelope,
+} from "./execution-context.js";

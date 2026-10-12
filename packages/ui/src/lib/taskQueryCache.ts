@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   ZCodeTaskListKind,
   ZCodeTaskListSortBy,
@@ -47,7 +48,7 @@ export function buildTaskEntityKey(
   return `${buildTaskWorkspaceKey(task.workspacePath, task.workspaceIdentity)}::${task.taskId}`;
 }
 
-function normalizeTaskListWorkspaceScopes(
+export function normalizeTaskListWorkspaceScopes(
   scopes: ZCodeTaskListWorkspaceScope[],
 ): ZCodeTaskListWorkspaceScope[] {
   const uniqueScopes = new Map<string, ZCodeTaskListWorkspaceScope>();

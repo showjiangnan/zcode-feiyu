@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 
 export const LOCAL_TTFT_STAGES = [

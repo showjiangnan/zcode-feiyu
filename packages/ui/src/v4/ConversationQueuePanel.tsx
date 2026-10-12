@@ -1,4 +1,15 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
+import { resolveV4QueueReorderAnchor } from "./queueReorder.js";
+export { resolveV4QueueReorderAnchor, type V4QueueReorderAnchor } from "./queueReorder.js";
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { cn } from "@/components/lib/utils.js";
+import { Button } from "@/components/ui/button.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { parsePromptConversationSelections } from "@/lib/conversationSelectionReference.js";
+import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
+import { BotGroupSourceLabel } from "@/v4/BotGroupSourceLabel.js";
+import { BotChannelMessageContent } from "@/v4/ChannelMentionContent.js";
+import { ConversationSelectionReferenceChip } from "@/v4/composer/ConversationSelectionReferenceChip.js";
 import {
   closestCenter,
   DndContext,
@@ -10,8 +21,8 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { memo, useCallback, useMemo, useState, type CSSProperties } from "react";
 import {
+  testId,
   TID_V4_QUEUE,
   TID_V4_QUEUE_ITEM,
   TID_V4_QUEUE_ITEM_DELETE,
@@ -19,17 +30,12 @@ import {
   TID_V4_QUEUE_ITEM_SEND_NOW,
   TID_V4_QUEUE_PAUSED_BANNER,
   TID_V4_QUEUE_RESUME,
-  testId,
 } from "@zcode/shared";
 import type { QueueState } from "@zcode/shared/zcode-protocol-v4";
 import { ArrowUpFromLine, GripVertical, PencilIcon, Trash2Icon } from "lucide-react";
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
-import { Button } from "@/components/ui/button.js";
-import { cn } from "@/components/lib/utils.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { runUserAction, runUserActionAsync } from "@/lib/userActionTelemetry.js";
+import { memo, useCallback, useMemo, useState, type CSSProperties } from "react";
 
-interface ConversationQueuePanelProps {
+export interface ConversationQueuePanelProps {
   queue: QueueState;
   /** 删除队列项（deleteQueueItem command）。 */
   onDeleteItem?: (queueItemId: string) => void;
@@ -46,44 +52,6 @@ interface ConversationQueuePanelProps {
 }
 
 type QueueItem = QueueState["items"][number];
-
-interface V4QueueReorderAnchor {
-  beforeQueueItemId: string | null;
-  queueItemId: string;
-}
-
-function resolveV4QueueReorderAnchor(
-  items: readonly QueueItem[],
-  activeQueueItemId: string,
-  overQueueItemId: string,
-): V4QueueReorderAnchor | null {
-  if (activeQueueItemId === overQueueItemId) {
-    return null;
-  }
-
-  const fromIndex = items.findIndex((item) => item.queueItemId === activeQueueItemId);
-  const overIndex = items.findIndex((item) => item.queueItemId === overQueueItemId);
-  if (fromIndex < 0 || overIndex < 0) {
-    return null;
-  }
-
-  if (fromIndex < overIndex) {
-    const itemsAfterRemoval = items.filter((item) => item.queueItemId !== activeQueueItemId);
-    const overIndexAfterRemoval = itemsAfterRemoval.findIndex(
-      (item) => item.queueItemId === overQueueItemId,
-    );
-    const nextItem = itemsAfterRemoval[overIndexAfterRemoval + 1];
-    return {
-      beforeQueueItemId: nextItem?.queueItemId ?? null,
-      queueItemId: activeQueueItemId,
-    };
-  }
-
-  return {
-    beforeQueueItemId: overQueueItemId,
-    queueItemId: activeQueueItemId,
-  };
-}
 
 const restrictQueueDragToPanel: Modifier = ({
   transform,
@@ -134,6 +102,18 @@ const QueueRow = memo(function QueueRow({
   const dispatchLocked = item.dispatch.state !== "queued";
   const rowLocked = dispatchLocked || editPending;
   const isCompact = item.kind === "compact";
+  const parsedInput = {
+    ...parsePromptConversationSelections(item.text),
+    ...(item.conversationQuotes ? { references: item.conversationQuotes } : {}),
+  };
+  const attachmentNames = item.attachments.map((attachment) =>
+    attachment.sourceKind === "topic-history"
+      ? intl.formatMessage(
+          { id: "chat.attachments.topicHistory" },
+          { count: attachment.messageCount ?? 0 },
+        )
+      : attachment.fileName,
+  );
   const {
     attributes,
     isDragging,
@@ -203,14 +183,33 @@ const QueueRow = memo(function QueueRow({
           "flex min-w-0 flex-1 flex-col items-start truncate text-ui-base text-foreground",
           isCompact ? "font-mono" : null,
         )}
-        title={item.text}
+        title={parsedInput.visibleContent}
       >
         {item.interTaskSourceTaskId ? (
           <span className="text-ui-sm text-foreground-subtlest">
             {intl.formatMessage({ id: "chat.message.interTaskAutoSource" })}
           </span>
         ) : null}
-        <span className="truncate">{isCompact ? "/compact" : item.text}</span>
+        <span className="flex min-w-0 flex-col">
+          <BotGroupSourceLabel source={item.botGroupSource} />
+          <span className="truncate">
+            <BotChannelMessageContent
+              source={isCompact ? undefined : item.botGroupSource}
+              text={isCompact ? "/compact" : parsedInput.visibleContent}
+            />
+          </span>
+          {parsedInput.references.length ? (
+            <ConversationSelectionReferenceChip references={parsedInput.references} />
+          ) : null}
+          {item.attachments.length > 0 ? (
+            <span
+              className="truncate text-ui-sm text-foreground-subtle"
+              title={attachmentNames.join(", ")}
+            >
+              {attachmentNames.join(", ")}
+            </span>
+          ) : null}
+        </span>
       </span>
       {onSendNow && !item.interTaskSourceTaskId ? (
         <Button

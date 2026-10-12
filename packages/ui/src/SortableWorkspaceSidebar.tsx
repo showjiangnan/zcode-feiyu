@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { memo, useCallback, useMemo, type CSSProperties } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -26,6 +26,8 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
   taskListHasMore,
   taskListHasUnread = false,
   taskListLiveWorkflowCount = 0,
+  mobileActiveTaskKey,
+  isWebRemoteControl = false,
   workspaceKey,
   onShowMoreWorkspaceTasks,
   reconnectingRemoteWorkspaceKeys,
@@ -53,6 +55,8 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
   taskListHasMore: boolean;
   taskListHasUnread?: boolean;
   taskListLiveWorkflowCount?: number;
+  mobileActiveTaskKey?: string | null;
+  isWebRemoteControl?: boolean;
   workspaceKey: string;
   onShowMoreWorkspaceTasks: (workspaceKey: string) => void;
   reconnectingRemoteWorkspaceKeys: string[];
@@ -123,6 +127,8 @@ export const SortableWorkspaceSidebarItem = memo(function SortableWorkspaceSideb
       taskListHasMore={taskListHasMore}
       taskListHasUnread={taskListHasUnread}
       taskListLiveWorkflowCount={taskListLiveWorkflowCount}
+      mobileActiveTaskKey={mobileActiveTaskKey}
+      isWebRemoteControl={isWebRemoteControl}
       onShowMoreTasks={handleShowMoreTasks}
       reconnectingRemoteWorkspaceKeys={reconnectingRemoteWorkspaceKeys}
       remoteWorkspaceErrorByWorkspaceKey={remoteWorkspaceErrorByWorkspaceKey}

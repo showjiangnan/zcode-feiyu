@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { memo, type ReactNode, useEffect, useMemo, useState } from "react";
 import { TID_CHAT_TOOL_CALL_BLOCK, testId } from "@zcode/shared";
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
@@ -13,6 +14,7 @@ import {
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import { CuaGroupToolCallBlock } from "@/ToolCallBlocks/renderers/cua-group.js";
 import { resolveToolCallRenderer } from "@/ToolCallBlocks/resolveRenderer.js";
+import * as PluginUi from "@/plugin-ui/index.js";
 import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 import {
   readRawToolCallFileSummaries,
@@ -66,7 +68,7 @@ function canPlayToolEntranceAnimation(key: string, active: boolean) {
   return active && !hasPlayedToolEntranceAnimation(key);
 }
 
-function isAgentToolCall(toolCall: TaskChatToolCallTreeNode["toolCall"]): boolean {
+export function isAgentToolCall(toolCall: TaskChatToolCallTreeNode["toolCall"]): boolean {
   return resolveToolCallIdentity(toolCall).family === "agent";
 }
 
@@ -83,6 +85,7 @@ function ToolCallBlockComponent({
   onOpenBrowserUrl,
   onOpenAutomationsMain,
   onOpenPlanDetail,
+  pluginUi: providedPluginUi,
   onOpenWorkflowRun,
   onResumeWorkflowRun,
   onOpenWorkflowActor,
@@ -117,6 +120,7 @@ function ToolCallBlockComponent({
   onOpenBrowserUrl?: (url: string) => void;
   onOpenAutomationsMain?: (automationId?: string) => void;
   onOpenPlanDetail?: ToolCallBlockRenderContext["onOpenPlanDetail"];
+  pluginUi?: ToolCallBlockRenderContext["pluginUi"];
   onOpenWorkflowRun?: ToolCallBlockRenderContext["onOpenWorkflowRun"];
   /** 工具卡页脚的 Resume；与 workflowRun 同样不向子工具卡透传。 */
   onResumeWorkflowRun?: ToolCallBlockRenderContext["onResumeWorkflowRun"];
@@ -151,6 +155,8 @@ function ToolCallBlockComponent({
     event: Extract<ConversationCuaGroupEvent, { kind: "reasoning" }>,
   ) => ReactNode;
 }) {
+  const inheritedPluginUi = PluginUi.usePluginUiToolBinding(toolCallNode.toolCall.toolId);
+  const pluginUi = providedPluginUi ?? inheritedPluginUi;
   const { toolCall, childToolCalls } = toolCallNode;
   const { intl } = useZCodeIntl();
   const isOfficeMode = useIsOfficeMode();
@@ -312,6 +318,7 @@ function ToolCallBlockComponent({
       onOpenBrowserUrl,
       onOpenAutomationsMain,
       onOpenPlanDetail,
+      pluginUi,
       // onOpenWorkflowRun 之前只被透传给子工具卡，从未进过 renderContext，
       // 于是 CreateWorkflow renderer 永远收不到它——「打开详情页」的入口不是被埋深了，
       // 是根本没渲染过。run 态紧凑卡就挂在这个回调上，所以它必须在这里。
@@ -340,6 +347,7 @@ function ToolCallBlockComponent({
       onOpenAutomationsMain,
       onOpenBrowserUrl,
       onOpenPlanDetail,
+      pluginUi,
       onOpenWorkflowRun,
       onResumeWorkflowRun,
       onOpenWorkflowActor,

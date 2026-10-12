@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 
 export const ToolCommandStatusSchema = z.enum([
@@ -49,9 +50,7 @@ export const FileSystemExecutionTelemetrySchema = z
   })
   .strict();
 
-export type FileSystemExecutionTelemetry = z.infer<
-  typeof FileSystemExecutionTelemetrySchema
->;
+export type FileSystemExecutionTelemetry = z.infer<typeof FileSystemExecutionTelemetrySchema>;
 
 export const PatchExecutionTelemetrySchema = z
   .object({
@@ -85,9 +84,7 @@ export const ToolExecutionTelemetryDetailSchema = z.discriminatedUnion("kind", [
     .strict(),
 ]);
 
-export type ToolExecutionTelemetryDetail = z.infer<
-  typeof ToolExecutionTelemetryDetailSchema
->;
+export type ToolExecutionTelemetryDetail = z.infer<typeof ToolExecutionTelemetryDetailSchema>;
 
 /**
  * 工具执行结果摘要，随 ToolCallResult 事件落本地存储；命令专属字段只能进入判别 detail，

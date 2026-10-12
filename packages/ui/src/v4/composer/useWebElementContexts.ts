@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   WEB_ELEMENT_CONTEXT_ADD_TO_CHAT_EVENT,
@@ -16,14 +17,14 @@ interface WebElementContextRemovePayload {
   workspaceIdentity?: string;
 }
 
-interface UseWebElementContextsOptions {
+export interface UseWebElementContextsOptions {
   workspacePath: string;
   workspaceIdentity?: string;
   listenAddToChatEvents?: boolean;
   scopeId?: string | null;
 }
 
-interface UseWebElementContextsResult {
+export interface UseWebElementContextsResult {
   contexts: readonly WebElementContextComposerAttachment[];
   hasContexts: boolean;
   removeContext: (id: string) => void;

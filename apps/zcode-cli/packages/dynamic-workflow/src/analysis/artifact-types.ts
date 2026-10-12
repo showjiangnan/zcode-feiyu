@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import type { WorkflowProgram } from "../compiler/compile.js";
 import type { SiteTable } from "./sites.js";
@@ -115,12 +116,21 @@ export function computeArtifactTypes(workflow: WorkflowProgram, table: SiteTable
   // the awaited return type (`Node<T>` -> `T`, default `T = string`).
   for (const site of table.asks) {
     const typeArg = site.call.typeArguments?.[0];
-    const type = typeArg !== undefined ? checker.getTypeFromTypeNode(typeArg) : awaitedOf(site.call);
+    const type =
+      typeArg !== undefined ? checker.getTypeFromTypeNode(typeArg) : awaitedOf(site.call);
     set(site.id, type);
   }
 
   // world-read: the awaited call type (`string` for read, `string[]` for glob).
   for (const site of table.worldReads) set(site.id, awaitedOf(site.call));
+
+  // open hole: the explicit type argument is the contract (9012 requires it); a filled hole is
+  // not a producer site, its body's own sites are.
+  for (const site of table.holes) {
+    if (site.body === undefined && site.typeArg !== undefined) {
+      set(site.id, checker.getTypeFromTypeNode(site.typeArg));
+    }
+  }
 
   // join: the awaited whole type (a tuple for a static array literal, an array otherwise),
   // plus per-element awaited types when the argument is a static array literal.

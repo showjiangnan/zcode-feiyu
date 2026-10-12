@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { ChevronDown, UploadCloud } from "lucide-react";
 import type { RemoteTarget } from "@zcode/shared";
@@ -19,10 +20,10 @@ import { RemoteMcpSyncDialog } from "@/settings/RemoteMcpSyncDialog.js";
 import { RemotePluginSyncDialog } from "@/settings/RemotePluginSyncDialog.js";
 import { RemoteSkillSyncDialog } from "@/settings/RemoteSkillSyncDialog.js";
 
-type RemoteSyncClientMode = "desktop-continuous" | "web-remote-replayable";
-const REMOTE_SYNC_PREFLIGHT_TIMEOUT_MS = 15_000;
+export type RemoteSyncClientMode = "desktop-continuous" | "web-remote-replayable";
+export const REMOTE_SYNC_PREFLIGHT_TIMEOUT_MS = 15_000;
 
-class RemoteSyncPreflightTimeoutError extends Error {
+export class RemoteSyncPreflightTimeoutError extends Error {
   constructor(readonly timeoutMs: number) {
     super(`Remote sync preflight timed out after ${timeoutMs}ms`);
     this.name = "RemoteSyncPreflightTimeoutError";

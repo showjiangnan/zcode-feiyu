@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import {
@@ -26,11 +27,13 @@ import type { ComposerMentionPrefill } from "@/store/zcodeSessionStoreTypes.js";
 
 type WorkspacePluginPreviewEntry = ReturnType<typeof usePluginReferenceCatalog>["entries"][number];
 
-function isWorkspacePluginReferenceable(entry: WorkspacePluginPreviewEntry): boolean {
+export function isWorkspacePluginReferenceable(entry: WorkspacePluginPreviewEntry): boolean {
   return entry.enabled && entry.conflictingPluginIds.length === 0;
 }
 
-function buildWorkspacePluginMention(entry: WorkspacePluginPreviewEntry): ComposerMentionPrefill {
+export function buildWorkspacePluginMention(
+  entry: WorkspacePluginPreviewEntry,
+): ComposerMentionPrefill {
   return {
     id: `plugin:${entry.pluginId}`,
     category: "plugins",

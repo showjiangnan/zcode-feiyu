@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type * as Koffi from "koffi";
 
 const JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9;
@@ -12,7 +13,7 @@ export interface WindowsJobObjectController {
   close(): void;
 }
 
-interface WindowsJobObjectApi {
+export interface WindowsJobObjectApi {
   create(): WindowsJobHandle | undefined;
   assign(job: WindowsJobHandle, pid: number): boolean;
   terminate(job: WindowsJobHandle): void;

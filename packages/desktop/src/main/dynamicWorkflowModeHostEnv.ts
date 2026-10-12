@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { ZCODE_DYNAMIC_WORKFLOW_MODE_ENV, normalizeDynamicWorkflowMode } from "@zcode/shared";
 
 /** Desktop main owns the local Host override before the Host process starts. */

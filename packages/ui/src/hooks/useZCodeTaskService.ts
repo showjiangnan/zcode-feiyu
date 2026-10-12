@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useServices } from "@/hooks/useServices.js";
 import { useWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import type { IZCodeTaskService } from "@zcode/services";
@@ -38,7 +39,7 @@ uiMemoryDiagnosticsRegistry.register("taskSnapshotCache", () => ({
   persisted: persistedSnapshotCache.size,
 }));
 
-function buildSnapshotDedupeKey(params: GetTaskSnapshotParams): string {
+export function buildSnapshotDedupeKey(params: GetTaskSnapshotParams): string {
   return [
     params.workspacePath,
     params.workspaceIdentity ?? "",

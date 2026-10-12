@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // Build-time generator: embeds the TypeScript stdlib .d.ts closure into
 // src/compiler/libs.generated.ts so the workflow compiler runs with zero disk
 // access. The bundled/SEA CLI has no node_modules on disk, so the compiler host
@@ -24,9 +25,7 @@ const REFERENCE_LIB = /\/\/\/\s*<reference\s+lib\s*=\s*["']([^"']+)["']\s*\/>/g;
 
 const require = createRequire(join(packageRoot, "package.json"));
 const typescriptPackageJsonPath = require.resolve("typescript/package.json");
-const typescriptVersion = JSON.parse(
-  readFileSync(typescriptPackageJsonPath, "utf8"),
-).version;
+const typescriptVersion = JSON.parse(readFileSync(typescriptPackageJsonPath, "utf8")).version;
 const libDirectory = join(dirname(typescriptPackageJsonPath), "lib");
 
 if (existsSync(outputPath)) {

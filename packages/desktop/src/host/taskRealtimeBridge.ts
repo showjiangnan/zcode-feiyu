@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { SessionRealtimePort } from "@zcode/services";
 import {
   type TaskRealtimeHostDeliveryKind,
@@ -44,7 +45,7 @@ export function createTaskRealtimeBridgeForHostInit(
   });
 }
 
-function createTaskRealtimeBridge(params: {
+export function createTaskRealtimeBridge(params: {
   hostId: string;
   deliveryKind?: TaskRealtimeHostDeliveryKind;
   parentPort: ParentPortLike;

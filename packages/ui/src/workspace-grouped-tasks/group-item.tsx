@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- group header 的颜色菜单、右键菜单、rename 焦点保护和组内 task 渲染共享同一个 group 上下文，后续再按交互域继续拆。 */
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
@@ -56,6 +57,7 @@ export function GroupItem({
   activeWorkspacePath,
   activeWorkspaceIdentity,
   activeTaskId,
+  mobileActiveTaskKey,
   getTaskRemoteSessionId,
   getTaskWorkspaceLabel,
   onSelectTask,
@@ -88,6 +90,7 @@ export function GroupItem({
   activeWorkspacePath: string;
   activeWorkspaceIdentity?: string;
   activeTaskId: string | null;
+  mobileActiveTaskKey?: string | null;
   getTaskRemoteSessionId: (task: ZCodeTaskMeta) => string | undefined;
   getTaskWorkspaceLabel: (task: ZCodeTaskMeta) => string;
   onSelectTask: (workspacePath: string, taskId: string, workspaceIdentity?: string) => void;
@@ -672,7 +675,7 @@ export function GroupItem({
         )}
       >
         <div className="min-h-0 overflow-hidden">
-          {/* grouped task 的折叠内容不再走 Radix Collapsible。
+          {/* Bugfix: grouped task 的折叠内容不再走 Radix Collapsible。
                 Radix Presence 和高度变量会在频繁挂载时重放动画；这里用本地受控容器，
                 并在收起动画后卸载组内 task。 */}
           {shouldRenderGroupContent ? (
@@ -699,6 +702,7 @@ export function GroupItem({
                     activeWorkspacePath={activeWorkspacePath}
                     activeWorkspaceIdentity={activeWorkspaceIdentity}
                     activeTaskId={activeTaskId}
+                    mobileActiveTaskKey={mobileActiveTaskKey}
                     onSelectTask={onSelectTask}
                     onCloseTask={onCloseTask}
                     onOpenFileTree={onOpenFileTree}
@@ -726,6 +730,7 @@ export function GroupItem({
                       activeWorkspacePath={activeWorkspacePath}
                       activeWorkspaceIdentity={activeWorkspaceIdentity}
                       activeTaskId={activeTaskId}
+                      mobileActiveTaskKey={mobileActiveTaskKey}
                       onSelectTask={onSelectTask}
                       onCloseTask={onCloseTask}
                       onOpenFileTree={onOpenFileTree}

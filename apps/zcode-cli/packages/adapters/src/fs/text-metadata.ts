@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { StringDecoder } from "node:string_decoder";
 import { TextDecoder } from "node:util";
 import {
@@ -133,7 +134,11 @@ function roundTripsWithOptionalTrailingDrop(
   encoding: LegacyChineseEncoding,
 ): boolean {
   if (buffer.length === 0) return true;
-  for (let drop = 0; drop <= Math.min(MAX_DETECTION_TRAILING_DROP_BYTES, buffer.length); drop += 1) {
+  for (
+    let drop = 0;
+    drop <= Math.min(MAX_DETECTION_TRAILING_DROP_BYTES, buffer.length);
+    drop += 1
+  ) {
     const candidate = drop === 0 ? buffer : buffer.subarray(0, buffer.length - drop);
     if (candidate.length === 0) continue;
     const decoded = iconv.decode(candidate, encoding);

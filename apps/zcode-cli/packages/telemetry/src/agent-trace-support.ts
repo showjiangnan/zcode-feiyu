@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   context,
   createContextKey,
@@ -265,7 +266,7 @@ export function activeWriterContext(): ActiveWriterContext | undefined {
   return context.active().getValue(ACTIVE_WRITER_CONTEXT_KEY) as ActiveWriterContext | undefined;
 }
 
-function causationFromState(
+export function causationFromState(
   state: ActiveWriterContext | undefined,
 ): AgentTelemetryCausation | undefined {
   if (!state) return undefined;

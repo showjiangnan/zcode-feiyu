@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- subagent runner 集中维护前台/后台生命周期、registry 与 notification 顺序，拆分前需要先稳定生命周期边界。 */
 // ============================================================
 // Subagent Runner
@@ -19,9 +19,9 @@ import {
   isCoreError,
   traceContextToLogContext,
   type AgentBackgroundedOutput,
-  type BackgroundResultOriginMeta,
   type AgentCompletedOutput,
   type AgentOutput,
+  type BackgroundResultOriginMeta,
   type Logger,
   type ModelUsage,
   type SessionEvent,
@@ -42,21 +42,8 @@ import {
   type TraceContext,
 } from "@zcode/contracts";
 import { mkdir, writeFile } from "node:fs/promises";
-import {
-  createSendMessageFailure,
-  createSendMessageSuccess,
-  sendMessageToLocalAgent,
-} from "./team-messages.js";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import {
-  isBuiltInExploreAgentProfile,
-  normalizeAgentProfiles,
-  type AgentProfile,
-} from "./profile.js";
-import { EXPLORE_AGENT_ALLOWED_TOOLS } from "./explore-tools.js";
-import { formatLocalAgentTaskNotification } from "./completion-notification.js";
-import { filterSubagentChildToolNames } from "./tool-policy.js";
 import {
   ErrorPayloadRole,
   selectExecutionErrorMessage,
@@ -71,6 +58,20 @@ import {
   type RuntimeTaskSnapshot,
 } from "../runtime-task/registry.js";
 import type { TeamMessageLedger } from "../runtime/team-message-ledger.js";
+import { formatLocalAgentTaskNotification } from "./completion-notification.js";
+import type { GetAgentDefinitions } from "./definitions.js";
+import { EXPLORE_AGENT_ALLOWED_TOOLS } from "./explore-tools.js";
+import {
+  isBuiltInExploreAgentProfile,
+  normalizeAgentProfiles,
+  type AgentProfile,
+} from "./profile.js";
+import {
+  createSendMessageFailure,
+  createSendMessageSuccess,
+  sendMessageToLocalAgent,
+} from "./team-messages.js";
+import { filterSubagentChildToolNames } from "./tool-policy.js";
 
 export interface ExploreSubagentRuntimeRequest {
   agentId: string;
@@ -126,6 +127,7 @@ export interface ExploreSubagentPortOptions {
   enqueueParentTaskNotification?: EnqueueParentTaskNotification;
   outputRootDir?: string;
   profiles?: readonly AgentProfile[];
+  getAgentDefinitions?: GetAgentDefinitions;
   builtInModelSelectionOverrides?: Partial<
     Record<"general-purpose" | "Explore", import("@zcode/shared").ModelSelection>
   >;
@@ -144,9 +146,10 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
   const registry = options.runtimeTaskRegistry ?? new InMemoryRuntimeTaskRegistry();
   const abortControllers = new Map<string, AbortController>();
   const borrowedForegroundAgentIds = new Set<string>();
-  const profiles = normalizeAgentProfiles(options.profiles ?? [], {
+  const initialProfiles = normalizeAgentProfiles(options.profiles ?? [], {
     builtInModelSelectionOverrides: options.builtInModelSelectionOverrides,
   });
+  const getProfiles = () => options.getAgentDefinitions?.().activeAgents ?? initialProfiles;
   const autoBackgroundMs = normalizeAutoBackgroundMs(options.autoBackgroundMs);
 
   const replayTeamMessagesAfterTerminal = async (
@@ -200,7 +203,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
       // 在唯一 launch 入口按实时模式去除身份，run/start 的显式成员校验仍保留。
       const admittedRequest = { ...rawRequest };
       if (!options.allowNamedMembers?.()) delete admittedRequest.teamMemberName;
-      const { profile, request } = resolveAgentProfileForRequest(profiles, admittedRequest);
+      const { profile, request } = resolveAgentProfileForRequest(getProfiles(), admittedRequest);
       const executionRequest = toSubagentExecutionRequest(request);
       const backgroundRequested =
         rawRequest.runInBackground === true || profile.background === true;
@@ -232,7 +235,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
       rawRequest: SubagentRunRequest,
       runOptions?: SubagentRunOptions,
     ): Promise<AgentOutput> {
-      const { profile, request } = resolveAgentProfileForRequest(profiles, rawRequest);
+      const { profile, request } = resolveAgentProfileForRequest(getProfiles(), rawRequest);
       validateNamedMember(options, registry, request);
       const lifecycle = createSubagentLifecycle(options, request, profile);
       const startedAt = new Date(lifecycle.startedAt);
@@ -517,7 +520,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
       rawRequest: SubagentStartRequest,
       startOptions?: SubagentStartOptions,
     ): Promise<AgentBackgroundedOutput> {
-      const { profile, request } = resolveAgentProfileForRequest(profiles, rawRequest);
+      const { profile, request } = resolveAgentProfileForRequest(getProfiles(), rawRequest);
       validateNamedMember(options, registry, request);
       const lifecycle = createSubagentLifecycle(options, request, profile);
       const startedAt = new Date(lifecycle.startedAt);
@@ -656,7 +659,7 @@ export function createExploreSubagentPort(options: ExploreSubagentPortOptions): 
         (task, message) =>
           resumeTerminalAgentInBackground(
             options,
-            profiles,
+            getProfiles(),
             registry,
             abortControllers,
             task,

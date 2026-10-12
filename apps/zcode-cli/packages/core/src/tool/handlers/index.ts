@@ -1,12 +1,17 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
+import { replyToChannelToolEntry } from "./reply-to-channel.js";
 // ============================================================
 // Built-in Tool Handlers
 // ============================================================
 
+// ============================================================
+// Built-in Tool Handlers
+// ============================================================
 import {
   AMEND_WORKFLOW_TOOL_NAME,
   CREATE_WORKFLOW_TOOL_NAME,
   EVAL_WORKFLOW_SNIPPET_TOOL_NAME,
+  FILL_WORKFLOW_HOLE_TOOL_NAME,
   GET_WORKFLOW_RUN_TOOL_NAME,
   LIST_MODELS_TOOL_NAME,
   LIST_SAVED_WORKFLOWS_TOOL_NAME,
@@ -17,61 +22,62 @@ import {
   SUBMIT_RESULT_TOOL_NAME,
   type JsonSchema,
 } from "@zcode/contracts";
-import type { ToolEntry } from "../types.js";
-import { generateImageToolEntry, manageImageGenerationToolEntry } from "./image-generation.js";
-import type { AgentProfile } from "../../subagent/profile.js";
-import { readToolEntry } from "./read.js";
-import { writeToolEntry } from "./write.js";
-import { editToolEntry } from "./edit.js";
-import { bashToolEntry, createBashToolEntry } from "./bash.js";
 import type { BashTimeoutPolicy } from "../bash-timeout-policy.js";
-import { createJsToolEntry, jsToolEntry } from "./node-repl.js";
-import { globToolEntry } from "./glob.js";
-import { grepToolEntry } from "./grep.js";
-import { webFetchToolEntry } from "./webfetch.js";
-import { webSearchToolEntry } from "./websearch.js";
+import { isSubagentDispatchToolName } from "../compat.js";
+import type { ToolEntry } from "../types.js";
 import {
   agentToolEntry,
   createAgentToolEntry,
   createTaskToolEntry,
   taskToolEntry,
 } from "./agent.js";
-import { isSubagentDispatchToolName } from "../compat.js";
-import { skillToolEntry } from "./skill.js";
-import { todoReadToolEntry, todoWriteToolEntry } from "./todo.js";
+import { amendWorkflowToolEntry } from "./amend-workflow.js";
+import { askUserQuestionToolEntry } from "./ask-user-question.js";
+import { bashToolEntry, createBashToolEntry } from "./bash.js";
+import { createWorkflowToolEntry } from "./create-workflow.js";
 import {
   cronCreateToolEntry,
   cronDeleteToolEntry,
   cronListToolEntry,
   cronUpdateToolEntry,
 } from "./cron.js";
+import { editToolEntry } from "./edit.js";
+import { escalateToolEntry } from "./escalate.js";
+import { evalWorkflowSnippetToolEntry } from "./eval-workflow-snippet.js";
+import { fillWorkflowHoleToolEntry } from "./fill-workflow-hole.js";
+import { getWorkflowRunToolEntry } from "./get-workflow-run.js";
+import { globToolEntry } from "./glob.js";
+import { grepToolEntry } from "./grep.js";
+import { generateImageToolEntry, manageImageGenerationToolEntry } from "./image-generation.js";
+import { listModelsToolEntry } from "./list-models.js";
+import { listSavedWorkflowsToolEntry } from "./list-saved-workflows.js";
+import { listWorkflowRunsToolEntry } from "./list-workflow-runs.js";
+import { createJsToolEntry, jsToolEntry } from "./node-repl.js";
 import { offPeakCreateToolEntry, offPeakListToolEntry } from "./off-peak.js";
 import {
   createEnterPlanModeToolEntry,
   enterPlanModeToolEntry,
   exitPlanModeToolEntry,
 } from "./plan-mode.js";
-import { askUserQuestionToolEntry } from "./ask-user-question.js";
-import { sendMessageToolEntry } from "./send-message.js";
-import { teamTaskToolEntry } from "./team-task.js";
-import { listWorkspaceTasksToolEntry, sendTaskMessageToolEntry } from "./task-message.js";
-import { readWorkspaceTaskToolEntry, manageWorkspaceTaskToolEntry } from "./task-service.js";
-import { respondToCoordinatorToolEntry } from "./respond-to-coordinator.js";
-import { createSubmitResultToolEntry, submitResultToolEntry } from "./submit-result.js";
-import { escalateToolEntry } from "./escalate.js";
-import { resolveWorkflowQuestionToolEntry } from "./resolve-workflow-question.js";
-import { taskOutputToolEntry } from "./task-output.js";
-import { taskStopToolEntry } from "./task-stop.js";
 import { readSessionContextToolEntry } from "./read-session-context.js";
-import { amendWorkflowToolEntry } from "./amend-workflow.js";
-import { createWorkflowToolEntry } from "./create-workflow.js";
-import { saveWorkflowToolEntry } from "./save-workflow.js";
-import { listSavedWorkflowsToolEntry } from "./list-saved-workflows.js";
-import { listModelsToolEntry } from "./list-models.js";
-import { evalWorkflowSnippetToolEntry } from "./eval-workflow-snippet.js";
-import { listWorkflowRunsToolEntry } from "./list-workflow-runs.js";
-import { getWorkflowRunToolEntry } from "./get-workflow-run.js";
+import { readToolEntry } from "./read.js";
+import { resolveWorkflowQuestionToolEntry } from "./resolve-workflow-question.js";
+import { respondToCoordinatorToolEntry } from "./respond-to-coordinator.js";
 import { resumeWorkflowRunToolEntry } from "./resume-workflow-run.js";
+import { saveWorkflowToolEntry } from "./save-workflow.js";
+import { sendMessageToolEntry } from "./send-message.js";
+import { skillToolEntry } from "./skill.js";
+import { createSubmitResultToolEntry, submitResultToolEntry } from "./submit-result.js";
+import { listWorkspaceTasksToolEntry, sendTaskMessageToolEntry } from "./task-message.js";
+import { taskOutputToolEntry } from "./task-output.js";
+import { manageWorkspaceTaskToolEntry, readWorkspaceTaskToolEntry } from "./task-service.js";
+import { taskStopToolEntry } from "./task-stop.js";
+import { teamTaskToolEntry } from "./team-task.js";
+import { todoReadToolEntry, todoWriteToolEntry } from "./todo.js";
+import { webFetchToolEntry } from "./webfetch.js";
+import { webSearchToolEntry } from "./websearch.js";
+import { writeToolEntry } from "./write.js";
+// import { workflowToolEntry } from "./workflow.js";
 // import { workflowToolEntry } from "./workflow.js";
 import { createToolRuleNameSet } from "../tool-visibility.js";
 
@@ -117,6 +123,7 @@ export const builtInTools: ToolEntry[] = [
   taskOutputToolEntry,
   taskStopToolEntry,
   readSessionContextToolEntry,
+  replyToChannelToolEntry,
   agentToolEntry,
   taskToolEntry,
   skillToolEntry,
@@ -139,6 +146,10 @@ export const builtInTools: ToolEntry[] = [
   // 同一个 dwf run 端口、同款 typeof 探测失败。与它们的不同点在下游：它进 actor 会话的
   // 禁用名单（bootstrap 的 workflowActorToolPolicy），子代理不许替主代理作答。
   resolveWorkflowQuestionToolEntry,
+  // 留白补全的主代理侧（docs/dynamic-workflow/launch.md「The `FillWorkflowHole` tool」）：与
+  // ResolveWorkflowQuestion 同族（run 端口、typeof 探测失败同款），但它在写脚本——与 AmendWorkflow
+  // 同一道 alwaysAsk 门、同一条 owner 免确认规则，也同它一起进 workflow child 的禁用名单。
+  fillWorkflowHoleToolEntry,
   // 定义清单（与上面两个 run 工具是两件事：那是历史，这是可跑的东西）。同为只读、无 gate。
   listSavedWorkflowsToolEntry,
   // 模型目录：同为只读、无 gate 的发现面，服务于 CreateWorkflow / AmendWorkflow 的
@@ -149,7 +160,8 @@ export const builtInTools: ToolEntry[] = [
 ];
 
 /**
- * 动态工作流灰度门关闭时不注册的十个工具。
+ * 动态工作流灰度门关闭时不注册的十一个工具
+ * （2026-09-28 起含 FillWorkflowHole：关闭态下没有 run 会到达留白）。
  * 灰度关的语义是「没有任何办法开始一条工作流」，所以创建、修订、保存、快照实验与四个
  * run 面工具一起下架；只读的 run 内省工具也在列，因为关闭态下它们只会指向用户无法再操作的历史。
  * `ListModels` 也在列：它唯一的用途是给一次 run 挑 `subagent_model`，没有 CreateWorkflow 可填时留着它只会把模型引向不存在的工具。
@@ -166,7 +178,13 @@ const DYNAMIC_WORKFLOW_TOOL_NAMES: ReadonlySet<string> = new Set([
   GET_WORKFLOW_RUN_TOOL_NAME,
   RESUME_WORKFLOW_RUN_TOOL_NAME,
   RESOLVE_WORKFLOW_QUESTION_TOOL_NAME,
+  FILL_WORKFLOW_HOLE_TOOL_NAME,
 ]);
+
+/** 十个受灰度门管的工作流工具之一？冷恢复按历史判定激活时用（launch.md「On demand: activation」）。 */
+export function isDynamicWorkflowToolName(toolName: string): boolean {
+  return DYNAMIC_WORKFLOW_TOOL_NAMES.has(toolName);
+}
 
 interface RegisterBuiltInToolsOptions {
   bashTimeoutPolicy?: BashTimeoutPolicy;
@@ -202,7 +220,6 @@ interface RegisterBuiltInToolsOptions {
   /** browser-use 说明和 agent.browsers 注入由官方 browser-use 插件 + 宿主 browser bridge 共同启用。 */
   includeBrowserUse?: boolean;
   embeddedSearchEnabled?: boolean;
-  agentProfiles?: readonly AgentProfile[];
   allowedTools?: readonly string[];
   disallowedTools?: readonly string[];
   silentDuplicateWarnings?: boolean;
@@ -320,15 +337,11 @@ function resolveBuiltInToolEntryForBranch(
   // options.includeDynamicWorkflow，所以首次装配与分支刷新产出的描述必然一致。
   if (entry.metadata.name === "Agent") {
     return createAgentToolEntry({
-      embeddedSearchEnabled: options.embeddedSearchEnabled,
-      profiles: options.agentProfiles,
       dynamicWorkflowEnabled: options.includeDynamicWorkflow !== false,
     });
   }
   if (entry.metadata.name === "Task") {
     return createTaskToolEntry({
-      embeddedSearchEnabled: options.embeddedSearchEnabled,
-      profiles: options.agentProfiles,
       dynamicWorkflowEnabled: options.includeDynamicWorkflow !== false,
     });
   }

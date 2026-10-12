@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 资源管理器 CPU / 内存 tab 的展示零件：双层指标卡、分组列表、进程行。
  * 只做格式化与布局，不持有任何指标状态。
@@ -9,7 +10,7 @@ import { formatBytes, formatPercent, type ResourceUsageGroupView } from "./resou
 
 export const UNSAMPLED_PLACEHOLDER = "—";
 
-type UsageMetric = "cpu" | "memory";
+export type UsageMetric = "cpu" | "memory";
 
 interface UsageMeterProps {
   testId: string;

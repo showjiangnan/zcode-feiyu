@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { ModelRequest } from "@zcode/contracts";
 import { estimateTokens } from "../context/utils.js";
 

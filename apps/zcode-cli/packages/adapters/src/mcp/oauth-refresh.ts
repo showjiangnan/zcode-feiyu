@@ -1,4 +1,4 @@
-import { dirname, join } from "node:path";
+// Modified by ZCode Feiyu.
 import {
   discoverOAuthServerInfo,
   OAuthError,
@@ -12,6 +12,7 @@ import {
 import type { Logger } from "@zcode/contracts";
 import { isZCodeFileLockTimeoutError } from "@zcode/shared";
 import { withFileLock } from "@zcode/shared/node";
+import { dirname, join } from "node:path";
 import type { SharedZCodeCredentialStore } from "../auth/shared-credentials.js";
 import {
   invalidateCanonicalCredentials,
@@ -34,7 +35,7 @@ import { loadDiscoveryRecord, saveDiscoveryRecord } from "./oauth-shared.js";
  */
 const REFRESH_LOCK_MAX_WAIT_MS = 45_000;
 
-interface RefreshMcpOAuthTokensInput {
+export interface RefreshMcpOAuthTokensInput {
   credentialStore: SharedZCodeCredentialStore;
   fetchFn?: FetchLike;
   keyPrefix: string;
@@ -53,7 +54,7 @@ interface RefreshMcpOAuthTokensInput {
   staticClientId?: string;
 }
 
-interface ResolvedAsMetadata {
+export interface ResolvedAsMetadata {
   authorizationServerUrl: string;
   metadata?: AuthorizationServerMetadata;
   resource?: URL;
@@ -133,7 +134,7 @@ async function refreshLocked(
       refreshToken,
       ...(resolved.metadata ? { metadata: resolved.metadata } : {}),
       ...(resolved.resource ? { resource: resolved.resource } : {}),
-      ...(input.fetchFn ? { fetchFn: input.fetchFn } : {}),
+      fetchFn: input.fetchFn,
     });
     const published = await publishCanonicalCredentials(input.credentialStore, input.keyPrefix, {
       clientInformation,
@@ -245,7 +246,7 @@ function failSoft(
  * discovery 记录带 TTL 且与 Phase 2 共用；`resource` 必须求出并带进 refresh 请求（RFC 8707），
  * SDK 自己的 refresh 会传它，我们绕开 `auth()` 后必须自己补上，否则受众绑定丢失。
  */
-async function resolveAsMetadata(
+export async function resolveAsMetadata(
   input: Pick<
     RefreshMcpOAuthTokensInput,
     "credentialStore" | "fetchFn" | "keyPrefix" | "serverUrl"
@@ -253,12 +254,12 @@ async function resolveAsMetadata(
   current: Pick<CredentialPairSnapshot, "issuer">,
 ): Promise<ResolvedAsMetadata> {
   const cached = await loadDiscoveryRecord(input.credentialStore, input.keyPrefix, {
-    ...(current.issuer ? { expectedIssuer: current.issuer } : {}),
+    expectedIssuer: current.issuer,
   });
   const discovered: OAuthDiscoveryState =
     cached ??
     (await discoverOAuthServerInfo(input.serverUrl, {
-      ...(input.fetchFn ? { fetchFn: input.fetchFn } : {}),
+      fetchFn: input.fetchFn,
     }));
   if (!cached) {
     await saveDiscoveryRecord(input.credentialStore, input.keyPrefix, discovered);
@@ -286,6 +287,6 @@ async function resolveAsMetadata(
  * credentials.json 加锁；同一路径会自重入死锁。basename 只含 hash 与连字符（Windows 文件名
  * 不允许冒号）。
  */
-function resolveRefreshLockPath(credentialsFilePath: string, keyPrefix: string): string {
+export function resolveRefreshLockPath(credentialsFilePath: string, keyPrefix: string): string {
   return join(dirname(credentialsFilePath), `${sanitizeKeyPrefix(keyPrefix)}.refresh`);
 }

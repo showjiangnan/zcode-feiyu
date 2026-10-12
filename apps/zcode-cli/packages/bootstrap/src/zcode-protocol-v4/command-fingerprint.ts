@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 import type { CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
 /** 客户端时间、revision 与 trace 不参与载荷身份；因果上下文是运行时事实。 */

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { GitGraph, GitMergeIcon, RefreshCwIcon } from "lucide-react";
 import { useCallback, useMemo, useState, type UIEvent } from "react";
 import { cn } from "@/components/lib/utils.js";
@@ -7,7 +8,7 @@ import { GitGraphCommitDetail } from "./GitGraphCommitDetail.js";
 import { formatCommitTime, getRefIcon, getShortHash } from "./GitGraphDisplay.js";
 import { type GitGraphCommit, type GitGraphLayoutPath, layoutGitGraph } from "./layout.js";
 
-interface GitGraphPaneProps {
+export interface GitGraphPaneProps {
   commits: readonly GitGraphCommit[];
   hasMore?: boolean;
   loadingMore?: boolean;

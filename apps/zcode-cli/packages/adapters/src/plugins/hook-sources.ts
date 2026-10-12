@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import type { HookEventName, PluginDiagnostic } from "@zcode/contracts";
@@ -5,11 +6,11 @@ import { HookEventName as HookEventNameValue } from "@zcode/contracts";
 import { fileExists, isRecord, resolveInside } from "./helpers.js";
 import type { LoadedPlugin } from "./types.js";
 
-const STANDARD_HOOKS_PATH = join("hooks", "hooks.json");
+export const STANDARD_HOOKS_PATH = join("hooks", "hooks.json");
 
 const SUPPORTED_HOOK_EVENTS = new Set<string>(Object.values(HookEventNameValue));
 
-interface PluginHookSource {
+export interface PluginHookSource {
   rawHooks: unknown;
   sourcePath: string;
   wrapper: boolean;

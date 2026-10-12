@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   normalizeUnknownError,
   ZCODE_AGENT_PROVIDER_NOT_READY_CODE,
@@ -144,4 +145,23 @@ export function buildWorkspacePrepareUiError(
     ...normalizedError,
     detail: buildWorkspacePrepareDetail(context),
   };
+}
+
+export function buildCachedWorkspacePrepareUiError(
+  message: string,
+  cachedError: (ZCodeError & { detail?: string }) | null | undefined,
+  context: WorkspacePrepareErrorContext,
+): ZCodeError & { detail?: string } {
+  if (cachedError?.message === message) {
+    // Bugfix: workspaceInit 目前只缓存纯 message；页面返回命中 failed 短路时，
+    // 必须复用上一轮 prepare 的结构化 code，否则模型配置缺失会重新显示 CLI 原文。
+    return cachedError.detail
+      ? cachedError
+      : {
+          ...cachedError,
+          detail: buildWorkspacePrepareDetail(context),
+        };
+  }
+
+  return buildWorkspacePrepareUiError(new Error(message), context);
 }

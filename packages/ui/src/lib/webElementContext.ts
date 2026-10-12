@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export const WEB_ELEMENT_CONTEXT_ADD_TO_CHAT_EVENT = "zcode:web-element-context-add-to-chat";
 export const WEB_ELEMENT_CONTEXT_REMOVE_FROM_CHAT_EVENT =
   "zcode:web-element-context-remove-from-chat";
@@ -342,6 +343,18 @@ export function parsePromptWebElementContexts(
 export function dispatchWebElementContextAddToChat(payload: WebElementContextPayload) {
   window.dispatchEvent(
     new CustomEvent(WEB_ELEMENT_CONTEXT_ADD_TO_CHAT_EVENT, {
+      detail: payload,
+    }),
+  );
+}
+
+export function dispatchWebElementContextRemoveFromChat(payload: {
+  id: string;
+  workspacePath: string;
+  workspaceIdentity?: string;
+}) {
+  window.dispatchEvent(
+    new CustomEvent(WEB_ELEMENT_CONTEXT_REMOVE_FROM_CHAT_EVENT, {
       detail: payload,
     }),
   );

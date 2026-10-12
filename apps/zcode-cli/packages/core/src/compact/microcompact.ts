@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   MicrocompactStrategy,
   MicrocompactTrigger,
@@ -12,7 +13,7 @@ import { estimateMessageTokens } from "./manual.js";
 export const MICROCOMPACT_CLEARED_TOOL_RESULT_PREFIX = "[Old tool result content cleared]";
 export const MICROCOMPACT_CLEARED_TOOL_RESULT_MESSAGE = "[Old tool result content cleared]";
 export const DEFAULT_MICROCOMPACT_KEEP_RECENT_TOOL_RESULTS = 5;
-const DEFAULT_MICROCOMPACT_IDLE_THRESHOLD_MINUTES = 60;
+export const DEFAULT_MICROCOMPACT_IDLE_THRESHOLD_MINUTES = 60;
 export const DEFAULT_MICROCOMPACT_MIN_TOKEN_SAVINGS = 256;
 export const DEFAULT_MICROCOMPACT_THRESHOLD_RATIO = 0.9;
 export const DEFAULT_MICROCOMPACT_THRESHOLD_BUFFER_TOKENS = 2_000;

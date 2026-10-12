@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import React from "react";
 import { palette } from "./app-model.js";
 import { ShimmerText, useShimmerFrame } from "./app-motion.js";
@@ -8,7 +9,7 @@ const h = React.createElement as (
   ...children: React.ReactNode[]
 ) => React.ReactElement;
 
-const ZCODE_LOGO_LINES = [
+export const ZCODE_LOGO_LINES = [
   "███████╗ ██████╗ ██████╗ ██████╗ ███████╗",
   "   ███╔╝██╔════╝██╔═══██╗██╔══██╗██╔════╝",
   "  ███╔╝ ██║     ██║   ██║██║  ██║█████╗  ",

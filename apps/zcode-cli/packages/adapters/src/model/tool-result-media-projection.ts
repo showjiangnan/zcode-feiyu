@@ -1,4 +1,4 @@
-import type { ModelMessage as AiSdkModelMessage } from "ai";
+// Modified by ZCode Feiyu.
 import {
   getUnsupportedModelInputMediaKind,
   modelMessageContentToText,
@@ -7,6 +7,7 @@ import {
   type ModelMessageContentBlock,
 } from "@zcode/contracts";
 import { containsOfficialCuaImageRefCredentialText } from "@zcode/zcode-cua/frame-contract";
+import type { ModelMessage as AiSdkModelMessage } from "ai";
 import { dataUrlToDataContent, unsupportedInputMediaText } from "./media-transform-policy.js";
 
 type AiSdkUserContent = Extract<AiSdkModelMessage, { role: "user" }>["content"];

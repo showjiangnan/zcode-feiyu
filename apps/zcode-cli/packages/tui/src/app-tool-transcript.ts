@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { SessionEventType, type SessionEvent } from "@zcode/contracts";
 import type React from "react";
 import type { Message, ToolResultDisplay, ToolTranscriptPart } from "./app-model.js";
@@ -98,6 +99,10 @@ export function applyToolTranscriptEvent(
       ),
     );
   }
+}
+
+export function summarizeToolInput(toolName: string, input: unknown): string[] {
+  return buildToolTranscriptProjection(toolName, input).detailLines;
 }
 
 export function buildToolTranscriptProjection(

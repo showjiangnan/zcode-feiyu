@@ -115,14 +115,14 @@ Perform both types of verification:
 
 #### Observation dimensions
 
-| Dimension | Points of attention |
-|---|---|
-| Element presence | Whether key UI elements exist and are visible |
-| Content correctness | Whether text, numbers, and other content meet expectations |
-| State changes | Whether the URL, element appearance/disappearance, and text updates match expectations after an action |
+| Dimension            | Points of attention                                                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Element presence     | Whether key UI elements exist and are visible                                                                                                    |
+| Content correctness  | Whether text, numbers, and other content meet expectations                                                                                       |
+| State changes        | Whether the URL, element appearance/disappearance, and text updates match expectations after an action                                           |
 | Layout and occlusion | Unexpected overlap, obstruction, truncation, or misalignment. Distinguish legitimate overlays or sticky navigation from actual rendering defects |
-| Rendering and design | Long-text overflow, abnormal wrapping, design consistency, and similar issues |
-| Visual quality | Contrast, colors, typography, spacing, and alignment |
+| Rendering and design | Long-text overflow, abnormal wrapping, design consistency, and similar issues                                                                    |
+| Visual quality       | Contrast, colors, typography, spacing, and alignment                                                                                             |
 
 ### Screenshot requirements for transient states
 
@@ -153,5 +153,6 @@ After testing is complete, summarize the results based on every recorded observa
 Every test point—whether passed or failed—must reference its corresponding viewed screenshot. When the tooling exposes an artifact path, reference the actual absolute path (or its `file://` URI); otherwise use the returned image evidence and state that no persistent path was exposed.
 
 ### Output format
+
 - If the user's prompt specifies requirements for the report format, such as outputting to a designated file, a particular format, or a specific language, follow those requirements strictly when producing the output or generating the file.
 - If the user does not explicitly specify another format, output an interleaved Markdown report with text and images directly by default, referencing images with standard Markdown image syntax, such as ![screenshot description](https://example.com/screenshot.png), where the image address should be an accessible absolute URL. When a local artifact exists, use its actual absolute path or `file:///` URI, such as ![login screenshot](file:///C:/Users/test/screenshots/login.png). Do not invent paths, output plain file paths only, or gather all screenshots at the end of the report.

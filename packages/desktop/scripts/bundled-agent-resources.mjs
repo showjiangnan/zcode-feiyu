@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /**
  * resources/glm 的 electron-builder extraResources 条目。
  *

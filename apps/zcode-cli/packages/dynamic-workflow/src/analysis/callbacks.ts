@@ -1,4 +1,6 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
+import { FACADE_FILE_NAME } from "../facade/dts.js";
 
 /**
  * The callback-semantics registry: the ONE place that says what a library callee does with
@@ -61,32 +63,50 @@ export const DEFAULT_CALLBACK_SEMANTICS: Pick<CallbackSemantics, "multiplicity" 
 /** Array methods that invoke their callback per element. Name-based on any receiver that is
  * not a script-declared method (a user class's own `.map` is a user function: callee path).
  * Value: element / whole-collection / accumulator parameter indices of the callback. */
-const EACH_METHODS: ReadonlyMap<string, { element: readonly number[]; whole: readonly number[]; accumulator?: number }> =
-  new Map([
-    ["map", { element: [0], whole: [2] }],
-    ["flatMap", { element: [0], whole: [2] }],
-    ["forEach", { element: [0], whole: [2] }],
-    ["filter", { element: [0], whole: [2] }],
-    ["some", { element: [0], whole: [2] }],
-    ["every", { element: [0], whole: [2] }],
-    ["find", { element: [0], whole: [2] }],
-    ["findIndex", { element: [0], whole: [2] }],
-    ["findLast", { element: [0], whole: [2] }],
-    ["findLastIndex", { element: [0], whole: [2] }],
-    ["reduce", { accumulator: 0, element: [1], whole: [3] }],
-    ["reduceRight", { accumulator: 0, element: [1], whole: [3] }],
-    ["sort", { element: [0, 1], whole: [] }],
-  ]);
+const EACH_METHODS: ReadonlyMap<
+  string,
+  { element: readonly number[]; whole: readonly number[]; accumulator?: number }
+> = new Map([
+  ["map", { element: [0], whole: [2] }],
+  ["flatMap", { element: [0], whole: [2] }],
+  ["forEach", { element: [0], whole: [2] }],
+  ["filter", { element: [0], whole: [2] }],
+  ["some", { element: [0], whole: [2] }],
+  ["every", { element: [0], whole: [2] }],
+  ["find", { element: [0], whole: [2] }],
+  ["findIndex", { element: [0], whole: [2] }],
+  ["findLast", { element: [0], whole: [2] }],
+  ["findLastIndex", { element: [0], whole: [2] }],
+  ["reduce", { accumulator: 0, element: [1], whole: [3] }],
+  ["reduceRight", { accumulator: 0, element: [1], whole: [3] }],
+  ["sort", { element: [0, 1], whole: [] }],
+]);
 
 /** Promise continuation methods: run at most once, after the receiver settles. */
-const ONCE_METHODS: ReadonlyMap<string, { callbacks: readonly number[]; entered: boolean; deferred: true }> = new Map([
+const ONCE_METHODS: ReadonlyMap<
+  string,
+  { callbacks: readonly number[]; entered: boolean; deferred: true }
+> = new Map([
   ["then", { callbacks: [0, 1], deferred: true, entered: false }],
   ["catch", { callbacks: [0], deferred: true, entered: false }],
   ["finally", { callbacks: [0], deferred: true, entered: true }],
 ]);
 
 /** Global scheduling functions: run their callback once, later. */
-const ONCE_GLOBALS: ReadonlySet<string> = new Set(["setTimeout", "setInterval", "setImmediate", "queueMicrotask"]);
+const ONCE_GLOBALS: ReadonlySet<string> = new Set([
+  "setTimeout",
+  "setInterval",
+  "setImmediate",
+  "queueMicrotask",
+]);
+
+/**
+ * The one facade function that takes a callback: `future(body)` starts `body` at the call
+ * and returns its promise (docs/dynamic-workflow/authoring.md「Streams」). Once and ENTERED —
+ * the cell provably calls it — and NOT deferred: it runs now, not after anything settles, so
+ * the ordering walk inlines the body as an entered `call` region, a strand when it is async.
+ */
+const FUTURE_FUNCTION = "future";
 
 /**
  * The registry entry for a call or `new`, or undefined when the callee has none (callers
@@ -113,7 +133,15 @@ export function callbackSemanticsOf(
     if (method === "from" && isGlobalLibValue(callee.expression, "Array", checker, program)) {
       const iterated = args[0];
       if (iterated === undefined || args.length < 2) return undefined;
-      return { callbacks: [1], elementParams: [0], entered: false, iterated, label: "from", multiplicity: "each", wholeParams: [] };
+      return {
+        callbacks: [1],
+        elementParams: [0],
+        entered: false,
+        iterated,
+        label: "from",
+        multiplicity: "each",
+        wholeParams: [],
+      };
     }
     const each = EACH_METHODS.get(method);
     if (each !== undefined) {
@@ -132,10 +160,39 @@ export function callbackSemanticsOf(
     if (once !== undefined) return { ...once, label: method, multiplicity: "once" };
     return undefined;
   }
-  if (ts.isIdentifier(callee) && ONCE_GLOBALS.has(callee.text) && isGlobalLibValue(callee, callee.text, checker, program)) {
-    return { callbacks: [0], deferred: true, entered: false, label: callee.text, multiplicity: "once" };
+  if (
+    ts.isIdentifier(callee) &&
+    ONCE_GLOBALS.has(callee.text) &&
+    isGlobalLibValue(callee, callee.text, checker, program)
+  ) {
+    return {
+      callbacks: [0],
+      deferred: true,
+      entered: false,
+      label: callee.text,
+      multiplicity: "once",
+    };
+  }
+  if (
+    ts.isIdentifier(callee) &&
+    callee.text === FUTURE_FUNCTION &&
+    isFacadeFunction(callee, checker)
+  ) {
+    return { callbacks: [0], entered: true, label: FUTURE_FUNCTION, multiplicity: "once" };
   }
   return undefined;
+}
+
+/** True iff `expr` resolves to a function declared in the facade `.d.ts` (not a user shadow). */
+function isFacadeFunction(expr: ts.Expression, checker: ts.TypeChecker): boolean {
+  let symbol = checker.getSymbolAtLocation(expr);
+  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0)
+    symbol = checker.getAliasedSymbol(symbol);
+  return (
+    symbol?.declarations?.some(
+      (declaration) => declaration.getSourceFile().fileName === FACADE_FILE_NAME,
+    ) ?? false
+  );
 }
 
 /** True iff `expr` resolves to the ES-lib global `name` (not a user shadow). */
@@ -146,9 +203,12 @@ export function isGlobalLibValue(
   program: ts.Program,
 ): boolean {
   let symbol = checker.getSymbolAtLocation(expr);
-  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0) symbol = checker.getAliasedSymbol(symbol);
+  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0)
+    symbol = checker.getAliasedSymbol(symbol);
   if (symbol?.name !== name) return false;
-  return symbol.declarations?.some((declaration) => isLibDeclaration(declaration, program)) ?? false;
+  return (
+    symbol.declarations?.some((declaration) => isLibDeclaration(declaration, program)) ?? false
+  );
 }
 
 /**
@@ -159,14 +219,22 @@ export function isGlobalLibValue(
  * and dispatching on those would inline callbacks as the callee of `.finally`. An undeclared
  * member (an `any` receiver) keeps the value-based answer.
  */
-export function isForeignMember(name: ts.MemberName, checker: ts.TypeChecker, scriptFile: ts.SourceFile): boolean {
+export function isForeignMember(
+  name: ts.MemberName,
+  checker: ts.TypeChecker,
+  scriptFile: ts.SourceFile,
+): boolean {
   const declarations = checker.getSymbolAtLocation(name)?.declarations;
   if (declarations === undefined || declarations.length === 0) return false;
   return declarations.every((declaration) => declaration.getSourceFile() !== scriptFile);
 }
 
 /** True iff the member's symbol has a declaration in the authored script (a user method). */
-function isScriptDeclared(name: ts.MemberName, checker: ts.TypeChecker, program: ts.Program): boolean {
+function isScriptDeclared(
+  name: ts.MemberName,
+  checker: ts.TypeChecker,
+  program: ts.Program,
+): boolean {
   const symbol = checker.getSymbolAtLocation(name);
   return (
     symbol?.declarations?.some((declaration) => {

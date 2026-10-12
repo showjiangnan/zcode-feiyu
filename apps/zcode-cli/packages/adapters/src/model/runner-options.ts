@@ -1,9 +1,8 @@
-// Modified by ZCode Feiyu contributors (2026).
-import { Output, jsonSchema } from "ai";
+// Modified by ZCode Feiyu.
 import type { ModelToolChoice } from "@zcode/contracts";
+import { Output, jsonSchema } from "ai";
 import type { EnvRecord } from "./model-execution.js";
-import { toAiSdkMessages } from "./transform.js";
-import { toAiSdkTools } from "./tool-transform.js";
+import { withoutModelQuerySourceHeader } from "./model-request-headers.js";
 import type {
   AiSdkGenerateTextOptions,
   AiSdkModelTextRequest,
@@ -11,6 +10,8 @@ import type {
   ResolvedAiSdkModel,
 } from "./runner-runtime.js";
 import { createModelRequestAttributionHeaders, type ModelStatusContext } from "./runner-status.js";
+import { toAiSdkTools } from "./tool-transform.js";
+import { toAiSdkMessages } from "./transform.js";
 
 type ExperimentalIncludeWithResponseBody = {
   requestBody?: boolean;
@@ -18,7 +19,7 @@ type ExperimentalIncludeWithResponseBody = {
 };
 
 /** zcode-plan 业务码常只出现在 finish chunk 的 response.body，流式路径需显式开启。 */
-function shouldIncludeStreamResponseBody(resolved: ResolvedAiSdkModel): boolean {
+export function shouldIncludeStreamResponseBody(resolved: ResolvedAiSdkModel): boolean {
   return (
     resolved.providerKind === "openai-compatible" && resolved.accountAccess?.mode === "start-plan"
   );
@@ -28,8 +29,9 @@ function mergeRequestHeaders(
   providerHeaders: Record<string, string> | undefined,
   attributionHeaders: Record<string, string>,
 ): Record<string, string> {
+  // 通用大小写去重会改变旧归因头的 SDK 合并结果；本次只剔除 query-source 静态值。
   return {
-    ...providerHeaders,
+    ...withoutModelQuerySourceHeader(providerHeaders),
     ...attributionHeaders,
   };
 }
@@ -72,7 +74,10 @@ export function createGenerateTextOptions(input: {
     }),
     toolChoice: toAiSdkToolChoice(input.request.toolChoice),
     // 请求预算冻结的输出上限必须进入真实 SDK 参数，不能只停留在 ModelRequest。
-    maxOutputTokens: input.request.maxOutputTokens,
+    maxOutputTokens:
+      input.resolved.providerOptions?.zcodeSubscription === true
+        ? undefined
+        : input.request.maxOutputTokens,
     temperature: input.request.temperature,
     topP: input.request.topP,
     topK: input.request.topK,
@@ -135,7 +140,10 @@ export function createStreamTextOptions(input: {
     }),
     toolChoice: toAiSdkToolChoice(input.request.toolChoice),
     // 请求预算冻结的输出上限必须进入真实 SDK 参数，不能只停留在 ModelRequest。
-    maxOutputTokens: input.request.maxOutputTokens,
+    maxOutputTokens:
+      input.resolved.providerOptions?.zcodeSubscription === true
+        ? undefined
+        : input.request.maxOutputTokens,
     temperature: input.request.temperature,
     topP: input.request.topP,
     topK: input.request.topK,

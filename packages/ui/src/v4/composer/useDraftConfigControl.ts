@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { applyComposerPermissionGrant } from "@/v4/composer/composerPermissionGrant.js";
 /* eslint-disable max-lines -- Composer 草稿 owner 同时收口选择、正文与提交生命周期，保持单一状态边界。 */
 // Composer 的模式/模型选择与正文使用同一 scope 草稿；Session 只提供一次初始化种子。
@@ -42,7 +42,7 @@ import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 /** 目录水合单飞（per workspaceKey）：draft、已有 session 和严格模式双挂载共享一次 RPC。 */
 const workspaceCatalogHydrationFlights = new Map<string, Promise<void>>();
 
-function applyDraftModelSelection(
+export function applyDraftModelSelection(
   current: Partial<SessionConfigState>,
   model: ModelSelection,
 ): Partial<SessionConfigState> {
@@ -62,7 +62,7 @@ function applyDraftModelSelection(
   return next;
 }
 
-function shouldHydrateWorkspaceCatalog(params: {
+export function shouldHydrateWorkspaceCatalog(params: {
   configOptions: readonly ZCodeConfigOption[];
   sessionId: string | null;
   slashCommands: readonly ZCodeSlashCommand[];
@@ -75,7 +75,7 @@ function shouldHydrateWorkspaceCatalog(params: {
   return params.slashCommands.length === 0 || !hasModePresentation;
 }
 
-interface DraftConfigControl {
+export interface DraftConfigControl {
   modelSelectionRead: ModelSelectionRead;
   /** Renderer 下一次提交的配置；Session 只在 scope 首次初始化时提供种子。 */
   draftConfig: Partial<SessionConfigState>;

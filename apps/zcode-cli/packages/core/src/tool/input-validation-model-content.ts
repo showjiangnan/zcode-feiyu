@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { RuntimeInputValidationIssue } from "./input-normalization.js";
 import {
   createCustomIssue,
@@ -21,7 +22,7 @@ export function createInitialInputValidationModelContent(
   )}</tool_use_error>`;
 }
 
-function formatToolInputValidationError(
+export function formatToolInputValidationError(
   toolName: string,
   issues: readonly ToolInputValidationIssue[],
 ): string {

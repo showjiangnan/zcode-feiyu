@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // TreemappingPane 的数据源是 v4 conversation 投影 rows。
 // Treemapping 只消费「一轮 assistant 输出的 toolCalls + 是否仍在流式」，这里把
 // snapshot rows 里最后一个 assistant 轮的 ToolCallRow 适配回旧 TaskChatMessage 形态，
@@ -23,7 +24,9 @@ const ASSISTANT_TURN_ROW_KINDS = new Set<ConversationRow["kind"]>([
 ]);
 
 /** 从 rows 窗口选出最后一个 assistant 轮，并适配为旧 TaskChatMessage 形态。 */
-function buildTreemappingMessageFromRows(rows: readonly ConversationRow[]): TaskChatMessage | null {
+export function buildTreemappingMessageFromRows(
+  rows: readonly ConversationRow[],
+): TaskChatMessage | null {
   let lastAssistantTurnId: string | null = null;
   for (let index = rows.length - 1; index >= 0; index -= 1) {
     const row = rows[index]!;

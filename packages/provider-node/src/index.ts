@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export * from "./zcode-builtin-provider-config-source.js";
 export * from "./zcode-builtin-release.js";
 export * from "./zcode-builtin-download.js";
@@ -12,3 +13,6 @@ export * from "./provider-config-runtime.js";
 export * from "./provider-registry-runtime.js";
 export * from "./model-selection-facade.js";
 export * from "./runtime-paths.js";
+export * from "./managed-provider-config-source.js";
+
+export { createSubscriptionInferenceFetch } from "./subscription-transport.js";

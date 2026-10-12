@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 import {
   PROTOCOL_V4_LIMITS,
@@ -39,7 +40,7 @@ interface CommittedUpload {
   expiresAt: number;
 }
 
-interface AttachmentUploadRegistryOptions {
+export interface AttachmentUploadRegistryOptions {
   now: () => number;
   putSessionAttachment: (
     sessionId: string,

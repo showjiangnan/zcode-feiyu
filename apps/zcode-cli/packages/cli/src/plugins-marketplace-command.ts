@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { formatJson } from "@zcode/core";
 import type { GlobalOptions, RunContext } from "@zcode/shared-types";
 import {
@@ -29,11 +30,12 @@ export async function runMarketplaceCommand(
   const base = baseOptions(deps);
   switch (action) {
     case "add": {
-
       // marketplaces 只有 Host 级一份，这里仅校验拼写以保持参数面一致。
       resolveScope(flags.scope);
       const source = requireOne(rest);
-      const summary = await (await resolveDep(deps, "addMarketplace"))({
+      const summary = await (
+        await resolveDep(deps, "addMarketplace")
+      )({
         ...base,
         source,
         ...(flags.sparse?.length ? { sparsePaths: [...flags.sparse] } : {}),
@@ -57,7 +59,9 @@ export async function runMarketplaceCommand(
     }
     case "remove": {
       const marketplace = requireOne(rest);
-      await (await resolveDep(deps, "removeMarketplace"))({ ...base, marketplace });
+      await (
+        await resolveDep(deps, "removeMarketplace")
+      )({ ...base, marketplace });
       ctx.stdout.write(
         options.json
           ? formatJson({ marketplace, removed: true })
@@ -68,7 +72,9 @@ export async function runMarketplaceCommand(
     case "update": {
       if (rest.length > 1) throw new PluginsUsageError();
       const marketplace = rest[0]?.trim();
-      const result = await (await resolveDep(deps, "updateMarketplace"))({
+      const result = await (
+        await resolveDep(deps, "updateMarketplace")
+      )({
         ...base,
         ...(marketplace ? { marketplace } : {}),
       });

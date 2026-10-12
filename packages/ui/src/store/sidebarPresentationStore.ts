@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { create } from "zustand";
 import type { ZCodeTaskMeta } from "@zcode/shared";
 import { getSafeLocalStorage, type BrowserStorageLike } from "@/lib/browserEnvironment.js";

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { XIcon } from "lucide-react";
 import type { IFeedbackService } from "@zcode/services";
@@ -328,7 +329,7 @@ function FeatureRequestTextarea({
   );
 }
 
-function buildFeatureRequestDescription({
+export function buildFeatureRequestDescription({
   description,
   solution,
   source,

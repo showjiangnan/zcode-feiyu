@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
 // ============================================================
@@ -14,6 +15,231 @@
 //   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
 //      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
 
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
+// ============================================================
+// Dynamic Workflow Snippet Service（DynamicWorkflowSnippetPort 的生产实现）
+// ============================================================
+// EvalWorkflowSnippet 的执行侧：对 scratch facade
+// 编译一次 → 同一条 lowering / 沙箱 / world-read 执行面 → 内存 journal → 同步结算。
+//
+// 三条不变式：
+//   1. **同一执行面**。编译走 createWorkflowProgram（scratch facade 以同一个
+//      FACADE_FILE_NAME 注入——facade 身份按声明文件名判定，换名字会让站点收集静默变空）；
+//      world read 走生产 executeWorldRead（真文件系统 / 真 git、生产 caps）。snippet 的
+//      存在理由是保真，任何「差不多」的第二实现都是它要消灭的东西。
+//   2. **完全瞬态**。InMemoryJournalStore、随机 runId、不落 dwf_* 行、不进后台任务追踪器。
+//      进程退出即消失是契约而非缺陷。
+//   3. **asks 在编译期被排除**。scratch facade 没有 agent()，所以 driver 的 ask 族方法
+//      不可达；它们抛 DriverError 只是纵深防御——运行期到达即接线 bug，大声失败。
 import { randomUUID } from "node:crypto";
 import type {
   DynamicWorkflowSnippetEvalOptions,
@@ -43,7 +269,7 @@ import {
 } from "@zcode/dynamic-workflow";
 import { runWorkflowScript } from "@zcode/dynamic-workflow-runtime";
 import { dynamicWorkflowChildSpawn } from "./dynamic-workflow-run-launch.js";
-import { resolveWorkflowConcurrencyCeiling } from "./workflow-concurrency-ceiling.js";
+import { resolveWorkflowDefaultConcurrency } from "./workflow-default-concurrency.js";
 import { executeWorldRead, type WorldReadDeps } from "./workflow-world-read.js";
 
 /** logs 的界（契约常量在 @zcode/contracts 的 eval-workflow-snippet.ts；这里避免反向依赖工具层）。 */
@@ -70,8 +296,8 @@ export function createDynamicWorkflowSnippetService(
 ): DynamicWorkflowSnippetPort {
   const caps = (): Caps => {
     return {
-      // 并发上界与 run service / 治理器同一份实现。snippet 没有 ask，不接治理器。
-      maxConcurrency: resolveWorkflowConcurrencyCeiling(deps.availableParallelism),
+      // 并发上界与 run service / 治理器同一份实现（决策 30）。snippet 没有 ask，不接治理器。
+      maxConcurrency: resolveWorkflowDefaultConcurrency(deps.availableParallelism),
     };
   };
 
@@ -90,7 +316,7 @@ export function createDynamicWorkflowSnippetService(
 
       const table = collectSites(workflow);
       // world.run：snippet 是这些调用的工作台（提交前先对真命令跑通 gate 逻辑）。
-      // 非字面量 cmd 与生产同一诊断（授权面在编译期闭合）；命令集交给 driver 复验。
+      // 非字面量 cmd 与生产同一诊断（授权面在编译期闭合，driver 不另持名单）。
       const worldRun = collectWorldRunCommands(workflow, table);
       if (worldRun.diagnostics.length > 0) {
         return { kind: "diagnostics", diagnostics: worldRun.diagnostics };
@@ -121,7 +347,6 @@ export function createDynamicWorkflowSnippetService(
         fileSystemPort: deps.fileSystemPort,
         executionPort: deps.executionPort,
         cwd: request.cwd,
-        declaredRunCommands: new Set(worldRun.commands),
       };
       const runId = `dwfeval-${randomUUID()}`;
       const childSpawn = dynamicWorkflowChildSpawn();

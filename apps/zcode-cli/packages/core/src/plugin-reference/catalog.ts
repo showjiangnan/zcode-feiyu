@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // Session 冻结的 Plugin 身份 catalog 构建。
 // 在 App（Session runtime）创建时由 bootstrap 从 resolveStartupPlugins 的结果构建一次，
 // 之后不随 workspace 配置热更新。
@@ -65,6 +66,9 @@ export function buildPluginReferenceCatalog(
       mcpServerNames: [...plugin.mcpServerNames].sort(),
       subagentNames: collectDeclaredSubagentNames(plugin),
       rootPath: plugin.rootPath,
+      ...(plugin.uiSurfaces && plugin.uiSurfaces.length > 0
+        ? { uiSurfaces: plugin.uiSurfaces }
+        : {}),
     };
   });
 

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- Deep Link 路由必须在同一模块内保持协议校验和投递原子性。 */
 import { statSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
@@ -404,9 +405,12 @@ export function registerDeepLinkProtocol(
 ) {
   const scheme = "zcode";
 
+  // 外部 URL 必须位于 -- 后；否则 Windows 引号拆分可把 URL 内容变成 Electron 启动参数。
+  // Inspector 早于应用 JS 和单实例锁启动，不能依赖后续 handleDeepLink 校验拦截。
   if (process.defaultApp && process.argv.length >= 2) {
     const entry = resolve(process.argv[1]!);
-    const ok = app.setAsDefaultProtocolClient(scheme, process.execPath, [entry]);
+    const args = process.platform === "win32" ? [entry, "--"] : [entry];
+    const ok = app.setAsDefaultProtocolClient(scheme, process.execPath, args);
     if (!ok) {
       logger.warn("[deep-link] 注册协议失败（defaultApp）", {
         scheme,
@@ -423,7 +427,10 @@ export function registerDeepLinkProtocol(
     return;
   }
 
-  const ok = app.setAsDefaultProtocolClient(scheme);
+  const ok =
+    process.platform === "win32"
+      ? app.setAsDefaultProtocolClient(scheme, process.execPath, ["--"])
+      : app.setAsDefaultProtocolClient(scheme);
   if (!ok) {
     logger.warn("[deep-link] 注册协议失败", { scheme });
   } else {

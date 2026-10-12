@@ -1,3 +1,7 @@
+// Modified by ZCode Feiyu.
+// task-output.ts 顶到 oxlint max-lines 上限（400 行），把任务投影
+// （projectTask 及 dwf / agent 分支）、输出文件尾部快照读取和紧凑文件大小格式化拆到本文件；
+// 公开面仍从 task-output.ts 导出。
 // task-output.ts 顶到 oxlint max-lines 上限（400 行），把任务投影
 // （projectTask 及 dwf / agent 分支）、输出文件尾部快照读取和紧凑文件大小格式化拆到本文件；
 // 公开面仍从 task-output.ts 导出。

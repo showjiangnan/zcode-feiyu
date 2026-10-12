@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- Provider 与 Access Config 的 Overlay/序列化必须集中维护同一联合类型；待契约稳定后再按配置族拆文件。 */
 import { ConfigOverlay, type ConfigValidationIssue } from "../config-overlay.js";
 import type { z } from "zod";
@@ -22,6 +23,7 @@ import {
 import { validateConfigSchema } from "./schema-validation.js";
 import type { ModelId, ProviderId, ProviderTemplateId } from "./ids.js";
 import type { ProviderConfigRuleData } from "./rule-data-schema.js";
+import { ChatGPTSubscriptionAccessConfig } from "./subscription-access-config.js";
 
 export type ProviderApiType = z.infer<typeof providerApiTypeDataSchema>;
 export type ProviderGroup = z.infer<typeof providerGroupDataSchema>;
@@ -111,7 +113,10 @@ export class ZhipuAccountAccessConfig extends ConfigOverlay<ZhipuAccountAccessCo
   }
 }
 
-export type ProviderAccessConfig = ApiKeyAccessConfig | ZhipuAccountAccessConfig;
+export type ProviderAccessConfig =
+  | ApiKeyAccessConfig
+  | ZhipuAccountAccessConfig
+  | ChatGPTSubscriptionAccessConfig;
 
 export type ProviderAccessConfigObject = Readonly<z.infer<typeof providerAccessDataSchema>>;
 
@@ -505,6 +510,8 @@ function overlayProviderAccess(
       return current.overlay(next as ApiKeyAccessConfig);
     case "zhipu-account":
       return current.overlay(next as ZhipuAccountAccessConfig);
+    case "chatgpt-subscription":
+      return current.overlay(next as ChatGPTSubscriptionAccessConfig);
   }
 }
 

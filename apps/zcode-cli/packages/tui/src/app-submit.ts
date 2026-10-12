@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { SessionEvent, TurnId } from "@zcode/contracts";
 import type { ModelSelection } from "@zcode/shared";
 import type React from "react";
@@ -290,7 +291,7 @@ function createLocalUserMessage(content: string): Message & { id: string } {
   };
 }
 
-function redactSensitivePromptForTranscript(text: string): string {
+export function redactSensitivePromptForTranscript(text: string): string {
   const trimmed = text.trim();
   const match =
     /^\/login\s+(zai-coding-plan-api-key|bigmodel-coding-plan-api-key)(?:\s+([\s\S]+))?$/u.exec(

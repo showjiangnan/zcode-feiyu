@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   DynamicWorkflowRunError,
   DynamicWorkflowRunLifecycleStatus,
@@ -185,7 +186,8 @@ function formatLocalWorkflowTaskNotification(input: TaskNotificationInput): stri
   // 渐进产物排在 result / error **之后**：run 的收场是模型首先要读的，产物是补充材料。
   // 顺序也决定了 120k 总截断先斩谁——被斩掉的应该是这一节，而不是 run 的结果。
   if (input.reports !== undefined) {
-    const shown = input.reports.shown < input.reports.count ? ` shown="${input.reports.shown}"` : "";
+    const shown =
+      input.reports.shown < input.reports.count ? ` shown="${input.reports.shown}"` : "";
     lines.push(
       `<reports count="${input.reports.count}"${shown}>`,
       escapeXml(input.reports.preview),
@@ -275,7 +277,9 @@ function workflowDeliveryGuidance(input: {
       // 有文件时多一句「编辑它、传 `path`」：这一支的整个论证就是「你是为改脚本才停的」，
       // 而改脚本最便宜的做法是 Edit 那个文件，不是把整份脚本再贴一遍。
       `You stopped this workflow with TaskStop. If you stopped it to fix the script, do that now: call AmendWorkflow with this run's ID and the corrected script — everything that settled before the stop is imported as cache, and the sooner the fix runs the less it re-pays. (Next time, amend the running run directly: AmendWorkflow stops it for you.)${
-        scriptPath === undefined ? "" : ` Its script is at ${scriptPath}: edit that file and pass \`path\`.`
+        scriptPath === undefined
+          ? ""
+          : ` Its script is at ${scriptPath}: edit that file and pass \`path\`.`
       }`,
       "Otherwise present what it finished: the reported items above are finished findings — show them individually with their evidence. Resume it unchanged only if that is what the user wants.",
       ...artifactsShort,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // Bootstrap public API surface.
 
 export * from "./app/create-app.js";
@@ -30,6 +31,14 @@ export type {
 } from "./custom-commands.js";
 export { createModelAdapter } from "./model-factory.js";
 export type { CreateModelAdapterOptions } from "./model-factory.js";
+export {
+  createDefaultProviderEndpointRoutingPort,
+  resolveProcessProviderEndpointRoutingPort,
+} from "./provider-endpoint-routing.js";
+export type {
+  CreateDefaultProviderEndpointRoutingPortOptions,
+  ResolveProcessProviderEndpointRoutingPortOptions,
+} from "./provider-endpoint-routing.js";
 export { startProcessProviderRegistryRuntime } from "./app/process-provider-registry-runtime.js";
 export type { ProcessProviderRegistryRuntimeOptions } from "./app/process-provider-registry-runtime.js";
 export {

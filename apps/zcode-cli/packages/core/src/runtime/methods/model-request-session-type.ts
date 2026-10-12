@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { ModelRequestSessionType, ModelRetryBudget, type SessionTaskType } from "@zcode/contracts";
 
 /**
@@ -7,6 +8,7 @@ export function resolveModelRequestSessionTypeFromTaskType(
   taskType: SessionTaskType | undefined,
 ): ModelRequestSessionType {
   if (taskType === "subagent_child") return ModelRequestSessionType.Subagent;
+  if (taskType === "selection_side_chat") return ModelRequestSessionType.SideChat;
   if (taskType === "workflow_child" || taskType === "nested_workflow_child") {
     return ModelRequestSessionType.Other;
   }

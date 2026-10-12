@@ -1,60 +1,11 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- BotsDialog 现在保留数据加载、保存和轮询编排；右侧卡片已拆到 BotsDialog/* 子组件，后续再继续下沉状态 hook。 */
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
-import QRCode from "qrcode";
-import { Bot, Loader2, Plus } from "lucide-react";
-import type {
-  BotConfig,
-  BotProvider,
-  BotServiceStatus,
-  BotState,
-  BotWorkspaceRef,
-  BotsConfigFile,
-} from "@zcode/shared";
-import {
-  ALL_BOT_WORKSPACES,
-  createUuid,
-  DEFAULT_BOT_REPLY_GRANULARITY,
-  isFeishuBotProvider,
-  normalizeBotReplyGranularity,
-} from "@zcode/shared";
-import { Button } from "@/components/ui/button.js";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog.js";
-import { toast } from "@/components/ui/toast.js";
-import { usePlatform } from "@/hooks/usePlatform.js";
-import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
-import { useServices } from "@/hooks/useServices.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { isImeComposingKeyEvent } from "@/lib/imeComposition.js";
-import { logger } from "@/logger.js";
-import {
-  BOT_PROVIDERS,
-  buildCurrentWorkspaceId,
-  getBotProviderRegionTagLabelId,
-  resolveBotProviderEntry,
-  type BotProviderEntryId,
-} from "@/botsUi.js";
-import { cn } from "@/components/lib/utils.js";
 import {
   BotDangerCard,
   BotReplyGranularityCard,
   BotSummaryCard,
 } from "@/BotsDialog/BotSummaryCard.js";
 import { ProviderSettingsCard } from "@/BotsDialog/ProviderSettingsCard.js";
-import { WorkspaceAccessCard } from "@/BotsDialog/WorkspaceAccessCard.js";
-import { SettingsGroupCard } from "@/settings/SettingsPageParts.js";
 import {
   BIND_CODE_TTL_MS,
   ProviderIcon,
@@ -67,6 +18,49 @@ import {
   type FeishuRegistrationState,
   type WeixinRegistrationState,
 } from "@/BotsDialog/shared.js";
+import { WorkspaceAccessCard } from "@/BotsDialog/WorkspaceAccessCard.js";
+import {
+  BOT_PROVIDERS,
+  buildCurrentWorkspaceId,
+  getBotProviderRegionTagLabelId,
+  resolveBotProviderEntry,
+  type BotProviderEntryId,
+} from "@/botsUi.js";
+import { cn } from "@/components/lib/utils.js";
+import { Button } from "@/components/ui/button.js";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog.js";
+import { toast } from "@/components/ui/toast.js";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
+import { usePlatform } from "@/hooks/usePlatform.js";
+import { useServices } from "@/hooks/useServices.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { isImeComposingKeyEvent } from "@/lib/imeComposition.js";
+import { logger } from "@/logger.js";
+import { SettingsGroupCard } from "@/settings/SettingsPageParts.js";
+import type {
+  BotConfig,
+  BotProvider,
+  BotServiceStatus,
+  BotState,
+  BotWorkspaceRef,
+  BotsConfigFile,
+} from "@zcode/shared";
+import {
+  ALL_BOT_WORKSPACES,
+  DEFAULT_BOT_REPLY_GRANULARITY,
+  createUuid,
+  isFeishuBotProvider,
+  normalizeBotReplyGranularity,
+} from "@zcode/shared";
+import { Bot, Loader2, Plus } from "lucide-react";
+import QRCode from "qrcode";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 function createEmptyConfig(): BotsConfigFile {
   return { version: 3, bots: [] };
@@ -84,10 +78,7 @@ function createDraftBot(params: { provider: BotProvider }): BotConfig {
     allowedWorkspaces: [ALL_BOT_WORKSPACES],
     allowedCommands: createDefaultCommands(),
     currentOptions: {},
-    replyMode: normalizeBotReplyGranularity(
-      params.provider,
-      DEFAULT_BOT_REPLY_GRANULARITY,
-    ),
+    replyMode: normalizeBotReplyGranularity(params.provider, DEFAULT_BOT_REPLY_GRANULARITY),
   };
 }
 
@@ -110,9 +101,7 @@ export function BotsDialog({
   const platform = usePlatform();
   const confirmDialog = useConfirmDialog();
   const { botsService } = useServices();
-  const [config, setConfig] = useState<BotsConfigFile>(() =>
-    createEmptyConfig(),
-  );
+  const [config, setConfig] = useState<BotsConfigFile>(() => createEmptyConfig());
   const [workspaceRefs, setWorkspaceRefs] = useState<BotWorkspaceRef[]>([]);
   const [status, setStatus] = useState<BotServiceStatus | null>(null);
   const [botStates, setBotStates] = useState<BotState[]>([]);
@@ -123,18 +112,16 @@ export function BotsDialog({
   const refreshGeneration = useRef(0);
   const [creatingBot, setCreatingBot] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
-  const [creatingProvider, setCreatingProvider] = useState<BotProvider | null>(
+  const [creatingProvider, setCreatingProvider] = useState<BotProvider | null>(null);
+  const [bindCode, setBindCode] = useState<BindCodeState | null>(null);
+  const [feishuRegistration, setFeishuRegistration] = useState<FeishuRegistrationState | null>(
     null,
   );
-  const [bindCode, setBindCode] = useState<BindCodeState | null>(null);
-  const [feishuRegistration, setFeishuRegistration] =
-    useState<FeishuRegistrationState | null>(null);
-  const [feishuRegistrationLoading, setFeishuRegistrationLoading] =
-    useState(false);
-  const [weixinRegistration, setWeixinRegistration] =
-    useState<WeixinRegistrationState | null>(null);
-  const [weixinRegistrationLoading, setWeixinRegistrationLoading] =
-    useState(false);
+  const [feishuRegistrationLoading, setFeishuRegistrationLoading] = useState(false);
+  const [weixinRegistration, setWeixinRegistration] = useState<WeixinRegistrationState | null>(
+    null,
+  );
+  const [weixinRegistrationLoading, setWeixinRegistrationLoading] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [credentialValue, setCredentialValue] = useState("");
   const [secretSaving, setSecretSaving] = useState(false);
@@ -154,19 +141,19 @@ export function BotsDialog({
     [workspaceIdentity, workspacePath],
   );
   const currentWorkspace = useMemo(
-    () => workspacePath ? ({
-      id: currentWorkspaceId,
-      label:
-        workspacePath.split(/[\\/]/u).filter(Boolean).at(-1) ?? workspacePath,
-      workspacePath,
-      workspaceIdentity,
-    }) : undefined,
+    () =>
+      workspacePath
+        ? {
+            id: currentWorkspaceId,
+            label: workspacePath.split(/[\\/]/u).filter(Boolean).at(-1) ?? workspacePath,
+            workspacePath,
+            workspaceIdentity,
+          }
+        : undefined,
     [currentWorkspaceId, workspaceIdentity, workspacePath],
   );
-  const selectedBot =
-    config.bots.find((bot) => bot.id === selectedBotId) ?? null;
-  const selectedBotState =
-    botStates.find((state) => state.botId === selectedBotId) ?? null;
+  const selectedBot = config.bots.find((bot) => bot.id === selectedBotId) ?? null;
+  const selectedBotState = botStates.find((state) => state.botId === selectedBotId) ?? null;
   const selectedBotName =
     selectedBot && botNameDraft?.botId === selectedBot.id
       ? botNameDraft.value
@@ -174,13 +161,8 @@ export function BotsDialog({
   const fallbackBotName = intl.formatMessage({
     id: "bots.newBot.fallbackName",
   });
-  const selectedBotDisplayName = formatBotDisplayName(
-    selectedBotName,
-    fallbackBotName,
-  );
-  const bindRemainingMs = bindCode
-    ? Math.max(0, bindCode.expiresAt - nowMs)
-    : 0;
+  const selectedBotDisplayName = formatBotDisplayName(selectedBotName, fallbackBotName);
+  const bindRemainingMs = bindCode ? Math.max(0, bindCode.expiresAt - nowMs) : 0;
   const bindExpired = Boolean(bindCode && bindRemainingMs <= 0);
   const bindCountdownProgress = bindCode
     ? Math.max(0, Math.min(100, (bindRemainingMs / bindCode.ttlMs) * 100))
@@ -204,9 +186,7 @@ export function BotsDialog({
         const nextConfig = await botsService.getConfig();
         if (cancelled) return;
         setConfig(nextConfig);
-        const targetBot = nextConfig.bots.find(
-          (bot) => bot.id === bindCode.botId,
-        );
+        const targetBot = nextConfig.bots.find((bot) => bot.id === bindCode.botId);
         if (targetBot?.providerUserId) {
           // Bugfix: /bind 是从第三方聊天回写配置，UI 没有直接事件。
           // 绑定码展开期间低频刷新配置，绑定成功后立即收起绑定区域。
@@ -232,11 +212,7 @@ export function BotsDialog({
   }, [bindCode, bindExpired, botsService, open]);
 
   useEffect(() => {
-    if (
-      !bindCode ||
-      bindCode.botId !== selectedBot?.id ||
-      !selectedBot.providerUserId
-    ) {
+    if (!bindCode || bindCode.botId !== selectedBot?.id || !selectedBot.providerUserId) {
       return;
     }
     // Bugfix: /bind 成功是服务层异步回写配置；即使轮询刚好被切换/刷新打断，
@@ -277,14 +253,18 @@ export function BotsDialog({
   const refresh = useCallback(async () => {
     const generation = ++refreshGeneration.current;
     try {
-      const [nextConfig, nextStatus, nextWorkspaces, nextBotStates] =
-        await Promise.all([
-          botsService.getConfig(),
-          botsService.getStatus(),
-          botsService.listWorkspaceRefs({ currentWorkspace }),
-          botsService.getBotStates(),
-        ]);
-      if (!pageOwner.current.open || pageOwner.current.service !== botsService || generation !== refreshGeneration.current) return;
+      const [nextConfig, nextStatus, nextWorkspaces, nextBotStates] = await Promise.all([
+        botsService.getConfig(),
+        botsService.getStatus(),
+        botsService.listWorkspaceRefs({ currentWorkspace }),
+        botsService.getBotStates(),
+      ]);
+      if (
+        !pageOwner.current.open ||
+        pageOwner.current.service !== botsService ||
+        generation !== refreshGeneration.current
+      )
+        return;
       setConfig(nextConfig);
       setStatus(nextStatus);
       setWorkspaceRefs(nextWorkspaces);
@@ -392,12 +372,7 @@ export function BotsDialog({
 
   useEffect(() => {
     const registration = feishuRegistration;
-    if (
-      !open ||
-      !selectedBot ||
-      !isFeishuBotProvider(selectedBot.provider) ||
-      !registration
-    ) {
+    if (!open || !selectedBot || !isFeishuBotProvider(selectedBot.provider) || !registration) {
       return undefined;
     }
     if (registration.status !== "pending") {
@@ -457,9 +432,7 @@ export function BotsDialog({
             // 这里仅收起二维码，避免二维码和 /bind 面板在一次状态更新里互相抢展示优先级。
             setConfig((previous) => ({
               ...previous,
-              bots: previous.bots.map((bot) =>
-                bot.id === savedBot.id ? savedBot : bot,
-              ),
+              bots: previous.bots.map((bot) => (bot.id === savedBot.id ? savedBot : bot)),
             }));
             setFeishuRegistration(null);
             toast(intl.formatMessage({ id: "bots.feishuRegistrationSuccess" }));
@@ -501,30 +474,14 @@ export function BotsDialog({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [
-    botsService,
-    createBindCodeForBot,
-    feishuRegistration,
-    intl,
-    open,
-    saveBot,
-    selectedBot,
-  ]);
+  }, [botsService, createBindCodeForBot, feishuRegistration, intl, open, saveBot, selectedBot]);
 
   useEffect(() => {
     const registration = weixinRegistration;
-    if (
-      !open ||
-      !selectedBot ||
-      selectedBot.provider !== "weixin" ||
-      !registration
-    ) {
+    if (!open || !selectedBot || selectedBot.provider !== "weixin" || !registration) {
       return undefined;
     }
-    if (
-      registration.status !== "pending" &&
-      registration.status !== "scanned"
-    ) {
+    if (registration.status !== "pending" && registration.status !== "scanned") {
       return undefined;
     }
 
@@ -554,10 +511,7 @@ export function BotsDialog({
             if (current?.qrCode !== registration.qrCode) {
               return current;
             }
-            if (
-              current.interval === result.interval &&
-              current.status === result.status
-            ) {
+            if (current.interval === result.interval && current.status === result.status) {
               return current;
             }
             return {
@@ -706,9 +660,7 @@ export function BotsDialog({
       };
       setConfig((previous) => ({
         ...previous,
-        bots: previous.bots.map((bot) =>
-          bot.id === optimisticBot.id ? optimisticBot : bot,
-        ),
+        bots: previous.bots.map((bot) => (bot.id === optimisticBot.id ? optimisticBot : bot)),
       }));
       try {
         await saveBot(optimisticBot);
@@ -717,13 +669,9 @@ export function BotsDialog({
         logger.error("[BotsDialog] 保存工作区访问范围失败", message);
         setConfig((previous) => ({
           ...previous,
-          bots: previous.bots.map((bot) =>
-            bot.id === previousBot.id ? previousBot : bot,
-          ),
+          bots: previous.bots.map((bot) => (bot.id === previousBot.id ? previousBot : bot)),
         }));
-        toast(
-          intl.formatMessage({ id: "bots.saveFailed" }, { error: message }),
-        );
+        toast(intl.formatMessage({ id: "bots.saveFailed" }, { error: message }));
       } finally {
         setWorkspaceAccessSaving(false);
       }
@@ -734,9 +682,7 @@ export function BotsDialog({
   const toggleWorkspaceAccess = useCallback(
     async (workspaceId: string, checked: boolean) => {
       if (!selectedBot) return;
-      const currentAllowed = isAllWorkspacesAllowed(
-        selectedBot.allowedWorkspaces,
-      )
+      const currentAllowed = isAllWorkspacesAllowed(selectedBot.allowedWorkspaces)
         ? workspaceRefs.map((workspace) => workspace.id)
         : selectedBot.allowedWorkspaces;
       const nextAllowed = checked
@@ -767,16 +713,12 @@ export function BotsDialog({
         await saveBot({
           ...bot,
           name: "",
-          ...(provider === "webhook"
-            ? { webhookAuthHeaderName: "x-zcode-bot-secret" }
-            : {}),
+          ...(provider === "webhook" ? { webhookAuthHeaderName: "x-zcode-bot-secret" } : {}),
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.error("[BotsDialog] 创建 Bot 失败", message);
-        toast(
-          intl.formatMessage({ id: "bots.saveFailed" }, { error: message }),
-        );
+        toast(intl.formatMessage({ id: "bots.saveFailed" }, { error: message }));
       } finally {
         setCreatingProvider(null);
       }
@@ -866,12 +808,7 @@ export function BotsDialog({
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logger.error("[BotsDialog] 启动飞书扫码注册失败", message);
-      toast(
-        intl.formatMessage(
-          { id: "bots.feishuRegistrationFailed" },
-          { error: message },
-        ),
-      );
+      toast(intl.formatMessage({ id: "bots.feishuRegistrationFailed" }, { error: message }));
     } finally {
       setFeishuRegistrationLoading(false);
     }
@@ -907,12 +844,7 @@ export function BotsDialog({
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logger.error("[BotsDialog] 启动微信扫码登录失败", message);
-      toast(
-        intl.formatMessage(
-          { id: "bots.weixinRegistrationFailed" },
-          { error: message },
-        ),
-      );
+      toast(intl.formatMessage({ id: "bots.weixinRegistrationFailed" }, { error: message }));
     } finally {
       setWeixinRegistrationLoading(false);
     }
@@ -1046,18 +978,12 @@ export function BotsDialog({
     if (!selectedBot) return;
     try {
       const saved = await botsService.removeBotSecret(selectedBot.id);
-      autoQrStartedBotIdsRef.current.delete(
-        `${selectedBot.id}:feishu-registration`,
-      );
-      autoQrStartedBotIdsRef.current.delete(
-        `${selectedBot.id}:weixin-registration`,
-      );
+      autoQrStartedBotIdsRef.current.delete(`${selectedBot.id}:feishu-registration`);
+      autoQrStartedBotIdsRef.current.delete(`${selectedBot.id}:weixin-registration`);
       autoBindCreatingBotIdsRef.current.delete(selectedBot.id);
       setConfig((previous) => ({
         ...previous,
-        bots: previous.bots.map((item) =>
-          item.id === saved.id ? saved : item,
-        ),
+        bots: previous.bots.map((item) => (item.id === saved.id ? saved : item)),
       }));
       setCredentialValue("");
       setBindCode(null);
@@ -1065,12 +991,7 @@ export function BotsDialog({
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logger.error("[BotsDialog] 移除 Bot secret 失败", message);
-      toast(
-        intl.formatMessage(
-          { id: "bots.removeSecretFailed" },
-          { error: message },
-        ),
-      );
+      toast(intl.formatMessage({ id: "bots.removeSecretFailed" }, { error: message }));
     }
   };
 
@@ -1095,9 +1016,7 @@ export function BotsDialog({
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logger.error("[BotsDialog] 删除 Bot 失败", message);
-      toast(
-        intl.formatMessage({ id: "bots.deleteFailed" }, { error: message }),
-      );
+      toast(intl.formatMessage({ id: "bots.deleteFailed" }, { error: message }));
     }
   };
 
@@ -1121,8 +1040,13 @@ export function BotsDialog({
     );
   };
 
-  const content = <div className="flex min-h-0 flex-col gap-3">
-{inline ? <p className="text-ui-sm text-foreground-subtle">{intl.formatMessage({ id: "bots.description" })}</p> : (
+  const content = (
+    <div className="flex min-h-0 flex-col gap-3">
+      {inline ? (
+        <p className="text-ui-sm text-foreground-subtle">
+          {intl.formatMessage({ id: "bots.description" })}
+        </p>
+      ) : (
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Bot className="size-5 text-foreground" />
@@ -1134,242 +1058,246 @@ export function BotsDialog({
             </DialogDescription>
           </div>
         </DialogHeader>
-)}
+      )}
 
-
-        <div className="flex min-h-120 flex-1 flex-col gap-3 md:flex-row">
-          <aside className={cn("w-full shrink-0 flex-col md:w-64", inline && mobileDetail ? "hidden md:flex" : "flex")}>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={() => { setMobileDetail(true); handleBeginAddBot(); }}
-                className="mb-3 w-full justify-start gap-2 rounded-xl"
-              >
-                <Plus className="size-4" />
-                <span className="min-w-0 truncate">
-                  {intl.formatMessage({ id: "bots.addBot" })}
-                </span>
-              </Button>
-              {config.bots.length === 0 ? (
-                <div className="p-4 text-ui-base text-foreground-subtle">
-                  {creatingBot
-                    ? intl.formatMessage({
-                        id: "bots.newBot.selectProviderHint",
-                      })
-                    : intl.formatMessage({ id: "bots.empty" })}
-                </div>
-              ) : (
-                config.bots.map((bot) => {
-                  const runtime = status?.botRuntime.find(
-                    (item) => item.botId === bot.id,
-                  );
-                  const selected = bot.id === selectedBotId;
-                  return (
-                    <button
-                      key={bot.id}
-                      type="button"
-                      onClick={() => {
-                        setCreatingBot(false);
-                        setMobileDetail(true);
-                        setSelectedBotId(bot.id);
-                      }}
-                      className={cn(
-                        "mb-1 w-full rounded-xl px-2.5 pr-4 py-3 text-left transition-colors",
-                        selected
-                          ? "bg-surface-hover text-foreground"
-                          : "text-foreground-subtle hover:bg-surface-hover hover:text-foreground",
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <ProviderIcon
-                          provider={bot.provider}
-                          className="size-10 shrink-0 object-contain text-foreground-subtle"
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-foreground truncate text-ui-base font-medium">
-                            {formatBotDisplayName(bot.name, fallbackBotName)}
-                          </span>
-                          <span className="mt-0.5 flex min-w-0 text-ui-base text-foreground-subtle">
-                            {renderChannelName(bot.provider)}
-                          </span>
-                        </span>
-                        <span
-                          className={cn(
-                            "size-2 shrink-0 rounded-full",
-                            runtimeDot(runtime, bot.enabled),
-                          )}
-                        />
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </aside>
-
-          <section className={cn("min-w-0 flex-1 overflow-y-auto", inline ? "space-y-3" : "rounded-xl border border-border bg-background p-4", inline && !mobileDetail ? "hidden md:block" : "block")} >
-            {inline ? <Button variant="ghost" className="md:hidden" onClick={() => setMobileDetail(false)}>{intl.formatMessage({ id: "common.back" })}</Button> : null}
-            {creatingBot ? (
-              <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-start gap-6">
-                <div className="space-y-2">
-                  <div className="text-ui-lg font-medium">
-                    {intl.formatMessage({ id: "bots.newBot.title" })}
-                  </div>
-                  <p className="max-w-2xl text-ui-base leading-6 text-foreground-subtle">
-                    {intl.formatMessage({ id: "bots.newBot.description" })}
-                  </p>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {BOT_PROVIDERS.filter(
-                    (provider) => provider.id !== "webhook",
-                  ).map((provider) => {
-                    const implemented = provider.implemented;
-                    const isCreatingThisProvider =
-                      creatingProvider === provider.id;
-                    const isCreatingAnyProvider = creatingProvider !== null;
-                    return (
-                      <button
-                        key={provider.id}
-                        type="button"
-                        disabled={!implemented || isCreatingAnyProvider}
-                        aria-busy={isCreatingThisProvider}
-                        onClick={() =>
-                          implemented
-                            ? void handleAddBot(provider.id)
-                            : undefined
-                        }
-                        className={cn(
-                          "flex items-start gap-3 rounded-lg border border-card-border bg-card py-4 px-3 text-left transition-colors",
-                          implemented && !isCreatingAnyProvider
-                            ? "hover:border-input-border-focused hover:bg-surface-hover"
-                            : "cursor-not-allowed opacity-60",
-                          isCreatingThisProvider &&
-                            "border-input-border-focused bg-surface-hover opacity-100",
-                        )}
-                      >
-                        {isCreatingThisProvider ? (
-                          <div className="flex size-10 items-center justify-center">
-                            <Loader2 className="size-6 shrink-0 animate-spin text-foreground-subtle" />
-                          </div>
-                        ) : (
-                          <ProviderIcon
-                            provider={provider.id}
-                            className="size-10 shrink-0 text-foreground"
-                          />
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="flex min-w-0 text-ui-lg font-medium">
-                            {renderChannelName(provider.id)}
-                          </span>
-                          <span className="mt-1 block text-ui-base text-foreground-subtle">
-                            {implemented
-                              ? intl.formatMessage({
-                                  id: `bots.newBot.providerDescription.${provider.id}`,
-                                })
-                              : intl.formatMessage({
-                                  id: "bots.newBot.comingSoon",
-                                })}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : !selectedBot ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-ui-base text-foreground-subtle">
-                <Bot className="size-8" />
-                <div>{intl.formatMessage({ id: "bots.empty" })}</div>
-                <Button variant="outline" size="lg" onClick={handleBeginAddBot}>
-                  <Plus className="size-4" />
-                  {intl.formatMessage({ id: "bots.addBot" })}
-                </Button>
+      <div className="flex min-h-120 flex-1 flex-col gap-3 md:flex-row">
+        <aside
+          className={cn(
+            "w-full shrink-0 flex-col md:w-64",
+            inline && mobileDetail ? "hidden md:flex" : "flex",
+          )}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                setMobileDetail(true);
+                handleBeginAddBot();
+              }}
+              className="mb-3 w-full justify-start gap-2 rounded-xl"
+            >
+              <Plus className="size-4" />
+              <span className="min-w-0 truncate">{intl.formatMessage({ id: "bots.addBot" })}</span>
+            </Button>
+            {config.bots.length === 0 ? (
+              <div className="p-4 text-ui-base text-foreground-subtle">
+                {creatingBot
+                  ? intl.formatMessage({
+                      id: "bots.newBot.selectProviderHint",
+                    })
+                  : intl.formatMessage({ id: "bots.empty" })}
               </div>
             ) : (
-              <div className="space-y-4">
-                <BotSummaryCard
-                  bot={selectedBot}
-                  runtime={selectedRuntime}
-                  selectedBotDisplayName={selectedBotDisplayName}
-                  selectedBotName={selectedBotName}
-                  fallbackBotName={fallbackBotName}
-                  renaming={renamingBotId === selectedBot.id}
-                  onStartRename={startBotNameRename}
-                  onCommitNameDraft={commitBotNameDraft}
-                  onNameDraftChange={(value) =>
-                    setBotNameDraft({ botId: selectedBot.id, value })
-                  }
-                  onNameCompositionEnd={() => {
-                    botNameCompositionActiveRef.current = false;
-                  }}
-                  onNameCompositionStart={() => {
-                    botNameCompositionActiveRef.current = true;
-                  }}
-                  onNameInputKeyDown={handleBotNameKeyDown}
-                  onPatchBot={patchSelectedBot}
-                />
+              config.bots.map((bot) => {
+                const runtime = status?.botRuntime.find((item) => item.botId === bot.id);
+                const selected = bot.id === selectedBotId;
+                return (
+                  <button
+                    key={bot.id}
+                    type="button"
+                    onClick={() => {
+                      setCreatingBot(false);
+                      setMobileDetail(true);
+                      setSelectedBotId(bot.id);
+                    }}
+                    className={cn(
+                      "mb-1 w-full rounded-xl px-2.5 pr-4 py-3 text-left transition-colors",
+                      selected
+                        ? "bg-surface-hover text-foreground"
+                        : "text-foreground-subtle hover:bg-surface-hover hover:text-foreground",
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ProviderIcon
+                        provider={bot.provider}
+                        className="size-10 shrink-0 object-contain text-foreground-subtle"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-foreground truncate text-ui-base font-medium">
+                          {formatBotDisplayName(bot.name, fallbackBotName)}
+                        </span>
+                        <span className="mt-0.5 flex min-w-0 text-ui-base text-foreground-subtle">
+                          {renderChannelName(bot.provider)}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "size-2 shrink-0 rounded-full",
+                          runtimeDot(runtime, bot.enabled),
+                        )}
+                      />
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </aside>
 
-                <ProviderSettingsCard
-                  bot={selectedBot}
-                  runtime={selectedRuntime}
-                  credentialValue={credentialValue}
-                  bindCode={bindCode}
-                  bindExpired={bindExpired}
-                  bindRemainingMs={bindRemainingMs}
-                  bindCountdownProgress={bindCountdownProgress}
-                  feishuRegistration={feishuRegistration}
-                  feishuRegistrationLoading={feishuRegistrationLoading}
-                  weixinRegistration={weixinRegistration}
-                  weixinRegistrationLoading={weixinRegistrationLoading}
-                  weixinActivated={Boolean(selectedBotState?.weixinActivatedAt)}
-                  secretSaving={secretSaving}
-                  onCredentialValueChange={setCredentialValue}
-                  onSaveSecret={() => void handleSaveSecret()}
-                  onRemoveSecret={() => void handleRemoveSecret()}
-                  onOpenTelegramBotFather={handleOpenTelegramBotFather}
-                  onStartWeixinRegistration={() =>
-                    void handleStartWeixinRegistration()
-                  }
-                  onStartFeishuRegistration={() =>
-                    void handleStartFeishuRegistration()
-                  }
-                  onCreateBindCode={() => void handleCreateBindCode()}
-                  onUnbind={() => void handleUnbind()}
-                  onCopyBindCommand={() => void copyBindCommand()}
-                />
+        <section
+          className={cn(
+            "min-w-0 flex-1 overflow-y-auto",
+            inline ? "space-y-3" : "rounded-xl border border-border bg-background p-4",
+            inline && !mobileDetail ? "hidden md:block" : "block",
+          )}
+        >
+          {inline ? (
+            <Button variant="ghost" className="md:hidden" onClick={() => setMobileDetail(false)}>
+              {intl.formatMessage({ id: "common.back" })}
+            </Button>
+          ) : null}
+          {creatingBot ? (
+            <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-start gap-6">
+              <div className="space-y-2">
+                <div className="text-ui-lg font-medium">
+                  {intl.formatMessage({ id: "bots.newBot.title" })}
+                </div>
+                <p className="max-w-2xl text-ui-base leading-6 text-foreground-subtle">
+                  {intl.formatMessage({ id: "bots.newBot.description" })}
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {BOT_PROVIDERS.filter((provider) => provider.id !== "webhook").map((provider) => {
+                  const implemented = provider.implemented;
+                  const isCreatingThisProvider = creatingProvider === provider.id;
+                  const isCreatingAnyProvider = creatingProvider !== null;
+                  return (
+                    <button
+                      key={provider.id}
+                      type="button"
+                      disabled={!implemented || isCreatingAnyProvider}
+                      aria-busy={isCreatingThisProvider}
+                      onClick={() => (implemented ? void handleAddBot(provider.id) : undefined)}
+                      className={cn(
+                        "flex items-start gap-3 rounded-lg border border-card-border bg-card py-4 px-3 text-left transition-colors",
+                        implemented && !isCreatingAnyProvider
+                          ? "hover:border-input-border-focused hover:bg-surface-hover"
+                          : "cursor-not-allowed opacity-60",
+                        isCreatingThisProvider &&
+                          "border-input-border-focused bg-surface-hover opacity-100",
+                      )}
+                    >
+                      {isCreatingThisProvider ? (
+                        <div className="flex size-10 items-center justify-center">
+                          <Loader2 className="size-6 shrink-0 animate-spin text-foreground-subtle" />
+                        </div>
+                      ) : (
+                        <ProviderIcon
+                          provider={provider.id}
+                          className="size-10 shrink-0 text-foreground"
+                        />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 text-ui-lg font-medium">
+                          {renderChannelName(provider.id)}
+                        </span>
+                        <span className="mt-1 block text-ui-base text-foreground-subtle">
+                          {implemented
+                            ? intl.formatMessage({
+                                id: `bots.newBot.providerDescription.${provider.id}`,
+                              })
+                            : intl.formatMessage({
+                                id: "bots.newBot.comingSoon",
+                              })}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : !selectedBot ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-ui-base text-foreground-subtle">
+              <Bot className="size-8" />
+              <div>{intl.formatMessage({ id: "bots.empty" })}</div>
+              <Button variant="outline" size="lg" onClick={handleBeginAddBot}>
+                <Plus className="size-4" />
+                {intl.formatMessage({ id: "bots.addBot" })}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <BotSummaryCard
+                bot={selectedBot}
+                runtime={selectedRuntime}
+                selectedBotDisplayName={selectedBotDisplayName}
+                selectedBotName={selectedBotName}
+                fallbackBotName={fallbackBotName}
+                renaming={renamingBotId === selectedBot.id}
+                onStartRename={startBotNameRename}
+                onCommitNameDraft={commitBotNameDraft}
+                onNameDraftChange={(value) => setBotNameDraft({ botId: selectedBot.id, value })}
+                onNameCompositionEnd={() => {
+                  botNameCompositionActiveRef.current = false;
+                }}
+                onNameCompositionStart={() => {
+                  botNameCompositionActiveRef.current = true;
+                }}
+                onNameInputKeyDown={handleBotNameKeyDown}
+                onPatchBot={patchSelectedBot}
+              />
 
-                <SettingsGroupCard>
-                  <BotReplyGranularityCard
-                    bot={selectedBot}
-                    onPatchBot={patchSelectedBot}
-                  />
+              <ProviderSettingsCard
+                bot={selectedBot}
+                runtime={selectedRuntime}
+                credentialValue={credentialValue}
+                bindCode={bindCode}
+                bindExpired={bindExpired}
+                bindRemainingMs={bindRemainingMs}
+                bindCountdownProgress={bindCountdownProgress}
+                feishuRegistration={feishuRegistration}
+                feishuRegistrationLoading={feishuRegistrationLoading}
+                weixinRegistration={weixinRegistration}
+                weixinRegistrationLoading={weixinRegistrationLoading}
+                weixinActivated={Boolean(selectedBotState?.weixinActivatedAt)}
+                secretSaving={secretSaving}
+                onCredentialValueChange={setCredentialValue}
+                onSaveSecret={() => void handleSaveSecret()}
+                onRemoveSecret={() => void handleRemoveSecret()}
+                onOpenTelegramBotFather={handleOpenTelegramBotFather}
+                onStartWeixinRegistration={() => void handleStartWeixinRegistration()}
+                onStartFeishuRegistration={() => void handleStartFeishuRegistration()}
+                onCreateBindCode={() => void handleCreateBindCode()}
+                onUnbind={() => void handleUnbind()}
+                onCopyBindCommand={() => void copyBindCommand()}
+              />
 
-                  {/*
+              <SettingsGroupCard>
+                <BotReplyGranularityCard bot={selectedBot} onPatchBot={patchSelectedBot} />
+
+                {/*
                     暂不暴露命令权限编辑入口，避免用户在 bot 可用前把关键命令关掉。
                     如果要恢复 UI，重新渲染 selectedBot.allowedCommands 的列表并用 patchSelectedBot 保存。
                   */}
 
-                  <WorkspaceAccessCard
-                    bot={selectedBot}
-                    workspaceRefs={workspaceRefs}
-                    currentWorkspace={currentWorkspace}
-                    loading={workspaceAccessSaving}
-                    onPatchAllowedWorkspaces={patchAllowedWorkspaces}
-                    onToggleWorkspaceAccess={toggleWorkspaceAccess}
-                  />
-                </SettingsGroupCard>
+                <WorkspaceAccessCard
+                  bot={selectedBot}
+                  workspaceRefs={workspaceRefs}
+                  currentWorkspace={currentWorkspace}
+                  loading={workspaceAccessSaving}
+                  onPatchAllowedWorkspaces={patchAllowedWorkspaces}
+                  onToggleWorkspaceAccess={toggleWorkspaceAccess}
+                />
+              </SettingsGroupCard>
 
-                <BotDangerCard onDelete={() => void handleDelete()} />
-              </div>
-            )}
-          </section>
-        </div>
-
-</div>;
+              <BotDangerCard onDelete={() => void handleDelete()} />
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
   if (inline) return content;
-  return <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="flex h-[calc(100vh-6rem)] max-h-168 max-w-4xl flex-col overflow-hidden rounded-2xl" onEscapeKeyDown={handleDialogEscapeKeyDown}>{content}</DialogContent>
-  </Dialog>;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="flex h-[calc(100vh-6rem)] max-h-168 max-w-4xl flex-col overflow-hidden rounded-2xl"
+        onEscapeKeyDown={handleDialogEscapeKeyDown}
+      >
+        {content}
+      </DialogContent>
+    </Dialog>
+  );
 }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- draft prewarm 的创建、复用、回收和首帧 ModelSelection 必须共享同一 owner 状态机；拆到多文件会让 StrictMode/transport 换代清理时序更难审计。 */
 // 草稿态 v4 draft session 预热。
 //
@@ -21,7 +22,7 @@ type DispatchCommand = (
   targetSessionId: string | null,
 ) => Promise<CommandAck>;
 
-interface DraftPrewarmController {
+export interface DraftPrewarmController {
   /** 首条 admission 命令已发出、ACK 未收口；dispose 不得删除结果未知的会话。 */
   markPromotionPending(): void;
   /** 首发成功后标记（dispose 不再删除已提升的会话）。 */
@@ -36,7 +37,7 @@ interface DraftPrewarmController {
 }
 
 /** 预热生命周期纯控制器：创建 → onReady 上抛 → dispose 决策清理。 */
-function startDraftSessionPrewarm(params: {
+export function startDraftSessionPrewarm(params: {
   workspaceKey: string;
   dispatchCommand: DispatchCommand;
   onReady: (sessionId: string) => void;
@@ -145,12 +146,12 @@ function startDraftSessionPrewarm(params: {
   };
 }
 
-interface DraftSessionPrewarm {
+export interface DraftSessionPrewarm {
   /** 当前 workspace/transport generation 已就绪的预热 binding。 */
   binding: DraftPrewarmBinding | null;
 }
 
-interface DraftPrewarmBinding {
+export interface DraftPrewarmBinding {
   workspaceKey: string;
   sessionId: string;
   /** 首条 admission 命令发出前同步占住生命周期；false 表示 binding 已不是当前 owner。 */

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { McpToolCallResult, ModelMessageContent } from "@zcode/contracts";
 import type { ToolHandlerFailure } from "../tool/types.js";
 

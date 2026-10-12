@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
 // ============================================================
@@ -9,6 +10,156 @@
 // deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
 // `this.` 换成 `host.`。
 
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：升级问答桥接（escalate）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把第四条时序（升级问答）的四个方法——会话级 escalate 端口、qid 铸造、作答结算、
+// 整会话撤下——拆到本文件成自由函数；driver 类上只留薄薄的委托。公开面不变，仍从
+// workflow-driver.ts 导出。
+//
+// 四个函数对 driver 状态的全部触碰都经 {@link EscalationHost} 显式递进来（会话表、qid 反查表、
+// deps、per-run 序号、双轨 record），本文件不持有任何自己的状态——原方法体逐字保留，只把
+// `this.` 换成 `host.`。
 import type {
   EscalateQuestionRequest,
   SessionId,

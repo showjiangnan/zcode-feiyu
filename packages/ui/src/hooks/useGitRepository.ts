@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -342,7 +343,7 @@ function buildLastTurnDataset(options: {
   };
 }
 
-function shouldRefreshLiveGitData(
+export function shouldRefreshLiveGitData(
   previous: GitLiveDataRefreshInput | null,
   next: GitLiveDataRefreshInput,
 ): boolean {

@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 interface WorkspaceRpcAvailabilityTarget {
   workspaceIdentity?: string | null;
   remoteSessionId?: string | null;
   remoteTarget?: unknown;
 }
 
-function isRemoteWorkspaceRpcTarget(target: WorkspaceRpcAvailabilityTarget): boolean {
+export function isRemoteWorkspaceRpcTarget(target: WorkspaceRpcAvailabilityTarget): boolean {
   return Boolean(
     target.workspaceIdentity?.trim() || target.remoteSessionId?.trim() || target.remoteTarget,
   );

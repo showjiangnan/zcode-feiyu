@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab, type WorkspaceTabState } from "@/store/tabStore.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
@@ -6,7 +7,7 @@ import {
   type WorkspaceServiceResolverState,
 } from "@/lib/workspaceServiceResolver.js";
 
-function resolveRemoteWorkspaceSessionIdForTarget<TServices>(params: {
+export function resolveRemoteWorkspaceSessionIdForTarget<TServices>(params: {
   workspacePath: string | null | undefined;
   preferredRemoteSessionId?: string | null;
   workspaceIdentity?: string | null;

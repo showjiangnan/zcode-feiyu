@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ClientSceneConfig, ClientSceneItem } from "@zcode/services";
 
 export interface DraftSuggestedPromptLocalizedText {
@@ -30,7 +31,7 @@ export interface DraftSuggestedPromptItem {
   };
 }
 
-function parseDraftSuggestedPromptActions(
+export function parseDraftSuggestedPromptActions(
   onFinish: string | null | undefined,
 ): DraftSuggestedPromptAction[] {
   if (!onFinish) return [];

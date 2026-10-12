@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ReactNode } from "react";
 import { TID_MODEL_PROVIDER_ADD_PROVIDER_BUTTON } from "@zcode/shared";
 import type { ModelProviderNavGroup } from "@/settings/model-provider-section/constants.js";
@@ -22,7 +23,7 @@ interface ModelProviderSectionLayoutProps {
   children: ReactNode;
 }
 
-function shouldShowModelProviderRefreshLoading(params: {
+export function shouldShowModelProviderRefreshLoading(params: {
   presetLoading: boolean;
   customLoading: boolean;
 }): boolean {

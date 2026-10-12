@@ -1,9 +1,10 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ZCodeModelTrajectory } from "@zcode/services";
 import { logger } from "@/logger.js";
 import { useZCodeTaskService } from "@/hooks/useZCodeTaskService.js";
 
-interface ModelTrajectoryState {
+export interface ModelTrajectoryState {
   loading: boolean;
   data: ZCodeModelTrajectory | null;
   error: string | null;

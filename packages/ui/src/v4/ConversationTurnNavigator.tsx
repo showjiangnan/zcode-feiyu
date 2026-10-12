@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
@@ -18,7 +19,7 @@ import {
 } from "@/v4/conversationTurnNavigatorHelpers.js";
 import type { ConversationTurnRenderUnit } from "@/v4/conversationTurnRenderUnits.js";
 
-interface ConversationTurnNavigatorProps {
+export interface ConversationTurnNavigatorProps {
   renderUnits: readonly ConversationTurnRenderUnit[];
   scrollOffsetPx: number;
   viewportHeightPx: number;

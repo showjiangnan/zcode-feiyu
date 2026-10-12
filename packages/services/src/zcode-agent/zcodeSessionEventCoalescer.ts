@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ZCodeSessionEvent } from "@zcode/shared";
 import type { ZCodeAgentServiceEvent } from "#src/zcode-agent/zcodeAgent.js";
 
@@ -17,7 +18,7 @@ interface PendingBackgroundSessionEvent {
   event: SessionServiceEvent;
 }
 
-interface BackgroundSessionEventCoalescer {
+export interface BackgroundSessionEventCoalescer {
   accept(event: ZCodeAgentServiceEvent): void;
   flush(): void;
   dispose(): void;

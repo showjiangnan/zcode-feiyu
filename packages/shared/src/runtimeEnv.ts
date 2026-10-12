@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export const ZCODE_RUNTIME_ENV_KEY = "ZCODE_RUNTIME_ENV";
 export const ZCODE_HTTP_PROXY_ENV_KEY = "ZCODE_HTTP_PROXY";
 export const ZCODE_NO_PROXY_ENV_KEY = "ZCODE_NO_PROXY";
@@ -14,6 +14,8 @@ export const ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV = "ZCODE_DESKTOP_CONTEXT_P
 export const ZCODE_CUA_PRODUCT_HELPER_ENV_KEY = "ZCODE_CUA_PRODUCT_HELPER";
 export const ZCODE_CUA_BROKER_TOKEN_ENV_KEY = "ZCODE_CUA_BROKER_TOKEN";
 export const ZCODE_CUA_BROKER_SOCKET_ENV_KEY = "ZCODE_CUA_PERMISSION_BROKER_SOCKET";
+export const ZCODE_SUBSCRIPTION_BROKER_URL_ENV_KEY = "ZCODE_SUBSCRIPTION_BROKER_URL";
+export const ZCODE_SUBSCRIPTION_BROKER_CAPABILITY_ENV_KEY = "ZCODE_SUBSCRIPTION_BROKER_CAPABILITY";
 /** Shared node_repl host marker; unlike the broker bearer values it is not a secret. */
 export const ZCODE_CUA_NODE_REPL_HOST_ENV_KEY = "ZCODE_CUA_NODE_REPL_HOST";
 // One-knob local-development bundle. Setting ZCODE_CUA_DEV_MODE implies the internal feature
@@ -43,6 +45,8 @@ export function isZCodeCuaInternalFeatureEnabled(env: EnvRecord = process.env): 
 }
 
 const SANITIZED_RUNTIME_ENV_KEYS = [
+  ZCODE_SUBSCRIPTION_BROKER_URL_ENV_KEY,
+  ZCODE_SUBSCRIPTION_BROKER_CAPABILITY_ENV_KEY,
   "NODE_ENV",
   "ELECTRON_RUN_AS_NODE",
   "NODE_NO_WARNINGS",
@@ -96,6 +100,8 @@ const SANITIZED_RUNTIME_ENV_KEYS = [
 ] as const;
 
 const NON_TOOL_PASSTHROUGH_RUNTIME_ENV_KEYS = [
+  ZCODE_SUBSCRIPTION_BROKER_URL_ENV_KEY,
+  ZCODE_SUBSCRIPTION_BROKER_CAPABILITY_ENV_KEY,
   "NODE_ENV",
   "ELECTRON_RUN_AS_NODE",
   "NODE_NO_WARNINGS",
@@ -142,6 +148,28 @@ interface CapturedCuaBrokerCredentials {
 let capturedCuaBrokerCredentials: Readonly<CapturedCuaBrokerCredentials> | undefined;
 let capturedCuaBrokerCredentialState: "missing" | "complete" | "incomplete" = "missing";
 const capturedZCodeAgentTelemetryEnv: Record<string, string> = {};
+let capturedSubscriptionBroker: Readonly<{ url: string; capability: string }> | undefined;
+
+// 私有推理权限不得继承到 Shell/MCP；清洗前捕获，供可信模型适配器及本地 Host 定向传递。
+function captureSubscriptionBroker(env: Record<string, string | undefined>): void {
+  const url = env[ZCODE_SUBSCRIPTION_BROKER_URL_ENV_KEY]?.trim();
+  const capability = env[ZCODE_SUBSCRIPTION_BROKER_CAPABILITY_ENV_KEY]?.trim();
+  if (url && capability) capturedSubscriptionBroker = Object.freeze({ url, capability });
+  else if (url || capability) capturedSubscriptionBroker = undefined;
+}
+
+export function getCapturedZCodeSubscriptionBrokerEnv(): Record<string, string> {
+  return capturedSubscriptionBroker
+    ? {
+        [ZCODE_SUBSCRIPTION_BROKER_URL_ENV_KEY]: capturedSubscriptionBroker.url,
+        [ZCODE_SUBSCRIPTION_BROKER_CAPABILITY_ENV_KEY]: capturedSubscriptionBroker.capability,
+      }
+    : {};
+}
+
+export function resetCapturedZCodeSubscriptionBrokerForTest(): void {
+  capturedSubscriptionBroker = undefined;
+}
 
 // CUA broker socket 会被上面的 sanitize 从子进程 env 中剔除（confused-deputy 防护 —— 不能让
 // 其它 MCP server / Bash / tool 子进程直接驱动已授权 Helper）。但 CLI 入口在 bootstrap
@@ -230,6 +258,7 @@ export function sanitizeZCodeRuntimeEnv<T extends Record<string, string | undefi
   env: T,
 ): Record<string, string> {
   captureZCodeCuaBrokerCredentials(env);
+  captureSubscriptionBroker(env);
   captureZCodeAgentTelemetryEnv(env);
   const sanitized: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
@@ -284,6 +313,7 @@ export function readZCodeToolEnvPassthroughEnv(env: EnvRecord): Record<string, s
 
 export function sanitizeZCodeRuntimeEnvInPlace(env: Record<string, string | undefined>): void {
   captureZCodeCuaBrokerCredentials(env);
+  captureSubscriptionBroker(env);
   captureZCodeAgentTelemetryEnv(env);
   for (const key of Object.keys(env)) {
     if (shouldSanitizeZCodeRuntimeEnvKey(key)) {

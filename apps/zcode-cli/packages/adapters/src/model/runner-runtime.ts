@@ -1,11 +1,12 @@
-import { generateText as aiGenerateText, streamText as aiStreamText } from "ai";
+// Modified by ZCode Feiyu.
 import type {
   ModelProperties,
   ModelRequestAuth,
   ModelTextRequest,
   TraceContext,
 } from "@zcode/contracts";
-import type { ZCodeProviderAccountAccess } from "@zcode/shared";
+import type { RequestVerificationReason, ZCodeProviderAccountAccess } from "@zcode/shared";
+import { generateText as aiGenerateText, streamText as aiStreamText } from "ai";
 import type { AiSdkResolvedModel } from "./model-execution.js";
 
 export type AiSdkGenerateTextOptions = Parameters<typeof aiGenerateText>[0];
@@ -29,8 +30,10 @@ export interface AiSdkModelTextRequest extends ModelTextRequest {
   // 必须在每个 attempt 发送前给 core/host 一个刷新机会。
   refreshRuntimeHeadersBeforeAttempt?: (input: {
     accountAccess?: ZCodeProviderAccountAccess;
+    expectedAccountScope?: string;
+    rejectedProjectTokenFingerprint?: string;
     attempt: number;
-    reason?: "model-request";
+    reason?: RequestVerificationReason;
     abortSignal?: AbortSignal;
     providerId: string;
     modelId: string;

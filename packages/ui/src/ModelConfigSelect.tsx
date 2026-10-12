@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 模型菜单同时维护触发器、模型项、provider family 连接方式子菜单和焦点恢复，拆开会增加受控 Dropdown 状态同步成本。 */
 import {
   Fragment,
@@ -87,7 +88,7 @@ const EMPTY_MODEL_SELECT_FOOTER_ACTIONS: readonly ModelSelectFooterAction[] = []
 export const MODEL_CONFIG_SELECT_BADGE_CLASS_NAME =
   "shrink-0 rounded-full bg-surface px-1 py-px text-ui-xs font-medium leading-normal text-foreground-subtle";
 
-function shouldShowModelProviderLevel(modelGroups: readonly ModelSelectGroup[]): boolean {
+export function shouldShowModelProviderLevel(modelGroups: readonly ModelSelectGroup[]): boolean {
   return modelGroups.length > 0;
 }
 
@@ -101,7 +102,7 @@ function isFamilyConnectionGroup(
   );
 }
 
-function shouldRenderModelGroupSeparator(
+export function shouldRenderModelGroupSeparator(
   previousGroup: Pick<ModelSelectGroup, "connectionOptions" | "key" | "labelBadge"> | undefined,
   currentGroup: Pick<ModelSelectGroup, "connectionOptions" | "key" | "labelBadge">,
 ): boolean {
@@ -111,14 +112,14 @@ function shouldRenderModelGroupSeparator(
   return isFamilyConnectionGroup(previousGroup) || isFamilyConnectionGroup(currentGroup);
 }
 
-function isModelSelectGroupSelected(
+export function isModelSelectGroupSelected(
   group: Pick<ModelSelectGroup, "items">,
   normalizedValue: string,
 ): boolean {
   return group.items.some((item) => item.value === normalizedValue);
 }
 
-function getModelTriggerLabelClassName({
+export function getModelTriggerLabelClassName({
   labelVisibilityClassName,
   triggerLabelClassName,
 }: {
@@ -161,6 +162,7 @@ interface ModelConfigSelectProps {
   indicatorClassName?: string;
   triggerClassName?: string;
   triggerIconClassName?: string;
+  triggerIcon?: ReactNode;
   triggerLabelClassName?: string;
   triggerTestId?: string;
   formatTriggerLabel?: (label: string) => string;
@@ -181,6 +183,8 @@ interface ModelConfigSelectProps {
   leadingItems?: readonly ModelSelectGroupItem[];
   /** 触发器里标签之后的小徽标（如「会话模型」「不可用」）；缺省即无。 */
   triggerBadge?: ReactNode;
+  /** 当前模型的配置区，位于管理模型等底部操作之后；不改变模型选中合同。 */
+  footerContent?: ReactNode;
 }
 
 export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
@@ -211,6 +215,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
   indicatorClassName,
   triggerClassName,
   triggerIconClassName = "hidden",
+  triggerIcon,
   triggerLabelClassName: customTriggerLabelClassName,
   triggerTestId = TID_CHAT_MODEL_SELECT_TRIGGER,
   formatTriggerLabel,
@@ -224,6 +229,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
   contentAlign = "start",
   leadingItems,
   triggerBadge,
+  footerContent,
 }: ModelConfigSelectProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
@@ -496,10 +502,12 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
           triggerClassName,
         )}
       >
-        <PackageIcon
-          className={cn("pointer-events-none size-4 shrink-0 text-current", triggerIconClassName)}
-          aria-hidden="true"
-        />
+        {triggerIcon ?? (
+          <PackageIcon
+            className={cn("pointer-events-none size-4 shrink-0 text-current", triggerIconClassName)}
+            aria-hidden="true"
+          />
+        )}
         <span className={triggerLabelClassName} title={currentTriggerTitle}>
           <RollingToolbarLabel
             label={currentTriggerLabel}
@@ -545,6 +553,8 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
             shouldShowProviderLevel
               ? "w-max min-w-48 max-w-[calc(100vw-2rem)]"
               : "w-48 max-h-72 overflow-y-auto",
+            // 单供应商原菜单仅 192px；可选配置区按视口收缩，避免滑块右端被 overflow-x 裁掉。
+            footerContent && "w-64 max-w-[calc(100vw-2rem)]",
           )}
           align={contentAlign}
           side={contentSide}
@@ -636,7 +646,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
             : hasSelectableModel
               ? renderModelItems(modelGroups[0]?.items ?? [])
               : null}
-          {renderedFooterActions.length > 0 ? (
+          {renderedFooterActions.length > 0 || footerContent ? (
             <div className="sticky bottom-0 z-10 bg-menu after:absolute after:left-0 after:top-full after:h-1 after:w-full after:bg-menu after:content-['']">
               {hasSelectableModel ? <DropdownMenuSeparator /> : null}
               {renderedFooterActions.map((action) => (
@@ -654,6 +664,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
                   {action.selected ? <CheckIcon className="size-4 text-foreground-subtle" /> : null}
                 </DropdownMenuItem>
               ))}
+              {footerContent}
             </div>
           ) : null}
         </DropdownMenuContent>

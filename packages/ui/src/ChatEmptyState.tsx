@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * ChatEmptyState — 对话为空时的空态展示组件
  *
@@ -82,7 +83,7 @@ function getWorkspaceListTitle(path: string, homeLabel: string) {
   return getWorkspaceMenuTitle(path, homeLabel);
 }
 
-function getWorkspaceTriggerTitle(path: string, homeLabel: string) {
+export function getWorkspaceTriggerTitle(path: string, homeLabel: string) {
   const normalizedPath = path.replace(/\\/g, "/").replace(/\/+$/, "");
   if (/^(\/Users\/[^/]+|\/home\/[^/]+|[A-Za-z]:\/Users\/[^/]+)$/.test(normalizedPath)) {
     return getPathLeaf(path);
@@ -100,7 +101,7 @@ export interface ChatEmptyWorkspaceMenuTab {
   workspacePurpose?: WorkspacePurpose;
 }
 
-function isWorkspaceMenuTabSelected(
+export function isWorkspaceMenuTabSelected(
   workspaceTab: ChatEmptyWorkspaceMenuTab,
   current: { workspacePath: string; workspaceIdentity?: string },
 ): boolean {
@@ -120,7 +121,7 @@ function getRemoteWorkspaceSearchText(workspaceTab: ChatEmptyWorkspaceMenuTab) {
     .join(" ");
 }
 
-function filterVisibleWorkspaceMenuTabs({
+export function filterVisibleWorkspaceMenuTabs({
   workspaceTabs,
   homeWorkspaceLabel,
   searchQuery,
@@ -170,6 +171,7 @@ export function ChatEmptyWorkspacePreviewMenu({
   workspacePath,
   workspaceIdentity,
   isWindowsDesktop = false,
+  compactForRemoteControl = false,
   workspaceTabs,
   allowConversationWorkspaceSelection = true,
   allowConversationWorkspaceDetach = allowConversationWorkspaceSelection,
@@ -189,6 +191,7 @@ export function ChatEmptyWorkspacePreviewMenu({
   workspacePath: string;
   workspaceIdentity?: string;
   isWindowsDesktop?: boolean;
+  compactForRemoteControl?: boolean;
   workspaceTabs: ReadonlyArray<ChatEmptyWorkspaceMenuTab>;
   allowConversationWorkspaceSelection?: boolean;
   /** 是否显示项目 chip 的快捷脱离按钮；默认跟随非项目工作区选择能力。 */
@@ -302,7 +305,9 @@ export function ChatEmptyWorkspacePreviewMenu({
             size="default"
             className={cn(
               "min-w-0 rounded-full bg-transparent text-ui-base/relaxed hover:bg-transparent",
-              "max-w-[15rem] pl-3 pr-2",
+              // Bugfix: 远程控制页面空态文案区域更窄，workspacePath 过长会把同一行挤坏。
+              // 这里在远控模式收紧菜单触发按钮宽度，让超长路径在按钮内走省略号。
+              compactForRemoteControl ? "max-w-44 pl-3 pr-2" : "max-w-[15rem] pl-3 pr-2",
               triggerClassName,
             )}
             aria-label={intl.formatMessage({ id: "chat.empty.workspaceMenu" })}

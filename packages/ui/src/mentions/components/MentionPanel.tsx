@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- 提示面板集中承载虚拟列表和 E2E 定位属性，暂不为少量测试属性拆组件。 */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -73,14 +74,14 @@ type VirtualRow =
 
 const OPTION_ROW_HEIGHT = 34;
 const STATUS_ROW_HEIGHT = 40;
-const SECTION_HEADER_ROW_HEIGHT = 34;
+export const SECTION_HEADER_ROW_HEIGHT = 34;
 
 // 分组标题改用 base 字号后，旧的 28px 虚拟行装不下默认行高与 12px 上下 padding。
 // 使用与命令项一致的 32px 可见高度和 34px 虚拟行高度，避免裁切或覆盖下一行。
-const SECTION_HEADER_CLASS_NAME =
+export const SECTION_HEADER_CLASS_NAME =
   "flex h-8 items-center px-3 text-ui-base font-semibold uppercase tracking-wide text-foreground-subtle";
 
-function buildVirtualRows(sections: MentionPanelSection[]): VirtualRow[] {
+export function buildVirtualRows(sections: MentionPanelSection[]): VirtualRow[] {
   const rows: VirtualRow[] = [];
   let flatOptionIndex = 0;
   const shouldRenderSectionHeader = sections.length > 1;

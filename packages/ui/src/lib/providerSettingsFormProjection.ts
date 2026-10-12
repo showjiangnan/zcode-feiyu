@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ProviderSettingsView } from "@zcode/services";
 import type { ProviderSettingsFormProvider } from "@/lib/providerSettingsFormTypes.js";
 import type { ProviderOrderView } from "@/lib/modelProviderOrdering.js";
@@ -45,7 +46,7 @@ export function resolveProviderSettingsFormProviders(params: {
   return params.view ? projectProviderSettingsViewToFormProviders(params.view) : [];
 }
 
-function resolvePersonalProviderIds(view: ProviderSettingsView): string[] {
+export function resolvePersonalProviderIds(view: ProviderSettingsView): string[] {
   return view.providers
     .filter((provider) => provider.effectiveConfig.group === "standard-personal")
     .map((provider) => provider.providerId);

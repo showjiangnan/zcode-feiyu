@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useState } from "react";
 import {
   DEFAULT_CONTINUITY_POLICY,

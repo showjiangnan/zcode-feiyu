@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export const PROTOCOL = "zcode-cua/1";
 export const LIMITS = Object.freeze({
   requestBytes: 1_048_576,

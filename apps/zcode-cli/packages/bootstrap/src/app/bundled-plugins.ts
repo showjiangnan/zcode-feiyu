@@ -1,93 +1,47 @@
-// Modified by ZCode Feiyu contributors (2026).
-import { createHash } from "node:crypto";
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
+// Modified by ZCode Feiyu.
+import { OFFICIAL_PLUGIN_MARKETPLACE } from "./bundled-plugin-source.js";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { writeBundledOfficialMarketplacePartitionSync } from "@zcode/adapters";
-import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE, type Logger } from "@zcode/contracts";
+import { type Logger } from "@zcode/contracts";
 import { ZCODE_CUA_OFFICIAL_PLUGIN_ID } from "@zcode/shared";
 import {
   createOfficialPluginCacheRetryBudget,
-  getOfficialPluginCacheRetryAttempts,
   isTransientOfficialPluginCacheFsError,
   type OfficialPluginCacheRetryBudget,
   removeOfficialPluginCacheDirectory,
-  renameOfficialPluginCachePath,
 } from "./official-plugin-cache-fs.js";
-import {
-  OFFICIAL_PLUGIN_DEFINITIONS,
-  type OfficialPluginDefinition,
-} from "./official-plugin-definitions.js";
+import { type OfficialPluginDefinition } from "./official-plugin-definitions.js";
 import { writeOfficialPluginRuntimeManifest } from "./official-plugin-runtime.js";
 import {
   isOfficialPluginSeedLockTimeoutError,
   withOfficialPluginSeedLock,
 } from "./official-plugin-seed-lock.js";
 
-const OFFICIAL_PLUGIN_MARKETPLACE = ZCODE_OFFICIAL_PLUGIN_MARKETPLACE;
-const SEA_PLUGIN_ASSET_PREFIX = "zcode-official-plugins/";
-const SEA_PLUGIN_MANIFEST_ASSET_KEY = `${SEA_PLUGIN_ASSET_PREFIX}manifest.json`;
-const SEED_MARKER_FILE = ".zcode-plugin-seed.json";
+import {
+  type OfficialPluginSeedPluginSource,
+  type OfficialPluginSeedSource,
+  resolveSeedSource,
+  readSeedFileBytes,
+  modeForSeedFile,
+  uniquePaths,
+  hashBytes,
+} from "./bundled-plugin-source.js";
+import {
+  SEED_MARKER_FILE,
+  isSeedCurrent,
+  findUsableOfficialPluginFallback,
+  replaceSeedRoot,
+  cleanupLegacySeedBackup,
+  isNotFoundFsError,
+  warnCacheDegraded,
+  seedMarker,
+  officialPluginCacheRoot,
+} from "./bundled-plugin-cache.js";
+export { candidateBaseDirs } from "./bundled-plugin-source.js";
+export { findMissingOfficialPluginSeedPaths } from "./bundled-plugin-cache.js";
+
 const SEED_LOCK_TOTAL_BUDGET_MS = 15_000;
-
-const includedTopLevelPaths = new Set([
-  ".mcp.json",
-  ".zcode-plugin",
-  "README.md",
-  // 官方内容插件新增 agents 后，filesystem seed 的顶层白名单未同步，目录被静默裁掉。
-  "agents",
-  "commands",
-  "dist",
-  "docs",
-  "hooks",
-  "output-styles",
-  "package.json",
-  // Browser skill 会从官方插件根目录动态导入 scripts/browser-client.mjs。
-  // filesystem seed 若漏掉 scripts，Dev 会连接 node_repl 成功却在首次 Browser Use 时导入失败。
-  "scripts",
-  "skills",
-  "templates",
-]);
-
-interface OfficialPluginSeedFile {
-  mode?: number;
-  path: string;
-  sha256: string;
-  sourcePath?: string;
-}
-
-interface OfficialPluginSeedPluginSource {
-  definition: OfficialPluginDefinition;
-  files: OfficialPluginSeedFile[];
-  hash: string;
-  missingSeedPaths: string[];
-  rootPath?: string;
-}
-
-interface OfficialPluginSeedSource {
-  kind: "filesystem" | "sea";
-  plugins: OfficialPluginSeedPluginSource[];
-}
-
-interface SeaOfficialPluginManifest {
-  hash: string;
-  plugins: Array<{
-    files: OfficialPluginSeedFile[];
-    marketplace: string;
-    name: string;
-    version: string;
-  }>;
-  version: 1;
-}
-
-type SeaModule = typeof import("node:sea");
 
 function seedBundledOfficialPlugins(input: {
   logger?: Logger;
@@ -234,7 +188,8 @@ export function resolveOfficialPluginRoots(input: {
 }): string[] {
   const suppressedBuiltins = new Set(input.suppressedBuiltins ?? []);
   // 系统插件始终在本机清单中；开关仅控制能力准入，不再用历史抑制态隐藏入口。
-  if (["darwin", "win32"].includes(process.platform)) suppressedBuiltins.delete(ZCODE_CUA_OFFICIAL_PLUGIN_ID);
+  if (["darwin", "win32"].includes(process.platform))
+    suppressedBuiltins.delete(ZCODE_CUA_OFFICIAL_PLUGIN_ID);
   else suppressedBuiltins.add(ZCODE_CUA_OFFICIAL_PLUGIN_ID);
   const failedSeeds = seedBundledOfficialPlugins({
     logger: input.logger,
@@ -253,158 +208,6 @@ export function resolveOfficialPluginRoots(input: {
   return uniquePaths([...(input.extraRoots ?? []), ...fallbackRoots]);
 }
 
-function resolveSeedSource(): OfficialPluginSeedSource | undefined {
-  const seaSource = resolveSeaSeedSource();
-  if (seaSource) return seaSource;
-  return resolveFilesystemSeedSource();
-}
-
-function resolveSeaSeedSource(): OfficialPluginSeedSource | undefined {
-  const sea = getSeaModule();
-  if (!sea?.isSea()) return undefined;
-
-  const manifest = readSeaManifest(sea);
-  if (!manifest) return undefined;
-  const plugins = OFFICIAL_PLUGIN_DEFINITIONS.flatMap((definition) => {
-    const plugin = manifest.plugins.find(
-      (item) =>
-        item.marketplace === OFFICIAL_PLUGIN_MARKETPLACE &&
-        item.name === definition.name &&
-        item.version === definition.version,
-    );
-    if (!plugin) return [];
-    return [
-      {
-        definition,
-        files: plugin.files,
-        hash: hashSeedFiles(plugin.files),
-        missingSeedPaths: findMissingOfficialPluginSeedPaths(definition, plugin.files),
-      },
-    ];
-  });
-  if (plugins.length === 0) return undefined;
-
-  return {
-    kind: "sea",
-    plugins,
-  };
-}
-
-function resolveFilesystemSeedSource(): OfficialPluginSeedSource | undefined {
-  const plugins = OFFICIAL_PLUGIN_DEFINITIONS.flatMap((definition) => {
-    const rootPath = resolveFilesystemPluginRoot(definition);
-    if (!rootPath) return [];
-    const files = collectFilesystemPluginFiles(rootPath, definition);
-    return [
-      {
-        definition,
-        files,
-        hash: hashSeedFiles(files),
-        missingSeedPaths: findMissingOfficialPluginSeedPaths(definition, files),
-        rootPath,
-      },
-    ];
-  });
-  if (plugins.length === 0) return undefined;
-  return {
-    kind: "filesystem",
-    plugins,
-  };
-}
-
-function findMissingOfficialPluginSeedPaths(
-  definition: Pick<OfficialPluginDefinition, "requiredSeedPaths">,
-  files: ReadonlyArray<{ path: string }>,
-): string[] {
-  const availablePaths = new Set(files.map((file) => file.path));
-  return (definition.requiredSeedPaths ?? []).filter(
-    (requiredPath) => !availablePaths.has(requiredPath),
-  );
-}
-
-function getSeaModule(): SeaModule | undefined {
-  const getBuiltinModule = process.getBuiltinModule as ((id: "node:sea") => SeaModule) | undefined;
-  try {
-    return getBuiltinModule?.("node:sea");
-  } catch {
-    return undefined;
-  }
-}
-
-function readSeaManifest(sea: SeaModule): SeaOfficialPluginManifest | undefined {
-  try {
-    const raw = sea.getAsset(SEA_PLUGIN_MANIFEST_ASSET_KEY, "utf8");
-    const manifest = JSON.parse(raw) as SeaOfficialPluginManifest;
-    return manifest.version === 1 && Array.isArray(manifest.plugins) ? manifest : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function resolveFilesystemPluginRoot(definition: OfficialPluginDefinition): string | undefined {
-  for (const baseDir of candidateBaseDirs()) {
-    for (const relativePath of definition.rootCandidates) {
-      const rootPath = resolve(baseDir, relativePath);
-      if (existsSync(join(rootPath, ".zcode-plugin", "plugin.json"))) return rootPath;
-    }
-  }
-  return undefined;
-}
-
-function collectFilesystemPluginFiles(
-  rootPath: string,
-  definition: OfficialPluginDefinition,
-): OfficialPluginSeedFile[] {
-  const files: OfficialPluginSeedFile[] = [];
-  const allowedTopLevelPaths = new Set([
-    ...includedTopLevelPaths,
-    ...(definition.runtimeTopLevelPaths ?? []),
-  ]);
-  for (const sourcePath of walkFiles(rootPath, allowedTopLevelPaths)) {
-    const relativePath = toPosixPath(sourcePath.slice(rootPath.length + 1));
-    if (!shouldIncludePluginFile(relativePath, allowedTopLevelPaths)) continue;
-    const bytes = readFileSync(sourcePath);
-    files.push({
-      mode: modeForSeedFile(relativePath, statSync(sourcePath).mode),
-      path: relativePath,
-      sha256: hashBytes(bytes),
-      sourcePath,
-    });
-  }
-  return files.sort((left, right) => left.path.localeCompare(right.path));
-}
-
-function* walkFiles(
-  directory: string,
-  allowedTopLevelPaths: ReadonlySet<string>,
-  depth = 0,
-): Generator<string> {
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (shouldSkipDirectory(entry.name, depth, allowedTopLevelPaths)) continue;
-    const fullPath = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      yield* walkFiles(fullPath, allowedTopLevelPaths, depth + 1);
-      continue;
-    }
-    if (entry.isFile()) yield fullPath;
-  }
-}
-
-function readSeedFileBytes(
-  source: OfficialPluginSeedSource,
-  plugin: OfficialPluginSeedPluginSource,
-  file: OfficialPluginSeedFile,
-): Buffer {
-  if (source.kind === "filesystem" && file.sourcePath) return readFileSync(file.sourcePath);
-  const sea = getSeaModule();
-  if (!sea?.isSea()) throw new Error("SEA plugin asset is unavailable outside SEA runtime.");
-  return Buffer.from(
-    sea.getRawAsset(
-      `${SEA_PLUGIN_ASSET_PREFIX}${OFFICIAL_PLUGIN_MARKETPLACE}/${plugin.definition.name}/${plugin.definition.version}/${file.path}`,
-    ),
-  );
-}
-
 function writeOfficialMarketplace(storageRoot: string, source: OfficialPluginSeedSource): void {
   writeBundledOfficialMarketplacePartitionSync({
     manifest: {
@@ -420,7 +223,7 @@ function writeOfficialMarketplace(storageRoot: string, source: OfficialPluginSee
           name: plugin.definition.name,
           source: source.kind,
           version: plugin.definition.version,
-          ...(plugin.definition.listing ?? {}),
+          ...plugin.definition.listing,
         };
       }),
       version: 1,
@@ -446,263 +249,4 @@ function readSeedPluginDescription(
   } catch {
     return undefined;
   }
-}
-
-function isSeedCurrent(targetRoot: string, plugin: OfficialPluginSeedPluginSource): boolean {
-  const markerPath = join(targetRoot, SEED_MARKER_FILE);
-  if (!existsSync(markerPath)) return false;
-  try {
-    const marker = JSON.parse(readFileSync(markerPath, "utf8")) as ReturnType<typeof seedMarker>;
-    return marker.hash === plugin.hash && marker.pluginVersion === plugin.definition.version;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 旧版本缓存只要插件清单和运行所需文件完整，就可以继续服务当前会话。
- * marker hash 不匹配只表示需要升级，不能把一个可用的旧缓存当成启动失败。
- */
-function isSeedUsable(targetRoot: string, definition: OfficialPluginDefinition): boolean {
-  try {
-    const manifest = JSON.parse(
-      readFileSync(join(targetRoot, ".zcode-plugin", "plugin.json"), "utf8"),
-    ) as { name?: unknown };
-    if (manifest.name !== definition.name) return false;
-  } catch {
-    return false;
-  }
-
-  return (definition.requiredSeedPaths ?? []).every((requiredPath) =>
-    existsSync(join(targetRoot, ...requiredPath.split("/"))),
-  );
-}
-
-function findUsableOfficialPluginFallback(
-  storageRoot: string,
-  definition: OfficialPluginDefinition,
-): string | undefined {
-  const targetRoot = officialPluginCacheRoot(storageRoot, definition);
-  if (isSeedUsable(targetRoot, definition)) return undefined;
-
-  let entries;
-  try {
-    entries = readdirSync(dirname(targetRoot), { withFileTypes: true });
-  } catch (error) {
-    if (isNotFoundFsError(error)) return undefined;
-    throw error;
-  }
-
-  return entries
-    .filter(
-      (entry) =>
-        entry.isDirectory() &&
-        entry.name !== definition.version &&
-        !entry.name.includes(".backup") &&
-        // 锁目录（含 .seed-lock.stale-*）与版本目录同级；超时降级后锁必然在场，
-        // 不能依赖 isSeedUsable 的内容检查兜底，按名字直接排除。
-        !entry.name.includes(".seed-lock") &&
-        !entry.name.includes(".tmp-"),
-    )
-    .sort((left, right) =>
-      right.name.localeCompare(left.name, undefined, { numeric: true, sensitivity: "base" }),
-    )
-    .map((entry) => join(dirname(targetRoot), entry.name))
-    .find((rootPath) => isSeedUsable(rootPath, definition));
-}
-
-function replaceSeedRoot(
-  temporaryRoot: string,
-  targetRoot: string,
-  plugin: OfficialPluginSeedPluginSource,
-  retryBudget: OfficialPluginCacheRetryBudget,
-): void {
-  const backupRoot = createSeedBackupRoot(targetRoot);
-  let movedTargetToBackup = false;
-  mkdirSync(dirname(targetRoot), { recursive: true });
-  if (existsSync(targetRoot)) {
-    try {
-      renameOfficialPluginCachePath(targetRoot, backupRoot, retryBudget);
-      movedTargetToBackup = true;
-    } catch (error) {
-      // 官方插件缓存由桌面窗口、协议与 CLI 入口共享。existsSync 之后，
-      // 另一个进程可能先移走 target；此处只收敛这个 TOCTOU 的 ENOENT，随后继续
-      // promote 或由 isSeedCurrent 识别并发赢家，其他缺失错误仍保持原有 fatal 语义。
-      if (!isNotFoundFsError(error)) throw error;
-    }
-  }
-
-  try {
-    renameOfficialPluginCachePath(temporaryRoot, targetRoot, retryBudget);
-  } catch (error) {
-    if (isSeedCurrent(targetRoot, plugin)) {
-      removeOfficialPluginCacheDirectory(temporaryRoot, retryBudget);
-      if (movedTargetToBackup) {
-        removeOfficialPluginCacheDirectory(backupRoot, retryBudget);
-      }
-      cleanupLegacySeedBackup(targetRoot, retryBudget);
-      return;
-    }
-    if (movedTargetToBackup && !existsSync(targetRoot) && existsSync(backupRoot)) {
-      renameOfficialPluginCachePath(backupRoot, targetRoot, retryBudget);
-    }
-    throw error;
-  }
-
-  if (movedTargetToBackup) {
-    removeOfficialPluginCacheDirectory(backupRoot, retryBudget);
-  }
-  cleanupLegacySeedBackup(targetRoot, retryBudget);
-}
-
-function cleanupLegacySeedBackup(
-  targetRoot: string,
-  retryBudget: OfficialPluginCacheRetryBudget,
-): void {
-  const backupRoot = `${targetRoot}.backup`;
-  if (!existsSync(backupRoot)) return;
-
-  // 旧版固定 backup 没有事务归属，target 暂时缺失时可能属于另一个仍在
-  // promote 的进程，不能把它恢复回去。仅在当前 seed 已确认可用后清理这个遗留目录。
-  removeOfficialPluginCacheDirectory(backupRoot, retryBudget);
-}
-
-function createSeedBackupRoot(targetRoot: string): string {
-  // 固定 backup 会被并发启动进程共同当作 rollback 点；每次替换使用唯一目录，
-  // catch 分支只恢复自己移动出的 target，避免一个进程窃取另一个进程的事务状态。
-  return `${targetRoot}.backup-${process.pid}-${Date.now()}`;
-}
-
-function isNotFoundFsError(error: unknown): error is NodeJS.ErrnoException {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    String((error as NodeJS.ErrnoException).code) === "ENOENT"
-  );
-}
-
-function warnCacheDegraded(
-  logger: Logger | undefined,
-  input: {
-    error: NodeJS.ErrnoException;
-    missingSeedPaths?: readonly string[];
-    operation: "remove_suppressed_plugin" | "seed_plugin";
-    pluginId: string;
-    targetRoot: string;
-  },
-): void {
-  logger?.warn("Official plugin cache operation degraded", {
-    attempts: getOfficialPluginCacheRetryAttempts(input.error),
-    degraded: true,
-    errorCode: input.error.code,
-    ...(input.missingSeedPaths ? { missingSeedPaths: input.missingSeedPaths } : {}),
-    module: "bootstrap.official_plugin_cache",
-    operation: input.operation,
-    pluginId: input.pluginId,
-    targetRoot: input.targetRoot,
-  });
-}
-
-function seedMarker(source: OfficialPluginSeedSource, plugin: OfficialPluginSeedPluginSource) {
-  return {
-    hash: plugin.hash,
-    marketplace: OFFICIAL_PLUGIN_MARKETPLACE,
-    plugin: plugin.definition.name,
-    pluginVersion: plugin.definition.version,
-    source: source.kind,
-    version: 1,
-  };
-}
-
-function officialPluginCacheRoot(
-  storageRoot: string,
-  definition: OfficialPluginDefinition,
-): string {
-  return join(
-    storageRoot,
-    "cache",
-    OFFICIAL_PLUGIN_MARKETPLACE,
-    definition.name,
-    definition.version,
-  );
-}
-
-/** 内置技能包（bundled-skills.ts）沿同一组候选目录定位，保证两类内置资产在每种运行布局下同进同出。 */
-export function candidateBaseDirs(): string[] {
-  // 修复原因：Electron app-server 运行在 resources/glm/zcode.cjs，官方插件资源也随桌面包
-  // stage 到同级 packages/*-plugin。候选目录必须优先看入口文件目录，避免生产态退回到
-  // monorepo-only 的 __dirname 查找假设。
-  return [entrypointDir(), runtimeDir(), process.cwd()].filter(
-    (dir): dir is string => typeof dir === "string",
-  );
-}
-
-function runtimeDir(): string | undefined {
-  return typeof __dirname === "string" ? __dirname : undefined;
-}
-
-function entrypointDir(): string | undefined {
-  return process.argv[1] ? dirname(process.argv[1]) : undefined;
-}
-
-function shouldSkipDirectory(
-  name: string,
-  depth: number,
-  allowedTopLevelPaths: ReadonlySet<string>,
-): boolean {
-  if (name === ".turbo" || name === "coverage" || name === ".venv" || name === "__pycache__") {
-    return true;
-  }
-  return name === "node_modules" && !(depth === 0 && allowedTopLevelPaths.has(name));
-}
-
-function shouldIncludePluginFile(
-  relativePath: string,
-  allowedTopLevelPaths: ReadonlySet<string>,
-): boolean {
-  const segments = relativePath.split("/");
-  if (segments.includes(".DS_Store") || segments.some((segment) => segment.endsWith(".pyc"))) {
-    return false;
-  }
-  const [topLevel] = relativePath.split("/");
-  return topLevel !== undefined && allowedTopLevelPaths.has(topLevel);
-}
-
-function modeForSeedFile(filePath: string, sourceMode?: number): number {
-  if (sourceMode !== undefined && (sourceMode & 0o111) !== 0) return 0o755;
-
-  const normalizedPath = toPosixPath(filePath);
-  // official plugin seed 会重写缓存文件权限。部分插件通过 polyglot shell wrapper
-  // 直接执行 hook 脚本，若落盘成 0644 会 permission denied。这里保留源码执行位，
-  // 并对 SEA/旧 manifest 缺少 mode 的 hook 脚本兜底。
-  if (/(?:^|\/)dist\/mcp\/server\.js$/i.test(normalizedPath)) return 0o755;
-  if (/^hooks\//u.test(normalizedPath) && !/\.(json|md|txt)$/iu.test(normalizedPath)) {
-    return 0o755;
-  }
-
-  return 0o644;
-}
-
-function hashSeedFiles(files: OfficialPluginSeedFile[]): string {
-  return hashText(
-    JSON.stringify(
-      files.map((file) => [file.path, file.sha256, modeForSeedFile(file.path, file.mode)]),
-    ),
-  );
-}
-
-function toPosixPath(value: string): string {
-  return value.split(sep).join("/");
-}
-
-function uniquePaths(paths: string[]): string[] {
-  return paths.filter((path, index) => paths.indexOf(path) === index);
-}
-
-function hashBytes(bytes: Buffer): string {
-  return createHash("sha256").update(bytes).digest("hex");
-}
-
-function hashText(text: string): string {
-  return hashBytes(Buffer.from(text));
 }

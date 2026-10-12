@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- Usage、Entitlement 与 Reset 的跨进程协议需要共享同一组 Account Access 字段和运行时 schema，暂时集中维护。 */
 import { z } from "zod";
 
@@ -40,6 +41,20 @@ export interface CodingPlanUsageRequest {
   customEndDate?: string | null;
   preferredProviderId: string;
   /** Registry 静态访问类别，或本次 Team 查询绑定的动态账号访问上下文。 */
+  accountAccess: ZCodeProviderAccountAccess | ZCodeAccountAccess;
+  timeZone?: string;
+}
+
+/** Highspeed 只读取普通 Pro/Max decode TPS，不触发完整 Coding Plan 用量聚合。 */
+export interface CodingPlanRegularTpsRequest {
+  preferredProviderId: string;
+  /**
+   * Registry 静态访问类别，或调用边界已解析的动态账号访问上下文。
+   *
+   * Bug 原因：此前该请求只带 organizationId/projectId，请求期鉴权靠 host 自行按 provider
+   * 猜测账号。Provider 重构后 Coding Plan 授权统一由 accountAccess 解析（Team scope 也内含
+   * 其中），缺失时 resolveAuthorization 必定返回 null，节省时间会静默不展示。
+   */
   accountAccess: ZCodeProviderAccountAccess | ZCodeAccountAccess;
   timeZone?: string;
 }

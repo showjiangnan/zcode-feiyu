@@ -1,12 +1,13 @@
+// Modified by ZCode Feiyu.
 // CLI session 常驻池。
 //
 // 这是容量与生命周期控制器，不拥有 session 内容。宿主提供当前 resident registry、同步
 // 安全事实和去激活执行面；pool 只维护 idle TTL、LRU touch、operation lease 与
 // deactivation gate。
 
-const DEFAULT_SESSION_RESIDENT_TARGET_COUNT = 8;
+export const DEFAULT_SESSION_RESIDENT_TARGET_COUNT = 8;
 export const DEFAULT_SESSION_RESIDENT_HIGH_WATER_COUNT = 16;
-const DEFAULT_SESSION_RESIDENT_IDLE_TIMEOUT_MS = 10 * 60 * 1_000;
+export const DEFAULT_SESSION_RESIDENT_IDLE_TIMEOUT_MS = 10 * 60 * 1_000;
 
 export type SessionDeactivationReason = "high_water_lru" | "idle_timeout";
 

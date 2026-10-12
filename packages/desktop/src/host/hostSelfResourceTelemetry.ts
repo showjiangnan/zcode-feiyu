@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * Host 进程自身的资源遥测。
  *
@@ -17,7 +18,7 @@ import {
   type StartHostMemoryDiagnosticsLogOptions,
 } from "./hostMemoryDiagnosticsLog.js";
 
-interface StartHostSelfResourceTelemetryOptions
+export interface StartHostSelfResourceTelemetryOptions
   extends
     Omit<StartHostMemoryDiagnosticsLogOptions, "onMemoryUsage">,
     NodeSelfResourceSamplerOptions {
@@ -28,7 +29,7 @@ interface StartHostSelfResourceTelemetryOptions
   postMessage?: ((message: unknown) => void) | undefined;
 }
 
-interface HostSelfResourceTelemetry {
+export interface HostSelfResourceTelemetry {
   /** 立即采样一次（供测试与手动触发），返回本地日志是否写盘。 */
   sampleNow(): boolean;
   stop(): void;

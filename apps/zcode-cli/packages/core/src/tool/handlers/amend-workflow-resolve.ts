@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // AmendWorkflow：确认之前的一切（resolveInput 与它的结构化失败）
 // ============================================================
@@ -7,6 +8,14 @@
 // 落定：脚本（三条来路，见 amend-workflow-source.ts）、并发上界、子代理模型。此后 hook、权限、
 // 确认窗与 handler 面对的只有「一份脚本、一个数或没有、一个规范形或没有」。
 
+// ============================================================
+// AmendWorkflow：确认之前的一切（resolveInput 与它的结构化失败）
+// ============================================================
+//
+// 从 amend-workflow.ts 拆出：那边是 handler 与工具声明，这里是**全流程唯一一次读端口**——把模型
+// 的入参归一成「将要发生的执行事实」。每个可省略的字段守同一条规则（省略即沿用前驱），三样都在这里
+// 落定：脚本（三条来路，见 amend-workflow-source.ts）、并发上界、子代理模型。此后 hook、权限、
+// 确认窗与 handler 面对的只有「一份脚本、一个数或没有、一个规范形或没有」。
 import {
   AmendWorkflowInputSchema,
   type AmendWorkflowInput,
@@ -27,6 +36,7 @@ import {
   resolveAmendScript,
 } from "./amend-workflow-source.js";
 import { resolveModelReference } from "./model-reference.js";
+import { withScriptModelBindings } from "./workflow-script-models.js";
 import { workflowRunNotFoundFailure } from "./workflow-run-introspection.js";
 
 export {
@@ -79,7 +89,7 @@ export async function resolveAmendWorkflowInput(
     void _forged;
     void _model;
     void _offset;
-    // 没有端口就既没有前驱也没有天花板：`null`（解除）与「沿用」都塌成缺席，数原样过。
+    // 没有端口就既没有前驱也没有默认并发：`null`（解除）与「沿用」都塌成缺席，数原样过。
     // 归一化后的入参此后永远只有「一个数或没有」这一种形状。
     const subagentModel = resolveAmendSubagentModel(
       parsed.data.subagent_model,
@@ -96,12 +106,16 @@ export async function resolveAmendWorkflowInput(
     if (!script.result) return script;
     return {
       result: true,
-      input: {
-        ...rest,
-        ...script.fields,
-        ...(typeof requested === "number" ? { max_concurrency: requested } : {}),
-        ...subagentModel.field,
-      },
+      // 没有端口就没有前驱可沿用：脚本点名的模型一律对着目录重新解析。
+      input: withScriptModelBindings(
+        {
+          ...rest,
+          ...script.fields,
+          ...(typeof requested === "number" ? { max_concurrency: requested } : {}),
+          ...subagentModel.field,
+        },
+        context.modelCatalogPort,
+      ),
     };
   }
   const snapshot = await port.getTask(parsed.data.run_id);
@@ -151,18 +165,19 @@ export async function resolveAmendWorkflowInput(
   const resolved: AmendWorkflowInput = {
     ...rest,
     ...script.fields,
-    ...resolveAmendMaxConcurrency(
-      parsed.data.max_concurrency,
-      snapshot.maxConcurrency,
-      port.concurrencyCeiling?.(),
-    ),
+    ...resolveAmendMaxConcurrency(parsed.data.max_concurrency, snapshot.maxConcurrency),
     ...subagentModel.field,
     predecessor: {
       ...predecessor,
       ...(script.inherited ? { script_inherited: true as const } : {}),
     },
   };
-  return { result: true, input: resolved };
+  // 脚本点名的模型：同名沿用前驱 run-launched 上的绑定（用户在前驱确认窗里换过的模型因此留得住），
+  // 新名字对着目录解析（docs/dynamic-workflow/launch.md「The `AmendWorkflow` tool」）。
+  return {
+    result: true,
+    input: withScriptModelBindings(resolved, context.modelCatalogPort, snapshot.modelBindings),
+  };
 }
 
 /**

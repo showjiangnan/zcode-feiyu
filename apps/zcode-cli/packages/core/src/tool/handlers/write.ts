@@ -1,9 +1,12 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { commitMemoryAwareFile } from "../../memory/commit-file.js";
 // ============================================================
 // Write Tool Handler
 // ============================================================
 
+// ============================================================
+// Write Tool Handler
+// ============================================================
 import type { ToolHandler, ToolEntry } from "../types.js";
 import {
   CoreErrorType,
@@ -66,7 +69,7 @@ function formatWriteModelContent(output: unknown): string {
   return `The file ${filePath} has been updated successfully.${userModifiedNote}${storageSuffixNote}`;
 }
 
-const writeHandler: ToolHandler = async (input, context) => {
+export const writeHandler: ToolHandler = async (input, context) => {
   const { file_path, content } = WriteInputSchema.parse(input) as WriteInput;
   const fileSystemPort = context.fileSystemPort;
 

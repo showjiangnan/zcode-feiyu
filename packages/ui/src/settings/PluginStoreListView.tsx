@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 /* eslint-disable max-lines -- 商店列表页把标题/搜索/已安装条/公开-个人分段/Featured/分类折叠聚合成一个连贯浏览面，拆散反而难以维持 1:1 布局。 */
 import { useMemo, useState } from "react";
@@ -103,6 +104,9 @@ export function PluginStoreListView({
 
   // 个人分段：按市场分组，最近刷新的市场排最前（见 sortPersonalMarketplaceGroups）。
   const personalGroups = useMemo(() => {
+    const claudeCodePlugins = intl.formatMessage({
+      id: "settings.plugins.marketplace.claudeCodePlugins",
+    });
     const groups = new Map<string, StorePluginItem[]>();
     for (const item of personalItems) {
       const group = groups.get(item.marketplace) ?? [];
@@ -112,7 +116,7 @@ export function PluginStoreListView({
     const titled: PersonalMarketplaceGroup[] = [...groups.entries()].map(
       ([marketplace, groupItems]) => ({
         marketplace,
-        title: resolveMarketplaceDisplayName(marketplace, marketplaces),
+        title: resolveMarketplaceDisplayName(marketplace, marketplaces, claudeCodePlugins),
         items: groupItems.toSorted((left, right) =>
           resolveItemDisplayName(left, locale).localeCompare(
             resolveItemDisplayName(right, locale),

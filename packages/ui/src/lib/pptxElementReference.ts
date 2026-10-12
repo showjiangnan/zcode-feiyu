@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { PresentationPageElement } from "@/presentation/types.js";
 
 export const PPTX_ELEMENT_REFERENCE_ADD_TO_CHAT_EVENT = "zcode:pptx-element-reference-add-to-chat";
@@ -84,7 +85,7 @@ export function isPptxElementReferenceInWorkspaceScope(
   );
 }
 
-function isPptxElementReferencePayload(payload: unknown): payload is PptxElementReference {
+export function isPptxElementReferencePayload(payload: unknown): payload is PptxElementReference {
   if (!isRecord(payload) || !isRecord(payload.bounds)) {
     return false;
   }
@@ -134,7 +135,7 @@ function isPptxElementReferencePayload(payload: unknown): payload is PptxElement
   );
 }
 
-function createPptxElementReferenceId() {
+export function createPptxElementReferenceId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }

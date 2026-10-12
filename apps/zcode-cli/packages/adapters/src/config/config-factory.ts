@@ -1,6 +1,6 @@
+// Modified by ZCode Feiyu.
 // Config Factory - Load and merge all config sources
 
-import { resolve } from "node:path";
 import type {
   ConfigPort,
   HookConfigSource,
@@ -20,11 +20,12 @@ import {
   resolveWorkspaceHookRuntimeRoot,
   type WorkspaceHookRuntimeRoot,
 } from "@zcode/shared/workspace-hook-discovery";
-import { createConfigPort } from "./index.js";
-import { loadFileConfig, getDefaultConfigPath, type LoadedConfig } from "./file-config.adapter.js";
-import { parseEnvConfig } from "./env-config.adapter.js";
-import { mergeConfigs, createPrioritizedConfig } from "./config-merger.js";
+import { resolve } from "node:path";
 import { createNodeLoggerFactory } from "../logging/index.js";
+import { createPrioritizedConfig, mergeConfigs } from "./config-merger.js";
+import { parseEnvConfig } from "./env-config.adapter.js";
+import { getDefaultConfigPath, loadFileConfig, type LoadedConfig } from "./file-config.adapter.js";
+import { createConfigPort } from "./index.js";
 import {
   loadProjectConfigFile,
   loadProjectConfigs,

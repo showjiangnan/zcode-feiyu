@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { MarkdownSelectionTarget } from "@/lib/conversationSelectionReference.js";
 /* eslint-disable max-lines -- PreviewPane 内容路由同时承载文本、图片、媒体、Office、PDF 和 PPTX 渲染。 */
 import type { BundledTheme } from "shiki";
@@ -80,7 +81,7 @@ function isSvgPath(path?: string): boolean {
   return path?.toLowerCase().endsWith(".svg") ?? false;
 }
 
-function getPreviewPaneErrorTextClass(
+export function getPreviewPaneErrorTextClass(
   error: string | null,
   fileMissingMessage: string,
 ): "text-destructive" | "text-foreground-subtlest" {

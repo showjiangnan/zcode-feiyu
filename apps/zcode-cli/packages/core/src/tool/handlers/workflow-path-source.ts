@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // `path` 来源：把一个磁盘上的脚本文件读成执行事实
 // ============================================================
@@ -10,6 +11,17 @@
 // 读一次、只读一次：读出来的字节此后一路带到 hook、确认窗与 handler（`resolveInput` 的契约），
 // 批准之后再改文件也改不了将要执行的东西。
 
+// ============================================================
+// `path` 来源：把一个磁盘上的脚本文件读成执行事实
+// ============================================================
+//
+// 四个工具共用这一段（`CreateWorkflow.path`、`AmendWorkflow.path`、`SaveWorkflow.script_path`、
+// `EvalWorkflowSnippet.path`）。共用的理由不是省几行：它们对「这个文件是什么」必须给出同一个
+// 答案，否则同一份草稿在 Create 里是「带元数据块的保存定义」、在 Save 里却成了「正文第一行是
+// 一段注释」的脚本——而那种分叉只会在用户把草稿存成定义的那一次才被发现。
+//
+// 读一次、只读一次：读出来的字节此后一路带到 hook、确认窗与 handler（`resolveInput` 的契约），
+// 批准之后再改文件也改不了将要执行的东西。
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { SavedWorkflowMeta } from "@zcode/contracts";
@@ -17,7 +29,7 @@ import { SAVED_WORKFLOW_SENTINEL, parseSavedWorkflow } from "./saved-workflows/i
 import { describeWorkflowScriptPath } from "./workflow-script-path.js";
 
 /** 读成功的脚本文件。 */
-interface WorkflowScriptFile {
+export interface WorkflowScriptFile {
   /** 绝对路径（journal 与模型面各取所需：前者存它，后者显示 {@link described}）。 */
   path: string;
   /** 模型面该看到的写法：工作区之下给相对路径，否则绝对路径。 */
@@ -32,7 +44,7 @@ interface WorkflowScriptFile {
   bodyLineOffset: number;
 }
 
-type WorkflowScriptFileResult =
+export type WorkflowScriptFileResult =
   | { ok: true; file: WorkflowScriptFile }
   | { ok: false; message: string };
 
@@ -44,7 +56,7 @@ type WorkflowScriptFileResult =
  * （`ToolInputResolutionContext`）刻意窄到只有 `workingDirectory`。两者在 `operation: "read"`
  * 上的行为本就相同——那个函数当前不硬拦工作区之外的路径，只做同一条 resolve/normalize。
  */
-function resolveWorkflowScriptFilePath(cwd: string, inputPath: string): string {
+export function resolveWorkflowScriptFilePath(cwd: string, inputPath: string): string {
   return path.isAbsolute(inputPath) ? path.normalize(inputPath) : path.resolve(cwd, inputPath);
 }
 

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   ModelNetworkStatusEvent,
   ModelRequestCompletedStatusEvent,
@@ -6,14 +7,18 @@ import type {
 } from "@zcode/contracts/model";
 import { ModelFailureReason, ModelTransportKind } from "@zcode/contracts/model";
 import type {
-  AgentTelemetryErrorCategory,
-  ModelApiOperationKind,
-  ModelAttemptFailureStage,
   ModelAttemptSpanWriter,
   ModelCallSpanWriter,
   ModelExecutionTelemetryPort,
   ResolvedModelTelemetryDescriptor,
 } from "@zcode/contracts/telemetry";
+import {
+  apiOperationFromRoute,
+  errorCategory,
+  failureStage,
+  positiveInteger,
+  setEffectiveReasoning,
+} from "./model-api-recorder-helpers.js";
 import { ProviderEndpointIdentityCache } from "./provider-endpoint.js";
 
 interface ModelApiTelemetryStatusSinkOptions {
@@ -165,6 +170,9 @@ export class ModelApiTelemetryStatusSink implements ModelStatusSink {
         return;
       case "model_stream_stalled":
         attempt?.writer.markStreamStalled(event.idleMs);
+        return;
+      case "model_request_observation":
+        attempt?.writer.recordRequestObservation(event.observation);
         return;
       case "model_retry_scheduled":
         call.pendingRetryDelayMs = event.delayMs;
@@ -381,68 +389,5 @@ export class ModelApiTelemetryStatusSink implements ModelStatusSink {
     } catch {
       // Telemetry 健康回调也必须旁路。
     }
-  }
-}
-
-function positiveInteger(value: number | undefined, fallback: number): number {
-  return value !== undefined && Number.isFinite(value) && value > 0 ? Math.trunc(value) : fallback;
-}
-
-function setEffectiveReasoning(
-  writer: ModelAttemptSpanWriter,
-  target: ResolvedModelTelemetryDescriptor,
-): void {
-  writer.setEffectiveReasoningState(target.reasoning.effectiveState);
-  writer.setEffectiveReasoningControl(target.reasoning.effectiveControl);
-  if (target.reasoning.effectiveLevel) {
-    writer.setEffectiveReasoningLevel(target.reasoning.effectiveLevel);
-  }
-  if (target.reasoning.effectiveBudgetTokens !== undefined) {
-    writer.setEffectiveReasoningBudgetTokens(target.reasoning.effectiveBudgetTokens);
-  }
-}
-
-function apiOperationFromRoute(route: string | undefined): ModelApiOperationKind {
-  const normalized = route?.toLowerCase() ?? "";
-  if (normalized.includes("/chat/completions")) return "chat_completions";
-  if (normalized.includes("/responses")) return "responses";
-  if (normalized.includes("/messages")) return "messages";
-  if (normalized.includes(":generatecontent") || normalized.includes(":streamgeneratecontent")) {
-    return "generate_content";
-  }
-  return "unknown";
-}
-
-function failureStage(event: ModelRequestFailedStatusEvent): ModelAttemptFailureStage {
-  return event.errorPhase === "prepare" ? "configuration" : (event.errorPhase ?? "unhandled");
-}
-
-function errorCategory(event: ModelRequestFailedStatusEvent): AgentTelemetryErrorCategory {
-  switch (event.reason) {
-    case ModelFailureReason.AuthFailed:
-      return "authentication";
-    case ModelFailureReason.ProviderNotConfigured:
-    case ModelFailureReason.InvalidRequest:
-      return "configuration";
-    case ModelFailureReason.RateLimited:
-      return "rate_limit";
-    case ModelFailureReason.Timeout:
-    case ModelFailureReason.StreamIdleTimeout:
-      return "timeout";
-    case ModelFailureReason.NetworkError:
-    case ModelFailureReason.StaleConnection:
-    case ModelFailureReason.TlsError:
-      return "network";
-    case ModelFailureReason.Cancelled:
-      return "cancelled";
-    case ModelFailureReason.ContextExceeded:
-    case ModelFailureReason.ProviderOverloaded:
-    case ModelFailureReason.ServerError:
-    case ModelFailureReason.ProxyError:
-    case ModelFailureReason.AuthRefresh:
-    case ModelFailureReason.OffpeakQueued:
-      return "provider";
-    default:
-      return "unknown";
   }
 }

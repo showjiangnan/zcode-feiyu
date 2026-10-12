@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu.
 import { ENTER_PLAN_MODE_TOOL_NAME, EXIT_PLAN_MODE_TOOL_NAME } from "@zcode/contracts";
 import { filterDisallowedToolNames } from "../tool/tool-visibility.js";
 
-const SUBAGENT_CHILD_FORCED_DISALLOWED_TOOLS = [
+export const SUBAGENT_CHILD_FORCED_DISALLOWED_TOOLS = [
   ENTER_PLAN_MODE_TOOL_NAME,
   EXIT_PLAN_MODE_TOOL_NAME,
 ] as const;

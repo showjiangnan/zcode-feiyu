@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import { ensureCliDeviceMid } from "../device/cli-device-mid.js";
 import type { EnvRecord } from "./model-execution.js";
 import { normalizeModelSessionIdForAttribution, type ModelStatusContext } from "./runner-status.js";
 
 const REDACTED_METADATA_USER_ID = "[REDACTED]";
 
-function createAnthropicRequestMetadataUserId(input: {
+export function createAnthropicRequestMetadataUserId(input: {
   deviceMid: string;
   sessionId?: ModelStatusContext["sessionId"];
 }): string {

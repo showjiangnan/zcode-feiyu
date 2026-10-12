@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { memo, useId, useRef, useState } from "react";
 import { ChevronDownIcon, NetworkIcon } from "lucide-react";
 import {

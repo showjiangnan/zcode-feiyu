@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // Grouped 客户端投影：服务端回原始分组结构，tasks-index task rows 决定持久行，
 // sessions-index 只补实时 activity/detail，最终拼出旧 ZCodeGroupedTaskView 同形结果。
 // 排序语义对齐 taskIndexRepo.queryGroupedTaskView，但服务端的懒补序（normalize* 写回 sqlite）
@@ -91,7 +92,7 @@ function sortGroupTasks(
   });
 }
 
-interface BuildGroupedTaskViewParams {
+export interface BuildGroupedTaskViewParams {
   structure: ZCodeGroupedTaskViewStructure;
   /** tasks-index active/pinned/archived 三个持久分区的 task 行并集。 */
   taskIndexItems: ZCodeTaskMeta[];

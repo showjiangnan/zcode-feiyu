@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 import { sparseShape } from "@zcode/shared/config-schema";
 
@@ -16,6 +17,8 @@ export const zhipuAccountModeDataSchema = z.enum([
   "individual-coding-plan",
   "team-coding-plan",
   "off-peak",
+  // 加速卡访问类别；与 zcodeProviderAccountAccessSchema.mode 同值，改动需同步两处。
+  "highspeed",
 ]);
 export const providerVisibilityDataSchema = z.enum(["visible", "hidden"]);
 export const providerLogoDataSchema = z
@@ -52,13 +55,26 @@ export const zhipuAccountAccessDataSchema = z
     type: completeZhipuAccountAccessDataSchema.shape.type,
   })
   .strict();
+export const chatGPTSubscriptionAccessDataSchema = z
+  .object({
+    type: z.literal("chatgpt-subscription"),
+    profileId: z.string().uuid(),
+    generation: z.number().int().nonnegative(),
+    entitled: z.boolean(),
+    label: z.string().min(1),
+    modelDisplayNames: z.record(z.string(), z.string()).optional(),
+  })
+  .strict();
+
 export const providerAccessDataSchema = z.discriminatedUnion("type", [
   apiKeyAccessDataSchema,
   zhipuAccountAccessDataSchema,
+  chatGPTSubscriptionAccessDataSchema,
 ]);
-const completeProviderAccessDataSchema = z.discriminatedUnion("type", [
+export const completeProviderAccessDataSchema = z.discriminatedUnion("type", [
   completeApiKeyAccessDataSchema,
   completeZhipuAccountAccessDataSchema,
+  chatGPTSubscriptionAccessDataSchema,
 ]);
 
 export const completeProviderApiDataSchema = z

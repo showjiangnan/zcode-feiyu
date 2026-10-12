@@ -1,10 +1,12 @@
+// Modified by ZCode Feiyu.
 import type {
   Logger,
   ModelNetworkStatusEvent,
   ModelReasoningCallHint,
+  ModelRequestObservationStatusEvent,
+  ModelRequestSessionType as ModelRequestSessionTypeValue,
   ModelStatusSink,
   ModelTransportKind,
-  ModelRequestSessionType as ModelRequestSessionTypeValue,
   QueryId,
   ResolvedModelApiCallObservation,
   TraceId,
@@ -17,9 +19,10 @@ import {
 import { UNBOUNDED_RETRY_MAX_ATTEMPTS } from "./retry-budget.js";
 // 请求归因 header 一族住在 runner-attribution.ts（max-lines 拆分）；公开面仍从本文件导出，
 // 既有 importer 不必改路径。
+import type { ModelRequestObservationSource } from "./request-security.js";
 import { resolveModelRequestSessionType } from "./runner-attribution.js";
-import type { AiSdkModelTextRequest, ResolvedAiSdkModel } from "./runner-runtime.js";
 import { stringMetadata } from "./runner-record.js";
+import type { AiSdkModelTextRequest, ResolvedAiSdkModel } from "./runner-runtime.js";
 
 export {
   createModelRequestAttributionHeaders,
@@ -191,6 +194,7 @@ export async function publishModelStatus(
      * 状态事件汇，治理器从这里读结果。与 request/telemetry sink 同一条投递纪律（失败只告警）。
      */
     admissionTicket?: ModelStatusSink;
+    requestObservations?: ModelRequestObservationSource;
     failureError?: unknown;
     logger?: Logger;
     requestStatusSink?: ModelStatusSink;
@@ -198,6 +202,7 @@ export async function publishModelStatus(
   },
 ): Promise<void> {
   logStatusEvent(event, options.logger);
+  await publishRequestObservations(event, options);
 
   const deliveries: Array<() => void | Promise<void>> = [];
   if (options.admissionTicket) {
@@ -231,6 +236,43 @@ export async function publishModelStatus(
         errorMessage:
           result.reason instanceof Error ? result.reason.message : String(result.reason),
         event: "model.status_sink.failed",
+        status: "failed",
+      });
+    }
+  }
+}
+
+/**
+ * attempt 终态前，把 signer 暂存的签名观测按 requestId 取出并只发给进程级 Telemetry Sink。
+ * 必须先于终态事件投递：recorder 收到终态后会释放该 attempt 的 span writer。
+ * 本地日志已在 fetch 层即时写入，这里不重复记录。
+ */
+async function publishRequestObservations(
+  event: ModelNetworkStatusEvent,
+  options: {
+    requestObservations?: ModelRequestObservationSource;
+    logger?: Logger;
+    statusSink?: ModelStatusSink;
+  },
+): Promise<void> {
+  if (event.type !== "model_request_completed" && event.type !== "model_request_failed") return;
+  const store = options.requestObservations;
+  if (!store) return;
+  const observations = store.take(event.requestId);
+  if (observations.length === 0 || !options.statusSink) return;
+  for (const observation of observations) {
+    const observationEvent: ModelRequestObservationStatusEvent = {
+      ...event,
+      observation,
+      type: "model_request_observation",
+    };
+    try {
+      await options.statusSink.publish(observationEvent);
+    } catch (error) {
+      options.logger?.warn("Model request observation sink failed", {
+        ...modelStatusLogContext(event),
+        errorMessage: error instanceof Error ? error.message : String(error),
+        event: "model.request_observation.sink_failed",
         status: "failed",
       });
     }
@@ -382,6 +424,10 @@ function logStatusEvent(event: ModelNetworkStatusEvent, logger?: Logger): void {
         event: event.type,
         status: "completed",
       });
+      return;
+
+    case "model_request_observation":
+      // fetch 层已即时写入本地日志，这里只负责 telemetry 投递。
       return;
   }
 }

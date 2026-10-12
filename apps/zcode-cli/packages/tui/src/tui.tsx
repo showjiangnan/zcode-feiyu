@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { CliRenderEvents, createCliRenderer, type CliRenderer } from "@mbears/opentui-core";
 import type { UiThemeMode } from "@zcode/contracts";
 import { createRoot } from "@mbears/opentui-react";
@@ -53,7 +54,10 @@ export const runTui = async (options: TuiOptions): Promise<number> => {
 };
 
 /** Renderer lifecycle shared by the interactive entrypoint and native terminal tests. */
-async function runTuiWithRenderer(options: TuiOptions, renderer: CliRenderer): Promise<number> {
+export async function runTuiWithRenderer(
+  options: TuiOptions,
+  renderer: CliRenderer,
+): Promise<number> {
   let exitCode = 0;
   let startupError: unknown;
   let destroyed = false;

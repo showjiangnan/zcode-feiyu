@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { SessionEventType, type SessionEvent, type SessionId } from "@zcode/contracts";
 import type { RuntimeTaskRegistry, RuntimeTaskSnapshot } from "../runtime-task/registry.js";
 

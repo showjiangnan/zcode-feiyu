@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // workspace-config topic publisher（v4 additive 新增）：workspace 级配置目录（config options +
 // slash 命令目录）的 conflated 最新态 + seq 区间记账 + snapshot/delta 帧构造。
 // 与 SessionsIndexPublisher 同构且更简单：载荷是单个整体替换态（config.updated），
@@ -20,7 +21,7 @@ interface ConfigSubscription {
   nextLogicalFrameOrdinal: number;
 }
 
-interface WorkspaceConfigSubscribeResult {
+export interface WorkspaceConfigSubscribeResult {
   subscriptionId: string;
   mode: "snapshot" | "resume";
   frame: WorkspaceConfigTopicFrame | null;

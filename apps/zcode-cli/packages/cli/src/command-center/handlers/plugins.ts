@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { TuiSelection, TuiSubmitPromptResult } from "@zcode/tui";
 import { resolvePluginDisplayName } from "@zcode/shared";
 import type {
@@ -49,11 +50,7 @@ export async function handlePluginsCommand(
       return {
         mode: deps.getMode?.(),
         response: formatPluginSetResult(result),
-        selection: buildPluginsSelection(
-          outcome,
-          result.plugin.id,
-          deps.getLocale?.() ?? "en-US",
-        ),
+        selection: buildPluginsSelection(outcome, result.plugin.id, deps.getLocale?.() ?? "en-US"),
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -82,9 +79,7 @@ async function handlePluginsUninstall(
   const rest = tokens.slice(1);
   const force = rest.includes("--force") || rest.includes("-f");
   const plugin = rest.find((token) => token !== "--force" && token !== "-f");
-  const extras = rest.filter(
-    (token) => token !== "--force" && token !== "-f" && token !== plugin,
-  );
+  const extras = rest.filter((token) => token !== "--force" && token !== "-f" && token !== plugin);
   if (!plugin || extras.length > 0) {
     return {
       mode: deps.getMode?.(),
@@ -111,11 +106,7 @@ async function handlePluginsUninstall(
         : `Plugin not installed: ${plugin}`,
       ...(outcome
         ? {
-            selection: buildPluginsSelection(
-              outcome,
-              undefined,
-              deps.getLocale?.() ?? "en-US",
-            ),
+            selection: buildPluginsSelection(outcome, undefined, deps.getLocale?.() ?? "en-US"),
           }
         : {}),
     };
@@ -176,7 +167,10 @@ function buildPluginsSelection(
     }),
     placement: "composer",
     prompt: "Choose a plugin to toggle.",
-    selectedIndex: Math.max(0, plugins.findIndex((plugin) => plugin.id === selectedPluginId)),
+    selectedIndex: Math.max(
+      0,
+      plugins.findIndex((plugin) => plugin.id === selectedPluginId),
+    ),
     title: "Plugins",
   };
 }

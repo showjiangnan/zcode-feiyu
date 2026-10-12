@@ -1,145 +1,38 @@
+// Modified by ZCode Feiyu.
 import { chmod, mkdir, open, readFile, rename, rm, stat, unlink } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { randomUUID } from "node:crypto";
-import { homedir, uptime } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
+import { basename, dirname, join, resolve } from "node:path";
 import type { WorkspaceHookTrustRecord, WorkspaceHookTrustStoreFile } from "@zcode/contracts";
 import {
   WORKSPACE_HOOK_TRUST_STORE_SCHEMA_VERSION,
   workspaceHookTrustRecordSchema,
   workspaceHookTrustStoreFileSchema,
 } from "@zcode/contracts";
-
-const DEFAULT_LOCK_TIMEOUT_MS = 5_000;
-const DEFAULT_STALE_LOCK_MS = 30_000;
-const LOCK_RETRY_MS = 10;
-const DEFAULT_RENAME_RETRY_DELAYS_MS = [50, 100, 200, 400, 800] as const;
-const SECURITY_DIRECTORY = "security";
-const TRUST_STORE_FILE = "workspace-hook-trust-v1.json";
-// 进程启动时间的比较容差：ps/proc 的秒级精度 + 调度延迟，2s 足以覆盖且不放过复用。
-const LOCK_START_TIME_TOLERANCE_MS = 2_000;
-const PROC_CLOCK_TICKS_PER_SECOND = 100;
-
-const execFileAsync = promisify(execFile);
-
-interface LockOwnerMetadata {
-  pid: number;
-  token: string;
-  /** 进程实例启动时间（墙钟 ms）；上一版锁格式无此字段（undefined）。 */
-  startTime?: number;
-}
-
-async function defaultWriteLockOwnerMetadata(
-  handle: FileHandle,
-  content: string,
-): Promise<void> {
-  await handle.writeFile(content, "utf8");
-}
-
-/** 本进程启动时间的墙钟毫秒（惰性缓存：进程生命周期内不变）。 */
-let ownStartTimeMs: number | undefined;
-function currentProcessStartTimeMs(): number {
-  if (ownStartTimeMs === undefined) {
-    ownStartTimeMs = Math.round(Date.now() - uptime() * 1_000);
-  }
-  return ownStartTimeMs;
-}
-
-/**
- * 查询指定 pid 的当前进程实例启动时间（墙钟毫秒）；无法确定时返回 null。
- * 用于 stale 回收时区分「原 owner 实例仍存活」与「pid 已被复用给无关进程」
- * （裸 pid 只标识进程表槽位，不具备跨时间唯一性）。
- * - linux: /proc/<pid>/stat 字段 22（boot 后 ticks）
- * - darwin: ps -o lstart=
- * - win32: powershell Get-Process StartTime（成本较高，但只在超龄回收路径触发）
- * - 失败/不支持 → null，调用方保守视为原 owner 存活（不回收）。
- */
-async function probeProcessStartTimeDefault(pid: number): Promise<number | null> {
-  if (pid === process.pid) return currentProcessStartTimeMs();
-  try {
-    if (process.platform === "linux") {
-      const stat = await readFile(`/proc/${pid}/stat`, "utf8");
-      const close = stat.lastIndexOf(")");
-      if (close < 0) return null;
-      // ')' 之后 token[0] 是 state（字段 3）；starttime 是字段 22 → token[19]。
-      const tokens = stat.slice(close + 2).split(" ");
-      const ticks = Number(tokens[19]);
-      if (!Number.isFinite(ticks)) return null;
-      const bootMs = Date.now() - uptime() * 1_000;
-      return Math.round(bootMs + (ticks * 1_000) / PROC_CLOCK_TICKS_PER_SECOND);
-    }
-    if (process.platform === "darwin") {
-      const { stdout } = await execFileAsync("ps", ["-o", "lstart=", "-p", String(pid)]);
-      const parsed = Date.parse(stdout.trim());
-      return Number.isFinite(parsed) ? parsed : null;
-    }
-    if (process.platform === "win32") {
-      const { stdout } = await execFileAsync("powershell.exe", [
-        "-NoProfile",
-        "-Command",
-        `[DateTimeOffset]::new((Get-Process -Id ${pid}).StartTime).ToUnixTimeMilliseconds()`,
-      ]);
-      const parsed = Number(stdout.trim());
-      return Number.isFinite(parsed) ? parsed : null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export type WorkspaceHookTrustStoreLoadResult =
-  | { status: "missing"; records: [] }
-  | { status: "ok"; records: WorkspaceHookTrustRecord[] }
-  | { status: "corrupt"; records: []; recoveredCorruptPath: string };
-
-export interface FileWorkspaceHookTrustStoreOptions {
-  filePath: string;
-  now?: () => number;
-  lockTimeoutMs?: number;
-  staleLockMs?: number;
-  beforeRename?: () => void | Promise<void>;
-  renameFile?: typeof rename;
-  renameRetryDelaysMs?: readonly number[];
-  /** 测试注入：查询 pid 当前实例启动时间；默认按平台实现（/proc / ps / powershell）。 */
-  probeProcessStartTime?: (pid: number) => Promise<number | null>;
-  /** 测试注入：写锁 owner metadata；默认 FileHandle.writeFile。 */
-  writeLockOwnerMetadata?: (handle: FileHandle, content: string) => Promise<void>;
-}
-
-export interface WorkspaceHookTrustStoreCompactOptions {
-  current: Array<{ workspaceIdentity: string; hookDeclarationDigest: string }>;
-  maxAgeMs: number;
-  maxRecords: number;
-  now?: number;
-}
-
-export interface WorkspaceHookTrustStoreRevokeOptions {
-  workspaceIdentity: string;
-  hookDeclarationDigests?: readonly string[];
-}
-
-export interface WorkspaceHookTrustStorePathOptions {
-  homeDir?: string;
-  userConfigPath?: string;
-}
-
-export async function resolveWorkspaceHookTrustStorePath(
-  options: WorkspaceHookTrustStorePathOptions = {},
-): Promise<string> {
-  const home = resolve(options.homeDir ?? homedir());
-  const userConfigPath = resolve(
-    options.userConfigPath ?? join(home, ".zcode", "cli", "config.json"),
-  );
-  const config = await readUserConfig(userConfigPath);
-  const storage = isRecord(config.storage) ? config.storage : {};
-  const configured = typeof storage.dir === "string" ? storage.dir.trim() : "";
-  const storageRoot = configured ? resolveTrustedUserPath(configured, home) : join(home, ".zcode");
-  return join(storageRoot, SECURITY_DIRECTORY, TRUST_STORE_FILE);
-}
+import {
+  type WorkspaceHookTrustStorePathOptions,
+  type FileWorkspaceHookTrustStoreOptions,
+  type WorkspaceHookTrustStoreLoadResult,
+  type WorkspaceHookTrustStoreRevokeOptions,
+  type WorkspaceHookTrustStoreCompactOptions,
+  type LockOwnerMetadata,
+} from "./workspace-hook-trust-types.js";
+import {
+  resolveWorkspaceHookTrustStorePath,
+  DEFAULT_LOCK_TIMEOUT_MS,
+  DEFAULT_STALE_LOCK_MS,
+  DEFAULT_RENAME_RETRY_DELAYS_MS,
+  probeProcessStartTimeDefault,
+  defaultWriteLockOwnerMetadata,
+  trustKey,
+  recordTimestamp,
+  currentProcessStartTimeMs,
+  isNodeError,
+  delay,
+  LOCK_RETRY_MS,
+  LOCK_START_TIME_TOLERANCE_MS,
+  renameWithRetry,
+} from "./workspace-hook-trust-files.js";
 
 export async function createDefaultFileWorkspaceHookTrustStore(
   options: WorkspaceHookTrustStorePathOptions &
@@ -167,10 +60,7 @@ export class FileWorkspaceHookTrustStore {
   private readonly renameFile: typeof rename;
   private readonly renameRetryDelaysMs: readonly number[];
   private readonly probeProcessStartTime: (pid: number) => Promise<number | null>;
-  private readonly writeLockOwnerMetadata: (
-    handle: FileHandle,
-    content: string,
-  ) => Promise<void>;
+  private readonly writeLockOwnerMetadata: (handle: FileHandle, content: string) => Promise<void>;
   private mutationQueue: Promise<unknown> = Promise.resolve();
 
   constructor(options: FileWorkspaceHookTrustStoreOptions) {
@@ -210,9 +100,7 @@ export class FileWorkspaceHookTrustStore {
       // 空数组会生成空 Set，filter 因而保留全部记录并静默成功，调用方无法
       // 区分“撤销全部”的 undefined 与“没有目标”的无效请求。三态固定为：undefined
       // 撤销 workspace 全部、非空数组精确撤销、空数组在任何 IO 前拒绝。
-      return Promise.reject(
-        new Error("hookDeclarationDigests must be undefined or non-empty"),
-      );
+      return Promise.reject(new Error("hookDeclarationDigests must be undefined or non-empty"));
     }
     const selected = options.hookDeclarationDigests
       ? new Set(options.hookDeclarationDigests)
@@ -487,12 +375,7 @@ export class FileWorkspaceHookTrustStore {
       await handle.close();
       handle = undefined;
       await this.beforeRename?.();
-      await renameWithRetry(
-        this.renameFile,
-        tempPath,
-        this.filePath,
-        this.renameRetryDelaysMs,
-      );
+      await renameWithRetry(this.renameFile, tempPath, this.filePath, this.renameRetryDelaysMs);
       await chmod(this.filePath, 0o600);
     } catch (error) {
       await handle?.close().catch(() => undefined);
@@ -502,67 +385,9 @@ export class FileWorkspaceHookTrustStore {
   }
 }
 
-async function renameWithRetry(
-  renameFile: typeof rename,
-  tempPath: string,
-  filePath: string,
-  retryDelaysMs: readonly number[],
-): Promise<void> {
-  for (let attempt = 0; ; attempt += 1) {
-    try {
-      await renameFile(tempPath, filePath);
-      return;
-    } catch (error) {
-      const delayMs = retryDelaysMs[attempt];
-      if (delayMs === undefined || !isRetryableRenameError(error)) throw error;
-      // Windows 杀软/索引器可能短暂占用目标文件，单次 rename 会让已完成
-      // fsync 的 Trust mutation 误报失败。仅对已知短暂占用错误做有界异步重试。
-      await sleep(delayMs);
-    }
-  }
-}
-
-function isRetryableRenameError(error: unknown): boolean {
-  if (!(error instanceof Error) || !("code" in error)) return false;
-  const code = (error as NodeJS.ErrnoException).code;
-  return code === "EPERM" || code === "EBUSY" || code === "EACCES";
-}
-
-async function readUserConfig(path: string): Promise<Record<string, unknown>> {
-  try {
-    const parsed = JSON.parse(await readFile(path, "utf8")) as unknown;
-    return isRecord(parsed) ? parsed : {};
-  } catch (error) {
-    if (isNodeError(error, "ENOENT")) return {};
-    throw new Error(`Unable to read trusted user config for Workspace Hook Trust store: ${path}`, {
-      cause: error,
-    });
-  }
-}
-
-function resolveTrustedUserPath(path: string, home: string): string {
-  if (path.startsWith("~/")) return join(home, path.slice(2));
-  if (isAbsolute(path)) return resolve(path);
-  // 安全原因：user config 中的相对 storage.dir 绑定用户目录，不能随 workspace cwd 漂移。
-  return resolve(home, path);
-}
-
-function trustKey(record: { workspaceIdentity: string; hookDeclarationDigest: string }): string {
-  return `${record.workspaceIdentity}\u0000${record.hookDeclarationDigest}`;
-}
-
-function recordTimestamp(record: WorkspaceHookTrustRecord): number {
-  return Date.parse(record.lastUsedAt ?? record.grantedAt);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isNodeError(error: unknown, code: string): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error && error.code === code;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
-}
+export { type WorkspaceHookTrustStoreLoadResult } from "./workspace-hook-trust-types.js";
+export { type FileWorkspaceHookTrustStoreOptions } from "./workspace-hook-trust-types.js";
+export { type WorkspaceHookTrustStoreCompactOptions } from "./workspace-hook-trust-types.js";
+export { type WorkspaceHookTrustStoreRevokeOptions } from "./workspace-hook-trust-types.js";
+export { type WorkspaceHookTrustStorePathOptions } from "./workspace-hook-trust-types.js";
+export { resolveWorkspaceHookTrustStorePath } from "./workspace-hook-trust-files.js";

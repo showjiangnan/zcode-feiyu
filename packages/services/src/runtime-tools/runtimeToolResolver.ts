@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { accessSync, constants, existsSync } from "node:fs";
 import { delimiter, dirname, join, resolve as resolvePath } from "node:path";
 import { getRuntimeToolRuntime, type RuntimeToolId } from "@zcode/shared";
@@ -100,7 +101,7 @@ function joinUniquePathEntries(entries: readonly string[]): string {
   return nextEntries.join(delimiter);
 }
 
-function findRuntimeToolBinary(
+export function findRuntimeToolBinary(
   toolId: RuntimeToolId,
   env: NodeJS.ProcessEnv = process.env,
 ): string | null {

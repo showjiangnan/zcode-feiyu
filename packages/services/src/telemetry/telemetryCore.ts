@@ -1,28 +1,28 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- telemetry state lock、deviceMid 编排和上报路径共享同一状态文件，拆分会增加锁语义漂移风险。 */
+import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import {
+  buildZCodeSourceHeadersFromContext,
   createUuid,
-  ZCODE_VERSION,
+  rewriteZCodeEndpointUrl,
+  sanitizeTelemetryEventDetail,
   ZCODE_ENV,
   ZCODE_TELEMETRY_ENABLED,
   ZCODE_TELEMETRY_REPORT_ENDPOINT,
-  buildZCodeSourceHeadersFromContext,
-  rewriteZCodeEndpointUrl,
-  sanitizeTelemetryEventDetail,
+  ZCODE_VERSION,
+  type OAuthLoginAttribution,
   type TelemetryEventPayload,
   type TelemetryRendererContext,
-  type OAuthLoginAttribution,
 } from "@zcode/shared";
+import { createHash } from "node:crypto";
+import { mkdir, open, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { version } from "node:os";
+import { dirname, join } from "node:path";
 import {
   ensureDeviceMid,
   ensureDeviceMidInLockedState,
   type EnsureDeviceMidOptions,
 } from "../device/deviceMid.js";
-import { mkdir, open, readFile, stat, unlink, writeFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
-import { version } from "node:os";
-import { dirname, join } from "node:path";
-import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { getAppConfigDir } from "../paths.js";
 
 function sessionCreateEventId(userId: string, sessionId: string): string {

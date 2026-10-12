@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines */
 // 安全说明：签名锁定、进程启动与协议解析必须保留在同一审计边界，避免拆分后重新引入校验/执行间隙。
 import { spawn } from "node:child_process";
@@ -40,7 +41,7 @@ interface BrowserDataLogger {
   warn: (...args: unknown[]) => void;
 }
 
-type WindowsChromeAppBoundImportErrorCode =
+export type WindowsChromeAppBoundImportErrorCode =
   | "chrome_cookie_elevation_cancelled"
   | "chrome_cookie_helper_verification_failed"
   | "chrome_cookie_app_bound_decryption_failed";
@@ -74,6 +75,8 @@ interface HelperProcessResult {
 }
 
 interface ReadAppBoundKeyOptions {
+  expectedAppVersion?: string;
+  expectedBuildCommit?: string;
   appExecutablePath?: string;
   chromeExecutablePath: string;
   helperPath?: string;
@@ -137,7 +140,7 @@ async function resolveHelperPath(options: ReadAppBoundKeyOptions): Promise<strin
   return candidates[0]!;
 }
 
-function createSanitizedHelperEnvironment(
+export function createSanitizedHelperEnvironment(
   sourceEnv: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
   const allowed = [

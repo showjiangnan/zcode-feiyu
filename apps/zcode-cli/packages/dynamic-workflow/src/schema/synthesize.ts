@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import type { CompileDiagnostic, WorkflowProgram } from "../compiler/compile.js";
 import { collectSites, type SiteTable } from "../analysis/sites.js";
@@ -147,7 +148,10 @@ export function synthesizeWorkflowSchemas(scriptText: string): SchemaSynthesisRe
  * 这个构造是正确性关键且只有一种写法，因此收在这里一处：调用方（run service、测试装配）
  * 一律用它，不要各自实现。站点表是身份的唯一真源——schemas 里对不上任何站点的键被忽略。
  */
-export function buildAskSpecs(table: SiteTable, schemas: Record<string, JsonSchema>): Map<string, AskSpec> {
+export function buildAskSpecs(
+  table: SiteTable,
+  schemas: Record<string, JsonSchema>,
+): Map<string, AskSpec> {
   const specs = new Map<string, AskSpec>();
   for (const site of table.asks) {
     const schema = schemas[site.id];

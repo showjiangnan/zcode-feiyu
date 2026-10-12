@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import { useState } from "react";
 import { CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
-type ModelConfigHelpField =
+export type ModelConfigHelpField =
   | "contextWindow"
   | "maxOutputTokens"
   | "inputModalities"

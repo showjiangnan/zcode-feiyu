@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   ZAI_PROVIDER_ID,
   buildRuntimeZaiBusinessUrl,
@@ -12,7 +13,7 @@ import {
   readEnv,
 } from "./configUtils.js";
 
-const ZAI_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
+export const ZAI_OAUTH_PROVIDER_CONFIG: Omit<OAuthProviderRuntimeConfig, "appSecret"> = {
   id: ZAI_PROVIDER_ID,
   displayName: "Z.ai",
   enabled: true,

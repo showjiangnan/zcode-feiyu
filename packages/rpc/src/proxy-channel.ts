@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * Layer 5: ProxyChannel —— 服务自动代理（杀手锏）
  *
@@ -45,7 +46,7 @@ export namespace ProxyChannel {
    */
   export function fromService<TContext>(
     service: unknown,
-    disposables?: DisposableStore,
+    _disposables?: DisposableStore,
   ): IServerChannel<TContext> {
     const handler = service as { [key: string]: unknown };
 

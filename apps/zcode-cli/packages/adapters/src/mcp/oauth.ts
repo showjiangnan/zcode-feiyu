@@ -1,35 +1,63 @@
-import { createHash } from "node:crypto";
-import type { McpOAuthConfig } from "@zcode/contracts";
-import { type SharedZCodeCredentialStore } from "../auth/shared-credentials.js";
-import { type McpOAuthAuthorizationContext } from "./oauth-shared.js";
-type McpAuthorizationCodeOAuthConfig = Extract<McpOAuthConfig, { type: "authorization_code" }>;
+// Modified by ZCode Feiyu.
+import type { Logger } from "@zcode/contracts";
+import { randomBytes } from "node:crypto";
+import { createLocalhostOAuthCallbackServer } from "../auth/localhost-callback.js";
+import { createSharedZCodeCredentialStore } from "../auth/shared-credentials.js";
+import { ZCodeMcpAuthorizationCodeProvider } from "./oauth-authorization-owner.js";
+import {
+  createCredentialKeyPrefix,
+  DEFAULT_MCP_OAUTH_CALLBACK_TIMEOUT_MS,
+  normalizeCallbackPath,
+  type McpAuthorizationCodeOAuthConfig,
+  type McpOAuthRuntimeOptions,
+  type McpOAuthSession,
+} from "./oauth-authorization-state.js";
+export {
+  createCredentialKeyPrefix,
+  type McpOAuthRuntimeOptions,
+  type McpOAuthSession,
+} from "./oauth-authorization-state.js";
+export type { McpOAuthAuthorizationContext } from "./oauth-shared.js";
+export async function createMcpAuthorizationCodeOAuthSession(input: {
+  adapterInstanceId?: string;
+  config: McpAuthorizationCodeOAuthConfig;
+  logger?: Logger;
+  options?: McpOAuthRuntimeOptions;
+  serverName: string;
+  serverUrl: string;
+}): Promise<McpOAuthSession> {
+  const state = randomBytes(24).toString("base64url");
+  const callbackPath = normalizeCallbackPath(input.config.redirectPath, input.serverName);
+  const callbackServer = await createLocalhostOAuthCallbackServer({
+    callbackPath,
+    state,
+  });
+  const credentialStore = input.options?.credentialStore ?? createSharedZCodeCredentialStore();
+  const keyPrefix = createCredentialKeyPrefix(input.serverName, input.serverUrl, input.config);
+  const provider = new ZCodeMcpAuthorizationCodeProvider({
+    adapterInstanceId: input.adapterInstanceId,
+    callbackServer,
+    config: input.config,
+    credentialStore,
+    keyPrefix,
+    logger: input.logger,
+    onAuthorizationRequired: input.options?.onAuthorizationRequired,
+    openAuthorizationUrl: input.options?.openAuthorizationUrl,
+    serverName: input.serverName,
+    state,
+  });
 
-export type { McpOAuthAuthorizationContext };
-
-export interface McpOAuthRuntimeOptions {
-  authorizationTimeoutMs?: number;
-  credentialStore?: SharedZCodeCredentialStore;
-  onAuthorizationRequired?: (context: McpOAuthAuthorizationContext) => Promise<void> | void;
-  openAuthorizationUrl?: (context: McpOAuthAuthorizationContext) => Promise<void> | void;
-}
-
-export function createCredentialKeyPrefix(
-  serverName: string,
-  serverUrl: string,
-  config: McpAuthorizationCodeOAuthConfig,
-): string {
-  // OAuth token 和动态 client 注册都依赖授权语义，scope/client/redirect 变化时必须重新授权。
-  const hash = createHash("sha256")
-    .update(
-      [
-        serverName,
-        serverUrl,
-        config.clientId ?? "",
-        config.scope ?? "",
-        config.redirectPath ?? "",
-      ].join("\n"),
-    )
-    .digest("hex")
-    .slice(0, 24);
-  return `mcp:oauth:${hash}`;
+  return {
+    close: async () => {
+      await callbackServer.close();
+      await provider.close();
+    },
+    provider,
+    timeoutMs: input.options?.authorizationTimeoutMs ?? DEFAULT_MCP_OAUTH_CALLBACK_TIMEOUT_MS,
+    hasPendingAuthorization: () => provider.hasPendingAuthorization(),
+    waitForAuthorizationCallback: async () => {
+      const callback = await callbackServer.waitForCallback();
+      return new URL(callback.url).searchParams;
+    },
+  };
 }

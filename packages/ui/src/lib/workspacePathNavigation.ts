@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js";
 
 const WORKSPACE_PATH_OPEN_REQUEST_EVENT = "zcode:workspace-path-open-request";
@@ -16,6 +17,14 @@ export function selectWorkspacePathFileService<T>(
 
 export function shouldFallbackWorkspacePathToCodeViewer(target: WorkspacePathOpenRequest): boolean {
   return target.serviceScope !== "base-local";
+}
+
+export function requestWorkspacePathOpen(target: WorkspacePathOpenRequest): void {
+  window.dispatchEvent(
+    new CustomEvent<WorkspacePathOpenRequest>(WORKSPACE_PATH_OPEN_REQUEST_EVENT, {
+      detail: target,
+    }),
+  );
 }
 
 export function addWorkspacePathOpenRequestListener(

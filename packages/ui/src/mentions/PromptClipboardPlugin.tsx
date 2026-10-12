@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useEffect } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
@@ -14,7 +15,7 @@ import {
   $getPromptSelectionMarkdown,
 } from "@/mentions/promptSerialization.js";
 
-function registerPromptClipboard(editor: LexicalEditor): () => void {
+export function registerPromptClipboard(editor: LexicalEditor): () => void {
   const handle = (event: ClipboardEvent | KeyboardEvent | null, cut: boolean): boolean => {
     const selection = $getSelection();
     if (

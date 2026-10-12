@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { Locale, ZCodeTaskMeta } from "@zcode/shared";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -42,7 +43,7 @@ function startOfWeek(timestamp: number, locale: Locale): number {
   return date.getTime();
 }
 
-function resolveTaskTimelineGroupKey(
+export function resolveTaskTimelineGroupKey(
   timestamp: number,
   now: number,
   locale: Locale,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * world.run 的编译期命令收集。
  *
@@ -49,7 +50,7 @@ export function collectWorldRunCommands(
       column: loc.column,
       line: loc.line,
       message:
-        "world.run's first argument must be a compile-time string literal (\"lean\" or a " +
+        'world.run\'s first argument must be a compile-time string literal ("lean" or a ' +
         "no-substitution template): the script's command set is shown to the user at " +
         "confirmation and only those commands are executable. Move the command name out of " +
         "the variable/template, and put runtime values in the args array instead.",

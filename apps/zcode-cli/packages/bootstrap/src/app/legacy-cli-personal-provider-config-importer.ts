@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { readFile } from "node:fs/promises";
 import { BUILTIN_PROVIDER_TEMPLATE_IDS } from "@zcode/shared";
 import { getDefaultConfigPath } from "@zcode/adapters/config";
@@ -50,7 +51,7 @@ function resolveLegacyProviderApiType(
 }
 
 /** 把旧 CLI 用户文件中的显式 Provider 定义迁移到新的 Personal Overlay。 */
-function importLegacyCliPersonalProviderConfig(
+export function importLegacyCliPersonalProviderConfig(
   input: LegacyCliPersonalProviderConfigImportInput,
 ): ProviderConfigLayerUpdate {
   const runtimePatch = parseLegacyCliModelConfig(input.input);
@@ -143,7 +144,7 @@ export async function readLegacyCliPersonalProviderConfig(input: {
 }
 
 /** 旧 CLI 用户文件中的 main model 只迁移为 Environment 默认选择。 */
-function importLegacyCliConfiguredDefault(input: unknown): ModelSelection | null {
+export function importLegacyCliConfiguredDefault(input: unknown): ModelSelection | null {
   const main = parseLegacyCliModelConfig(input).model?.main;
   if (!main || main.provider === RETIRED_ZAPI_PROVIDER_ID) return null;
   return Object.freeze({

@@ -1,5 +1,13 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
-import { adoptFields, collapse, emptyValue, mergeInto, replayMayAliasMerge, type AbstractValue } from "./domain.js";
+import {
+  adoptFields,
+  collapse,
+  emptyValue,
+  mergeInto,
+  replayMayAliasMerge,
+  type AbstractValue,
+} from "./domain.js";
 import { mergeIntoRootIdentifier } from "./assign.js";
 import type { EvalContext, Evaluator } from "./taint.js";
 
@@ -11,7 +19,11 @@ import type { EvalContext, Evaluator } from "./taint.js";
 
 /** `Object.assign` — a free function (not a method) that mutates its target in place. */
 export function isObjectAssign(access: ts.PropertyAccessExpression): boolean {
-  return ts.isIdentifier(access.expression) && access.expression.text === "Object" && access.name.text === "assign";
+  return (
+    ts.isIdentifier(access.expression) &&
+    access.expression.text === "Object" &&
+    access.name.text === "assign"
+  );
 }
 
 export function handleHeapMutator(
@@ -47,7 +59,11 @@ export function handleHeapMutator(
 }
 
 /** `Object.assign(target, ...sources)`: merge each source into the target's live value. */
-export function handleObjectAssign(ev: Evaluator, node: ts.CallExpression, ctx: EvalContext): AbstractValue {
+export function handleObjectAssign(
+  ev: Evaluator,
+  node: ts.CallExpression,
+  ctx: EvalContext,
+): AbstractValue {
   const [targetArg, ...sources] = node.arguments;
   if (targetArg === undefined) return emptyValue();
   const targetLive = ev.resolvePlace(targetArg, true);

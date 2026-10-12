@@ -1,3 +1,49 @@
+// Modified by ZCode Feiyu.
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
+// Plugin 对话引用 catalog 的协议 handler。
+// 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
+// 且 plugins.ts 已接近 max-lines 门禁。
 // Plugin 对话引用 catalog 的协议 handler。
 // 与 plugins.ts（安装/市场/启停等管理面）分文件：本查询是会话/草稿 Picker 的只读投影，
 // 且 plugins.ts 已接近 max-lines 门禁。
@@ -14,6 +60,7 @@ import {
 import type { PluginReferenceCatalogEntry } from "@zcode/contracts";
 import { buildPluginReferenceCatalog } from "@zcode/core";
 import {
+  enrichCachedClaudeMarketplaceIconsForOverview,
   getZCodePluginsOverview,
   resolveZCodePlugins,
   updateZCodePluginMarketplace,
@@ -237,6 +284,7 @@ interface PluginReferenceListingDisplay {
 function resolveReferenceListingDisplayByPluginId(
   workspacePath: string,
 ): Map<string, PluginReferenceListingDisplay> {
+  enrichCachedClaudeMarketplaceIconsForOverview({ workingDirectory: workspacePath });
   const overview = getZCodePluginsOverview({ workingDirectory: workspacePath });
   const displayByPluginId = new Map<string, PluginReferenceListingDisplay>();
   for (const plugin of [

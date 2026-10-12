@@ -1,9 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
-// ============================================================
-// Read Tool Handler
-// ============================================================
-
-import { basename, dirname, extname } from "node:path";
+// Modified by ZCode Feiyu.
 import type {
   ReadFileStateEntry,
   ReadFileStateMap,
@@ -24,13 +19,9 @@ import {
   getReadPdfPagesValidationFailure,
   isFileSystemPortError,
   type ReadInput,
-  type ReadImageOutput,
-  type ReadVideoOutput,
-  type ModelMessageContent,
   type ReadOutput,
   type ReadTextOutput,
   type FileSystemStatResult,
-  type TraceContext,
 } from "@zcode/contracts";
 import { resolveWorkspacePath } from "../path-policy.js";
 import { createReadFileStateKey, normalizeReadFileStateMtimeMs } from "../read-file-state.js";
@@ -38,10 +29,8 @@ import { createReadFileStateMetadata } from "../read-file-state-metadata.js";
 import { inferImageMimeFromPath, readImageFile } from "./read-image.js";
 import { inferVideoMimeFromPath } from "../../runtime/helpers/attachment-video.js";
 import { readVideoFile } from "./read-video.js";
-import { formatReadTextOutput, readTextFileForModel } from "./read-text.js";
+import { readTextFileForModel } from "./read-text.js";
 import {
-  formatReadPdfOutput,
-  formatReadPdfPagesOutput,
   isPdfPath,
   READ_PDF_TOOL_TIMEOUT_MS,
   readPdfFile,
@@ -50,11 +39,18 @@ import {
   resolveReadTimeoutBudgetMs,
   supportsPdfForExecution,
 } from "./read-pdf.js";
+import { formatReadModelContent } from "./read-model-format.js";
+import { findSimilarFilename } from "./read-filename-hints.js";
+
+import { createReadTrace } from "./read-execution-trace.js";
+// 按职责拆分；保留原始规则、执行顺序与状态所有者。
+
+// 按职责拆分；保留原始规则、执行顺序与状态所有者。
+
+// 按职责拆分；保留原始规则、执行顺序与状态所有者。
 
 export { addReadLineNumbers } from "./read-text.js";
 
-const FILE_UNCHANGED_STUB =
-  "Wasted call — file unchanged since your last Read. Refer to that earlier tool_result instead.";
 const READ_PROVIDER_DESCRIPTION = [
   "Reads a file from the local filesystem.",
   "",
@@ -70,76 +66,7 @@ const READ_PROVIDER_DESCRIPTION = [
 
 const fallbackReadFileStates = new WeakMap<ToolExecutionContext, ReadFileStateMap>();
 
-function formatReadModelContent(output: unknown): ModelMessageContent {
-  const parsed = ReadOutputSchema.safeParse(output);
-  if (!parsed.success) {
-    return stringifyReadOutputFallback(output);
-  }
-
-  return formatReadOutput(parsed.data);
-}
-
-function formatReadOutput(output: ReadOutput): ModelMessageContent {
-  switch (output.type) {
-    case "text":
-      return formatReadTextOutput(output);
-    case "file_unchanged":
-      return FILE_UNCHANGED_STUB;
-    case "image":
-      return formatReadImageOutput(output);
-    case "video":
-      return formatReadVideoOutput(output);
-    case "pdf":
-      return formatReadPdfOutput(output);
-    case "parts":
-      return formatReadPdfPagesOutput(output);
-    case "notebook":
-      return stringifyReadOutputFallback(output);
-  }
-}
-
-function formatReadImageOutput(output: ReadImageOutput): ModelMessageContent {
-  const imageBlock = {
-    type: "image" as const,
-    mediaType: output.mimeType,
-    dataUrl: `data:${output.mimeType};base64,${output.base64}`,
-    source: {
-      id: "read-image",
-      kind: "inline" as const,
-      mimeType: output.mimeType,
-      placeholder: "Read image",
-      sizeBytes: output.originalSize,
-    },
-  };
-  // 尺寸提示拼进 tool result 会让 provider-visible content 随是否缩放而改变；
-  // 图片结果只保留媒体 block，dimensions 继续留在结构化 output 供 UI 和调试使用。
-  return [imageBlock];
-}
-
-// 与图片同构：tool result 只保留媒体 block；OpenAI 系 provider 由
-// tool-result-media-projection 拆成后置 user part（AI SDK tool result 无 video part 变体）。
-function formatReadVideoOutput(output: ReadVideoOutput): ModelMessageContent {
-  const videoBlock = {
-    type: "video" as const,
-    mediaType: output.mimeType,
-    dataUrl: `data:${output.mimeType};base64,${output.base64}`,
-    source: {
-      id: "read-video",
-      kind: "inline" as const,
-      mimeType: output.mimeType,
-      placeholder: "Read video",
-      sizeBytes: output.originalSize,
-    },
-  };
-  return [videoBlock];
-}
-
-function stringifyReadOutputFallback(output: unknown): string {
-  if (typeof output === "string") return output;
-  return JSON.stringify(output) ?? "";
-}
-
-const readHandler: ToolHandler = async (input, context) => {
+export const readHandler: ToolHandler = async (input, context) => {
   const { file_path, offset, limit, pages } = parseReadInput(input);
   const fileSystemPort = context.fileSystemPort;
 
@@ -310,16 +237,6 @@ function isReadInputToolUseIssue(issue: unknown): issue is { message: string } {
   return record.path.length === 1 && record.path[0] === "file_path";
 }
 
-function createReadTrace(context: ToolExecutionContext): TraceContext {
-  return {
-    traceId: context.traceId,
-    spanId: context.spanId,
-    parentSpanId: context.parentSpanId,
-    sessionId: context.sessionId,
-    turnId: context.turnId,
-  } as unknown as TraceContext;
-}
-
 function getReadFileState(context: ToolExecutionContext): ReadFileStateMap {
   if (context.readFileState) return context.readFileState;
   const existing = fallbackReadFileStates.get(context);
@@ -414,58 +331,6 @@ async function createMissingReadFileMessage(
     `File does not exist. Note: your current working directory is ${context.workingDirectory}.`,
     suggestion ? ` Did you mean ${suggestion}?` : "",
   ].join("");
-}
-
-async function findSimilarFilename(
-  filePath: string,
-  context: ToolExecutionContext,
-): Promise<string | undefined> {
-  const fileSystemPort = context.fileSystemPort;
-  if (!fileSystemPort) return undefined;
-
-  try {
-    const parent = dirname(filePath);
-    const targetName = basename(filePath);
-    const targetStem = basename(filePath, extname(filePath));
-    const listed = await fileSystemPort.listDirectory(
-      { path: parent, trace: createReadTrace(context) },
-      { signal: context.abortSignal },
-    );
-    const entries = listed.entries
-      .filter((entry) => entry.kind === "file" || entry.kind === "symlink")
-      .map((entry) => entry.name)
-      .filter((name) => name !== targetName)
-      .sort();
-
-    const sameStem = entries.find((name) => basename(name, extname(name)) === targetStem);
-    if (sameStem) return sameStem;
-
-    return entries.find((name) => levenshteinDistance(name, targetName) <= 3);
-  } catch {
-    return undefined;
-  }
-}
-
-function levenshteinDistance(left: string, right: string): number {
-  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-  const current = Array.from({ length: right.length + 1 }, () => 0);
-
-  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
-    current[0] = leftIndex;
-    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
-      const cost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
-      current[rightIndex] = Math.min(
-        current[rightIndex - 1]! + 1,
-        previous[rightIndex]! + 1,
-        previous[rightIndex - 1]! + cost,
-      );
-    }
-    for (let index = 0; index < previous.length; index += 1) {
-      previous[index] = current[index]!;
-    }
-  }
-
-  return previous[right.length] ?? 0;
 }
 
 export const readToolEntry: ToolEntry = {

@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu.
 import { app } from "electron";
 import { getAppConfigDir } from "@zcode/services/node";
 
-type ElectronAppPathName = "appData" | "userData";
+export type ElectronAppPathName = "appData" | "userData";
 
 export function isElectronAppPackaged(): boolean {
   return (app as unknown as { isPackaged?: boolean } | undefined)?.isPackaged === true;

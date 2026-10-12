@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { KeyEvent } from "@mbears/opentui-core";
 import type React from "react";
 import type { SelectionState, SubmitValueOptions } from "./app-model.js";
@@ -70,10 +71,7 @@ export function visibleSelectionItemWindow(
   const clampedSelectedIndex = clampIndex(selectedIndex, items.length);
   const visibleCount = Math.min(maxVisible, items.length);
   const maxStartIndex = items.length - visibleCount;
-  const startIndex = Math.min(
-    Math.max(0, clampedSelectedIndex - visibleCount + 1),
-    maxStartIndex,
-  );
+  const startIndex = Math.min(Math.max(0, clampedSelectedIndex - visibleCount + 1), maxStartIndex);
 
   return {
     items: items.slice(startIndex, startIndex + visibleCount),

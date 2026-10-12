@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Workflow run 内省工具的共同面（ListWorkflowRuns / GetWorkflowRun）
 // ============================================================
@@ -14,6 +15,21 @@
 //   3. **异步引导文案**。两个工具描述都要说清「本会话的 run 会自动送达携产物的通知」，
 //      文案分叉就等于给模型两套默认行为。
 
+// ============================================================
+// Workflow run 内省工具的共同面（ListWorkflowRuns / GetWorkflowRun）
+// ============================================================
+//
+// 三样东西必须逐字共用，所以它们在这里而不是在两个 handler 里各写一遍：
+//
+//   1. **能力缺席的业务失败**。「端口缺席」（journal 不可用 → run service 整个不构造）与
+//      「端口在场但方法缺席」（journal 不带内省查询）对模型是同一件事：本会话没有这个能力。
+//      两个工具、两条判据，一段文案。
+//   2. **失败码**。`ToolHandlerFailure.errorCode` 的类型是 number（executor 侧的
+//      `isToolHandlerFailure` 按 number 收），所以两个稳定判别键
+//      （`workflow_introspection_unavailable` / `run_not_found`）落在 message 的前缀上——
+//      它是模型与日志唯一能读到的判别位。
+//   3. **异步引导文案**。两个工具描述都要说清「本会话的 run 会自动送达携产物的通知」，
+//      文案分叉就等于给模型两套默认行为。
 import { escapeXml } from "../../runtime-task/notification.js";
 import type { ToolHandlerFailure } from "../types.js";
 

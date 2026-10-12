@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { Hook } from "@zcode/shared";
 import { CircleAlert } from "lucide-react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -7,7 +8,7 @@ export function requiresWorkspaceHookTrust(hook: Hook): boolean {
   return Boolean(hook.workspaceHook) && hook.workspaceHook?.trustState !== "trusted_persistent";
 }
 
-function hasWorkspaceHooksRequiringReview(hooks: readonly Hook[]): boolean {
+export function hasWorkspaceHooksRequiringReview(hooks: readonly Hook[]): boolean {
   return hooks.some(requiresWorkspaceHookTrust);
 }
 

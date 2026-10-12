@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   ContextUsageCategory,
   ContextUsageMetric,
@@ -29,7 +30,7 @@ export interface ContextUsageCategoryBreakdown extends ContextUsageCategory {
   contributors: ContextUsageContributor[];
 }
 
-type ContextUsageSectionDetail = ContextUsageMetric & {
+export type ContextUsageSectionDetail = ContextUsageMetric & {
   cacheHint: string;
   injectionTarget: string;
   name: string;

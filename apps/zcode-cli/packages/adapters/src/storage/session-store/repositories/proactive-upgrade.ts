@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { DatabaseSync } from "node:sqlite";
 import { SESSION_ENTRY_ORCHESTRATION_STATE, SESSION_TASK_ROOT_TYPES } from "@zcode/contracts";
 import {

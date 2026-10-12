@@ -1,7 +1,9 @@
+// Modified by ZCode Feiyu.
 import { formatJson } from "@zcode/core";
 import type { GlobalOptions, RunContext } from "@zcode/shared-types";
-import type { SetZCodePluginEnabledResult, ZCodePluginInstallData } from "@zcode/bootstrap";
+import type { SetZCodePluginEnabledResult } from "@zcode/bootstrap";
 import {
+  reportInstallOutcome,
   formatAvailablePluginJson,
   formatDiagnosticJson,
   formatDiagnosticLines,
@@ -106,7 +108,6 @@ async function runPluginsListCommand(
   const outcome = (await resolveDep(deps, "listPlugins"))(base);
   const installed = outcome.plugins.map((plugin) => formatPluginJson(plugin, outcome.diagnostics));
   if (!flags.available) {
-
     ctx.stdout.write(
       options.json ? formatJson(installed) : formatHumanPluginList(outcome, options),
     );
@@ -114,7 +115,8 @@ async function runPluginsListCommand(
     const knownIds = new Set(outcome.plugins.map((plugin) => plugin.id));
     const orphaned = outcome.diagnostics.filter(
       (diagnostic) =>
-        diagnostic.severity === "error" && !(diagnostic.pluginId && knownIds.has(diagnostic.pluginId)),
+        diagnostic.severity === "error" &&
+        !(diagnostic.pluginId && knownIds.has(diagnostic.pluginId)),
     );
     if (orphaned.length === 0) return 0;
     ctx.stderr.write(formatDiagnosticLines(orphaned));
@@ -157,7 +159,9 @@ async function runPluginsInstallCommand(
     }
     marketplace = matches[0].marketplace;
   }
-  const result = await (await resolveDep(deps, "installPlugin"))({
+  const result = await (
+    await resolveDep(deps, "installPlugin")
+  )({
     ...base,
     marketplace,
     pluginName: name,
@@ -175,7 +179,9 @@ async function runPluginsUpdateCommand(
 ): Promise<number> {
   resolveScope(flags.scope);
   const pluginId = await resolveLoadedPluginId(deps, identifier);
-  const result = await (await resolveDep(deps, "updatePlugin"))({
+  const result = await (
+    await resolveDep(deps, "updatePlugin")
+  )({
     ...baseOptions(deps),
     pluginId,
   });
@@ -210,40 +216,6 @@ async function runPluginsUpdateCommand(
   return 0;
 }
 
-function reportInstallOutcome(
-  ctx: RunContext,
-  options: GlobalOptions,
-  result: ZCodePluginInstallData,
-  pluginId: string,
-): number {
-  const failed = hasErrors(result.diagnostics);
-  if (options.json) {
-    ctx.stdout.write(
-      formatJson({
-        pluginId,
-        ok: !failed,
-        installed: result.installedPlugins.map(formatInstalledPluginJson),
-        dependencyClosure: result.dependencyClosure,
-        diagnostics: result.diagnostics.map(formatDiagnosticJson),
-      }),
-    );
-    return failed ? 1 : 0;
-  }
-  if (failed) {
-    ctx.stderr.write(
-      `Failed to install plugin ${pluginId}\n${formatDiagnosticLines(result.diagnostics)}`,
-    );
-    return 1;
-  }
-  for (const plugin of result.installedPlugins) {
-    const version = plugin.version ? ` (${plugin.version})` : "";
-    ctx.stdout.write(
-      `Installed plugin ${plugin.id}${version} [${plugin.enabled ? "enabled" : "disabled"}]\n`,
-    );
-  }
-  writeWarnings(ctx, result.diagnostics);
-  return 0;
-}
 
 async function runPluginsSetCommand(
   ctx: RunContext,
@@ -254,7 +226,9 @@ async function runPluginsSetCommand(
   enabled: boolean,
 ): Promise<number> {
   const scope = resolveScope(flags.scope);
-  const result = await (await resolveDep(deps, "setPluginEnabled"))({
+  const result = await (
+    await resolveDep(deps, "setPluginEnabled")
+  )({
     ...baseOptions(deps),
     enabled,
     plugin,
@@ -286,17 +260,28 @@ async function runPluginsDisableCommand(
   const base = baseOptions(deps);
   const listPlugins = await resolveDep(deps, "listPlugins");
   const setPluginEnabled = await resolveDep(deps, "setPluginEnabled");
-  const entries: Array<{ plugin: PluginListItem; result?: SetZCodePluginEnabledResult; error?: string }> = [];
+  const entries: Array<{
+    plugin: PluginListItem;
+    result?: SetZCodePluginEnabledResult;
+    error?: string;
+  }> = [];
   for (const plugin of listPlugins(base).plugins) {
     if (!plugin.enabled) continue;
     try {
-      entries.push({ plugin, result: await setPluginEnabled({ ...base, enabled: false, plugin: plugin.id }) });
+      entries.push({
+        plugin,
+        result: await setPluginEnabled({ ...base, enabled: false, plugin: plugin.id }),
+      });
     } catch (error) {
       entries.push({ plugin, error: error instanceof Error ? error.message : String(error) });
     }
   }
   // 写的是 user 层；workspace/project 层的 enabledPlugins=true 优先级更高、盖不掉，所以按 effective 态复查。
-  const stillEnabled = new Set(listPlugins(base).plugins.filter((p) => p.enabled).map((p) => p.id));
+  const stillEnabled = new Set(
+    listPlugins(base)
+      .plugins.filter((p) => p.enabled)
+      .map((p) => p.id),
+  );
   const failed = entries.filter((entry) => entry.error || stillEnabled.has(entry.plugin.id));
   if (options.json) {
     ctx.stdout.write(
@@ -317,7 +302,8 @@ async function runPluginsDisableCommand(
     return 0;
   }
   for (const entry of entries) {
-    if (entry.result && !failed.includes(entry)) ctx.stdout.write(formatHumanPluginSet(entry.result));
+    if (entry.result && !failed.includes(entry))
+      ctx.stdout.write(formatHumanPluginSet(entry.result));
   }
   for (const entry of failed) {
     ctx.stderr.write(
@@ -336,7 +322,6 @@ async function runPluginsUninstallCommand(
   flags: PluginsCommandFlags,
   identifier: string,
 ): Promise<number> {
-
   resolveScope(flags.scope);
   const target = await resolveLoadedPluginId(deps, identifier);
   // 卸载是破坏性的彻底清除：交互终端下询问确认；非交互(管道/CI)且未带 --force 时拒绝执行，不静默卸载。
@@ -354,7 +339,9 @@ async function runPluginsUninstallCommand(
     }
   }
 
-  const removed = await (await resolveDep(deps, "uninstallPlugin"))({
+  const removed = await (
+    await resolveDep(deps, "uninstallPlugin")
+  )({
     ...baseOptions(deps),
     pluginId: target,
     ...(flags.keepData ? { keepData: true } : {}),
@@ -379,7 +366,9 @@ async function runPluginsValidateCommand(
   deps: PluginsCommandDependencies,
   path: string,
 ): Promise<number> {
-  const diagnostics = await (await resolveDep(deps, "validatePluginPath"))({
+  const diagnostics = await (
+    await resolveDep(deps, "validatePluginPath")
+  )({
     ...baseOptions(deps),
     path,
   });

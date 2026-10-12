@@ -2,30 +2,44 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "e517ebfde4fa176131fbbc1bee21b6d1c49f2d79a1a9d2f1d2b65f5c67f33fc8",
+  "noticesSha256": "bfaf789ca95de3f796893911dea795438422a5fe655ed396376a6301a8ac4d1b",
   "inputs": {
-    "apps/zcode-cli/package.json": "0a2c8746574489b0c382ed44a08107e4f01c796ff7c0a38b6e1cb92d21435450",
-    "apps/zcode-cli/packages/adapters/package.json": "da99aebdd4d463b7705a2a0febc12adb9ad7e792f74f4ba7c4e258b8bb6a13dc",
+    "apps/zcode-cli/package.json": "8cf34f158618d78be8e3ef4459c7c4b25ded6bd4993b3dc7af3f37a6678189cb",
+    "apps/zcode-cli/packages/adapters/package.json": "72182556d9c496dcebe25cb31ab9959cf30793756214de2929571d797e4fa9d0",
+    "apps/zcode-cli/packages/android-emulator-plugin/package.json": "fb1eeee8051e508ad58d8c2ba9e51f7fc27e05aab57d639dbf697acb0f8ac28c",
     "apps/zcode-cli/packages/bootstrap/package.json": "03466459735416bd4f6aced619f1d1963a485894de8ee3f9524740f822aa121f",
-    "apps/zcode-cli/packages/browser-use-plugin/package.json": "b7ecf0a222844419da9a27c66f6bcc0e17bdbb2db187183133c4fb0932b3d59a",
+    "apps/zcode-cli/packages/browser-use-plugin/package.json": "98e30a885d425069810a634f1a161274f58126832b7e27c2788b602feb925757",
     "apps/zcode-cli/packages/cli/package.json": "81a0c3dbdff4fb6598ac5b7336578de102c54eef914e06f0f3a65bc1b6e734b9",
-    "apps/zcode-cli/packages/contracts/package.json": "7443f402f58df867ad5f776b2e94823d2b3bb235b16d0155f7a939ba181aa3ac",
-    "apps/zcode-cli/packages/core/package.json": "abf5a6c8715fe87ea4b5ef3a48b225f94980dc386fe2ccfe98844347aa16bcd8",
-    "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts": "60fa5acd9f5c357f4e51b1d1e944ee39da92680e4bc5e98dd708f1457fcf612b",
-    "apps/zcode-cli/packages/debug/package.json": "16e6a402d995d3a56ed6e97665cd81f0dd22f03280350d5e0a70c14a2cc4b2ca",
-    "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "f8dab813c3b9f236b593d4d04f1b78e511e15d586cb7dcdd74147e7d1c22ec5c",
-    "apps/zcode-cli/packages/dynamic-workflow/package.json": "aac5891463ddeb419ff6f73fc95b7c407964b06f8aeff66b6a9ba4d999164f99",
-    "apps/zcode-cli/packages/i18n/package.json": "aa1e4f88e7e7c1910dd5cd2fd186b5df8418ce7675913c7a80250165da6e883d",
-    "apps/zcode-cli/packages/node-repl-host/package.json": "e5afa77aaacced101d2b36983278a4e4b7bbb71fbe1e419bc1e3bc2119fc7123",
+    "apps/zcode-cli/packages/contracts/package.json": "1cc2069919e45676afb960595f226ebc75cc607ab6c340dff95595e9ab45cb2b",
+    "apps/zcode-cli/packages/core/package.json": "22826ef56506e164694d4bff34abe8cf34d76704ce05181671168c746c225b7a",
+    "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts": "d08f0fbf17ee27ae962c320773576c9c9b0f8fa8c2bc87f70d4531c1748362a5",
+    "apps/zcode-cli/packages/debug/package.json": "5c0d4ea96e9067bb1873133f62f5925da51d721bc3d81398467cbb01971e078f",
+    "apps/zcode-cli/packages/documents-plugin/package.json": "1761dbc08ea959c73301c5bc7157b5f9b74db2a0b313b38a0c33ea6f3db5610f",
+    "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "8d3ce0c60d0e23edbd29a25846c5aec3a5b8caae8ed840f53ff0d0f498705aee",
+    "apps/zcode-cli/packages/dynamic-workflow/package.json": "3dbf056d0cbdee246e31a7fe9034771b047ae5a6b89cff7a4a19d7d95e1b36bb",
+    "apps/zcode-cli/packages/i18n/package.json": "b8ed8e2c6beb2852db29e8abe89a306d58737725c06947c42de1b00cc158c763",
+    "apps/zcode-cli/packages/image-search-plugin/package.json": "d4ba0148293814b81e3c5509e4d772c2c8ef4bcdc35aaa912f02cca41c4c4e8d",
+    "apps/zcode-cli/packages/ios-simulator-plugin/package.json": "2dc8af1cec6c85ac85f20542481454c8c4c81d7bb8549f386587eb1c598d546b",
+    "apps/zcode-cli/packages/node-repl-host/package.json": "702cf90e5d2ba932e07b38801b0d349278c68f28934cdb5931d9b5cd42af15f9",
+    "apps/zcode-cli/packages/pdf-plugin/package.json": "c22949544be907042ac12cc3287493012940f854b2f7930757edccbb0211cfb8",
+    "apps/zcode-cli/packages/plugin-creator-plugin/package.json": "2e0088fc93ef292c6d14065f3303e9bdf97f0aae0b6df26cecfbd02dae66d8f3",
+    "apps/zcode-cli/packages/presentations-plugin/package.json": "7008938494cd0313979166ef59e73c44d77a6888545ee85af448bd0e302bfa0b",
+    "apps/zcode-cli/packages/restore-legacy-sessions-plugin/package.json": "0129e8468e42b90e99cc347c2a7e6ce5861497beac460261303b157be43a4954",
     "apps/zcode-cli/packages/shared-types/package.json": "6616fb50cf5b4b854273d09411f38857c17df5d4b4abebdfe5d9601e7341e451",
+    "apps/zcode-cli/packages/skill-creator-plugin/package.json": "7149fd389967858f55339afdbb203946617020aafbc457065e122b522229135c",
+    "apps/zcode-cli/packages/spreadsheets-plugin/package.json": "3eac36828d92e588f3482080ae76a73494b7bf0d6ff89e8116fc3d1a257155c8",
     "apps/zcode-cli/packages/superpowers-plugin/LICENSE": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
+    "apps/zcode-cli/packages/superpowers-plugin/package.json": "12b7498b3f62be2592c69e957c62a17139048d17167e5ad09d3b448d809dd908",
     "apps/zcode-cli/packages/swift-bridge/package.json": "958674fcd44c789564ee672b0e6c687f1f900f4286174280700ddfb442d23906",
-    "apps/zcode-cli/packages/telemetry/package.json": "98a3f23459cde469988c15262f1cf92521ddb213370ac1a8d82d641982a6a012",
+    "apps/zcode-cli/packages/telemetry/package.json": "e5cc3cfd28dd3b3139d39d692b0bb2df0c3c75e561d2086cdb8e9217859a2c6c",
     "apps/zcode-cli/packages/tui/package.json": "097d5896b0b37a455eafaf015f21113dfbea7b05bb3f92666f423f7753720eb1",
+    "apps/zcode-cli/packages/visualize-plugin/package.json": "f38e0334cd743a4ca15cf8884ca563aaf0b37bccbdfca63505f56f84f5576971",
+    "apps/zcode-cli/packages/zcode-guide-plugin/package.json": "19cd20e4bec66195858a0bff6c8b8deb0f1652d64a215a93d9c2fba46aa91177",
+    "apps/zcode-cli/tools/prompt-trajectory/package.json": "86185eb5455309a3e7b87ebf0077caa0ef3ee38c7247b15c9628bf7c346f1620",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "60dcbbad481e131d344598e1666114dede9f1c8be3c1d40cf4e438bafc8e76ae",
+    "package.json": "bafd38350582187dbb52e7c12a2ff0a97261583f36877e41778669f13cf6433d",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
-    "packages/desktop/package.json": "1731dd8d67cb6b4211a4bb7dc233347f5f88779e81f731479f50cbacc3c79271",
+    "packages/desktop/package.json": "e9f8b7d783924fe1e9414cc05a1e4c63755b71a7ef73c6022936b2e1e32867ff",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
     "packages/desktop/src/renderer/public/material-icons/abap.svg": "1335bd7eb9a0ed49deb622330d680c2e97731726a7a5eee8e4f46dc1e5db4de4",
     "packages/desktop/src/renderer/public/material-icons/abc.svg": "d1a68020e8f020ef29dca5f94dc8613b7ae8fb5b212d8b1cc23b0f975ac7acda",
@@ -1173,39 +1187,41 @@
     "packages/desktop/src/renderer/public/material-icons/zig.svg": "37be0ce02cf471b18d86150b3c38e80caa7c16c49a15078e7db6f1f41788d101",
     "packages/desktop/src/renderer/public/material-icons/zip.svg": "dad79a45f756542d37abd422502ecfbea15720b92ea1c9d80ef0439ab6b9448a",
     "packages/formal-proof/package.json": "ccfbc2908b846d96a053ba348b0cabeccf76a6dffc126a0326e228f3af92aaaf",
-    "packages/model-option-map/package.json": "3c4f3581fda415d2567e9c33be2fbecb6fe2160fddd2a5a2265012bed977b77b",
-    "packages/provider-node/package.json": "e736a208a0049c30b61f75c0361a9ef15f70cf75938468ef43271395c7ad9e47",
-    "packages/provider/package.json": "dee1d0a66f94d922685a647af9972def6482e2d2d96cfa4e1facb402b40af7d0",
+    "packages/model-option-map/package.json": "73fc438e0d647a692787c57de32e9306638cd4567f133212ce3d58b15f63fc86",
+    "packages/provider-node/package.json": "3ab9e28a088e30cb38fc33e9e9a46e5443b782a5b4c90d2b6870d24860aea934",
+    "packages/provider/package.json": "5010d66d270f5224a8104827d3daf000ddaa8d6569e6bc95e66d82d7e9ef99ec",
     "packages/rpc/examples/01-basic-ipc.ts": "bb4423c1642918846010f9307262c379536ca9541d79df6ebba120b5cf792f3e",
     "packages/rpc/examples/02-proxy-channel.ts": "66dda9aec12cd46da8a56560cb765a3de590917bbc40f329185e6fd05a388fff",
     "packages/rpc/examples/03-ipc-server-client.ts": "9b873f565b4a3426ee3a5338a975cb6ab76e29af094cf6bbee4f7030f872f758",
-    "packages/rpc/examples/04-remote-connection.ts": "fe43a2d631ba54a1cf63a86e344b6e2e58d83c2e8c95f2f8b7371f63e6442541",
-    "packages/rpc/package.json": "5f8bb83df4cecc0e93490b1990517d67c4bd65fcc4fdb8c18f2c9baf45477eed",
+    "packages/rpc/examples/04-remote-connection.ts": "d2e814e0a242c501e2a8ff33d2f5aef1b8c2082a0befc3862a6883da4eb33b38",
+    "packages/rpc/package.json": "f5732ad00827c7171df134220ce2f3325efdbdcfa506216f137b281892920ddb",
     "packages/rpc/src/buffer.ts": "6bc6a44e6abd088f72d57616d9556d78ce078b6f3813bf75402dde386781492c",
     "packages/rpc/src/channelClient.ts": "d2504929253ebb18f020e6f35e51a3741190558875d18a47192f9af78ca3f8ac",
     "packages/rpc/src/channels.shared.ts": "e2d3ce17dfb23d53ea8fef6cd4dc87bef4558ff6e72b458e50fd456b0b2a6ae2",
     "packages/rpc/src/channels.ts": "afaba1724055a3d2e6b8b379553569489b71ac6eb252f636ab91649657485209",
     "packages/rpc/src/channelServer.ts": "80c0be2c25163c0d4878bcdb147e85c5f88749a8770e2f9debb03a4c1df42e1c",
     "packages/rpc/src/delayedChannel.ts": "e7607b7fe9f35c742db206df90852e2ccafb75abc088606cf1ddbae801574ecf",
-    "packages/rpc/src/foundation.ts": "b4874401965e7bad7e84245a2fc5960657a349b146f355ac7343562fa724da9f",
+    "packages/rpc/src/foundation.ts": "0136c389f788aa2deeb2d783b7dfc130c3ae82c8c42bcbd27c0d0ecf9bf5614c",
     "packages/rpc/src/index.ts": "6a5adcfb0e6c7a7d385e10fede09c3e9c808e3555c27b938091868cdf0c3fbef",
-    "packages/rpc/src/ipc.ts": "2ec3dfe0654a68300dbed7afd5ac436b563abf983d6e0f59a2b028469fdf71ef",
+    "packages/rpc/src/ipc.ts": "8ad7da9357bcb4c5a4cb3610e4cfc5af7ce2d4d74b0ddd9d5823589760b3ad8d",
     "packages/rpc/src/logging-middleware.ts": "20edfd8e5d054097186f2498ec4e9c08c61740ed003fc69eecea8176a15fe025",
     "packages/rpc/src/network-telemetry-middleware.ts": "18a7cde46e6c65e0138af0623d07bf883ce278acf44654bc5144ecaadd36a536",
     "packages/rpc/src/persistent-protocol.ts": "80609595b89188272d743e557502c6cad3858f828acae31c2ef64206bb3c8978",
     "packages/rpc/src/protocol.ts": "aafc0c098c75fcba4519fad2ecbee7e025d5d8a27c15c87e5ccb4ca6ce554670",
-    "packages/rpc/src/proxy-channel.ts": "ec5b43e6a3a622a88a8aaa6af9cb37dbfe517932ee7f4a337019ec138bb2d513",
+    "packages/rpc/src/proxy-channel.ts": "e0a8e86e9541746b8fa86f1c28d42a7f95b2ebae7cd6a54d683ae55f63a8eb96",
     "packages/rpc/src/remote.ts": "a11e072d5df7e1c1ce64814a68f72afc081246b364f0da409b5c9d22bc815957",
     "packages/rpc/src/serialization.ts": "e949418e1cd17cc863c147fc8d1ff15237e1b5f0cb8e3344fd2a9ccfae9d54e7",
     "packages/server/package.json": "0a6119239c88af79bc766e3c023eb4437105a0d35b03ecca1137d1e688e60a90",
-    "packages/services/package.json": "71fef5a81918526e8cdda4d3309ef3528353d0a526a9418c306ec9f95641ad50",
-    "packages/shared/package.json": "b55604567012caf0a02f5ed5e6f807a6588bca182dbe3b7d8c76cb339fb89a97",
+    "packages/services/package.json": "11e0386c2c5502074f9ba4da01433d69544d05a126d61d54f186daac72e5468b",
+    "packages/shared/package.json": "08dbf719dff469765dbc6780d4648d2213003b6ab2b663e24958fe9bfa1885d9",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
-    "packages/ui/package.json": "35ba1f07971e7eb47178e55207ffb03bb4436dd2553480d3f4fbbca682ef0d2e",
+    "packages/ui/package.json": "d9f3ca412f9c7f326d0e39528744801bfac54cfab19f92379820a197d7690627",
     "packages/ui/src/components/ai-elements/agent.tsx": "830e7ea9e927de1524851337f1d35bda0e5690e3e4fa307fff854b60006b16c7",
     "packages/ui/src/components/ai-elements/artifact.tsx": "7d73f08864d6280ac86c77d32e56d0e702f8aa6208e5910820139d0fb08ce64c",
     "packages/ui/src/components/ai-elements/attachments.tsx": "7a847ce6c8ac9dc630481a82dd20a5e9e00949bf710a41fea1d32a18123011d8",
+    "packages/ui/src/components/ai-elements/audio-player.tsx": "e6f1e147085df359edc73944f5c3730287b6fa9ae617fb61ad2743e94ee396a7",
     "packages/ui/src/components/ai-elements/canvas.tsx": "7bc92905e97c182c9a2f52b421a4d70414c8700a66039af9a4466587f74d2687",
+    "packages/ui/src/components/ai-elements/chain-of-thought.tsx": "a6174c5e1ce1c688cbba412a3b7eede69b4cf9d5590b5ff967c36bbff1acbdc1",
     "packages/ui/src/components/ai-elements/chat-loading.tsx": "b75d4398d778179f78209debde63547410d76e01cdaf3887f60b13ef9a35331f",
     "packages/ui/src/components/ai-elements/checkpoint.tsx": "72459f6fb8668e9245ec32542f92c7de809cc9b5a366bb44ab08f91ea4e1255b",
     "packages/ui/src/components/ai-elements/code-block.tsx": "ae4f975537ebb9c8ef905b7b9de39bc37180f81511bffc027dc4da1929037f18",
@@ -1217,16 +1233,24 @@
     "packages/ui/src/components/ai-elements/conversation.tsx": "1fda6a3c198ae104e8736b70992e9ce8549f667a942246d9a9762be8f4431e3a",
     "packages/ui/src/components/ai-elements/diagram-preview-dialog.tsx": "cc142f8808370897dfc40cd7aea3f1aa42fd07ce471a7fbb284d9ae728b1299a",
     "packages/ui/src/components/ai-elements/edge.tsx": "661a25632f0879b8363f22e6b99198a6d37ad622781c798c090fcad9b591b181",
+    "packages/ui/src/components/ai-elements/environment-variables.tsx": "f4bd46586d239daa85e3d7bd2df9b34f8d001711600baf5805af2dc6f2c6758e",
+    "packages/ui/src/components/ai-elements/file-tree.tsx": "28dd439ded47383172276a39176d0860c6bb74cf5d7671234cc4e114baf87716",
     "packages/ui/src/components/ai-elements/image-preview-dialog.tsx": "47d4ecdefc84d39f2deda93119ce400b36224276bb6c7dab6a914868914ac8de",
     "packages/ui/src/components/ai-elements/image-thumbnail-gallery.tsx": "185766c039c6c4852ae12360360f7cf29e844a1463358b8cc2c6de972dcdaf43",
     "packages/ui/src/components/ai-elements/image.tsx": "1c6f9595ef814c4ef9648607562fa77a3007f7d857571f8e107a24022fe83e24",
+    "packages/ui/src/components/ai-elements/inline-citation.tsx": "5178c6d159a6daafd4e6abf2e9c26493e1805bcaef93be3db170028d7775f9b7",
+    "packages/ui/src/components/ai-elements/jsx-preview.tsx": "35cac5604480ee507ec9c61036c8838477853c2e5fcaa63c38fa970e96f607d5",
     "packages/ui/src/components/ai-elements/markdown-blockquote.tsx": "0c76599780a464136703d40d07172dcc62730dee1ce01a155100cf4712440a7f",
     "packages/ui/src/components/ai-elements/markdown-image.tsx": "aedf797b19d4f5d37fc7e8833b2824a9d1a1a4fca440b69519b43a43eb122e90",
     "packages/ui/src/components/ai-elements/markdown-list.tsx": "ecf50ad4f48cd460ddcf90db7b463671f915d8c22c7cb8e7760ff3b02282c7f1",
     "packages/ui/src/components/ai-elements/markdown-table.tsx": "612d78092eaeb950931070fff2a194a244e84c5c2d63c6df645e6b91391953da",
     "packages/ui/src/components/ai-elements/mermaid-block.tsx": "4cc6783097a6ecbb1896ee1f3dd1d89115ca81f3efb15d9fbabcf448063818ae",
     "packages/ui/src/components/ai-elements/message.tsx": "6c35829ed11321e850cd59e20c1c88fdd452e8e2d9b5da45f808371021aabf99",
+    "packages/ui/src/components/ai-elements/mic-selector.tsx": "37021bba00a8ea2d8772f5149057dfeeabf367d830640ac4c0c2404a61c74153",
+    "packages/ui/src/components/ai-elements/model-selector.tsx": "d73d568c5c4913701a210476854367337a71fc6ff9dbeab273e9c9783ea0b114",
     "packages/ui/src/components/ai-elements/node.tsx": "d7b68c41717a509bd9063f0a9fc0c4525ceb2b23bae4028bcd49ec949fc6268f",
+    "packages/ui/src/components/ai-elements/open-in-chat.tsx": "345115a07b9bf2813485bd529af6daa89a3a8e8c57cdbb211725fd97f623b499",
+    "packages/ui/src/components/ai-elements/package-info.tsx": "588d6c79e2a71dfff960d1ae025a8161448d77a0903f4bd5e11bdb16f64c6ec4",
     "packages/ui/src/components/ai-elements/panel.tsx": "9c345ecb217fbb6a3a2b49b93ca81b746f249d18b9223470fbf511c0a9a37bb7",
     "packages/ui/src/components/ai-elements/persona.tsx": "c796e1aa0f85395138eda5e4c7ffc7dac5321690b3f6949f73c7b3ebe8d52808",
     "packages/ui/src/components/ai-elements/plan.tsx": "576b2ee1a9546f9e30f2512bb2e097babca71ca35a2820c0be4c93caef600622",
@@ -1238,9 +1262,12 @@
     "packages/ui/src/components/ai-elements/queue.tsx": "9d84f6e15708519ec65e258d9843dc5f4d76f106fc85155f7dcf51f89474b695",
     "packages/ui/src/components/ai-elements/reasoning.tsx": "a10a38c7b3ca633e9b5480ad94f9c7a1fdd52bc5526ae0801e3e6ed141f2b604",
     "packages/ui/src/components/ai-elements/sandbox.tsx": "f521400dbaebe4c2a2fbcdcb8c18f98980c566169233beb137b22a093b44bbf0",
+    "packages/ui/src/components/ai-elements/schema-display.tsx": "ac056deb704334d7c7378e21845de930de528d20194793173642dbc98fffb075",
     "packages/ui/src/components/ai-elements/shimmer.tsx": "5d06ffdff80a13453a0b61b67f588c48d838a20d9be2cd319ca2a97d441b3127",
     "packages/ui/src/components/ai-elements/snippet.tsx": "6f369f0bb3308166ccd55f39dd542f7315873c5bd6de2491ffccc26b0700edfe",
     "packages/ui/src/components/ai-elements/sources.tsx": "cd5a9a20dc50b66f9d114b9a0ced1dd2eb8815040cccd4c577b386ef18bed435",
+    "packages/ui/src/components/ai-elements/speech-input.tsx": "e20bbb377e6a5a42cd89c9e1303ee49deceea778c1d0906fceb4eddc3c8c4e6e",
+    "packages/ui/src/components/ai-elements/stack-trace.tsx": "058d816cfd46996ffedebddd92434737945fdbeb96cf42f0d9817c0a66ac399b",
     "packages/ui/src/components/ai-elements/streamdown-controls.ts": "13dc740d133c75a9d6eec6e23e673b29d0361a87ba4ee0e7d44a4b7ad047984a",
     "packages/ui/src/components/ai-elements/suggestion.tsx": "e92b5cdbf1a7868a42f4cb00d172cd8558543dbeb59ebdd192598c6333ea635f",
     "packages/ui/src/components/ai-elements/task.tsx": "89f8110b326bd86afd71d17db79c36d86ada09d9f58401cc01aa47e16667926d",
@@ -1248,6 +1275,9 @@
     "packages/ui/src/components/ai-elements/test-results.tsx": "8e12e551516048a877ca94c92c4979ecd6e4f2eb0042e465a3a23fc805ae7449",
     "packages/ui/src/components/ai-elements/tool.tsx": "c4ca6fee5ecb3cfa597e8e99a2786c1bca28a6af36c4e8d05626b979e0f5963c",
     "packages/ui/src/components/ai-elements/toolbar.tsx": "4bf1d6677248001166eb640a264ea7dc8750d609a01119e6aaf161ef74c0a245",
+    "packages/ui/src/components/ai-elements/transcription.tsx": "a5d1fece216c0d9dfcae63baa7732de42a9953fc927677989761fa3764b70344",
+    "packages/ui/src/components/ai-elements/voice-selector.tsx": "eae2548dffa93ddcd2eb4c8c0bdfbf48bebfd38b77cbc6f79b702dc48a307882",
+    "packages/ui/src/components/ai-elements/web-preview.tsx": "378b6fbfa594cfc1d4d65dcccf04be9e8643178cc6b4f0f854c4a206212f82e2",
     "packages/ui/src/components/ui/accordion.tsx": "4a72f846da91bdeac1dbba849572132b98c8b96f0b03e611f46d0f3e41791947",
     "packages/ui/src/components/ui/alert-dialog.tsx": "3dd074ddbfcefdad6a6c231b6cf055bbcd5fce40bf8feecc6950b60d9ab53b81",
     "packages/ui/src/components/ui/alert.tsx": "5f29338fc9b767994b39849edeac71ee91dc1fd4a875252b40c5cf9001b1c0a7",
@@ -1256,6 +1286,7 @@
     "packages/ui/src/components/ui/button-group.tsx": "3c455ad047c87097070c4e107bc0e58dd087531e85b1c60f28f1f526dd9a0061",
     "packages/ui/src/components/ui/button.tsx": "3bf0b1573c940999f875a1dd5e67a32e7d9bcb3e320774fa8277f5c00748b32b",
     "packages/ui/src/components/ui/card.tsx": "cdfb5121c2647a4b496a377609acb05d14513f7975858482b911a3873c3695b3",
+    "packages/ui/src/components/ui/carousel.tsx": "c2bb0bb98d76f0eee60936432d3a65baf8d0b4fdfa24a4f5005eed6f860a1025",
     "packages/ui/src/components/ui/chart.tsx": "272efec5aa60d34665104b45341d9f2b8cad4480070bca91e9d5409713b6fecd",
     "packages/ui/src/components/ui/checkbox.tsx": "5b3cb5612ed7654218e1cdd86fc41c7b490475721948d50a603996133245bace",
     "packages/ui/src/components/ui/code-viewer.tsx": "dfccd2feaccc62af84f3e92dc5b8e25e7025b6c64cbd16f177586b1dc763affe",
@@ -1266,6 +1297,7 @@
     "packages/ui/src/components/ui/diff-viewer.tsx": "f02208b316e6dc4043ed1794455422bc74cdd521285fcac5a2c0d589c2eb9af2",
     "packages/ui/src/components/ui/dropdown-menu.tsx": "34c5b79489756aa3467ec26d2b44587f3d47eafcb2cb16402686aac15e4debdb",
     "packages/ui/src/components/ui/flip-metric-value.tsx": "ce2d6cf063003e1023191b0fa4e3eb9b365e04a14eb0d498b897326600bf4071",
+    "packages/ui/src/components/ui/floating-particles.tsx": "e715f7207ffea817cae39234d02598f308bb7d19a9306ad1637882c513f836f3",
     "packages/ui/src/components/ui/GlmMonochromeIcon.tsx": "f1691224d23be4359e1a79bcd81b9dd5ee19c0177b3a4bf750332c620b98ae5c",
     "packages/ui/src/components/ui/highlighted-lightweight-diff-preview.tsx": "c04bb6009683ab74cb72ff8f1e1157ffbdd06be4a46dc3c725c63e0bc43fea72",
     "packages/ui/src/components/ui/hover-card.tsx": "28e49fb55a3fd4f5bfc5d61f336854304bc92c5a7098305b208274913b226f3d",
@@ -1279,11 +1311,13 @@
     "packages/ui/src/components/ui/pptx-preview-viewer.tsx": "64d7ed9e83cad0e98ba56ff2c49be2db335aedca4230b207cba5a383a15cb93d",
     "packages/ui/src/components/ui/pptx-selection-action-bar.tsx": "6e7187b7f527e4a97df117cc0df85d2dd8f4408d7415aec2e4907db39a331efd",
     "packages/ui/src/components/ui/progress.tsx": "ba88ffa75ad78eaa23519c7af84e11679ca2b8e4508c57759d769462811c0ec5",
+    "packages/ui/src/components/ui/radio-group.tsx": "dbc725bb6eb4fefc21e32037dbdcf247066d6adab0fdd5ae3795a100706ccdc0",
     "packages/ui/src/components/ui/resizable.tsx": "83425c34fb76c35276e6dbf8d7ad0ee860b4536ba9d4cfd8e8a60aec3b7cabc4",
     "packages/ui/src/components/ui/scroll-area.tsx": "83999d597a4a417aea402e833884826539b9aa1bd1ec966aa2f6dab9a97afb3c",
     "packages/ui/src/components/ui/scroll-fade-viewport.tsx": "50e5984232b6a7d59e872aab4ebb36ae837e2865e3a770adbc234b61c2531da1",
-    "packages/ui/src/components/ui/select.tsx": "e6d73ae0bf6916256fd86005d8a94e3dfb004c8107f51882cfd2d52e7751ca09",
+    "packages/ui/src/components/ui/select.tsx": "58da392edc64495851c3e028738ad6df1f3c479cd2b2dc309bb996b8d08ac679",
     "packages/ui/src/components/ui/separator.tsx": "31ade0b9a0eca6689226c94d479352416ef076859980a976422a8af17879dee2",
+    "packages/ui/src/components/ui/smooth-metric-value.tsx": "551534032d3b2fa57eccbd49bfc9719297c51ad26a960e09e5751a179bacb745",
     "packages/ui/src/components/ui/spinner.tsx": "96bef1c5ef7e582de503aac8402b55f3539cea37bd2c186a12a4f2cb7605468e",
     "packages/ui/src/components/ui/switch.tsx": "1a6490eb3c47b3a86b76c8469e5702608ea57da7853df5de00fffa9a4a472adf",
     "packages/ui/src/components/ui/tabs.tsx": "adc59a0469c80118e9d60c08bf0222d55664ef95e6c522496b5c201011b347f0",
@@ -1292,8 +1326,8 @@
     "packages/ui/src/components/ui/tooltip.tsx": "301dbf3a6f8b1bc496f9bdc6fbc5fe6202ed373182897f39cd1ecd19b00fdfbe",
     "packages/ui/src/components/ui/usePdfZoomOverlay.ts": "c8c91b003ce2fded32c7a2369dc6eac43aa4b9dc9c830a0f5ceccb21d366b610",
     "packages/ui/src/components/ui/ZCodeAboutLogo.tsx": "1e5b7c2e8a9dc98a3c597cbe34122521319eaeb89825e4c41641e77715d1407a",
-    "packages/ui/src/lib/builtinSkillI18n.ts": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb",
-    "packages/ui/src/styles.css": "22d5b58e44cdebdbe7154c418ee05fef6dde689e384f0dd590d4057739487be7",
+    "packages/ui/src/lib/builtinSkillI18n.ts": "fd33a495db494be4229c89e2e38ae6b34d63fadf5bb28c46a741d67a4db0262f",
+    "packages/ui/src/styles.css": "0b0e7a70d380dc5d39db1b16163e7ca4b8098b023b7aff56718dc2881b5bf671",
     "packages/web/package.json": "0810e762bf1d6641d5f73ab642b81953e183e53fd963a1d405ffc65b206e5ce6",
     "packages/web/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
     "packages/web/public/material-icons/abap.svg": "1335bd7eb9a0ed49deb622330d680c2e97731726a7a5eee8e4f46dc1e5db4de4",
@@ -2445,16 +2479,18 @@
     "packages/zcode-cua/native/windows/vendor/json.hpp": "aaf127c04cb31c406e5b04a63f1ae89369fccde6d8fa7cdda1ed4f32dfc5de63",
     "packages/zcode-cua/native/windows/vendor/LICENSE.MIT": "46a65cffd1ea955132d95a8dd921640714a8d6b537d2e4e482d31145ae95b603",
     "packages/zcode-cua/package.json": "0e5a90f19b5e10a95bbdd3c2cfafddf9fe65666d26fd59bfa5a347378db3298c",
-    "packages/zcode-server-cli/package.json": "6e294c4409cb90863d85b2e3d60f92766b156ccee577ebfeaffcb85e94194004",
+    "packages/zcode-server-cli/package.json": "8e8cc8ffd937672320c7645b8b376d7bec8d556e2b0ba42933318e6ed25b1df1",
     "patches/@ai-sdk__anthropic@3.0.81.patch": "d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18",
     "patches/@ai-sdk__openai-compatible@2.0.60.patch": "9632fe9d821b3dc20939ae509cc35b968d90d018bbd1d812390718898182a38b",
     "patches/@arms__rum-electron@0.0.3.patch": "36855354851ea495bc47a03340b0484ff62836b739cad56904b8a69f18e2ae97",
-    "pnpm-lock.yaml": "c7c7021895c3b8fddae1d650aab49373839efed39122152583454a6528968dcd",
+    "patches/vitest@4.1.7.patch": "11fdb66aa985e1d77e68752deeb7c1130ae33c9a4e2968f23aae8adaf8bc9ba0",
+    "patches/wdio-electron-service@9.2.1.patch": "52481dae5e76772fcb8c2a9ff42feb3d0e1478e28815a4b975c81b9287e3385f",
+    "pnpm-lock.yaml": "518b385b62f45b7f34226d69e6e7a7bc97efacfee3560f8f77bee128fd42e712",
     "pnpm-workspace.yaml": "f18a18233e82cda1dc40be61bf2ad1bc99de25de63ad0be64bc652761a638372",
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-    "scripts/native-search-tools-config.mjs": "281d368464f61363fa2d8ab74f416962fe730dd0a0572db5564475f876bb65aa",
-    "scripts/remote-native-search-tools-config.mjs": "472322a66f84c7452f96aa9e16e9c4e0600f7c2588a03dc6bc869229161b1cb2",
-    "third-party/copied-components.json": "e73a194aade207fd78927aa36b3e1f899c618f6bb6fc1487e3bfea0c0d1e8a9e",
+    "scripts/native-search-tools-config.mjs": "22bfc60e1aed783300335d4b2f8815b5ce3ac6ccaf981af842a4ac09b488e08c",
+    "scripts/remote-native-search-tools-config.mjs": "fa1859c6403dc0a0b779fa85ea8bee7b56ed29815a55efca719488bfff1b3c8a",
+    "third-party/copied-components.json": "3535bf291e79cbe7e627eb651c181a4dd7843c524aa1883f9efafe5cd1c36b9c",
     "third-party/embedded-components.json": "9586ccca15897f56d4ca1d703dffe9e02880fedd766c1dff93f7ac1f52ea891a",
     "third-party/native-search/licenses/00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce.txt": "00373c9bf56a894b2ed67586596bc1e8b0630cabbaf1ab46c75fc754b6bcd1ce",
     "third-party/native-search/licenses/01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f.txt": "01c266bced4a434da0051174d6bee16a4c82cf634e2679b6155d40d75012390f",
@@ -2570,8 +2606,8 @@
     "third-party/native-search/licenses/f8a6a9a718ca8be13701d706d208dd0d7b4d2b41cb1df3342fc5a6d602bd1dac.txt": "f8a6a9a718ca8be13701d706d208dd0d7b4d2b41cb1df3342fc5a6d602bd1dac",
     "third-party/native-search/licenses/f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af.txt": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
     "third-party/native-search/licenses/f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505.txt": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
-    "third-party/native-search/sources.json": "5a7b2d7abf5bd5f310712710cbbd0ca70dc9491e723cbf070b5c696fe155a962",
-    "third-party/npm-overrides.json": "08e2b41ea681c0058e7430f8d285e0693433af2ead0b0bc96d80aecbe7ecad19",
+    "third-party/native-search/sources.json": "85f8c9f3b7bb3f5262cff4ca202ef7064b2776b93c3e2e73c05aba91bcbe6672",
+    "third-party/npm-overrides.json": "f715cea610b81ebfcf92d5e011d0d6af2948a9ecfabb0165ffad2e26713a003e",
     "third-party/runtime/node-22.16.0-LICENSE.txt": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d",
     "third-party/runtime/node-24.14.0-LICENSE.txt": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18",
     "third-party/runtime/sources.json": "b27bc8d81aeb71108e523602364ffbb6a1b19c2d5d47733fd43094b769006741",
@@ -4642,6 +4678,18 @@
       ]
     },
     {
+      "name": "@modelcontextprotocol/ext-apps",
+      "version": "2.0.0",
+      "license": "MIT",
+      "repository": "https://github.com/modelcontextprotocol/ext-apps",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "0382b0057770ca05e9c350a50aa3b1c1fea84da0bc81d723bf00b9aa841be58a"
+        }
+      ]
+    },
+    {
       "name": "@modelcontextprotocol/sdk",
       "version": "1.29.0",
       "license": "MIT",
@@ -6102,24 +6150,24 @@
     },
     {
       "name": "@rrweb/types",
-      "version": "2.1.6",
+      "version": "2.0.0",
       "license": "MIT",
       "repository": "git+https://github.com/rrweb-io/rrweb.git",
       "notices": [
         {
-          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE",
+          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE",
           "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c"
         }
       ]
     },
     {
       "name": "@rrweb/utils",
-      "version": "2.1.6",
+      "version": "2.0.0",
       "license": "MIT",
       "repository": "git+https://github.com/rrweb-io/rrweb.git",
       "notices": [
         {
-          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE",
+          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE",
           "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c"
         }
       ]
@@ -8441,6 +8489,22 @@
         {
           "member": "LICENSE.txt",
           "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ]
+    },
+    {
+      "name": "chokidar",
+      "version": "4.0.3",
+      "license": "MIT",
+      "repository": "git+https://github.com/paulmillr/chokidar.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "bdfd5e0edb6089e6586c8f15e6a86fab83ffbeeda3b3b7b33734ccb8c5906965"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "22748b67aba7858f24730a8dc6aa876d13d666d74178f8aa0e01af41617e75e7"
         }
       ]
     },
@@ -11245,6 +11309,22 @@
       ]
     },
     {
+      "name": "has-flag",
+      "version": "4.0.0",
+      "license": "MIT",
+      "repository": "sindresorhus/has-flag",
+      "notices": [
+        {
+          "member": "license",
+          "sha256": "48da2f39e100d4085767e94966b43f4fa95ff6a0698fba57ed460914e35f94a0"
+        },
+        {
+          "member": "readme.md (license section)",
+          "sha256": "0b8c7c0c5579b689ab841976b473ebe9269aa46347fc1295431e0fc3f2452d36"
+        }
+      ]
+    },
+    {
       "name": "has-property-descriptors",
       "version": "1.0.2",
       "license": "MIT",
@@ -12945,6 +13025,18 @@
         {
           "member": "LICENSE",
           "sha256": "4eb7543b08d955a6d23fcc224601d43ff566e775be918805e26210d7f6eb4893"
+        }
+      ]
+    },
+    {
+      "name": "lottie-web",
+      "version": "5.13.0",
+      "license": "MIT",
+      "repository": "https://github.com/airbnb/lottie-web.git",
+      "notices": [
+        {
+          "member": "LICENSE.md",
+          "sha256": "9d8d4d8b4bb99572ee8b51025a30b8493d949798cac465c6c15b1b29420bcb06"
         }
       ]
     },
@@ -15929,6 +16021,22 @@
       ]
     },
     {
+      "name": "readdirp",
+      "version": "4.1.2",
+      "license": "MIT",
+      "repository": "git://github.com/paulmillr/readdirp.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "dffec71d93f273d2af7b54c6c7e7e70b3289c632ec0d7253210ec21ac336d5ac"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "d7659b795379812cc8df27e1feb7d6c7570c734b7714b844a561fdb20a949009"
+        }
+      ]
+    },
+    {
       "name": "recast",
       "version": "0.23.11",
       "license": "MIT",
@@ -16450,36 +16558,36 @@
     },
     {
       "name": "rrdom",
-      "version": "2.1.6",
+      "version": "2.0.0",
       "license": "MIT",
       "repository": "git+https://github.com/rrweb-io/rrweb.git",
       "notices": [
         {
-          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE",
+          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE",
           "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c"
         }
       ]
     },
     {
       "name": "rrweb-snapshot",
-      "version": "2.1.6",
+      "version": "2.0.0",
       "license": "MIT",
       "repository": "git+https://github.com/rrweb-io/rrweb.git",
       "notices": [
         {
-          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE",
+          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE",
           "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c"
         }
       ]
     },
     {
       "name": "rrweb",
-      "version": "2.1.6",
+      "version": "2.0.0",
       "license": "MIT",
       "repository": "git+ssh://git@github.com/rrweb-io/rrweb.git",
       "notices": [
         {
-          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE",
+          "member": "https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE",
           "sha256": "e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c"
         }
       ]
@@ -17321,6 +17429,18 @@
         {
           "member": "LICENSE",
           "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ]
+    },
+    {
+      "name": "supports-color",
+      "version": "8.1.1",
+      "license": "MIT",
+      "repository": "chalk/supports-color",
+      "notices": [
+        {
+          "member": "license",
+          "sha256": "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3"
         }
       ]
     },
@@ -19141,20 +19261,7 @@
       ]
     }
   ],
-  "notInstalled": [
-    {
-      "name": "@napi-rs/canvas-android-arm64",
-      "version": "0.1.100"
-    },
-    {
-      "name": "@napi-rs/canvas-linux-arm-gnueabihf",
-      "version": "0.1.100"
-    },
-    {
-      "name": "@napi-rs/canvas-linux-riscv64-gnu",
-      "version": "0.1.100"
-    }
-  ],
+  "notInstalled": [],
   "copied": [
     {
       "id": "shadcn",
@@ -19170,6 +19277,7 @@
       ],
       "scope": "Upstream-derived portions only; ZCode-specific files in the same directory are not attributed to the upstream project.",
       "license": "MIT",
+      "modifiedFiles": [],
       "files": [
         {
           "file": "packages/ui/src/components/ui/GlmMonochromeIcon.tsx",
@@ -19212,6 +19320,10 @@
           "sha256": "cdfb5121c2647a4b496a377609acb05d14513f7975858482b911a3873c3695b3"
         },
         {
+          "file": "packages/ui/src/components/ui/carousel.tsx",
+          "sha256": "c2bb0bb98d76f0eee60936432d3a65baf8d0b4fdfa24a4f5005eed6f860a1025"
+        },
+        {
           "file": "packages/ui/src/components/ui/chart.tsx",
           "sha256": "272efec5aa60d34665104b45341d9f2b8cad4480070bca91e9d5409713b6fecd"
         },
@@ -19250,6 +19362,10 @@
         {
           "file": "packages/ui/src/components/ui/flip-metric-value.tsx",
           "sha256": "ce2d6cf063003e1023191b0fa4e3eb9b365e04a14eb0d498b897326600bf4071"
+        },
+        {
+          "file": "packages/ui/src/components/ui/floating-particles.tsx",
+          "sha256": "e715f7207ffea817cae39234d02598f308bb7d19a9306ad1637882c513f836f3"
         },
         {
           "file": "packages/ui/src/components/ui/highlighted-lightweight-diff-preview.tsx",
@@ -19300,6 +19416,10 @@
           "sha256": "ba88ffa75ad78eaa23519c7af84e11679ca2b8e4508c57759d769462811c0ec5"
         },
         {
+          "file": "packages/ui/src/components/ui/radio-group.tsx",
+          "sha256": "dbc725bb6eb4fefc21e32037dbdcf247066d6adab0fdd5ae3795a100706ccdc0"
+        },
+        {
           "file": "packages/ui/src/components/ui/resizable.tsx",
           "sha256": "83425c34fb76c35276e6dbf8d7ad0ee860b4536ba9d4cfd8e8a60aec3b7cabc4"
         },
@@ -19313,11 +19433,15 @@
         },
         {
           "file": "packages/ui/src/components/ui/select.tsx",
-          "sha256": "e6d73ae0bf6916256fd86005d8a94e3dfb004c8107f51882cfd2d52e7751ca09"
+          "sha256": "58da392edc64495851c3e028738ad6df1f3c479cd2b2dc309bb996b8d08ac679"
         },
         {
           "file": "packages/ui/src/components/ui/separator.tsx",
           "sha256": "31ade0b9a0eca6689226c94d479352416ef076859980a976422a8af17879dee2"
+        },
+        {
+          "file": "packages/ui/src/components/ui/smooth-metric-value.tsx",
+          "sha256": "551534032d3b2fa57eccbd49bfc9719297c51ad26a960e09e5751a179bacb745"
         },
         {
           "file": "packages/ui/src/components/ui/spinner.tsx",
@@ -19349,7 +19473,7 @@
         },
         {
           "file": "packages/ui/src/styles.css",
-          "sha256": "22d5b58e44cdebdbe7154c418ee05fef6dde689e384f0dd590d4057739487be7"
+          "sha256": "0b0e7a70d380dc5d39db1b16163e7ca4b8098b023b7aff56718dc2881b5bf671"
         }
       ]
     },
@@ -19364,7 +19488,7 @@
       "roots": [
         "packages/ui/src/components/ai-elements"
       ],
-      "scope": "Upstream-derived portions of the distributed roots only; development-only instructions and tools are excluded.",
+      "scope": "Upstream-derived UI components, skill instructions, reference documentation and example scripts only; locally adapted for ZCode imports, styling and agent workflow. Original import revision not recorded.",
       "license": "Apache-2.0",
       "modifiedFiles": [
         "packages/ui/src/components/ai-elements/agent.tsx",
@@ -19417,8 +19541,16 @@
           "sha256": "7a847ce6c8ac9dc630481a82dd20a5e9e00949bf710a41fea1d32a18123011d8"
         },
         {
+          "file": "packages/ui/src/components/ai-elements/audio-player.tsx",
+          "sha256": "e6f1e147085df359edc73944f5c3730287b6fa9ae617fb61ad2743e94ee396a7"
+        },
+        {
           "file": "packages/ui/src/components/ai-elements/canvas.tsx",
           "sha256": "7bc92905e97c182c9a2f52b421a4d70414c8700a66039af9a4466587f74d2687"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/chain-of-thought.tsx",
+          "sha256": "a6174c5e1ce1c688cbba412a3b7eede69b4cf9d5590b5ff967c36bbff1acbdc1"
         },
         {
           "file": "packages/ui/src/components/ai-elements/chat-loading.tsx",
@@ -19465,6 +19597,14 @@
           "sha256": "661a25632f0879b8363f22e6b99198a6d37ad622781c798c090fcad9b591b181"
         },
         {
+          "file": "packages/ui/src/components/ai-elements/environment-variables.tsx",
+          "sha256": "f4bd46586d239daa85e3d7bd2df9b34f8d001711600baf5805af2dc6f2c6758e"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/file-tree.tsx",
+          "sha256": "28dd439ded47383172276a39176d0860c6bb74cf5d7671234cc4e114baf87716"
+        },
+        {
           "file": "packages/ui/src/components/ai-elements/image-preview-dialog.tsx",
           "sha256": "47d4ecdefc84d39f2deda93119ce400b36224276bb6c7dab6a914868914ac8de"
         },
@@ -19475,6 +19615,14 @@
         {
           "file": "packages/ui/src/components/ai-elements/image.tsx",
           "sha256": "1c6f9595ef814c4ef9648607562fa77a3007f7d857571f8e107a24022fe83e24"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/inline-citation.tsx",
+          "sha256": "5178c6d159a6daafd4e6abf2e9c26493e1805bcaef93be3db170028d7775f9b7"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/jsx-preview.tsx",
+          "sha256": "35cac5604480ee507ec9c61036c8838477853c2e5fcaa63c38fa970e96f607d5"
         },
         {
           "file": "packages/ui/src/components/ai-elements/markdown-blockquote.tsx",
@@ -19501,8 +19649,24 @@
           "sha256": "6c35829ed11321e850cd59e20c1c88fdd452e8e2d9b5da45f808371021aabf99"
         },
         {
+          "file": "packages/ui/src/components/ai-elements/mic-selector.tsx",
+          "sha256": "37021bba00a8ea2d8772f5149057dfeeabf367d830640ac4c0c2404a61c74153"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/model-selector.tsx",
+          "sha256": "d73d568c5c4913701a210476854367337a71fc6ff9dbeab273e9c9783ea0b114"
+        },
+        {
           "file": "packages/ui/src/components/ai-elements/node.tsx",
           "sha256": "d7b68c41717a509bd9063f0a9fc0c4525ceb2b23bae4028bcd49ec949fc6268f"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/open-in-chat.tsx",
+          "sha256": "345115a07b9bf2813485bd529af6daa89a3a8e8c57cdbb211725fd97f623b499"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/package-info.tsx",
+          "sha256": "588d6c79e2a71dfff960d1ae025a8161448d77a0903f4bd5e11bdb16f64c6ec4"
         },
         {
           "file": "packages/ui/src/components/ai-elements/panel.tsx",
@@ -19549,6 +19713,10 @@
           "sha256": "f521400dbaebe4c2a2fbcdcb8c18f98980c566169233beb137b22a093b44bbf0"
         },
         {
+          "file": "packages/ui/src/components/ai-elements/schema-display.tsx",
+          "sha256": "ac056deb704334d7c7378e21845de930de528d20194793173642dbc98fffb075"
+        },
+        {
           "file": "packages/ui/src/components/ai-elements/shimmer.tsx",
           "sha256": "5d06ffdff80a13453a0b61b67f588c48d838a20d9be2cd319ca2a97d441b3127"
         },
@@ -19559,6 +19727,14 @@
         {
           "file": "packages/ui/src/components/ai-elements/sources.tsx",
           "sha256": "cd5a9a20dc50b66f9d114b9a0ced1dd2eb8815040cccd4c577b386ef18bed435"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/speech-input.tsx",
+          "sha256": "e20bbb377e6a5a42cd89c9e1303ee49deceea778c1d0906fceb4eddc3c8c4e6e"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/stack-trace.tsx",
+          "sha256": "058d816cfd46996ffedebddd92434737945fdbeb96cf42f0d9817c0a66ac399b"
         },
         {
           "file": "packages/ui/src/components/ai-elements/streamdown-controls.ts",
@@ -19587,6 +19763,18 @@
         {
           "file": "packages/ui/src/components/ai-elements/toolbar.tsx",
           "sha256": "4bf1d6677248001166eb640a264ea7dc8750d609a01119e6aaf161ef74c0a245"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/transcription.tsx",
+          "sha256": "a5d1fece216c0d9dfcae63baa7732de42a9953fc927677989761fa3764b70344"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/voice-selector.tsx",
+          "sha256": "eae2548dffa93ddcd2eb4c8c0bdfbf48bebfd38b77cbc6f79b702dc48a307882"
+        },
+        {
+          "file": "packages/ui/src/components/ai-elements/web-preview.tsx",
+          "sha256": "378b6fbfa594cfc1d4d65dcccf04be9e8643178cc6b4f0f854c4a206212f82e2"
         }
       ]
     },
@@ -19601,10 +19789,11 @@
       "sha256": "5129f8779dca579cfcb235570688a2f15822b270575e04f27ef906aabbcc0355",
       "referenceRevision": "aef52acff84c45edde61ae610cc2c964802b9a38",
       "importRevision": null,
+      "modifiedFiles": [],
       "files": [
         {
           "file": "apps/zcode-cli/packages/core/src/tool/handlers/generated/bash-command-registry.ts",
-          "sha256": "60fa5acd9f5c357f4e51b1d1e944ee39da92680e4bc5e98dd708f1457fcf612b"
+          "sha256": "d08f0fbf17ee27ae962c320773576c9c9b0f8fa8c2bc87f70d4531c1748362a5"
         }
       ]
     },
@@ -19620,6 +19809,7 @@
       "sha256": "cdab3014d4f69b49dde2b85e81792208c72de613aa6aed7f7a9b5c6609b89670",
       "referenceRevision": "cb1dfb6d9cb73b15681a93939983d75dbba7bf5b",
       "importRevision": null,
+      "modifiedFiles": [],
       "files": [
         {
           "file": "packages/desktop/src/renderer/public/material-icons/3d.svg",
@@ -28806,6 +28996,7 @@
       ],
       "scope": "Upstream-derived IPC, serialization, buffer, lifecycle and event portions only. Local RPC extensions, transports and envelope measurement are ZCode adaptations; inclusion does not attribute all local code to Microsoft.",
       "license": "MIT",
+      "modifiedFiles": [],
       "files": [
         {
           "file": "packages/rpc/src/buffer.ts",
@@ -28833,7 +29024,7 @@
         },
         {
           "file": "packages/rpc/src/foundation.ts",
-          "sha256": "b4874401965e7bad7e84245a2fc5960657a349b146f355ac7343562fa724da9f"
+          "sha256": "0136c389f788aa2deeb2d783b7dfc130c3ae82c8c42bcbd27c0d0ecf9bf5614c"
         },
         {
           "file": "packages/rpc/src/index.ts",
@@ -28841,7 +29032,7 @@
         },
         {
           "file": "packages/rpc/src/ipc.ts",
-          "sha256": "2ec3dfe0654a68300dbed7afd5ac436b563abf983d6e0f59a2b028469fdf71ef"
+          "sha256": "8ad7da9357bcb4c5a4cb3610e4cfc5af7ce2d4d74b0ddd9d5823589760b3ad8d"
         },
         {
           "file": "packages/rpc/src/logging-middleware.ts",
@@ -28861,7 +29052,7 @@
         },
         {
           "file": "packages/rpc/src/proxy-channel.ts",
-          "sha256": "ec5b43e6a3a622a88a8aaa6af9cb37dbfe517932ee7f4a337019ec138bb2d513"
+          "sha256": "e0a8e86e9541746b8fa86f1c28d42a7f95b2ebae7cd6a54d683ae55f63a8eb96"
         },
         {
           "file": "packages/rpc/src/remote.ts",
@@ -28885,7 +29076,7 @@
         },
         {
           "file": "packages/rpc/examples/04-remote-connection.ts",
-          "sha256": "fe43a2d631ba54a1cf63a86e344b6e2e58d83c2e8c95f2f8b7371f63e6442541"
+          "sha256": "d2e814e0a242c501e2a8ff33d2f5aef1b8c2082a0befc3862a6883da4eb33b38"
         },
         {
           "file": "packages/shared/src/zcode-protocol-v4/wire-codec.ts",
@@ -28907,10 +29098,11 @@
       ],
       "scope": "Superpowers-derived skill descriptions and their translations only; unrelated descriptions from other projects in this file are not covered. The former bundled plugin implementation has been removed; only its retained license remains.",
       "license": "MIT",
+      "modifiedFiles": [],
       "files": [
         {
           "file": "packages/ui/src/lib/builtinSkillI18n.ts",
-          "sha256": "fbb44f7044214b70148f64dbafc1cea5ea550531e8084965ea978c5defc06deb"
+          "sha256": "fd33a495db494be4229c89e2e38ae6b34d63fadf5bb28c46a741d67a4db0262f"
         },
         {
           "file": "apps/zcode-cli/packages/superpowers-plugin/LICENSE",
@@ -28931,6 +29123,7 @@
       ],
       "scope": "The vendored JSON header only.",
       "license": "MIT",
+      "modifiedFiles": [],
       "files": [
         {
           "file": "packages/zcode-cua/native/windows/vendor/json.hpp",
@@ -28940,6 +29133,16 @@
     }
   ],
   "patches": [
+    {
+      "package": "vitest@4.1.7",
+      "file": "patches/vitest@4.1.7.patch",
+      "sha256": "11fdb66aa985e1d77e68752deeb7c1130ae33c9a4e2968f23aae8adaf8bc9ba0"
+    },
+    {
+      "package": "wdio-electron-service@9.2.1",
+      "file": "patches/wdio-electron-service@9.2.1.patch",
+      "sha256": "52481dae5e76772fcb8c2a9ff42feb3d0e1478e28815a4b975c81b9287e3385f"
+    },
     {
       "package": "@arms/rum-electron@0.0.3",
       "file": "patches/@arms__rum-electron@0.0.3.patch",

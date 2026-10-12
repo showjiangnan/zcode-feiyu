@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // Plugin 对话引用（@ Plugin capability hint）核心模块出口。
 export {
   extractPluginReferences,
@@ -5,10 +6,7 @@ export {
   MAX_PLUGIN_REFERENCES_PER_TURN,
   type ExtractPluginReferencesResult,
 } from "./references.js";
-export {
-  buildPluginReferenceCatalog,
-  findPluginReferenceCatalogEntry,
-} from "./catalog.js";
+export { buildPluginReferenceCatalog, findPluginReferenceCatalogEntry } from "./catalog.js";
 export {
   buildPluginReferenceReminderBody,
   MAX_PLUGIN_REFERENCE_MCP_SERVERS,

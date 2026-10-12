@@ -1,5 +1,13 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
-import { addOcc, cloneValue, collapse, mergeInto, provisionalFanoutId, type AbstractValue } from "./domain.js";
+import {
+  addOcc,
+  cloneValue,
+  collapse,
+  mergeInto,
+  provisionalFanoutId,
+  type AbstractValue,
+} from "./domain.js";
 import { bindForInitializer } from "./assign.js";
 import type { EvalContext, Evaluator } from "./taint.js";
 
@@ -21,7 +29,8 @@ export function visitForStatement(ev: Evaluator, node: ts.ForStatement, ctx: Eva
       ev.evalExpr(node.initializer, ctx);
     }
   }
-  if (node.condition !== undefined) ev.recordGuard(node.condition, ev.evalExpr(node.condition, ctx));
+  if (node.condition !== undefined)
+    ev.recordGuard(node.condition, ev.evalExpr(node.condition, ctx));
   if (node.incrementor !== undefined) ev.evalExpr(node.incrementor, ctx);
   ev.visit(node.statement, ctx);
 }

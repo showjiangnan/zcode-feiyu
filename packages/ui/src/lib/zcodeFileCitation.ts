@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   extractAssistantDirectives,
   findAssistantDirectivePrefixStart,
@@ -5,9 +6,9 @@ import {
   findUnclosedAssistantDirectiveStart,
 } from "@/lib/assistantDirectiveParser.js";
 
-type ZCodeFileCitationPreviewKind = "docx" | "xlsx" | "pptx" | "pdf" | "video" | "audio";
+export type ZCodeFileCitationPreviewKind = "docx" | "xlsx" | "pptx" | "pdf" | "video" | "audio";
 
-interface ZCodeFileCitation {
+export interface ZCodeFileCitation {
   artifactKind?: string;
   end: number;
   path: string;
@@ -16,7 +17,7 @@ interface ZCodeFileCitation {
   start: number;
 }
 
-interface ZCodeFileCitationDirective {
+export interface ZCodeFileCitationDirective {
   artifactKind?: string;
   end: number;
   path?: string;
@@ -25,7 +26,7 @@ interface ZCodeFileCitationDirective {
   start: number;
 }
 
-interface ZCodeFileCitationProjection {
+export interface ZCodeFileCitationProjection {
   visibleText: string;
 }
 

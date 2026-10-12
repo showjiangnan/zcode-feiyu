@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { McpServerConfig, PluginLoadOutcome } from "@zcode/contracts";
 import { createBundledMcpRuntimeConfig } from "./official-plugin-runtime.js";
 import {
@@ -6,7 +7,7 @@ import {
   OFFICIAL_NODE_REPL_HOST_PLUGIN_ID,
 } from "./official-plugin-definitions.js";
 
-const BUILT_IN_NODE_REPL_SERVER_NAME = "node_repl";
+export const BUILT_IN_NODE_REPL_SERVER_NAME = "node_repl";
 
 /**
  * node_repl 是官方能力共用的宿主工具，不是任何插件 manifest 声明的 plugin MCP。产物由独立的

@@ -1,4 +1,19 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
+/* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
 /* eslint-disable max-lines -- workspace 模型协议与兼容请求处理仍集中在本文件。 */
 import { createInMemorySessionEventStore } from "@zcode/adapters/storage";
 import type { ModelSelection } from "@zcode/contracts";
@@ -76,6 +91,7 @@ export async function createWorkspaceZCodeApp(
     options.providerRuntimeHeadersPort ?? createProviderRuntimeHeadersPort(context, workspace);
   return context.deps.createZCodeApp({
     ...options,
+    includeVisualize: true,
     platform: context.deps.platform,
     providerRuntimeHeadersPort,
     runtimeConfig: {

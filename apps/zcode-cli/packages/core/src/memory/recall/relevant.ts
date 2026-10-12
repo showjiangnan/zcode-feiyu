@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { basename, relative } from "node:path";
 import type { FileSystemPort } from "@zcode/contracts";
 import { assertMemoryToolPathSafe } from "../tool-path-guard.js";

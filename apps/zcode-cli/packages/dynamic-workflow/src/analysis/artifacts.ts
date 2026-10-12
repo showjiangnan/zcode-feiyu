@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 产物（artifact）的编译期收集与诊断。
  *
@@ -85,13 +86,13 @@ const HOISTING_MESSAGE: Record<HoistingContext, string> = {
     "that may or may not exist. Declare it unconditionally and let the branch decide what to report.",
   loop:
     "a preset artifact declared inside a loop: hoist it to the top level and declare it once. " +
-    "A preset is declared once and fed many times — the loop body is where report(item, \"<id>\") " +
+    'A preset is declared once and fed many times — the loop body is where report(item, "<id>") ' +
     "belongs, not the declaration. Re-declaring the same spec is a no-op, but re-declaring it with " +
     "a different spec fails the whole run, so the loop is the wrong place for it either way.",
 };
 
 const NON_LITERAL_ID_MESSAGE =
-  "an artifact id must be a compile-time string literal (\"report\" or a no-substitution template): " +
+  'an artifact id must be a compile-time string literal ("report" or a no-substitution template): ' +
   "the set of artifacts a run can publish is fixed when the script is submitted, so it can be listed " +
   "before anything runs. Write the id inline; put the runtime value in the title instead " +
   '(artifact.file("report", path, { title: `Report for ${name}` })).';
@@ -116,6 +117,8 @@ export function collectArtifactDeclarations(
     workflow.toScriptLoc(node.getStart(workflow.scriptFile));
 
   const body = findWorkflowBody(workflow.scriptFile);
+  /** 已补全留白的函数体：不是回调，提升诊断看穿它们（见 {@link hoistingContextOf}）。 */
+  const holeBodies = new Set<ts.Node>(table.holes.flatMap((hole) => hole.body ?? []));
   /** id → 第一个用它的站点（种类冲突时用来指认前一处）。 */
   const claimed = new Map<string, ArtifactSite>();
   /** 第一个写了字面量 `primary: true` 的站点；第二个不同 id 再写就是 9009。 */
@@ -190,7 +193,7 @@ export function collectArtifactDeclarations(
     // 提升诊断（预置族专属）：内容成员反而**常常**该出现在循环 / 条件里（每轮发布一版、
     // 失败时补一版），所以这条子句绝不能扩到那一族。
     if (isArtifactPresetOp(site.op)) {
-      const context = hoistingContextOf(site.call, body);
+      const context = hoistingContextOf(site.call, body, holeBodies);
       if (context !== undefined) {
         push(ARTIFACT_HOISTING_CODE, site.loc, HOISTING_MESSAGE[context]);
       }
@@ -263,7 +266,10 @@ function primaryLiteralOf(site: ArtifactSite): ts.Node | undefined {
 /** 「已声明的预置有：…」的尾巴；一个都没有时说得更直白。 */
 function describePresets(presetIds: readonly string[]): string {
   if (presetIds.length === 0) return " (this script declares no preset artifacts at all)";
-  return ` (declared presets: ${[...presetIds].sort().map((id) => `"${id}"`).join(", ")})`;
+  return ` (declared presets: ${[...presetIds]
+    .sort()
+    .map((id) => `"${id}"`)
+    .join(", ")})`;
 }
 
 /** 去重（同 id 同种类只留一条）、按 id 字典序。 */
@@ -276,7 +282,9 @@ function sortDeclared(declared: readonly DeclaredArtifact[]): DeclaredArtifact[]
     seen.add(key);
     unique.push(entry);
   }
-  return unique.sort((a, b) => (a.id === b.id ? a.kind.localeCompare(b.kind) : a.id < b.id ? -1 : 1));
+  return unique.sort((a, b) =>
+    a.id === b.id ? a.kind.localeCompare(b.kind) : a.id < b.id ? -1 : 1,
+  );
 }
 
 /**
@@ -288,11 +296,24 @@ function sortDeclared(declared: readonly DeclaredArtifact[]): DeclaredArtifact[]
  * （`.map(...)`、`.then(...)`），所以它们算。代价是「在具名 helper 里声明、而 helper 被
  * 循环调用」这一形状漏报——那是漏报方向，与本模块的保守取向一致（引擎的
  * `ArtifactRedeclared` 仍然兜底）。
+ *
+ * 已补全留白的函数体（`holeBodies`）**不算**回调：它被拼在留白所在的位置、每次到达跑一遍，与
+ * 周围的语句同级，所以这里看穿它，继续往外找——留白自己待在循环 / 分支里时照样报。
+ * 修复原因（2026-09-29 testfield 实测）：此前一切箭头都算回调，补全体恰好是箭头，于是没有一次
+ * 补全能为它写下的那一段声明看板，主代理只能放弃。
  */
-function hoistingContextOf(call: ts.CallExpression, body: ts.Block): HoistingContext | undefined {
+function hoistingContextOf(
+  call: ts.CallExpression,
+  body: ts.Block,
+  holeBodies: ReadonlySet<ts.Node>,
+): HoistingContext | undefined {
   let child: ts.Node = call;
   for (let node: ts.Node | undefined = call.parent; node !== undefined; node = node.parent) {
     if (node === body) return undefined;
+    if (holeBodies.has(node)) {
+      child = node;
+      continue;
+    }
     if (ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isMethodDeclaration(node)) {
       return "callback";
     }

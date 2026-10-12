@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { randomUUID } from "node:crypto";
 import { chmod, lstat, readFile, readdir, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
@@ -5,7 +6,7 @@ import { migrateSubagentMarkdownProvider } from "../subagent-markdown-selection.
 import { importSubagentStateSelections } from "../subagent-state-migration.js";
 import { withFileLock } from "./privateFilePersistence.js";
 
-interface SubagentMarkdownMigrationResult {
+export interface SubagentMarkdownMigrationResult {
   migrated: string[];
   failures: Array<{ path: string; error: unknown }>;
 }

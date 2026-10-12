@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { ChevronDown, Loader2, Plus, Sparkles } from "lucide-react";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import { Button } from "@/components/ui/button.js";
@@ -14,13 +15,15 @@ export function PluginAddMenu({
   onCreateTask,
   onAddMarketplace,
   testId,
+  isWebRemoteControl = false,
 }: {
   onCreateTask?: (request?: CreateTaskRequest) => void;
   onAddMarketplace: () => void;
   testId: string;
+  isWebRemoteControl?: boolean;
 }) {
   const { intl } = useZCodeIntl();
-  const creator = usePluginCreator(onCreateTask);
+  const creator = usePluginCreator(onCreateTask, isWebRemoteControl);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

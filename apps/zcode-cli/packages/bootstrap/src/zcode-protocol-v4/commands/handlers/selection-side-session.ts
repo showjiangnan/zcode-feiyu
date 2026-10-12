@@ -1,9 +1,10 @@
+// Modified by ZCode Feiyu.
 import type {
   CommandEnvelope,
   CommandPayloadMap,
   CommandResult,
 } from "@zcode/shared/zcode-protocol-v4";
-import { commandAdmissionOf } from "../executor.js";
+import { commandAdmissionOf } from "../execution-context.js";
 import { inputIntentMetadata } from "../input-intent.js";
 import { startPromptTurn } from "../prompt-turn.js";
 import { requireRecord } from "../record-access.js";

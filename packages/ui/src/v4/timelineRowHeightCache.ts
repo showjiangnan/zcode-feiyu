@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 虚拟滚动核心：v4 timeline 行高缓存（纯数据结构，无 DOM/React 依赖）。
 //
 // 为什么需要它：@tanstack/react-virtual 自身的 measurementsCache 按 itemKey 缓存，
@@ -11,9 +12,9 @@
 export const DEFAULT_ROW_HEIGHT_ESTIMATE_PX = 72;
 
 /** 缓存上限：超长会话防内存膨胀；淘汰最久未写入的行（写入序 ≈ 行序，旧行先淘汰）。 */
-const MAX_ROW_HEIGHT_CACHE_ENTRIES = 4000;
+export const MAX_ROW_HEIGHT_CACHE_ENTRIES = 4000;
 
-type TimelineRowHeightCacheKey = string | number;
+export type TimelineRowHeightCacheKey = string | number;
 
 export class TimelineRowHeightCache {
   private readonly sizes = new Map<TimelineRowHeightCacheKey, number>();

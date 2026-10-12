@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 强制升级提示窗口包含内联 HTML/CSS 和状态脚本，启动前不能依赖 renderer 包 */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -134,7 +135,7 @@ function renderForceUpdatePromptHtml(text: ForceUpdateDialogText, locale: Locale
       background: #f8f8f8;
       display: flex;
     }
-    /* 强更截图范围就是完整 BrowserWindow；外层留白加内层圆角会把宿主底色显示成黑框。*/
+    /* Bugfix: 强更截图范围就是完整 BrowserWindow；外层留白加内层圆角会把宿主底色显示成黑框。 */
     .panel {
       width: 100%;
       height: 100%;
@@ -194,7 +195,7 @@ function renderForceUpdatePromptHtml(text: ForceUpdateDialogText, locale: Locale
       cursor: pointer;
       -webkit-app-region: no-drag;
     }
-    /* 字体字符 × 的字形基线会让视觉中心偏移，改用两条线保证和主窗口关闭按钮一致居中。*/
+    /* Bugfix: 字体字符 × 的字形基线会让视觉中心偏移，改用两条线保证和主窗口关闭按钮一致居中。 */
     .close::before,
     .close::after {
       content: "";
@@ -384,7 +385,7 @@ function renderForceUpdatePromptHtml(text: ForceUpdateDialogText, locale: Locale
       return kind === 'checking' || kind === 'downloading' || kind === 'ready' || kind === 'installing';
     }
     function showCloseConfirmation() {
-      // 自动升级会禁用主按钮，但关闭窗口仍应给用户二次确认，避免误关中断下载。
+      // Bugfix: 自动升级会禁用主按钮，但关闭窗口仍应给用户二次确认，避免误关中断下载。
       resizePromptHeight(${FORCE_UPDATE_PROMPT_HEIGHT});
       previousAutoState = isActiveAutoState(currentState.kind) ? currentState : previousAutoState;
       currentState = { kind: 'confirm-close' };

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { TraceContext, TurnSteerInput, TurnSteerResult } from "@zcode/contracts";
 import type { RuntimeTaskMessageSink } from "../runtime-task/registry.js";
 

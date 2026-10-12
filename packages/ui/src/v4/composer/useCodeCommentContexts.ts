@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CODE_COMMENT_ADD_TO_CHAT_EVENT,
@@ -10,14 +11,14 @@ import {
   type CodeCommentComposerAttachment,
 } from "@/lib/codeCommentContext.js";
 
-interface UseCodeCommentContextsOptions {
+export interface UseCodeCommentContextsOptions {
   listenAddToChatEvents?: boolean;
   onContextRemoved?: (context: CodeCommentComposerAttachment) => void;
   requestFocus?: () => void;
   scopeKey: string;
 }
 
-interface UseCodeCommentContextsResult {
+export interface UseCodeCommentContextsResult {
   contexts: readonly CodeCommentComposerAttachment[];
   hasContexts: boolean;
   removeContext: (

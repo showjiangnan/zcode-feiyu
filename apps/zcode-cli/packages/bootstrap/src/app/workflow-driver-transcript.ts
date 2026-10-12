@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
 // ============================================================
@@ -7,6 +8,126 @@
 // workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
 // 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
 
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：转录编排（amend-resume 的两件 driver 私有事）
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 driver 侧的转录编排——
+// 分歧 actor 的转录截断（seedActorSession）、ask 边界记账的计数（countSessionTranscript）与回写
+// （journalAskMessageBoundary）——拆到本文件成自由函数；公开面不变。机制本身仍住在
+// workflow-actor-transcript.ts（复制与计数），这里只是 driver 对它的三次调用及其失败取舍，
+// 原方法体逐字保留，只把 `this.deps` / `this.journal` 换成显式递进来的 deps。
 import type { SessionId } from "@zcode/contracts";
 import type { AgentRuntime } from "@zcode/core";
 import {

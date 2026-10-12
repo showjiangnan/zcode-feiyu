@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { readFile } from "node:fs/promises";
 import { rootCertificates } from "node:tls";
 import { Agent, ProxyAgent, fetch as undiciFetch, type Dispatcher } from "undici";
@@ -19,7 +20,7 @@ type HostProxyRoute =
   | { kind: "proxy"; proxyUrl: string }
   | { kind: "invalid"; reason: string };
 
-function mergeHostApiCaCertificates(
+export function mergeHostApiCaCertificates(
   customCa: string,
   defaultCa: readonly string[] = rootCertificates,
 ): string[] {
@@ -85,6 +86,8 @@ export function resolveHostProxyForUrl(
 }
 
 interface HostApiNetworkTransportDependencies {
+  /** 订阅连接使用实时系统网络设置；既有调用默认继续缓存。 */
+  cacheOptions?: boolean;
   createDispatcher?: typeof createDispatcher;
   fetchWithDispatcher?: (
     input: string,
@@ -118,7 +121,7 @@ export function createHostApiNetworkTransport(
       throw new Error("Host API network transport has been disposed");
     }
     const requestGeneration = generation;
-    if (!optionsPromise) {
+    if (!optionsPromise || dependencies.cacheOptions === false) {
       // 设置读取失败只影响当前请求；清掉 rejected promise，避免一次瞬时 IPC/启动竞态
       // 把 Host API 永久锁死，同时仍保持失败请求不回退到直连。
       optionsPromise = resolveOptions().catch((error: unknown) => {

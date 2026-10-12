@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
 import { logger } from "@/logger.js";
 
@@ -45,6 +46,13 @@ function getLocalStorage(): Storage | null {
     });
     return null;
   }
+}
+
+export function readSidebarUsageCodingPlanProviderPreference():
+  | SidebarUsageCodingPlanProviderId
+  | undefined {
+  const value = readSidebarUsageCodingPlanSourcePreference();
+  return isSidebarUsageCodingPlanProviderId(value) ? value : undefined;
 }
 
 export function readSidebarUsageCodingPlanSourcePreference():

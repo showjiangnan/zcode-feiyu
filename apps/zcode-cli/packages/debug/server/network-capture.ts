@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { existsSync } from "node:fs";
 import type { IncomingHttpHeaders } from "node:http";
 import { basename, dirname, join, resolve } from "node:path";

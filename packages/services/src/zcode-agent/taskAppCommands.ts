@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { resolveWorkspaceKey } from "@zcode/shared";
 import type { TaskAppRequest, TaskAppResult, TaskAppRead } from "@zcode/shared";
 import type { CommandEnvelope, CommandAck } from "@zcode/shared/zcode-protocol-v4";

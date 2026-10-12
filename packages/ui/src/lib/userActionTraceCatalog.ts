@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { RendererActionTraceGroup } from "@zcode/shared";
 
 export const CORE_USER_ACTION_FEATURES = {
@@ -105,14 +105,14 @@ export type SettingsUserActionFeatureId = keyof typeof SETTINGS_USER_ACTION_FEAT
 export type UserActionFeatureId = CoreUserActionFeatureId | SettingsUserActionFeatureId;
 
 type CatalogDefinition = Readonly<Record<string, readonly string[]>>;
-type UserActionOperationKind =
+export type UserActionOperationKind =
   | "navigation"
   | "preference"
   | "command"
   | "management"
   | "destructive";
 
-interface UserActionCatalogEntry {
+export interface UserActionCatalogEntry {
   featureId: UserActionFeatureId;
   action: string;
   group: Extract<RendererActionTraceGroup, "core" | "settings">;

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createServer } from "node:net";
 import { chmod, rm } from "node:fs/promises";
 import { timingSafeEqual } from "node:crypto";

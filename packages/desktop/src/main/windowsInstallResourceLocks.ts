@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { execFile } from "node:child_process";
 import { existsSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -10,13 +11,13 @@ const WINDOWS_PACKAGED_RESOURCE_DIRS = ["glm", "tools"];
 // 交接窗口。
 export const WINDOWS_UPDATE_LOCK_RELEASE_GRACE_MS = 750;
 
-interface WindowsInstallResourceLockProcess {
+export interface WindowsInstallResourceLockProcess {
   pid: number;
   commandLine?: string;
   executablePath?: string;
 }
 
-interface WindowsUpdateProcessCleanupResult<TTerminationResult> {
+export interface WindowsUpdateProcessCleanupResult<TTerminationResult> {
   initialLockProcesses: WindowsInstallResourceLockProcess[];
   terminationPids: number[];
   terminationResults: TTerminationResult[];
@@ -196,7 +197,7 @@ export function probeWindowsPackagedResourceWritable(
   });
 }
 
-function isWindowsProcessReferencingResourceMarkers(
+export function isWindowsProcessReferencingResourceMarkers(
   processInfo: WindowsInstallResourceLockProcess,
   markers: readonly string[],
 ): boolean {

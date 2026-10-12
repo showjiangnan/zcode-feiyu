@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { RefObject } from "react";
 import type {
   ZCodeProvider,
@@ -13,6 +14,10 @@ import type {
   UserInfo,
 } from "@zcode/shared";
 import type { IFeedbackService, IServiceAccessor } from "@zcode/services";
+import type { SavedWorkflowsOpenTarget } from "@/settings/saved-workflows/SavedWorkflowsSection.js";
+import type { SavedWorkflowHubTarget } from "@/v4/savedWorkflowHubContext.js";
+import type { WebRemoteControlWorkspaceSwitcherApi } from "@/root/types.js";
+import type { WebRemoteControlTerminalTransportState } from "@/root/types.js";
 import type { BrowserNavigationRequest, RecentClosedSidePaneTab } from "@/hooks/useAppPanels.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
 import type { AssistantPreviewCardsAutoOpenRequest } from "@/lib/assistantPreviewCards.js";
@@ -100,6 +105,10 @@ export interface AppProps {
   remoteConnectionInProgress?: boolean;
   onReturnToWorkspace?: () => void;
   allowOpenWorkspace?: boolean;
+  webRemoteControlWorkspaceSwitcher?: WebRemoteControlWorkspaceSwitcherApi;
+  initialWebRemoteControlMobileNavigationIntent?: import("@zcode/shared").WebRemoteControlMobileNavigationIntent;
+  initialWebRemoteControlWorkspaceList?: import("@zcode/shared").WebRemoteControlWorkspaceListResult;
+  webRemoteControlTerminalTransportState?: WebRemoteControlTerminalTransportState;
   allowRemoteWorkspace?: boolean;
   remoteWorkspaceSessions?: RemoteWorkspaceSessionEntry[];
   workspaceAbsPath: string;
@@ -125,6 +134,14 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   pluginStoreOpenVersion: number;
   openAutomationId: string | null;
   openAutomationTab: AutomationsNavigationTab | null;
+  /** 中枢深链：落到某个已保存工作流的详情页；定位后由 `onOpenWorkflowConsumed` 清空。 */
+  openWorkflow: SavedWorkflowsOpenTarget | null;
+  onOpenWorkflowConsumed: () => void;
+  /**
+   * 完成卡「已保存」芯片 → 中枢那一页（docs/dynamic-workflow/transcript-and-notifications.md
+   * 「Saving the run, and running it again」）：切到自动化主视图的「工作流」标签并设深链。
+   */
+  onOpenSavedWorkflowInHub: (target: SavedWorkflowHubTarget) => void;
   onWorkspaceMainViewChange: (view: WorkspaceMainView) => void;
   onOpenAutomationConsumed: () => void;
   handleOpenAutomations: OpenAutomationsMain;
@@ -187,6 +204,9 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   gitState: ReturnType<typeof import("@/hooks/useGitRepository.js").useGitRepository>;
   browserNavigationRequest: BrowserNavigationRequest | null;
   browserRestoreUrls: Record<string, string>;
+  providerConfigFile: ReturnType<
+    typeof import("@/hooks/useWorkspaceProviderConfigFile.js").useWorkspaceProviderConfigFile
+  >;
   taskNativeSessionLogFile: ReturnType<
     typeof import("@/hooks/useTaskNativeSessionLogFile.js").useTaskNativeSessionLogFile
   >;
@@ -234,6 +254,7 @@ export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackS
   handleToggleTerminal: () => void;
   handleToggleBrowser: () => void;
   handleOpenBrowserTab: () => void;
+  handleOpenBrowserPermissionSettings: (origin: string) => void;
   handleOpenTreemapping: (source?: TreemappingSidePaneTab["source"]) => void;
   handleOpenWhiteboard: () => void;
   handleOpenDeveloperTools: () => void;

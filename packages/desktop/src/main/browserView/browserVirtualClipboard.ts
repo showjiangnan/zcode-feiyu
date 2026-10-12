@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { randomUUID } from "node:crypto";
 import type { ControlledView } from "./browserCommandTypes.js";
 import {
@@ -7,7 +8,7 @@ import {
 
 export { IAB_INPUT_TARGET_TOKEN_PROPERTY } from "./browserVirtualClipboardPageScript.js";
 
-interface BrowserInputExecutionTarget {
+export interface BrowserInputExecutionTarget {
   contextId?: number;
   sessionId?: string;
 }

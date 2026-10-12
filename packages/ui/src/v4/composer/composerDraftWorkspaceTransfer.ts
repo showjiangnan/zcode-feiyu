@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 interface ComposerDraftWorkspaceTransferRequest {
   sourceWorkspacePath: string;
   sourceWorkspaceIdentity?: string;
@@ -32,4 +33,8 @@ export function consumeV4ComposerDraftWorkspaceTransferRequest(
     pendingRequest = null;
   }
   return matches;
+}
+
+export function clearV4ComposerDraftWorkspaceTransferRequest(): void {
+  pendingRequest = null;
 }

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 
 // 共享的是 UI 有界投影；原始 CUA PNG 的独立模型载荷上限不由这个展示预算决定。

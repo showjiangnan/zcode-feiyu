@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // sessions-index topic 的 CLI 侧归约：把一个 workspace 名下各会话的
 // ConversationSnapshot 派生为 SessionSummary，并维护 conflated 最新态 + 产出 upsert/remove delta。
 // 纯归约、无 IO；publisher（sessions-index-publisher）负责 seq 记账与帧构造，
@@ -21,7 +22,7 @@ export interface SessionSummaryDeriveExtra {
 const MAX_PREVIEW_CHARS = 120;
 
 /** 从 ConversationSnapshot + 会话元信息派生 SessionSummary（纯函数，golden 可测）。 */
-function deriveSessionSummary(
+export function deriveSessionSummary(
   snapshot: ConversationSnapshot,
   extra: SessionSummaryDeriveExtra,
 ): SessionSummary {

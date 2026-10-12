@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { resolveWorkspaceKey, type ZCodeComputerUseOperationEvent } from "@zcode/shared";
 import type { PipSessionEvent } from "@zcode/zcode-cua/pip-session";
 
@@ -18,7 +19,7 @@ export interface CuaOperationStateReporter {
   onStateChanged(event: CuaOperationState): void;
 }
 
-interface CuaOperationTurnTracker {
+export interface CuaOperationTurnTracker {
   accept(workspace: CuaOperationWorkspaceTarget, event: ZCodeComputerUseOperationEvent): void;
   /** 当前是否存在仍在执行 Computer Use 工具的 turn。 */
   hasActiveTurn(): boolean;

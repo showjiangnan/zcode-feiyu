@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 扫描条目 → 根目录占用快照的折叠器。纯函数式累加器，可在 Worker 内运行。
  * 保证快照体积有界：每个类别的 entries 只保留 bytes 最大的前 N 项，其余折叠进 STORAGE_MORE_ENTRIES_PATH。
@@ -20,12 +21,12 @@ export interface StorageScanEntry {
   mtimeMs: number;
 }
 
-interface StorageUsageAccumulator {
+export interface StorageUsageAccumulator {
   add(entry: StorageScanEntry): void;
   snapshot(volume: StorageVolume | null): StorageRootUsage;
 }
 
-const DEFAULT_MAX_ENTRIES_PER_CATEGORY = 100;
+export const DEFAULT_MAX_ENTRIES_PER_CATEGORY = 100;
 
 interface CategoryBucket {
   bytes: number;

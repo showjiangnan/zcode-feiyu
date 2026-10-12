@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   createContext,
   useContext,
@@ -69,7 +70,7 @@ function resolveLocaleBroadcastPayload(payload: unknown): LocaleBroadcastPayload
   return null;
 }
 
-function resolveLocalePreferenceFromSettings({
+export function resolveLocalePreferenceFromSettings({
   storedPreference,
   settingsLocale,
   settingsLocalePreference,
@@ -90,7 +91,7 @@ function resolveLocalePreferenceFromSettings({
   return storedPreference ?? settingsLocalePreference ?? settingsLocale ?? null;
 }
 
-function shouldApplyLocaleBroadcastMessage(
+export function shouldApplyLocaleBroadcastMessage(
   message: Pick<BroadcastMessage, "channel" | "payload" | "sourceWindowId">,
   options: {
     ignoredLocalPayload?: LocaleBroadcastPayload | null;

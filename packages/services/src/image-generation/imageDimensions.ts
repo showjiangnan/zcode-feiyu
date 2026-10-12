@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /** Read dimensions without decoding pixels or trusting provider metadata. */
 export function readImageDimensions(
   bytes: Uint8Array,

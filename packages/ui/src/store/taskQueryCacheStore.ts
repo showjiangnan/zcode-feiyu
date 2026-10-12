@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- task query cache 的 descriptor、membership 与 mutation 必须在同一 Zustand 事务里维护，拆散会增加缓存一致性风险。 */
 import { create } from "zustand";
 import type { ZCodeTaskListItem } from "@zcode/services";
@@ -933,6 +933,12 @@ export const useTaskQueryCacheStore = create<TaskQueryCacheState>()((set) => ({
       taskUnreadOverlayByEntityKey: {},
     })),
 }));
+
+export function selectTaskListCacheResult(queryKey: TaskListCacheKey) {
+  return (state: TaskQueryCacheState): CachedTaskListResult | null => {
+    return state.resultsByQueryKey[queryKey] ?? null;
+  };
+}
 
 export function invalidateTaskQueryCacheByScopes(
   scopes: Array<{ workspacePath: string; workspaceIdentity?: string }>,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ZCodeStdioTapDevState } from "@zcode/shared";
@@ -8,11 +9,11 @@ interface ZCodeStdioTapStateFile {
   enabled?: boolean;
 }
 
-function isZCodeStdioTapDevVisible(): boolean {
+export function isZCodeStdioTapDevVisible(): boolean {
   return isEffectiveDevelopmentNodeEnv();
 }
 
-function getZCodeStdioTapDevDir(): string {
+export function getZCodeStdioTapDevDir(): string {
   return join(getAppConfigDir(), "dev");
 }
 
@@ -20,7 +21,7 @@ export function getZCodeStdioTapDevLogDir(): string {
   return join(getZCodeStdioTapDevDir(), "stdio-traffic");
 }
 
-function getZCodeStdioTapDevStatePath(): string {
+export function getZCodeStdioTapDevStatePath(): string {
   return join(getZCodeStdioTapDevDir(), "zcode-stdio-tap.json");
 }
 

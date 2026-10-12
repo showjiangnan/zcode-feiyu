@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ConfigResult } from "@zcode/adapters/config";
 import type { PluginLoadOutcome } from "@zcode/contracts";
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
@@ -13,10 +14,7 @@ import type {
   ZCodePluginUninstallResult,
 } from "./types.js";
 
-type PluginFacade = Pick<
-  ZCodeApp,
-  "listPlugins" | "setPluginEnabled" | "uninstallPlugin"
->;
+type PluginFacade = Pick<ZCodeApp, "listPlugins" | "setPluginEnabled" | "uninstallPlugin">;
 
 interface CreatePluginFacadeOptions {
   configResult: ConfigResult;
@@ -41,10 +39,7 @@ function createPluginFacade(options: CreatePluginFacadeOptions): PluginFacade {
 
   return {
     listPlugins: async (): Promise<PluginLoadOutcome> => listZCodePlugins(commonOptions()),
-    setPluginEnabled: async (
-      plugin: string,
-      enabled: boolean,
-    ): Promise<ZCodePluginSetResult> => {
+    setPluginEnabled: async (plugin: string, enabled: boolean): Promise<ZCodePluginSetResult> => {
       const result = await setZCodePluginEnabled({
         ...commonOptions(),
         enabled,

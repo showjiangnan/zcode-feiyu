@@ -1,6 +1,8 @@
+// Modified by ZCode Feiyu.
+import { sanitizeZCodeRuntimeEnv } from "@zcode/shared";
+import { withoutNetworkCapture } from "@zcode/shared/node";
 import { accessSync, constants } from "node:fs";
 import { delimiter, posix, win32 } from "node:path";
-import { sanitizeZCodeRuntimeEnv } from "@zcode/shared";
 import { createNetworkProxyFetch } from "../network/proxy-fetch.js";
 import { applyNetworkEgressEnv, type NetworkEgressEnvPolicy } from "../network/subprocess-env.js";
 
@@ -23,12 +25,13 @@ export function createMcpTransportFetch(options: {
   env?: NodeJS.ProcessEnv;
   network?: NetworkEgressEnvPolicy;
 }): typeof globalThis.fetch {
-  return createNetworkProxyFetch({
+  const fetch = createNetworkProxyFetch({
     caCertFile: options.network?.caCertFile,
     env: options.env ?? process.env,
     httpProxy: options.network?.httpProxy,
     noProxy: options.network?.noProxy,
   });
+  return (input, init) => withoutNetworkCapture(() => fetch(input, init));
 }
 
 function filterStringEnv(env: NodeJS.ProcessEnv): Record<string, string> {
@@ -51,7 +54,7 @@ const DEFAULT_RUNNING_NODE_PATH_OPTIONS: RunningNodePathOptions = {
   platform: process.platform,
 };
 
-function prependRunningNodeDirectory(
+export function prependRunningNodeDirectory(
   env: Record<string, string>,
   options: RunningNodePathOptions = DEFAULT_RUNNING_NODE_PATH_OPTIONS,
 ): Record<string, string> {

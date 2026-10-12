@@ -1,42 +1,45 @@
-// Modified by ZCode Feiyu contributors (2026).
-import { resolveZCodeAgentSpawnCwd } from "#src/zcode-agent/zcodeAgentSpawnCwd.js";
+// Modified by ZCode Feiyu.
+import { localRuntimeNetworkCapture } from "#src/zcode-agent/localRuntimeNetworkCapture.js";
 import type { ZCodeAgentStorageStartupSnapshot } from "#src/zcode-agent/zcodeAgent.js";
+import { resolveZCodeAgentSpawnCwd } from "#src/zcode-agent/zcodeAgentSpawnCwd.js";
 /* eslint-disable max-lines -- zcodeAgentProcessManager 集中维护 agent 子进程启动、复用、超时回收和 runtime identity，拆分会扩大进程生命周期状态同步面 */
-import { spawn } from "node:child_process";
-import type { ChildProcessWithoutNullStreams } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import { isEffectiveDevelopmentNodeEnv } from "#src/runtime-tools/nodeEnv.js";
 import { Emitter } from "@zcode/rpc";
 import {
-  parseZCodeProcessDiagnostic,
-  ZCODE_AGENT_LIFECYCLE_LOG_MARKER,
-  ZCODE_PROCESS_DIAGNOSTIC_NAME_MAX_CHARS,
-  ZCODE_PROCESS_DIAGNOSTIC_MESSAGE_MAX_CHARS,
-  ZCODE_PROCESS_DIAGNOSTIC_STACK_MAX_CHARS,
-} from "@zcode/shared/process-diagnostic";
-import {
-  ZCODE_AGENT_RUNTIME,
-  ZCODE_AGENT_NODE_BUNDLE_PATH_ENV,
-  ZCODE_AGENT_PROVIDER,
-  ZCODE_RUNTIME_ENV_KEY,
   resolveWorkspaceKey,
   resolveZCodeRuntimeEnv,
   sanitizeZCodeRuntimeEnv,
+  ZCODE_AGENT_NODE_BUNDLE_PATH_ENV,
+  ZCODE_AGENT_PROVIDER,
+  ZCODE_AGENT_RUNTIME,
+  ZCODE_RUNTIME_ENV_KEY,
 } from "@zcode/shared";
+import { GEN_UI_OUTPUT_DIRECTORY, GEN_UI_OUTPUT_ROOT_ENV } from "@zcode/shared/node";
+import {
+  parseZCodeProcessDiagnostic,
+  ZCODE_AGENT_LIFECYCLE_LOG_MARKER,
+  ZCODE_PROCESS_DIAGNOSTIC_MESSAGE_MAX_CHARS,
+  ZCODE_PROCESS_DIAGNOSTIC_NAME_MAX_CHARS,
+  ZCODE_PROCESS_DIAGNOSTIC_STACK_MAX_CHARS,
+} from "@zcode/shared/process-diagnostic";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { getAppConfigDir } from "../paths.js";
+import { shouldSpawnInDetachedProcessGroup } from "../process/processTreeTerminator.js";
+import type { RuntimeProcessLifecycleReporter } from "../process/runtimeProcessLifecycle.js";
+import { buildAgentWorkspaceIdentityEnv } from "../runtime-tools/agentProxyEnv.js";
 import {
   findZCodeAgentRuntimeBinary,
   findZCodeAgentRuntimeNodeBundle,
 } from "../runtime-tools/providerRuntimeResolver.js";
-import { isEffectiveDevelopmentNodeEnv } from "#src/runtime-tools/nodeEnv.js";
-import { createServiceLogger } from "#src/logger/serviceLogger.js";
-import { ZCodeProtocolClient } from "./zcodeProtocolClient.js";
-import { ZCodeStdioTransport } from "./zcodeStdioTransport.js";
-import { readZCodeStdioTapDevState } from "./zcodeStdioTapDevConfig.js";
 import type { ZCodeAgentPresentationSurface } from "./zcodeAgentPresentationSurface.js";
-import { shouldSpawnInDetachedProcessGroup } from "../process/processTreeTerminator.js";
-import type { RuntimeProcessLifecycleReporter } from "../process/runtimeProcessLifecycle.js";
-import { buildAgentWorkspaceIdentityEnv } from "../runtime-tools/agentProxyEnv.js";
+import { ZCodeProtocolClient } from "./zcodeProtocolClient.js";
+import { readZCodeStdioTapDevState } from "./zcodeStdioTapDevConfig.js";
+import { ZCodeStdioTransport } from "./zcodeStdioTransport.js";
 
 export interface ZCodeAgentCommand {
   /** 本地配套 CLI bundle 的存储专用 Worker 入口；远端/自定义命令不推断能力。 */
@@ -88,9 +91,8 @@ export interface ZCodeAgentProcessManagerOptions {
    * 每次 spawn agent 子进程前解析的额外环境变量（在 process.env 之后、workspace 变量之前合入）。
    * 用于把设置页的代理等配置注入子进程；按 spawn 时读取，天然「下次启动生效」。
    *
-   * context 携带本次 spawn 的 workspace 标识三元组（workspacePath/workspaceIdentity/workspaceKey），
-   * 让 CUA broker 凭据注入能按 workspace 记录 Helper admission（见 services/node.ts 的
-   * cuaProductHelperWorkspaceRegistry）。Helper lifecycle 不再回收或重启已有 Agent。
+   * context 携带本次 spawn 的 workspace 标识三元组（workspacePath/workspaceIdentity/workspaceKey）。
+   * Helper lifecycle 不再回收或重启已有 Agent。
    */
   resolveSpawnEnv?: (context: {
     workspacePath: string;
@@ -185,7 +187,9 @@ if (coverageDirectory) {
 }
 `;
 
-function buildE2EAgentCoverageEnv(env: NodeJS.ProcessEnv = process.env): Record<string, string> {
+export function buildE2EAgentCoverageEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): Record<string, string> {
   const artifactDir = env.ZCODE_E2E_ARTIFACT_DIR?.trim();
   if (env.ZCODE_E2E_COVERAGE !== "1" || !artifactDir) {
     return {};
@@ -208,7 +212,7 @@ function buildE2EAgentCoverageEnv(env: NodeJS.ProcessEnv = process.env): Record<
  * 首个 getClient 重新拉起）。v4 订阅（sessions-index/workspace-config/conversation）
  * 都活在 CLI 进程内存里，进程换代即失效——订阅方收到本事件后必须重发 subscribe。
  */
-interface ZCodeAgentRuntimeRestartedEvent {
+export interface ZCodeAgentRuntimeRestartedEvent {
   workspaceKey: string;
   runtimeIdentity: ZCodeAgentRuntimeIdentity;
 }
@@ -221,7 +225,7 @@ export interface ZCodeAgentRuntimeLifecycleEvent {
   state: "available" | "unavailable";
 }
 
-interface ZCodeAgentRuntimeIdentity {
+export interface ZCodeAgentRuntimeIdentity {
   generation: number;
   identity: string;
   processId?: number;
@@ -504,7 +508,7 @@ function applyPresentationSurfaceToCommand(
   };
 }
 
-function wrapZCodeAgentCommandWithStdioTapDevProxy(
+export function wrapZCodeAgentCommandWithStdioTapDevProxy(
   command: ZCodeAgentCommand,
   workspaceKey: string,
 ): ZCodeAgentCommand {
@@ -775,17 +779,22 @@ export class ZCodeAgentProcessManager {
         }
       });
     managed.cleanupPromise = cleanupPromise;
-    if (options.reportError !== false) {
-      void cleanupPromise.catch((error) => {
-        errorLog("ZCode agent process cleanup failed", {
-          workspaceKey: managed.runtimeIdentity.workspaceKey,
-          pid: managed.child.pid,
-          runtimeIdentity: managed.runtimeIdentity.identity,
-          reason,
-          error,
-        });
+    // Bug 原因：dispose 与重试编排竞态时，rejection 可能先于调用方 await 挂靠被判为
+    // unhandledRejection（vitest 计为运行级失败，生产等价于未处理拒绝）。catch 必须在
+    // 创建点无条件挂靠：reportError:false（重试路径）时静默吞掉，统一上报由
+    // cleanupManagedProcessWithRetry 的 await/catch 完成，告警语义不变。
+    void cleanupPromise.catch((error) => {
+      if (options.reportError === false) {
+        return;
+      }
+      errorLog("ZCode agent process cleanup failed", {
+        workspaceKey: managed.runtimeIdentity.workspaceKey,
+        pid: managed.child.pid,
+        runtimeIdentity: managed.runtimeIdentity.identity,
+        reason,
+        error,
       });
-    }
+    });
     return cleanupPromise;
   }
 
@@ -1036,6 +1045,8 @@ export class ZCodeAgentProcessManager {
         ...spawnEnv,
         ...effectiveCommand.env,
         ...(this.telemetryRequiresHostConsent ? { ZCODE_MODEL_TELEMETRY_ENABLED: "0" } : {}),
+        // 生成文件根目录由执行端 Host 唯一决定，保证 Agent 写入与 Host 读取授权一致。
+        [GEN_UI_OUTPUT_ROOT_ENV]: join(getAppConfigDir(), GEN_UI_OUTPUT_DIRECTORY),
         // 身份/隔离语义使用 workspaceIdentity；cwd 继续使用 workspacePath。
         ...buildAgentWorkspaceIdentityEnv(params.workspaceIdentity),
         ...buildE2EAgentCoverageEnv(),
@@ -1094,6 +1105,10 @@ export class ZCodeAgentProcessManager {
       requireStorageStartup: effectiveCommand.supportsStorageStartup,
       requestTimeoutMs: this.requestTimeoutMs,
     });
+    if (child.pid) {
+      const unregisterNetworkCapture = localRuntimeNetworkCapture.register(client, child.pid);
+      child.once("close", unregisterNetworkCapture);
+    }
     // Agent 进程重启后，Host 仍需要 runtime identity 区分新旧订阅和运行命令。
     // Provider Registry 由新 Worker 从所属 Environment 的 Config 重建，不再由 UI 重新下发。
     const runtimeGeneration = (this.runtimeGenerationByWorkspaceKey.get(workspaceKey) ?? 0) + 1;

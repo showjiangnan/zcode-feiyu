@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { getSettingsDir, getSettingsFile } from "./settingsPaths.js";
 import { access, readFile, mkdir, rename } from "node:fs/promises";
 import { join } from "node:path";

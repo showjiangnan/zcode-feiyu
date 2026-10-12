@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { WorkspaceMemoryOperation, WorkspaceMemoryResult } from "@zcode/shared";
 
 export function normalizeMemoryWorkspaceDisplayName(value: string): string {

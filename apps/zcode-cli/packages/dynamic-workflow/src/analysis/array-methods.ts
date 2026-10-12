@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import type { IterationCandidate } from "./sites.js";
 import {
@@ -83,13 +84,16 @@ export function handleArrayMethod(
       onReturn: (value) => void mergeInto(callbackReturn, value),
       regionStack,
     };
-    if (isReduce) bindCallbackParam(ev, cb, semantics?.accumulatorParam ?? 0, accumulator().value, cbCtx);
+    if (isReduce)
+      bindCallbackParam(ev, cb, semantics?.accumulatorParam ?? 0, accumulator().value, cbCtx);
     // Element parameters bind the fanned-out element; the standard whole-collection parameter
     // (the third of `map`-likes) IS the receiver at runtime, so it binds the same fanned-out
     // value: reads of it inside the promoted callback are downstream of the fan-out, same as
     // element reads. A positional index parameter stays unbound — it carries no element data
     // (same convention as a ternary condition / computed key), so it originates no data edge.
-    elementParams.forEach((index, i) => bindCallbackParam(ev, cb, index, i === 0 ? element : cloneValue(element), cbCtx));
+    elementParams.forEach((index, i) =>
+      bindCallbackParam(ev, cb, index, i === 0 ? element : cloneValue(element), cbCtx),
+    );
     for (const index of wholeParams) bindCallbackParam(ev, cb, index, cloneValue(element), cbCtx);
 
     if (ts.isBlock(cb.body)) {
@@ -103,7 +107,8 @@ export function handleArrayMethod(
     // the element still flows to the result as it did before.
     const fns = [...ev.evalExpr(cand.callbackExpr, ctx).fns].filter((fn) => ev.s.fnId.has(fn));
     if (fns.length > 0) {
-      const slots = Math.max(-1, ...elementParams, ...wholeParams, semantics?.accumulatorParam ?? -1) + 1;
+      const slots =
+        Math.max(-1, ...elementParams, ...wholeParams, semantics?.accumulatorParam ?? -1) + 1;
       const actuals: AbstractValue[] = Array.from({ length: slots }, () => emptyValue());
       if (isReduce) actuals[semantics?.accumulatorParam ?? 0] = accumulator().value;
       for (const index of elementParams) actuals[index] = cloneValue(element);

@@ -1,4 +1,5 @@
-type TaskNavigationWorkspaceResult =
+// Modified by ZCode Feiyu.
+export type TaskNavigationWorkspaceResult =
   | { accepted: true; openedLocalTab: boolean }
   | { accepted: false; reason: "remote_attachment_missing" };
 

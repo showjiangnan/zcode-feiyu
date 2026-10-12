@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * Layer 0: 基础设施
  * - IDisposable / DisposableStore: 资源生命周期管理
@@ -155,7 +156,9 @@ export class Emitter<T> implements IDisposable {
     if (this.disposed) {
       return;
     }
-    for (const listener of [...this.listeners]) {
+    // Listener 可在通知中增删注册，当前事件继续使用通知开始时的快照。
+    const listeners = Array.from(this.listeners);
+    for (const listener of listeners) {
       listener(event);
     }
   }

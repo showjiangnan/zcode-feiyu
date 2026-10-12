@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   COMPLETED_TOOL_PART_METADATA_SCHEMA_VERSION,
   type CompletedToolPartMetadata,
@@ -6,9 +7,7 @@ import {
 import { createMcpToolDisplay } from "../../tool/executor/result-display.js";
 
 export function mcpToolPartMetadata(
-  presentation:
-    | { serverName: string; toolName: string; description?: string }
-    | undefined,
+  presentation: { serverName: string; toolName: string; description?: string } | undefined,
 ): CompletedToolPartMetadata | undefined {
   const display = createMcpToolDisplay(presentation);
   return display
@@ -16,9 +15,7 @@ export function mcpToolPartMetadata(
     : undefined;
 }
 
-export function completedToolPartMetadata(
-  result: ToolExecutionResult,
-): CompletedToolPartMetadata {
+export function completedToolPartMetadata(result: ToolExecutionResult): CompletedToolPartMetadata {
   const serialization = result.serialization
     ? {
         truncated: result.serialization.truncated,

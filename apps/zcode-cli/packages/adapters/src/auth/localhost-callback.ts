@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 
@@ -77,10 +78,7 @@ export async function createLocalhostOAuthCallbackServer(input: {
         if (!settled) {
           settled = true;
           rejectCallback(
-            createCallbackDeniedError(
-              oauthError,
-              requestUrl.searchParams.get("error_description"),
-            ),
+            createCallbackDeniedError(oauthError, requestUrl.searchParams.get("error_description")),
           );
         }
         return;

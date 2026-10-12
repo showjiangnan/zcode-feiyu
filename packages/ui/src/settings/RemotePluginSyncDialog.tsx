@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 远端 plugin 同步弹窗集中维护加载、选择、风险提示、逐项进度和结果状态，保持与 Skill/MCP 同步弹窗一致。 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -34,7 +35,12 @@ import {
   shouldStartRemoteSyncOperation,
 } from "@/settings/RemoteSyncActions.js";
 
-type RemotePluginSyncDialogStep = "loading" | "selection" | "preflighting" | "syncing" | "complete";
+export type RemotePluginSyncDialogStep =
+  | "loading"
+  | "selection"
+  | "preflighting"
+  | "syncing"
+  | "complete";
 type Step = RemotePluginSyncDialogStep;
 type RemotePluginSyncKind = "inline" | "marketplace";
 
@@ -56,7 +62,7 @@ type RemotePluginSyncAgentService = Pick<
 
 const REMOTE_PLUGIN_SYNC_CONFIG_SCOPE = "user" as const;
 
-interface RemotePluginSyncCandidate {
+export interface RemotePluginSyncCandidate {
   id: string;
   kind: RemotePluginSyncKind;
   name: string;
@@ -87,7 +93,7 @@ interface RemotePluginSyncCandidateStatus {
   remoteMarketplaceExists?: boolean;
 }
 
-interface RemotePluginSyncRow {
+export interface RemotePluginSyncRow {
   candidate: RemotePluginSyncCandidate;
   exists: boolean;
   path?: string;
@@ -104,11 +110,11 @@ interface RemotePluginSyncResultItem extends Omit<
   status: RemotePluginSyncResultStatus;
 }
 
-interface RemotePluginSyncRunResult {
+export interface RemotePluginSyncRunResult {
   results: RemotePluginSyncResultItem[];
 }
 
-function shouldFinishRemotePluginSyncRun(
+export function shouldFinishRemotePluginSyncRun(
   currentRun: AbortController | null,
   run: AbortController,
 ): boolean {
@@ -117,7 +123,7 @@ function shouldFinishRemotePluginSyncRun(
 
 type RemotePluginSyncProgressStatus = "queued" | "syncing" | RemotePluginSyncResultStatus;
 
-interface RemotePluginSyncProgressEvent {
+export interface RemotePluginSyncProgressEvent {
   candidateId: string;
   log: string;
   pluginId: string;
@@ -188,7 +194,7 @@ function createInlineStatusKey(pluginId: string, directoryName: string): string 
   return `${pluginId.toLowerCase()}\u0000${directoryName}`;
 }
 
-function buildRemotePluginSyncRows(
+export function buildRemotePluginSyncRows(
   candidates: readonly PluginSyncCandidate[],
   statuses: readonly PluginSyncRemoteStatus[],
 ): RemotePluginSyncRow[] {
@@ -214,7 +220,7 @@ function buildRemotePluginSyncRows(
   );
 }
 
-function buildRemotePluginSyncRowsForCandidates(
+export function buildRemotePluginSyncRowsForCandidates(
   candidates: readonly RemotePluginSyncCandidate[],
   statuses: readonly RemotePluginSyncCandidateStatus[],
 ): RemotePluginSyncRow[] {
@@ -233,27 +239,27 @@ function buildRemotePluginSyncRowsForCandidates(
   });
 }
 
-function resolveDefaultRemotePluginSyncSelection(
+export function resolveDefaultRemotePluginSyncSelection(
   rows: readonly RemotePluginSyncRow[],
 ): Set<string> {
   return new Set(rows.filter((row) => !row.exists).map((row) => row.candidate.id));
 }
 
-function filterRemotePluginSyncRows(
+export function filterRemotePluginSyncRows(
   rows: readonly RemotePluginSyncRow[],
   showExistingRemotePlugins: boolean,
 ): RemotePluginSyncRow[] {
   return showExistingRemotePlugins ? [...rows] : rows.filter((row) => !row.exists);
 }
 
-function shouldAllowRemotePluginSyncDialogOpenChange(
+export function shouldAllowRemotePluginSyncDialogOpenChange(
   step: RemotePluginSyncDialogStep,
   nextOpen: boolean,
 ): boolean {
   return nextOpen || (step !== "preflighting" && step !== "syncing");
 }
 
-function buildMarketplaceRemotePluginSyncCandidates(
+export function buildMarketplaceRemotePluginSyncCandidates(
   overview: ZCodePluginsOverviewResult,
   plugins: readonly ZCodePluginInfo[],
 ): RemotePluginSyncCandidate[] {
@@ -293,7 +299,7 @@ function buildMarketplaceRemotePluginSyncCandidates(
   });
 }
 
-function buildMarketplaceRemotePluginStatuses(
+export function buildMarketplaceRemotePluginStatuses(
   candidates: readonly RemotePluginSyncCandidate[],
   remoteOverview: ZCodePluginsOverviewResult,
 ): RemotePluginSyncCandidateStatus[] {
@@ -328,7 +334,7 @@ function buildRemotePluginSyncPluginOptions(
   }
   return {
     configuredOptions: { ...configuredOptions },
-    userConfig: { ...(plugin?.userConfig ?? {}) },
+    userConfig: { ...plugin?.userConfig },
   };
 }
 
@@ -724,7 +730,7 @@ async function syncPortablePluginOptions(
     return;
   }
   const mergedOptions = {
-    ...(remotePlugin.configuredOptions ?? {}),
+    ...remotePlugin.configuredOptions,
     ...plan.options,
   };
   if (arePluginOptionsEqual(remotePlugin.configuredOptions ?? {}, mergedOptions)) {
@@ -750,7 +756,7 @@ async function syncPortablePluginOptions(
   );
 }
 
-async function syncSelectedRemotePlugins(params: {
+export async function syncSelectedRemotePlugins(params: {
   localPluginSyncService: IPluginSyncService;
   onItemProgress?: (event: RemotePluginSyncProgressEvent) => void;
   remotePluginSyncService: IPluginSyncService;

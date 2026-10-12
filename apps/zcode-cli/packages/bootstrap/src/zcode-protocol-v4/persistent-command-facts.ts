@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type {
   MessageWithParts,
   SessionId,
@@ -9,7 +9,7 @@ import type { CommandAck } from "@zcode/shared/zcode-protocol-v4";
 import type { PersistentCommandFactSource } from "./persistent-command-index.js";
 import { recoverInputAdmission } from "./recover-input-admission.js";
 
-const V4_COMMAND_FACT_SESSION_ENTRY = "v4/command_fact";
+export const V4_COMMAND_FACT_SESSION_ENTRY = "v4/command_fact";
 
 function commandAck(value: unknown): CommandAck | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;

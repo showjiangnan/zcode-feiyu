@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   ENTER_PLAN_MODE_TOOL_NAME,
   EXIT_PLAN_MODE_TOOL_NAME,
@@ -11,7 +12,7 @@ interface PlanModeTransitionContext {
   prePlanMode?: Exclude<CollaborationMode, "plan">;
 }
 
-interface PlanModeTransitionPermission {
+export interface PlanModeTransitionPermission {
   behavior: "allow" | "deny";
   reason: string;
   ruleId: string;

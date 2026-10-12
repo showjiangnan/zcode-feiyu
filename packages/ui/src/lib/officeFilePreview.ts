@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export type OfficeFilePreviewKind = "excel" | "docx" | "doc";
 
 export interface DocxPreviewFit {
@@ -135,7 +136,7 @@ function sanitizeDocumentLinkElement(element: Element): void {
   }
 }
 
-function sanitizeDocumentLinks(root: ParentNode): void {
+export function sanitizeDocumentLinks(root: ParentNode): void {
   if (root instanceof Element && root.matches(DOCUMENT_LINK_SELECTOR)) {
     sanitizeDocumentLinkElement(root);
   }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /** Chromium 在 Viz surface 建立前执行 CopyFromSurface 会抛 UnknownVizError；surface
  * 一旦建立，同样的请求立即成功。除此之外的失败（guest 销毁、跨窗口等）都是致命的。 */
 export function isTransientScreenshotCaptureError(error: unknown): boolean {
@@ -5,7 +6,7 @@ export function isTransientScreenshotCaptureError(error: unknown): boolean {
   return message.includes("UnknownVizError");
 }
 
-interface ScreenshotTransientRetryContext {
+export interface ScreenshotTransientRetryContext {
   target: "owner" | "guest";
   windowId: number;
   webContentsId: number;

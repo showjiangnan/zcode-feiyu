@@ -1,3 +1,5 @@
+// Modified by ZCode Feiyu.
+import type { RequestVerificationReason } from "@zcode/shared";
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { ZCodeProviderAccountAccess } from "@zcode/shared";
 import type { ModelApiCallObservation } from "../telemetry/index.js";
@@ -16,7 +18,15 @@ import type {
  * 它不属于业务 ModelRequest，也不允许普通调用方据此改变 Provider 或模型身份。
  * Runtime 只在统一模型调用边界设置，Adapter 在同一异步调用链内读取。
  */
+export interface ModelExecutionResourceScope {
+  readonly id: string;
+  readonly startedAt: number;
+  readonly parentId?: string;
+  onSettled(dispose: () => Promise<void>): void;
+}
+
 export interface ModelInvocationContext {
+  executionScope?: ModelExecutionResourceScope;
   metadata?: Record<string, unknown>;
   modelCall?: ModelApiCallObservation;
   modelRequestSessionType?: ModelRequestSessionType;
@@ -31,8 +41,10 @@ export interface ModelInvocationContext {
   preserveProviderStreamBoundaries?: boolean;
   refreshRuntimeHeadersBeforeAttempt?: (input: {
     accountAccess?: ZCodeProviderAccountAccess;
+    expectedAccountScope?: string;
+    rejectedProjectTokenFingerprint?: string;
     attempt: number;
-    reason?: "model-request";
+    reason?: RequestVerificationReason;
     abortSignal?: AbortSignal;
     providerId: string;
     modelId: string;
@@ -45,7 +57,9 @@ export interface ModelInvocationContext {
 
 /** Adapter 为单个物理请求 attempt 使用的动态鉴权材料。 */
 export interface ModelRequestAuth {
+  accountScope?: string;
   apiKey?: string;
+  apiKeyId?: string;
   headers?: Record<string, string>;
 }
 
@@ -76,6 +90,11 @@ export function getCurrentModelInvocationContext(): ModelInvocationContext | und
 }
 
 export function runWithModelInvocationContext<T>(context: ModelInvocationContext, run: () => T): T {
+  // 嵌套调用替换诊断上下文时仍继承真实 turn 的资源租约。
+  context = {
+    ...context,
+    executionScope: context.executionScope ?? getCurrentModelInvocationContext()?.executionScope,
+  };
   const result = modelInvocationStorage.run(context, run);
   if (!isAsyncIterable(result)) return result;
 
@@ -108,4 +127,29 @@ function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
     Symbol.asyncIterator in value &&
     typeof (value as AsyncIterable<unknown>)[Symbol.asyncIterator] === "function"
   );
+}
+
+/** 资源租约只随 runtime 的真实结束释放，不用超时猜测 turn 已完成。 */
+export async function runWithModelExecutionScope<T>(
+  id: string,
+  startedAt: number,
+  run: () => Promise<T>,
+): Promise<T> {
+  const disposers = new Set<() => Promise<void>>();
+  const scope: ModelExecutionResourceScope = {
+    id,
+    startedAt,
+    parentId: getCurrentModelInvocationContext()?.executionScope?.id,
+    onSettled: (dispose) => {
+      disposers.add(dispose);
+    },
+  };
+  try {
+    return await runWithModelInvocationContext(
+      { ...getCurrentModelInvocationContext(), executionScope: scope },
+      run,
+    );
+  } finally {
+    await Promise.allSettled([...disposers].map((dispose) => dispose()));
+  }
 }

@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
 import type { ConversationTurnRenderUnit } from "@/v4/conversationTurnRenderUnits.js";
 
-interface ConversationTimelineLiveTailSplit {
+export interface ConversationTimelineLiveTailSplit {
   virtualizedUnits: readonly ConversationTurnRenderUnit[];
   liveUnit: ConversationTurnRenderUnit | null;
   liveUnitIndex: number | null;

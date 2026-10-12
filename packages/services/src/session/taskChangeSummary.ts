@@ -1,8 +1,8 @@
+// Modified by ZCode Feiyu.
 import type {
   ZCodePersistedFileChange,
   ZCodeTaskChangeSummary,
   ZCodeTaskChangedFileSummary,
-  ZCodeTaskMeta,
 } from "@zcode/shared";
 import { computeLineChangeStat } from "@zcode/shared";
 

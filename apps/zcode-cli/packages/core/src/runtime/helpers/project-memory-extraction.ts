@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { selectActiveConversationBranch, type TraceContext } from "../deps.js";
 import {
   buildMemoryExtractionPrompt,

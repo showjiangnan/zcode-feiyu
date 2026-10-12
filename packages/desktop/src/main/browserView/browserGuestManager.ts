@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- IAB owner registry、ready/abort lifecycle 与 guest CDP 状态必须在同一状态机内原子维护，拆散会重新引入跨 scope 竞态。 */
 import { randomUUID } from "node:crypto";
 import { rm } from "node:fs/promises";
@@ -271,7 +272,7 @@ type BrowserTabRecoveryStorePort = Pick<
 > &
   Partial<Pick<BrowserTabRecoveryStore, "whenIdle">>;
 
-interface BrowserGuestManagerResidencyOptions {
+export interface BrowserGuestManagerResidencyOptions {
   tabLimit?: number;
   suspendAckTimeoutMs?: number;
   now?: () => number;
@@ -325,6 +326,19 @@ function scopeKey(context: InternalExecutionContext): string {
     context.sessionId,
     context.clientMode,
   ].join("\u0000");
+}
+
+/** tab 归属的 session 身份：不含 browserId / generation，释放回 user-tab 集合的 tab 仍然匹配。 */
+function ownedBySession(
+  owner: InternalExecutionContext,
+  context: InternalExecutionContext,
+): boolean {
+  return (
+    owner.windowId === context.windowId &&
+    owner.workspaceKey === context.workspaceKey &&
+    (owner.remoteSessionId ?? "") === (context.remoteSessionId ?? "") &&
+    owner.sessionId === context.sessionId
+  );
 }
 
 function sameScope(left: InternalExecutionContext, right: InternalExecutionContext): boolean {
@@ -996,6 +1010,7 @@ export class BrowserGuestManager {
     }
     if (command.method === "closeSession") {
       this.closeSession(context);
+      if (command.closeTabs === true) await this.closeSessionTabs(context);
       return this.withMeta({ ok: true, elapsedMs: 0 }, context);
     }
 
@@ -1950,7 +1965,7 @@ export class BrowserGuestManager {
    */
   private isInFlightScreenshotAlive(tracked: InFlightScreenshot): boolean {
     const running = this.runningRequests.get(tracked.requestId);
-    return Boolean(running) && !running.controller.signal.aborted;
+    return running !== undefined && !running.controller.signal.aborted;
   }
 
   private createRecordingEntry(
@@ -2219,7 +2234,7 @@ export class BrowserGuestManager {
           throw new Error(`recording action timed out: ${result.reason}`);
         return;
       }
-      if (typeof action.x !== "number" || typeof action.y !== "number") {
+      if (action.type !== "click" || typeof action.x !== "number" || typeof action.y !== "number") {
         throw new Error("recording click requires selector or (x,y)");
       }
       await this.executeRecordingBrowserCommand(view, {
@@ -2625,7 +2640,8 @@ export class BrowserGuestManager {
       // 如果 destroyed/mismatch 已经发起过重绑，沿用该请求，避免同一 tab 重复创建 webview。
       if (!tab.rebindRequested) this.onOpenTabRequested?.(tab.tabId, tab.owner);
       // 某些测试/旧 renderer 会在 Ready 回调内同步 attach；不能在 attach 已成功后再注册 waiter。
-      if (tab.guest && !safeBool(() => tab.guest.isDestroyed(), true)) return tab.guest;
+      const attachedGuest = tab.guest;
+      if (attachedGuest && !safeBool(() => attachedGuest.isDestroyed(), true)) return attachedGuest;
       const guest = await this.waitForGuest(tab.tabId);
       if (guest && !safeBool(() => guest.isDestroyed(), true)) return guest;
       if (attempt === 0 && !tab.hasAttachedGuest && !tab.attachFailure) return null;
@@ -2646,10 +2662,7 @@ export class BrowserGuestManager {
       tab.origin === "user" &&
       tab.claimable &&
       tab.lifecycle !== "closed" &&
-      tab.owner.windowId === context.windowId &&
-      tab.owner.workspaceKey === context.workspaceKey &&
-      (tab.owner.remoteSessionId ?? "") === (context.remoteSessionId ?? "") &&
-      tab.owner.sessionId === context.sessionId
+      ownedBySession(tab.owner, context)
     );
   }
 
@@ -2782,7 +2795,9 @@ export class BrowserGuestManager {
       title: tab.cachedTitle,
       viewport: await this.readTabViewport(tab),
       ...(this.effectiveActiveTabId(tab.owner) === tab.tabId ? { active: true } : {}),
-      ...(tab.lifecycle !== "active" ? { lifecycle: tab.lifecycle } : {}),
+      ...(["deliverable", "handoff"].includes(tab.lifecycle)
+        ? { lifecycle: tab.lifecycle as "deliverable" | "handoff" }
+        : {}),
     };
   }
 
@@ -3041,6 +3056,20 @@ export class BrowserGuestManager {
     this.defaultTabByScope.delete(scopeKey(context));
     this.sessionNames.delete(scopeKey(context));
     this.visibilityByScope.delete(scopeKey(context));
+  }
+
+  /**
+   * `closeSession({ closeTabs: true })`：真正关闭该 session 名下的全部 tab。按 session 归属而非完整
+   * browser scope 匹配——finalize / deliverable 已释放回该 session 的 tab 换到了 `unclaimed-iab` scope，
+   * 仍归它。只给永不回来认领的 session 用（dwf 子代理，
+   * docs/browser-use/2026-07-14-browser-tab-conversation-isolation-spec.md §2.3）：它的 sessionId 不是任何
+   * 对话，closeSession 保留的 view 无人可见、无人可认领，只会一直挂着 guest。
+   */
+  private async closeSessionTabs(context: InternalExecutionContext): Promise<void> {
+    const owned = [...this.tabs.values()].filter(
+      (tab) => tab.lifecycle !== "closed" && ownedBySession(tab.owner, context),
+    );
+    for (const tab of owned) await this.closeTabDurably(tab);
   }
 
   closeWindow(windowId: number): void {
@@ -3846,14 +3875,19 @@ export class BrowserGuestManager {
     }
   }
 
+  // await 期间可发生关闭；每次从对象重读状态，避免沿用调用前的类型收窄。
+  private isTabClosed(tab: ManagedTab): boolean {
+    return tab.lifecycle === "closed";
+  }
+
   private async restoreReboundGuest(
     tab: ManagedTab,
     guest: GuestWebContents,
   ): Promise<GuestWebContents | null> {
     if (tab.lifecycle === "closed" || tab.guest !== guest) return null;
     const restored = await this.restoreGuestState(tab, guest);
-    if (!restored || tab.lifecycle === "closed" || tab.guest !== guest) {
-      if (tab.lifecycle !== "closed" && tab.guest === guest) {
+    if (!restored || this.isTabClosed(tab) || tab.guest !== guest) {
+      if (!this.isTabClosed(tab) && tab.guest === guest) {
         this.warn(`browser tab guest rebind restore failed tabId=${tab.tabId}`);
       }
       return null;
@@ -4622,7 +4656,7 @@ function normalizeDialogType(type: string | undefined): BrowserDialog["type"] {
 }
 
 /** Browser response meta 会进入模型轨迹和调试日志；只保留 origin/path，绝不携带 credential/query/hash。 */
-function sanitizeBrowserMetaUrl(value: string): string | undefined {
+export function sanitizeBrowserMetaUrl(value: string): string | undefined {
   if (!value) return undefined;
   try {
     const url = new URL(value);

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // 脚本 transcript 的「日志簿」形态：将卡片组织为章节（阶段）、时间标尺和命令输出尾部。
 // 无 React、无 DOM、无取数。
@@ -107,7 +108,7 @@ interface PeekLine {
   error: boolean;
 }
 
-function isErrorLine(line: string): boolean {
+export function isErrorLine(line: string): boolean {
   const trimmed = line.trim();
   return /^([×✗✖]|x\s|FAIL\b|ERR(OR)?\b|Error\b|error:)/i.test(trimmed) || /Error:/.test(trimmed);
 }
@@ -136,4 +137,9 @@ export function rememberedOpen(key: string): boolean {
 
 export function setRememberedOpen(key: string, open: boolean): void {
   openState.set(key, open);
+}
+
+/** 测试用：清空展开态记忆。 */
+export function resetWorkspaceEntryOpenState(): void {
+  openState.clear();
 }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { UiThemeMode } from "@zcode/contracts";
 import type { TuiThemeTokens } from "./types.js";
 
@@ -123,4 +124,3 @@ export const BUILTIN_TUI_THEMES: Record<UiThemeMode, TuiThemeTokens> = {
   dark: DARK_TUI_THEME,
   light: LIGHT_TUI_THEME,
 };
-

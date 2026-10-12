@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { BrowserWindow } from "electron";
 import {
   type ExternalWorkspaceOpenDialogCopy,
@@ -17,7 +18,7 @@ export interface ExplicitStartupWorkspaceRequest {
   source: ExplicitStartupWorkspaceSource;
 }
 
-interface StartupDeepLinkConsumptionGate {
+export interface StartupDeepLinkConsumptionGate {
   markStartupRequestConsumed: (request: ExplicitStartupWorkspaceRequest) => void;
   shouldHandleReadyProtocolUrl: (protocolUrl: string | null) => boolean;
 }

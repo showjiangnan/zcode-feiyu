@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 分屏布局计算（纯函数）：分割树 → 每个叶子/分隔条的绝对定位表达式。
 // 叶子扁平渲染为容器直接子元素（key = paneId 稳定）——拆分/关闭只是换 rect，
 // React 不重挂任何存活 pane（virtualizer 测高、滚动位置、composer 草稿全保留）；
@@ -18,12 +19,12 @@ export interface RectExpr {
   height: string;
 }
 
-interface LeafLayout {
+export interface LeafLayout {
   paneId: string;
   rect: RectExpr;
 }
 
-interface DividerLayout {
+export interface DividerLayout {
   splitId: string;
   direction: SplitDirection;
   /** store 当前占比（拖拽起点 + 容器 CSS 变量初值）。 */
@@ -114,7 +115,7 @@ function collectNode(
   );
 }
 
-interface WorkbenchLayout {
+export interface WorkbenchLayout {
   leaves: LeafLayout[];
   dividers: DividerLayout[];
 }

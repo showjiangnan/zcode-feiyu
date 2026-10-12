@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // ResolveWorkflowQuestion Tool Handler
 // ============================================================
@@ -10,6 +11,17 @@
 // 判别键与文案分开维护则两处迟早会说不同的话，而这里的读者是模型——它读到的就是它的下一步。
 // 因此本文件的三个拒绝分支只负责挑一个稳定的 errorCode，不重写一个字。
 
+// ============================================================
+// ResolveWorkflowQuestion Tool Handler
+// ============================================================
+// 主代理用它回答一个 actor 从**正在跑的** workflow 里升级上来的阻塞问题。见端口 `DynamicWorkflowRunPort.resolveQuestion`。
+//
+// handler 刻意**很薄**：qid 查表、driver 结算、事件双轨全在 port 服务端，这里只做三件事:
+// 取端口（typeof 探测，照 resume/listRuns 先例）、透传 qid 与答案、把结果投影成契约形状。
+//
+// 拒绝文案**原样透传**服务端的 message：那段文字由写注册表的那一层写好（陈述现状与下一步），
+// 判别键与文案分开维护则两处迟早会说不同的话，而这里的读者是模型——它读到的就是它的下一步。
+// 因此本文件的三个拒绝分支只负责挑一个稳定的 errorCode，不重写一个字。
 import {
   RESOLVE_WORKFLOW_QUESTION_TOOL_NAME,
   ResolveWorkflowQuestionInputJsonSchema,
@@ -20,12 +32,7 @@ import {
   type ResolveWorkflowQuestionInput,
   type ResolveWorkflowQuestionOutput,
 } from "@zcode/contracts";
-import type {
-  ToolEntry,
-  ToolExecutionContext,
-  ToolHandler,
-  ToolHandlerFailure,
-} from "../types.js";
+import type { ToolEntry, ToolExecutionContext, ToolHandler, ToolHandlerFailure } from "../types.js";
 
 const RESOLVE_WORKFLOW_QUESTION_TIMEOUT_MS = 15_000;
 /** 输出只有一段确认文案，24k 绰绰有余（照 ResumeWorkflowRun）。 */
@@ -101,9 +108,7 @@ const resolveWorkflowQuestionHandler: ToolHandler = async (
   input,
   context: ToolExecutionContext,
 ) => {
-  const parsed = ResolveWorkflowQuestionInputSchema.parse(
-    input,
-  ) as ResolveWorkflowQuestionInput;
+  const parsed = ResolveWorkflowQuestionInputSchema.parse(input) as ResolveWorkflowQuestionInput;
 
   const port = context.dynamicWorkflowRunPort;
   if (port === undefined || typeof port.resolveQuestion !== "function") {

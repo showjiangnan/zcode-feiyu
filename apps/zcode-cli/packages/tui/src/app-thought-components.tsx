@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import React from "react";
 import type { TuiCopy } from "@zcode/i18n";
 import type { ThoughtTranscriptPart } from "./app-model.js";
@@ -29,7 +30,7 @@ export function ThoughtTranscriptPartView({
   });
 }
 
-function ThoughtTranscriptPartFrame({
+export function ThoughtTranscriptPartFrame({
   copy = DEFAULT_TUI_COPY,
   expanded,
   onToggle,
@@ -78,7 +79,7 @@ function ThoughtTranscriptPartFrame({
   );
 }
 
-function thoughtPlaceholderLabel(part: ThoughtTranscriptPart, copy: TuiCopy): string {
+export function thoughtPlaceholderLabel(part: ThoughtTranscriptPart, copy: TuiCopy): string {
   return part.status === "thinking"
     ? copy.transcript.thought.thinking
     : copy.transcript.thought.complete;

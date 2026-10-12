@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { LogContext, LogEntry, LogRedactor } from "@zcode/contracts";
 
 export interface SerializedLogError {
@@ -65,10 +66,7 @@ export function stripReservedContext(context: LogContext): Record<string, unknow
   return Object.keys(rest).length === 0 ? undefined : rest;
 }
 
-export function toSerializableEntry(
-  entry: LogEntry,
-  redactor: LogRedactor,
-): SerializableLogEntry {
+export function toSerializableEntry(entry: LogEntry, redactor: LogRedactor): SerializableLogEntry {
   const value = {
     timestamp: entry.timestamp.toISOString(),
     level: entry.levelName.toLowerCase(),

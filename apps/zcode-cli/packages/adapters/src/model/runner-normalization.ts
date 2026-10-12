@@ -1,4 +1,4 @@
-import type { LanguageModelUsage, TextStreamPart, ToolSet } from "ai";
+// Modified by ZCode Feiyu.
 import type {
   Logger,
   ModelReasoningContentBlock,
@@ -8,10 +8,11 @@ import type {
   ModelToolResult,
   ModelUsage,
 } from "@zcode/contracts";
-import { normalizeModelToolInput } from "./tool-input-normalization.js";
-import type { AiSdkGenerateTextResult } from "./runner-runtime.js";
+import type { LanguageModelUsage, TextStreamPart, ToolSet } from "ai";
 import { asRecord, isRecord, numberProperty, stringProperty } from "./runner-record.js";
+import type { AiSdkGenerateTextResult } from "./runner-runtime.js";
 import { normalizeModelToolName } from "./tool-call-validation.js";
+import { normalizeModelToolInput } from "./tool-input-normalization.js";
 
 export function normalizeUsage(usage?: Partial<LanguageModelUsage>): ModelUsage {
   const rawUsage = isRecord(usage?.raw) ? usage.raw : undefined;
@@ -294,7 +295,7 @@ function buildFinishProviderMetadata(
   const merged = {
     ...providerMetadata,
     ...(response ? { response } : {}),
-    ...(responseBody ?? {}),
+    ...responseBody,
     ...(record.rawFinishReason === undefined ? {} : { rawFinishReason: record.rawFinishReason }),
   };
 

@@ -1,4 +1,5 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
+import { sampleModel } from "./sample-model.js";
 import { grantPermissionFullAccess } from "../permission-full-access.js";
 import { refreshComputerUse } from "./computer-use-refresh.js";
 import {
@@ -26,6 +27,7 @@ import { getPendingPermissionRequests } from "./config.js";
 import { recordUserInputAutoResolutionUpdate } from "./interaction-auto-resolution.js";
 import { recordDynamicWorkflowRunProgress } from "./dynamic-workflow-run-progress.js";
 import { trackResumedDynamicWorkflowRun } from "./dynamic-workflow-run-track.js";
+import { activateDynamicWorkflowTools } from "./dynamic-workflow-activation.js";
 import { startSavedWorkflowRun } from "./dynamic-workflow-run-start.js";
 import { amendWorkflowRunSettings } from "./dynamic-workflow-run-settings.js";
 import { getProjection } from "./config.js";
@@ -81,7 +83,7 @@ import { createContextBuilderFromSnapshot } from "./context.js";
 import { loadProjectMemoryRoot } from "./context.js";
 import { logMemorySkipped } from "./context.js";
 import { injectPluginReferenceReminderFromTurn } from "./plugin-reference.js";
-import { initializeMcp } from "./mcp.js";
+import { initializeMcp, refreshMcpToolsIfChanged } from "./mcp.js";
 import { startMcpStartup } from "./mcp.js";
 import { discoverSkillsForContext } from "./context.js";
 import { createConfigOnlyContextSnapshot } from "./context.js";
@@ -232,6 +234,7 @@ export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void 
   proto.recordUserInputAutoResolutionUpdate = recordUserInputAutoResolutionUpdate;
   proto.recordDynamicWorkflowRunProgress = recordDynamicWorkflowRunProgress;
   proto.trackResumedDynamicWorkflowRun = trackResumedDynamicWorkflowRun;
+  proto.activateDynamicWorkflowTools = activateDynamicWorkflowTools;
   proto.startSavedWorkflowRun = startSavedWorkflowRun;
   proto.amendWorkflowRunSettings = amendWorkflowRunSettings;
   proto.getProjection = getProjection;
@@ -284,6 +287,7 @@ export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void 
   proto.logMemorySkipped = logMemorySkipped;
   proto.injectPluginReferenceReminderFromTurn = injectPluginReferenceReminderFromTurn;
   proto.initializeMcp = initializeMcp;
+  proto.refreshMcpToolsIfChanged = refreshMcpToolsIfChanged;
   proto.startMcpStartup = startMcpStartup;
   proto.refreshComputerUse = refreshComputerUse;
   proto.discoverSkillsForContext = discoverSkillsForContext;
@@ -388,6 +392,7 @@ export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void 
   proto.persistPart = persistPart;
   proto.rebuildProjection = rebuildProjection;
   proto.generateWorkspaceText = generateWorkspaceText;
+  proto.sampleModel = sampleModel;
   proto.drainMemoryExtractions = drainMemoryExtractions;
   proto.isProjectMemoryEnabled = isProjectMemoryEnabled;
 }

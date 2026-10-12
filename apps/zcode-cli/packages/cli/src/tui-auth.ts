@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { loadBootstrapModule } from "./bootstrap-loader.js";
 import { loadCliDotenv } from "./env.js";
 import type { RunDependencies } from "./cli-types.js";
@@ -7,10 +8,7 @@ import type {
   CommandCenterLoginOptions,
 } from "./command-center/types.js";
 
-export async function loginForTui(
-  deps: RunDependencies,
-  options?: CommandCenterLoginOptions,
-) {
+export async function loginForTui(deps: RunDependencies, options?: CommandCenterLoginOptions) {
   const env = deps.env ?? process.env;
   const workingDirectory = (deps.cwd ?? process.cwd)();
   const dotenvResult = (deps.loadDotenv ?? loadCliDotenv)({

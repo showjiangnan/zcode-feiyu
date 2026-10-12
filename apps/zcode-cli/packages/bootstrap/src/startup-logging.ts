@@ -1,5 +1,6 @@
+// Modified by ZCode Feiyu.
 import { performance } from "node:perf_hooks";
-import type { LogContext, Logger, LoggerFactory, LogLevel } from "@zcode/contracts";
+import type { LogContext, Logger } from "@zcode/contracts";
 
 interface StartupTimerLogOptions {
   context?: LogContext;

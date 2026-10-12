@@ -1,8 +1,9 @@
+// Modified by ZCode Feiyu.
 import { memo } from "react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { PendingCommandEntry } from "@/v4/pendingCommandRegistry.js";
 
-interface PendingCommandRecoveryBannerProps {
+export interface PendingCommandRecoveryBannerProps {
   entry: PendingCommandEntry;
   onResend?: () => void;
   onDismiss: () => void;

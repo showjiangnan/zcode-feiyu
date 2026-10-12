@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { basename, join } from "node:path";
 import { withSecureMemoryFile } from "@zcode/adapters/fs";
 import type { WorkspaceMemoryResult } from "@zcode/shared";

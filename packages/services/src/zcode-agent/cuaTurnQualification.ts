@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { ComputerUseRuntimeContext } from "@zcode/zcode-cua";
 import type { ServiceLogger } from "#src/logger/serviceLogger.js";
 import type { ZCodeAgentReadSessionParams } from "./zcodeAgent.js";

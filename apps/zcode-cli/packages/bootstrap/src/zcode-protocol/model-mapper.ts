@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ModelSelection } from "@zcode/shared";
 import { parseProviderQualifiedModelSelection } from "../app/provider-registry-selection.js";
 
@@ -5,7 +6,7 @@ export function formatProtocolModelSelection(ref: ModelSelection): string {
   return `${ref.providerId}/${ref.modelId}`;
 }
 
-function modelSelectionFromString(input: string): ModelSelection {
+export function modelSelectionFromString(input: string): ModelSelection {
   const selection = parseProviderQualifiedModelSelection(input);
   if (!selection) throw new Error(`Invalid provider-qualified model selection: ${input}`);
   return selection;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 按 endpoint + workspaceKey 复用的 SessionsIndexStore 注册表（引用计数）——多 pane / 多列表
 // 消费者并行订阅的地基：同一 endpoint 同一 workspace 的多个消费者共享一条 sessions-index 订阅
 // （侧栏切数据源时，useGlobalTaskList 这类处理 workspace scope 数组、无法逐 scope 调 hook 的
@@ -73,6 +74,10 @@ function reportScopeEndpointMismatch(
     workspaceKey: scope.workspaceKey,
     workspacePath: scope.workspacePath,
   });
+}
+
+export function resetSessionsIndexScopeEndpointMismatchReportsForTest(): void {
+  reportedScopeEndpointMismatches.clear();
 }
 
 function createSessionsIndexTransport(
@@ -171,4 +176,9 @@ export function releaseSessionsIndex(
     entriesByStore.delete(entry.store);
     if (registry.get(entryKey) === entry) registry.delete(entryKey);
   }
+}
+
+/** 仅测试/诊断用：当前注册的 endpoint+workspaceKey 条目数。 */
+export function sessionsIndexRegistrySize(): number {
+  return registry.size;
 }

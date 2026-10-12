@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * display 文本的字节限长助手。从 result-display.ts 拆出：观察类工作流 display 的构造
  * （workflow-observation-display.ts）与既有 payload 构造共用同一道截断语义，而两个文件
@@ -6,7 +7,10 @@
 
 const DISPLAY_TRUNCATION_SUFFIX = "\n...[truncated]";
 
-export function boundDisplayText(value: string, maxBytes: number): { value: string; truncated: boolean } {
+export function boundDisplayText(
+  value: string,
+  maxBytes: number,
+): { value: string; truncated: boolean } {
   if (Buffer.byteLength(value, "utf8") <= maxBytes) {
     return { value, truncated: false };
   }

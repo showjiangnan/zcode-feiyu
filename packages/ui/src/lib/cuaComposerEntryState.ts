@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /**
  * CUA 输入框常驻入口按钮的状态推导（零依赖纯函数）。
  *
@@ -25,7 +25,7 @@ export type CuaComposerEntryUiState =
   | "enabled"
   | "error";
 
-interface CuaComposerEntryInputs {
+export interface CuaComposerEntryInputs {
   /** macOS 本地桌面且具备 CUA onboarding 能力（UA + preload capability 双判）。 */
   macLocalDesktop: boolean;
   /** Windows 本地桌面。 */

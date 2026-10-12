@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Saved workflows - frontmatter codec
 // ============================================================
@@ -18,6 +19,25 @@
 // body 用 YAML 而不是 JSON：`yaml` 已经是 @zcode/core 的直接依赖（不新增依赖），而手改
 // 一段 YAML 比手改一段带引号和逗号的 JSON 容错得多——这个文件的读者是人。
 
+// ============================================================
+// Saved workflows - frontmatter codec
+// ============================================================
+//
+// 文件形状：
+//
+//     /* zcode-workflow
+//     description: ...
+//     args:
+//       pr: { type: string, required: true }
+//     */
+//     <plain dwf script>
+//
+// 为什么是**块注释**而不是 Markdown 那样的 `---` 围栏：保存的文件扩展名是 `.dwf.ts`，
+// 用户会在编辑器里打开它、也可能直接手改。块注释让整个文件仍是合法 TypeScript，于是高亮、
+// 括号匹配、格式化全都照常工作；`---` 会把文件第一行就变成语法错误。
+//
+// body 用 YAML 而不是 JSON：`yaml` 已经是 @zcode/core 的直接依赖（不新增依赖），而手改
+// 一段 YAML 比手改一段带引号和逗号的 JSON 容错得多——这个文件的读者是人。
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { SavedWorkflowMetaSchema, type SavedWorkflowMeta } from "@zcode/contracts";
 

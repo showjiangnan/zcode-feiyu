@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { GitRepositorySummary } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
@@ -38,6 +39,7 @@ interface GitBranchSwitcherProps {
   popoverClassName?: string;
   branchListClassName?: string;
   markAsWorkspaceHeaderBranch?: boolean;
+  compactForRemoteControl?: boolean;
   popoverSide?: "top" | "bottom" | "left" | "right";
   avoidPopoverCollisions?: boolean;
   showFooterActions?: boolean;
@@ -53,6 +55,7 @@ export function GitBranchSwitcher({
   popoverClassName,
   branchListClassName,
   markAsWorkspaceHeaderBranch = false,
+  compactForRemoteControl = false,
   popoverSide = "top",
   avoidPopoverCollisions = true,
   showFooterActions = true,
@@ -186,7 +189,8 @@ export function GitBranchSwitcher({
               })}
               className={cn(
                 "min-w-0 rounded-full text-ui-base/relaxed",
-                "max-w-full pl-3 pr-2",
+                // Bugfix: 手机远控聊天页底部空间很窄，分支名会挤压输入工具栏；远控模式只保留图标入口。
+                compactForRemoteControl ? "size-8 px-0" : "max-w-full pl-3 pr-2",
                 triggerClassName,
               )}
             >
@@ -194,20 +198,22 @@ export function GitBranchSwitcher({
                 data-branch-switcher-primary-icon="true"
                 className="size-4 text-foreground-subtle"
               />
-              <>
-                <span className="min-w-0 max-w-25 truncate text-left">{triggerLabel}</span>
-                {loadingBranches || mutationPending ? (
-                  <LoaderIcon
-                    data-branch-switcher-trailing-icon="true"
-                    className="size-3.5 animate-spin text-foreground-subtle"
-                  />
-                ) : (
-                  <ChevronDownIcon
-                    data-branch-switcher-trailing-icon="true"
-                    className="size-3.5 text-foreground-subtle"
-                  />
-                )}
-              </>
+              {!compactForRemoteControl ? (
+                <>
+                  <span className="min-w-0 max-w-25 truncate text-left">{triggerLabel}</span>
+                  {loadingBranches || mutationPending ? (
+                    <LoaderIcon
+                      data-branch-switcher-trailing-icon="true"
+                      className="size-3.5 animate-spin text-foreground-subtle"
+                    />
+                  ) : (
+                    <ChevronDownIcon
+                      data-branch-switcher-trailing-icon="true"
+                      className="size-3.5 text-foreground-subtle"
+                    />
+                  )}
+                </>
+              ) : null}
             </Button>
           </PopoverTrigger>
           <PopoverContent

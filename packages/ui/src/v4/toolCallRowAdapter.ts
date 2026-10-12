@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // v4 ToolCallRow → 旧 ToolCallBlocks 输入形态（TaskChatToolCallTreeNode）适配。
 // 纯函数：ToolCallBlock 及其 renderers（execute/read/edit/...）吃的是旧 ZCode Agent 的
 // TaskChatToolCall 形态；v4 row 自包含，字段一一映射即可，不需要看别的行。
@@ -118,6 +119,8 @@ export function toolCallRowToLegacyNode(row: ToolCallRow): TaskChatToolCallTreeN
         v4Status: row.status,
         ...(row.cuaApp ? { cuaApp: row.cuaApp } : {}),
         ...(legacyDisplay ? { display: legacyDisplay } : {}),
+        // R7：运行中进度（MCP notifications/progress）供 McpToolCallBlock 头部进度条消费。
+        ...(row.progress ? { progress: row.progress } : {}),
         inputPreviewComplete: inputPreview.inputPreviewComplete,
         streamingRawInputLength: inputPreview.streamingRawInputLength,
       },

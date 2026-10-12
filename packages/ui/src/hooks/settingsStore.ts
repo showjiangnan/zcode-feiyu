@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { AppSettings } from "@zcode/shared";
 import type { ISettingService } from "@zcode/services";
 

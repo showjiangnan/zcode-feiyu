@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { ZCODE_AGENT_PROVIDER, type PlanIdentitySnapshot, type ZCodeProvider } from "@zcode/shared";
 import { buildPromptTelemetryExtraDetail } from "@/lib/messageTelemetry.js";
 import { encodeCustomModelValue } from "@/lib/zcodeCustomModelValue.js";
@@ -6,7 +7,7 @@ import {
   legacyTelemetryProviderId,
 } from "@/lib/providerTelemetryIdentity.js";
 
-function resolveLegacyConversationModelValue(params: {
+export function resolveLegacyConversationModelValue(params: {
   configProvider?: string | null;
   modelName?: string | null;
 }): string | null | undefined {

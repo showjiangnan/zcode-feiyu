@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { create } from "zustand";
 import type { ISubagentsService } from "@zcode/services";
 import {
@@ -8,7 +9,7 @@ import {
 } from "@zcode/shared";
 import { logger } from "@/logger.js";
 
-interface SubagentsContextSnapshot {
+export interface SubagentsContextSnapshot {
   workspacePath: string;
   workspaceIdentity: string | null;
   provider: ZCodeProvider;

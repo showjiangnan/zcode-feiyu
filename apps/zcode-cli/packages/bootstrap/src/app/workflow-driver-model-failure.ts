@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // AgentRuntime-backed WorkflowDriver：模型侧失败的收容
 // ============================================================
@@ -7,6 +8,126 @@
 // 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
 // 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
 
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
+// ============================================================
+// AgentRuntime-backed WorkflowDriver：模型侧失败的收容
+// ============================================================
+// workflow-driver.ts 顶到 oxlint max-lines 上限（400 行），把 turn 被拒时对模型侧错误的
+// 收容（策略表判 stop → 整个 run
+// stopped(provider)；context_exceeded → 节点 ContextLimit 失败；retry / cancelled → 退避重驱）
+// 拆到本文件。自由函数经 {@link ModelFailureHost} 读 driver 的依赖与 sink、回调 runTurn；私有状态
+// 不外露。常量与纯辅助（退避曲线、Retry-After 读取、称呼）住在 workflow-driver-helpers.ts。
 import {
   inspectWorkflowModelFailure,
   type WorkflowModelFailureInspection,

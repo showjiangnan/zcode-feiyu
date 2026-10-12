@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DesktopCommandIds } from "@zcode/shared";
 import { isControlSnapshot, type ControlUiRequest } from "@zcode/zcode-cua/control-contract";

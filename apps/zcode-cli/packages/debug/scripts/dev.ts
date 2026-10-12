@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { once } from "node:events";
 import { fileURLToPath } from "node:url";
 import { createServer as createViteServer } from "vite";

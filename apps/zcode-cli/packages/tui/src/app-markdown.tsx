@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { baseComponents } from "@mbears/opentui-react";
 import React from "react";
 import { createMarkdownSyntaxStyle } from "./app-markdown-theme.js";
@@ -19,7 +20,7 @@ const h = React.createElement as (
   ...children: React.ReactNode[]
 ) => React.ReactElement;
 
-function detectMarkdownRenderMode(
+export function detectMarkdownRenderMode(
   components: Record<string, unknown> = baseComponents,
 ): MarkdownRenderMode {
   if (typeof components.markdown === "function") return "markdown";

@@ -1,8 +1,9 @@
+// Modified by ZCode Feiyu.
 import type { PipSessionEvent } from "@zcode/zcode-cua/pip-session";
 
 type FocusEvent = Extract<PipSessionEvent, { kind: "focus-changed" }>;
 
-interface CuaPipFocusRouter {
+export interface CuaPipFocusRouter {
   updateActiveSession(windowId: number, sessionId: string | null): void;
   focusWindow(windowId: number): void;
   blurWindow(windowId: number): void;

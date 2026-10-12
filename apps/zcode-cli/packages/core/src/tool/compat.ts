@@ -1,4 +1,5 @@
-const AGENT_TOOL_NAME = "Agent";
+// Modified by ZCode Feiyu.
+export const AGENT_TOOL_NAME = "Agent";
 export const TASK_TOOL_NAME = "Task";
 
 const subagentDispatchToolNames = new Set<string>([AGENT_TOOL_NAME, TASK_TOOL_NAME]);

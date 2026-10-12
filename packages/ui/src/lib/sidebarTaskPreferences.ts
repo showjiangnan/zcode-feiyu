@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { BrowserStorageLike } from "@/lib/browserEnvironment.js";
 import { getSafeLocalStorage } from "@/lib/browserEnvironment.js";
 
@@ -9,7 +10,7 @@ interface SidebarTaskPreferences {
   sortBy: SidebarTaskSortBy;
 }
 
-const SIDEBAR_TASK_PREFERENCES_STORAGE_KEY = "zcode-sidebar-task-preferences";
+export const SIDEBAR_TASK_PREFERENCES_STORAGE_KEY = "zcode-sidebar-task-preferences";
 
 const DEFAULT_SIDEBAR_TASK_PREFERENCES: SidebarTaskPreferences = {
   organizeBy: "project",

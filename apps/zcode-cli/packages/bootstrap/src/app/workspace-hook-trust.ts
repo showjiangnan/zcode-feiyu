@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createDefaultFileWorkspaceHookTrustStore } from "@zcode/adapters/storage";
 import {
   InMemoryWorkspaceHookPolicyProvider,
@@ -32,7 +33,7 @@ import {
 import { createWorkspaceHookReviewMutationPort } from "./workspace-hook-review-mutation.js";
 import type { WorkspaceHookReviewHostContext } from "./types.js";
 
-interface WorkspaceHookRuntimeSecurity {
+export interface WorkspaceHookRuntimeSecurity {
   admission: WorkspaceHookRuntimeAdmissionPort;
   snapshot: WorkspaceHookBundleSnapshot;
   /**

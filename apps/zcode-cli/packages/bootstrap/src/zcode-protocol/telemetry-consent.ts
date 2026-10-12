@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { zcodeWorkspaceUpdateTelemetryConsentParamsSchema } from "@zcode/shared";
 import { setPreparedModelTelemetryEnabled } from "@zcode/telemetry";
 import { parseParams } from "./server-types.js";

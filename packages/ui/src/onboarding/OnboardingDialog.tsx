@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- onboarding 弹窗集中编排欢迎页、会话迁移、外部导入和最终执行状态，拆开会增加跨步骤状态传递复杂度 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog.js";
@@ -237,6 +238,8 @@ export function OnboardingDialog(props: {
   }, [sessionMigration.candidates]);
 
   const selectedWorkspaceCount = selectedWorkspacePaths.length;
+  // 暂时隐藏数据迁移向导里的代理设置步骤，同时不把默认选中的代理设置暗中计入迁移任务。
+  const settingsTaskCount = 0;
   /** 既无会话也无外部导入项时，禁止进入迁移步骤。 */
   const beginMigrationDisabled =
     selectedWorkspaceCount === 0 &&
@@ -252,6 +255,7 @@ export function OnboardingDialog(props: {
   const totalExecutionTaskCount =
     finishExecution.sessionTotalCount +
     finishExecution.agentsFileTotalCount +
+    settingsTaskCount +
     externalImportSelections.length;
   const completedExecutionTaskCount =
     finishExecution.sessionCompletedCount +
@@ -490,6 +494,7 @@ export function OnboardingDialog(props: {
               <OnboardingWizardFooter
                 currentStep={wizardStep}
                 selectedWorkspaceCount={selectedWorkspaceCount}
+                settingsTaskCount={settingsTaskCount}
                 finishRunning={finishExecution.running}
                 finishReady={finishExecution.finished}
                 onBackToWelcome={() => setView("welcome")}
@@ -499,6 +504,12 @@ export function OnboardingDialog(props: {
                 onFinish={settingsSync.actions.finish}
                 beginMigrationDisabled={beginMigrationDisabled}
               />
+              {/*
+                暂时隐藏数据迁移向导里的代理设置步骤，批量选择按钮随步骤一起隐藏。
+                onAgentSettingsBulkToggle={toggleAgentSettingsBulk}
+                agentSettingsBulkToggleDisabled={agentSettingsBulkToggleDisabled}
+                agentSettingsBulkIsClear={agentSettingsFullySelected}
+              */}
             </div>
           </div>
         )}

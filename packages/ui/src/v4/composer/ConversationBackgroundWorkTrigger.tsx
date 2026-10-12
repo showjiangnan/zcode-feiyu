@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { memo, useMemo } from "react";
 import { ActivityIcon, BotIcon, SquareTerminalIcon, Workflow } from "lucide-react";
 import { TID_V4_COMPOSER_BACKGROUND_WORK_TRIGGER } from "@zcode/shared";
@@ -6,14 +7,14 @@ import { Button } from "@/components/ui/button.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
-interface ComposerBackgroundWorkCounts {
+export interface ComposerBackgroundWorkCounts {
   bashCount: number;
   workflowCount: number;
   subagentCount: number;
   totalCount: number;
 }
 
-function getComposerBackgroundWorkCounts(
+export function getComposerBackgroundWorkCounts(
   backgroundWorks: readonly BackgroundWorkSummary[],
   runningSubagentCount = 0,
 ): ComposerBackgroundWorkCounts {
@@ -38,7 +39,7 @@ function getComposerBackgroundWorkCounts(
   };
 }
 
-interface ConversationBackgroundWorkTriggerProps {
+export interface ConversationBackgroundWorkTriggerProps {
   backgroundWorks: readonly BackgroundWorkSummary[];
   runningSubagentCount?: number;
   onOpen?: () => void;

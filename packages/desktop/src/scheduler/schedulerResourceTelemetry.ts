@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * cron scheduler 进程自身的资源遥测。
  *
@@ -18,7 +19,7 @@ interface SchedulerResourceTelemetryTimerHandle {
   unref?(): void;
 }
 
-interface StartSchedulerResourceTelemetryOptions extends NodeSelfResourceSamplerOptions {
+export interface StartSchedulerResourceTelemetryOptions extends NodeSelfResourceSamplerOptions {
   /** parentPort 的发送口；parentPort 不可用时调用方传一个 no-op。 */
   postMessage: (message: SchedulerToMainMessage) => void;
   readMemoryUsage?: () => NodeJS.MemoryUsage;

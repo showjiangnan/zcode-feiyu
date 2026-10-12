@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export {
   createSqliteSessionStore,
   getDefaultSessionDbPath,
@@ -16,6 +17,7 @@ export type {
   DwfRunIntrospectionQueries,
   DwfRunLifeSpan,
 } from "./session-store/repositories/dwf-journal.js";
+export type { DwfEventPageQuery } from "./session-store/repositories/dwf-journal-pages.js";
 export type {
   DwfRunDetailRow,
   DwfRunListItem,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   CoreErrorType,
   READ_DEFAULT_MAX_LINES,
@@ -17,7 +18,7 @@ const EMPTY_FILE_REMINDER = formatReadToolResultWarning(
 );
 const READ_TOKEN_BUDGET_PARTIAL_TARGET = Math.floor(READ_MAX_OUTPUT_TOKENS * 0.85);
 
-interface ReadTextFileForModelOptions {
+export interface ReadTextFileForModelOptions {
   abortSignal?: AbortSignal;
   allowPartialFallback?: boolean;
   filePath: string;

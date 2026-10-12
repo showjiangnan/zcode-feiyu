@@ -1,4 +1,5 @@
-interface TaskFindNavigationState {
+// Modified by ZCode Feiyu.
+export interface TaskFindNavigationState {
   activeIndex: number;
   navigationRequestId: number;
   query: string;

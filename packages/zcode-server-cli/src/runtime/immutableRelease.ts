@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { serverRuntimeManifestSchema, type ServerTarget } from "./manifest.js";
 
-interface ReleaseIdentity {
+export interface ReleaseIdentity {
   archiveSha256: string;
   target: ServerTarget;
   version: string;
@@ -14,7 +15,7 @@ interface ReleaseIntegrity extends ReleaseIdentity {
   contentSha256: string;
 }
 
-const RELEASE_INTEGRITY_FILE = ".release-integrity.json";
+export const RELEASE_INTEGRITY_FILE = ".release-integrity.json";
 
 async function hashReleaseTree(root: string, relativeRoot = ""): Promise<string> {
   const hash = createHash("sha256");

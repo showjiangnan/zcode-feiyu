@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
 import type { UsageEntitlementSnapshot, UsageQuotaLimit } from "@zcode/shared";
 
-function normalizeQuotaModel(value: string): string {
+export function normalizeQuotaModel(value: string): string {
   return value
     .trim()
     .toLowerCase()

@@ -1,37 +1,13 @@
-// Modified by ZCode Feiyu contributors (2026).
-// ============================================================
-// SQLite session target helpers
-// ============================================================
-
-import { randomUUID } from "node:crypto";
+// Modified by ZCode Feiyu.
 import type { DatabaseSync } from "node:sqlite";
 import type { SessionId, SessionGoal, GoalStatus } from "@zcode/contracts";
-
-interface TargetRow {
-  session_id: string;
-  target_id: string;
-  objective: string;
-  summary_title: string | null;
-  status: string;
-  token_budget: number | null;
-  tokens_used: number;
-  time_used_seconds: number;
-  active_input_id: string | null;
-  active_run_started_at: number | null;
-  active_run_last_seen_at: number | null;
-  time_created: number;
-  time_updated: number;
-}
-
-export function readSessionTarget(
-  db: DatabaseSync,
-  input: { sessionID: SessionId },
-): SessionGoal | null {
-  const row = db
-    .prepare("select * from session_target where session_id = ?")
-    .get(input.sessionID) as TargetRow | undefined;
-  return row ? decodeTargetRow(row) : null;
-}
+import {
+  createStorageTargetId,
+  currentGoalStatus,
+  touchSessionForTarget,
+  mustReadTarget,
+  readSessionTarget,
+} from "./session-target-record.js";
 
 export function setSessionTarget(
   db: DatabaseSync,
@@ -176,175 +152,6 @@ export function updateSessionTargetStatus(
   return mustReadTarget(db, input.sessionID);
 }
 
-export function startSessionTargetRun(
-  db: DatabaseSync,
-  input: {
-    sessionID: SessionId;
-    targetID: string;
-    inputID: string;
-    startedAtMs: number;
-  },
-): SessionGoal | null {
-  const startedAt = Math.max(0, input.startedAtMs);
-  // goal live 计时必须跟随 agent 运行边界落库，不能再由 UI 从 assistant
-  // message timestamp 反推；恢复 snapshot 时该 timestamp 可能是旧轮次，导致切回后异常增长。
-  const result = db
-    .prepare(
-      `
-      update session_target
-      set
-        status = 'active',
-        active_input_id = ?,
-        active_run_started_at = ?,
-        active_run_last_seen_at = ?,
-        time_updated = max(time_updated, ?)
-      where session_id = ?
-        and target_id = ?
-        and status in ('active', 'budget_limited')
-      `,
-    )
-    .run(input.inputID, startedAt, startedAt, startedAt, input.sessionID, input.targetID);
-  if (result.changes === 0) return readSessionTarget(db, { sessionID: input.sessionID });
-  touchSessionForTarget(db, input.sessionID, startedAt);
-  return mustReadTarget(db, input.sessionID);
-}
-
-export function heartbeatSessionTargetRun(
-  db: DatabaseSync,
-  input: {
-    sessionID: SessionId;
-    targetID: string;
-    inputID: string;
-    seenAtMs: number;
-  },
-): SessionGoal | null {
-  const seenAt = Math.max(0, input.seenAtMs);
-  const result = db
-    .prepare(
-      `
-      update session_target
-      set
-        active_run_last_seen_at = max(coalesce(active_run_last_seen_at, 0), ?),
-        time_updated = max(time_updated, ?)
-      where session_id = ?
-        and target_id = ?
-        and active_input_id = ?
-        and active_run_started_at is not null
-      `,
-    )
-    .run(seenAt, seenAt, input.sessionID, input.targetID, input.inputID);
-  if (result.changes === 0) return readSessionTarget(db, { sessionID: input.sessionID });
-  touchSessionForTarget(db, input.sessionID, seenAt);
-  return mustReadTarget(db, input.sessionID);
-}
-
-export function finishSessionTargetRun(
-  db: DatabaseSync,
-  input: {
-    sessionID: SessionId;
-    targetID: string;
-    inputID: string;
-    endedAtMs: number;
-    status?: GoalStatus;
-    tokensUsedDelta?: number;
-  },
-): SessionGoal | null {
-  const current = readSessionTarget(db, { sessionID: input.sessionID });
-  if (
-    !current ||
-    current.targetID !== input.targetID ||
-    current.activeInputId !== input.inputID ||
-    current.activeRunStartedAtMs == null
-  ) {
-    return current;
-  }
-
-  const endedAt = Math.max(0, input.endedAtMs);
-  const tokenDelta = Math.max(0, input.tokensUsedDelta ?? 0);
-  const timeDelta = elapsedSecondsBetween(current.activeRunStartedAtMs, endedAt);
-  const result = db
-    .prepare(
-      `
-      update session_target
-      set
-        tokens_used = tokens_used + ?,
-        time_used_seconds = time_used_seconds + ?,
-        status = case
-          when ? is not null then ?
-          when status = 'budget_limited' then 'active'
-          else status
-        end,
-        active_input_id = null,
-        active_run_started_at = null,
-        active_run_last_seen_at = null,
-        time_updated = max(time_updated, ?)
-      where session_id = ?
-        and target_id = ?
-        and active_input_id = ?
-        and active_run_started_at = ?
-      `,
-    )
-    .run(
-      tokenDelta,
-      timeDelta,
-      input.status ? currentGoalStatus(input.status) : null,
-      input.status ? currentGoalStatus(input.status) : null,
-      endedAt,
-      input.sessionID,
-      input.targetID,
-      input.inputID,
-      current.activeRunStartedAtMs,
-    );
-  if (result.changes === 0) return readSessionTarget(db, { sessionID: input.sessionID });
-  touchSessionForTarget(db, input.sessionID, endedAt);
-  return mustReadTarget(db, input.sessionID);
-}
-
-export function recoverInterruptedSessionTargetRun(
-  db: DatabaseSync,
-  input: { sessionID: SessionId },
-): SessionGoal | null {
-  const current = readSessionTarget(db, { sessionID: input.sessionID });
-  if (!current || !current.activeInputId || current.activeRunStartedAtMs == null) {
-    return current;
-  }
-
-  // 进程崩溃/退出后，active_run_started_at 只能说明上次没有正常收口。
-  // 恢复时不能用 Date.now() 结算，否则 app 离线时间会被计入 goal 运行时长。
-  const endedAt = current.activeRunLastSeenAtMs ?? current.activeRunStartedAtMs;
-  const timeDelta = elapsedSecondsBetween(current.activeRunStartedAtMs, endedAt);
-  const nextStatus: GoalStatus = current.status === "active" ? "paused" : current.status;
-  const result = db
-    .prepare(
-      `
-      update session_target
-      set
-        time_used_seconds = time_used_seconds + ?,
-        status = ?,
-        active_input_id = null,
-        active_run_started_at = null,
-        active_run_last_seen_at = null,
-        time_updated = max(time_updated, ?)
-      where session_id = ?
-        and target_id = ?
-        and active_input_id = ?
-        and active_run_started_at = ?
-      `,
-    )
-    .run(
-      timeDelta,
-      nextStatus,
-      endedAt,
-      input.sessionID,
-      current.targetID,
-      current.activeInputId,
-      current.activeRunStartedAtMs,
-    );
-  if (result.changes === 0) return readSessionTarget(db, { sessionID: input.sessionID });
-  touchSessionForTarget(db, input.sessionID, endedAt);
-  return mustReadTarget(db, input.sessionID);
-}
-
 export function accountSessionTargetUsage(
   db: DatabaseSync,
   input: {
@@ -415,50 +222,8 @@ export function clearSessionTarget(db: DatabaseSync, input: { sessionID: Session
   return true;
 }
 
-function mustReadTarget(db: DatabaseSync, sessionID: SessionId): SessionGoal {
-  const target = readSessionTarget(db, { sessionID });
-  if (!target) {
-    throw new Error(`Session target not found after write: ${sessionID}`);
-  }
-  return target;
-}
-
-function touchSessionForTarget(db: DatabaseSync, sessionID: SessionId, timeUpdated: number): void {
-  db.prepare("update session set time_updated = max(time_updated, ?) where id = ?").run(
-    timeUpdated,
-    sessionID,
-  );
-}
-
-function decodeTargetRow(row: TargetRow): SessionGoal {
-  return {
-    sessionID: row.session_id as SessionId,
-    targetID: row.target_id,
-    objective: row.objective,
-    summaryTitle: row.summary_title,
-    status: currentGoalStatus(row.status as GoalStatus),
-    tokenBudget: row.token_budget,
-    tokensUsed: row.tokens_used,
-    timeUsedSeconds: row.time_used_seconds,
-    activeInputId: row.active_input_id,
-    activeRunStartedAtMs: row.active_run_started_at,
-    activeRunLastSeenAtMs: row.active_run_last_seen_at,
-    time: {
-      created: row.time_created,
-      updated: row.time_updated,
-    },
-  };
-}
-
-function createStorageTargetId(): string {
-  return `target_${Date.now().toString(36)}_${randomUUID()}`;
-}
-
-// 老额度暂停不再是执行状态；只映射该历史值，用户暂停/完成及崩溃恢复仍走原来的状态边界。
-function currentGoalStatus(status: GoalStatus): GoalStatus {
-  return status === "budget_limited" ? "active" : status;
-}
-
-function elapsedSecondsBetween(startedAtMs: number, endedAtMs: number): number {
-  return Math.max(0, Math.ceil((endedAtMs - startedAtMs) / 1000));
-}
+export { readSessionTarget } from "./session-target-record.js";
+export { startSessionTargetRun } from "./session-target-run.js";
+export { heartbeatSessionTargetRun } from "./session-target-run.js";
+export { finishSessionTargetRun } from "./session-target-run.js";
+export { recoverInterruptedSessionTargetRun } from "./session-target-run.js";

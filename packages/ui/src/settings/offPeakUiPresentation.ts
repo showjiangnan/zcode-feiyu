@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ZCodeOffPeakTask } from "@zcode/shared";
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
 import type { OffPeakTakeNumberAvailabilityStatus } from "@/store/offPeakTaskStore.js";
@@ -64,7 +65,7 @@ export type OffPeakStatusIconKind =
   | "warning"
   | "stopped";
 
-interface OffPeakStatusFooterPresentation {
+export interface OffPeakStatusFooterPresentation {
   icon: OffPeakStatusIconKind;
   className: string;
   labelId: string;

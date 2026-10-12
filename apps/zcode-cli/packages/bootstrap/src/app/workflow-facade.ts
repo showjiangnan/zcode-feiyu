@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { join } from "node:path";
 import { createNodeContextSourceAdapter } from "@zcode/adapters/context";
 import { createNodeExecutionAdapter } from "@zcode/adapters/exec";
@@ -231,7 +231,7 @@ export function createWorkflowFacade(deps: CreateWorkflowFacadeDeps): WorkflowFa
       : `/workflow ${definition.kind} ${task}`;
 
   const switchWorkflowToYolo = (): void => {
-    if (deps.runtime.getMode() !== "yolo") {
+    if (deps.runtime.getMode() !== "yolo" && deps.runtime.getMode() !== "guarded") {
       deps.runtime.updateConfig({ mode: "yolo" });
     }
   };
@@ -286,6 +286,7 @@ function createWorkflowChildRuntime(
     {
       ...deps.runtimeConfig,
       agentName: options.workflowKind === "expert" ? "zcode-expert" : "zcode-workflow",
+      // workflow child 不在 Guarded 合同内；只隔离父任务模式，不继承审批。
       mode: "yolo",
       modelSelection: deps.runtime.getSessionModelSelection(),
       parentSessionId: deps.sessionId,

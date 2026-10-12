@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import {
   collapse,
@@ -18,7 +19,11 @@ import { type EvalContext, type Evaluator } from "./taint.js";
  */
 
 /** `target = value`: bind the target (destructuring pattern or lvalue), yield value. */
-export function handleAssignment(ev: Evaluator, node: ts.BinaryExpression, ctx: EvalContext): AbstractValue {
+export function handleAssignment(
+  ev: Evaluator,
+  node: ts.BinaryExpression,
+  ctx: EvalContext,
+): AbstractValue {
   const value = ev.evalExpr(node.right, ctx);
   // When the RHS is a place, the assignment aliases (shares the live reference) rather
   // than snapshotting, so a later write through either side is seen through both. For a
@@ -43,7 +48,11 @@ export function handleAssignment(ev: Evaluator, node: ts.BinaryExpression, ctx: 
  * evalBinary special-cased only `=`, so `+=`/`||=`/`??=`/… computed the value
  * but never wrote it back — the target kept its pre-op taint.
  */
-export function handleCompoundAssignment(ev: Evaluator, node: ts.BinaryExpression, ctx: EvalContext): AbstractValue {
+export function handleCompoundAssignment(
+  ev: Evaluator,
+  node: ts.BinaryExpression,
+  ctx: EvalContext,
+): AbstractValue {
   const rhs = ev.evalExpr(node.right, ctx);
   const prior = ev.evalExpr(node.left, ctx);
   // A read-modify-write keeps the target's own identity (no aliasing): merge, not adopt.
@@ -58,7 +67,13 @@ export function handleCompoundAssignment(ev: Evaluator, node: ts.BinaryExpressio
  * SHARED field object — visible through every alias. Unresolvable receivers (a computed
  * index somewhere in the chain) fall back to smearing into the root identifier.
  */
-function writeTarget(ev: Evaluator, target: ts.Expression, value: AbstractValue, ctx: EvalContext, rhsPlace?: AbstractValue): void {
+function writeTarget(
+  ev: Evaluator,
+  target: ts.Expression,
+  value: AbstractValue,
+  ctx: EvalContext,
+  rhsPlace?: AbstractValue,
+): void {
   if (ts.isIdentifier(target)) {
     const sym = ev.checker.getSymbolAtLocation(target);
     if (sym !== undefined) ev.s.bindSymbol(sym, rhsPlace ?? value);
@@ -97,7 +112,13 @@ function writeTarget(ev: Evaluator, target: ts.Expression, value: AbstractValue,
  * when the field slot is fresh (so the field and the RHS name are one aliased object);
  * an existing slot or a non-place value weak-merges. Mirrors bindSymbol's adopt-vs-merge.
  */
-function writeField(ev: Evaluator, container: AbstractValue, key: string, value: AbstractValue, rhsPlace?: AbstractValue): void {
+function writeField(
+  ev: Evaluator,
+  container: AbstractValue,
+  key: string,
+  value: AbstractValue,
+  rhsPlace?: AbstractValue,
+): void {
   if (rhsPlace !== undefined && !container.fields.has(key)) {
     container.fields.set(key, rhsPlace);
     ev.s.changed = true;
@@ -113,7 +134,8 @@ function writeField(ev: Evaluator, container: AbstractValue, key: string, value:
   // would strand the fabricated slot's taint, so merge it back weakly instead.
   // Previously the merge only ran one direction, so the fabricated slot's
   // `ask#1` never reached the box.
-  if (rhsPlace !== undefined && field !== rhsPlace && mergeInto(rhsPlace, field)) ev.s.changed = true;
+  if (rhsPlace !== undefined && field !== rhsPlace && mergeInto(rhsPlace, field))
+    ev.s.changed = true;
   // May-alias replay: a conditional-binding / join-element container's write reaches every
   // candidate place it may BE (weak, inexact — the write lands on one arm only).
   if (replayMayAliasWrite(container, key, rhsPlace ?? value)) ev.s.changed = true;
@@ -177,7 +199,8 @@ function bindAssignmentPattern(
         const field = ev.extractField(sourcePlace, prop.name.text);
         // Default (`{ x = d }`) weak-merges into the live field, keeping the alias.
         if (prop.objectAssignmentInitializer !== undefined) {
-          if (mergeInto(field, ev.evalExpr(prop.objectAssignmentInitializer, ctx))) ev.s.changed = true;
+          if (mergeInto(field, ev.evalExpr(prop.objectAssignmentInitializer, ctx)))
+            ev.s.changed = true;
         }
         writeTarget(ev, prop.name, field, ctx, field);
       } else {
@@ -261,7 +284,11 @@ function bindAssignmentTarget(
  * a non-identifier (a call result: `log().push(x)`) still has no slot to fold into — the
  * known residual of the place model (function returns are summaries, not heap objects).
  */
-export function mergeIntoRootIdentifier(ev: Evaluator, expr: ts.Expression, value: AbstractValue): void {
+export function mergeIntoRootIdentifier(
+  ev: Evaluator,
+  expr: ts.Expression,
+  value: AbstractValue,
+): void {
   let cur: ts.Expression = expr;
   while (true) {
     if (ts.isParenthesizedExpression(cur)) cur = cur.expression;

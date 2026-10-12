@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- Supervisor 集中维护生命周期、Core 代际和更新回滚状态机，启动恢复锁边界修复不应拆散其原子流程。 */
 
 import { type ChildProcess } from "node:child_process";
@@ -26,11 +27,11 @@ import { CrashBudget } from "./crashBudget.js";
 // 高频 heartbeat/task-activity 明细走 debug，避免生产日志膨胀。
 const log = createServiceLogger("server-supervisor");
 
-interface CoreLauncher {
+export interface CoreLauncher {
   launch(generation: number, release?: ReleaseManifest | null): ChildProcess;
 }
 
-interface SupervisorOptions {
+export interface SupervisorOptions {
   layout?: ServerLayout;
   launcher: CoreLauncher;
   version: string;
@@ -499,7 +500,7 @@ export class Supervisor {
       case "confirm-uninstall":
         if (request.confirmation !== "DELETE")
           throw new Error("Uninstall confirmation must be DELETE");
-        // uninstall 前需要检查运行任务：
+        // Bug 修复：spec 要求 uninstall 前检查运行任务（R2-CLI-10）。旧实现只有
         // prepare-uninstall 会返回 blocked 却没有任何调用方消费它，confirm-uninstall
         // 直接停 Core 删数据，运行中的任务会被无提示中断。这里在最后防线上强制 guard，
         // 有运行任务时返回结构化错误并保持原状态。

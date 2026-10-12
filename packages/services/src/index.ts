@@ -1,7 +1,19 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // Descriptors & collection (browser-safe)
-export { type ServiceDescriptor, createServiceDescriptor } from "./descriptors.js";
 export { ServiceCollection } from "./collection.js";
+export { createServiceDescriptor, type ServiceDescriptor } from "./descriptors.js";
+export {
+  collectServiceMemoryDiagnostics,
+  memoryDiagnosticsRegistry,
+  registerMemoryDiagnosticsProvider,
+} from "./memoryDiagnostics.js";
+export {
+  createAccountRequestAuthService,
+  type AccountRequestAuthInput,
+  type AccountRequestAuthMaterial,
+  type AccountRequestAuthResolver,
+  type IAccountRequestAuthService,
+} from "./model-provider/accountRequestAuthService.js";
 export {
   IModelSelectionService,
   IProviderSettingsService,
@@ -10,41 +22,29 @@ export {
   type ProviderSettingsProviderView,
   type ProviderSettingsView,
 } from "./model-provider/providerFacadeServices.js";
-export {
-  createAccountRequestAuthService,
-  type IAccountRequestAuthService,
-  type AccountRequestAuthInput,
-  type AccountRequestAuthMaterial,
-  type AccountRequestAuthResolver,
-} from "./model-provider/accountRequestAuthService.js";
 export { IProviderProvisioningTargetService } from "./model-provider/providerProvisioning.js";
-export {
-  collectServiceMemoryDiagnostics,
-  memoryDiagnosticsRegistry,
-  registerMemoryDiagnosticsProvider,
-} from "./memoryDiagnostics.js";
 
 // Accessor
 export type { IServiceAccessor } from "./accessor.js";
 export {
   ConversationShareServiceError,
-  createUnsupportedConversationShareService,
   IConversationShareService,
+  createUnsupportedConversationShareService,
 } from "./conversation-share/conversationShare.js";
 export type {
-  ConversationShareSelection,
-  ConversationSharePublishProgress,
+  ConversationShareAllowedArtifact,
+  ConversationShareFailureIssue,
+  ConversationShareFailureIssueCode,
   ConversationShareImportProgress,
+  ConversationSharePreflightInput,
+  ConversationSharePreflightResult,
+  ConversationSharePublishProgress,
+  ConversationShareSelection,
+  ConversationShareServiceErrorKind,
+  ConversationShareTurnPreflightResult,
   ImportConversationShareInput,
   ImportConversationShareResult,
   ImportedConversationShare,
-  ConversationShareServiceErrorKind,
-  ConversationShareFailureIssue,
-  ConversationShareFailureIssueCode,
-  ConversationSharePreflightInput,
-  ConversationSharePreflightResult,
-  ConversationShareAllowedArtifact,
-  ConversationShareTurnPreflightResult,
   PublishTextConversationInput,
 } from "./conversation-share/conversationShare.js";
 // Conversation share 的具体实现依赖 Node 文件系统，只能从 @zcode/services/node 引入；
@@ -56,6 +56,8 @@ export {
 } from "./conversation-telemetry/conversationTelemetry.js";
 
 // File service — IFileService is both a type (interface) and value (descriptor)
+export { ICloudContentService } from "#src/cloud-content/cloudContent.js";
+export { IMarketingTouchService } from "#src/marketing-touch/marketingTouch.js";
 export { IFileService } from "./file/file.js";
 export { IMediaPreviewService } from "./media-preview/mediaPreview.js";
 export type { MediaPreviewPreparation } from "./media-preview/mediaPreview.js";
@@ -68,8 +70,8 @@ export { IGitCheckpointService } from "./git/gitCheckpoint.js";
 export { ISystemService } from "./system/system.js";
 
 // Terminal service — ITerminalService is both a type (interface) and value (descriptor)
-export type { TerminalProfile, TerminalChunk } from "./terminal/terminal.js";
 export { ITerminalService } from "./terminal/terminal.js";
+export type { TerminalChunk, TerminalProfile } from "./terminal/terminal.js";
 
 // Setting service — ISettingService is both a type (interface) and value (descriptor)
 export { ISettingService } from "./setting/setting.js";
@@ -97,22 +99,10 @@ export type {
 } from "./broadcast/broadcast.js";
 
 // ZCode task wrapper service — task 列表/置顶/归档等 app 侧包装状态入口。
+export type { ZCodeTaskListItem } from "./session/zcodeTaskListTypes.js";
 export { IZCodeTaskService } from "./session/zcodeTaskService.js";
 export type {
   ZCodeArchivedTaskDeletionResult,
-  ZCodeModelTrajectory,
-  ZCodeModelTrajectoryCallSource,
-  ZCodeModelTrajectoryCallSourceKind,
-  ZCodeModelTrajectoryContentPart,
-  ZCodeModelTrajectoryMessage,
-  ZCodeModelTrajectoryRecord,
-  ZCodeModelTrajectoryUsage,
-  ZCodeTaskListKind,
-  ZCodeTaskListQuery,
-  ZCodeTaskListResult,
-  ZCodeTaskListSortBy,
-  ZCodeTaskListWorkspaceScope,
-  ZCodeTaskReadyOutcome,
   ZCodeGroupedTaskRef,
   ZCodeGroupedTaskView,
   ZCodeGroupedTaskViewNode,
@@ -122,10 +112,22 @@ export type {
   ZCodeGroupedTaskViewStructureMember,
   ZCodeGroupedTaskViewStructureTopOrder,
   ZCodeGroupedTaskViewTopLevelNodeRef,
+  ZCodeModelTrajectory,
+  ZCodeModelTrajectoryCallSource,
+  ZCodeModelTrajectoryCallSourceKind,
+  ZCodeModelTrajectoryContentPart,
+  ZCodeModelTrajectoryMessage,
+  ZCodeModelTrajectoryRecord,
+  ZCodeModelTrajectoryUsage,
   ZCodeTaskGroup,
   ZCodeTaskGroupColor,
+  ZCodeTaskListKind,
+  ZCodeTaskListQuery,
+  ZCodeTaskListResult,
+  ZCodeTaskListSortBy,
+  ZCodeTaskListWorkspaceScope,
+  ZCodeTaskReadyOutcome,
 } from "./session/zcodeTaskService.js";
-export type { ZCodeTaskListItem } from "./session/zcodeTaskListTypes.js";
 
 export { IWindowControllerService } from "./window-controller/windowController.js";
 export type {
@@ -138,14 +140,33 @@ export type {
 // ZCode agent service — IZCodeAgentService is both a type (interface) and value (descriptor)
 export {
   IZCodeAgentService,
-  type ZCodeAgentLocalRuntimeChildProcesses,
   ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE,
+  type ZCodeAgentLocalRuntimeChildProcesses,
 } from "./zcode-agent/zcodeAgent.js";
-export {
-  isZCodeAgentMcpStatusModeUnsupportedError,
-  ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
-  ZCodeAgentMcpStatusModeUnsupportedError,
-} from "./zcode-agent/zcodeAgentErrors.js";
+export type {
+  ZCodeAgentAttachmentBeginParams,
+  ZCodeAgentAttachmentChunkParams,
+  ZCodeAgentAttachmentTerminalParams,
+  ZCodeAgentCreateSessionParams,
+  ZCodeAgentCuaPermissionObservation,
+  ZCodeAgentInitializeResult,
+  ZCodeAgentReadSessionParams,
+  ZCodeAgentRespondProviderRuntimeHeadersParams,
+  ZCodeAgentResumeSessionParams,
+  ZCodeAgentRunAutomationNowResult,
+  ZCodeAgentRuntimeLifecycleEvent,
+  ZCodeAgentRuntimePolicy,
+  ZCodeAgentSavedWorkflowTarget,
+  ZCodeAgentSendPromptParams,
+  ZCodeAgentServiceEvent,
+  ZCodeAgentSessionSubscribeParams,
+  ZCodeAgentSessionTarget,
+  ZCodeAgentSetModeParams,
+  ZCodeAgentSetModelParams,
+  ZCodeAgentSetThoughtLevelParams,
+  ZCodeAgentStorageStartupSnapshot,
+  ZCodeAgentWorkspaceTarget,
+} from "./zcode-agent/zcodeAgent.js";
 export {
   createZCodeAgentConnectionScope,
   readTrustedZCodeAgentV4Connection,
@@ -155,29 +176,11 @@ export type {
   ZCodeAgentV4ClientMode,
   ZCodeAgentV4ConnectionContext,
 } from "./zcode-agent/zcodeAgentConnectionScope.js";
-export type {
-  ZCodeAgentAttachmentBeginParams,
-  ZCodeAgentAttachmentChunkParams,
-  ZCodeAgentAttachmentTerminalParams,
-  ZCodeAgentCreateSessionParams,
-  ZCodeAgentCuaPermissionObservation,
-  ZCodeAgentInitializeResult,
-  ZCodeAgentStorageStartupSnapshot,
-  ZCodeAgentRuntimeLifecycleEvent,
-  ZCodeAgentRuntimePolicy,
-  ZCodeAgentReadSessionParams,
-  ZCodeAgentResumeSessionParams,
-  ZCodeAgentRunAutomationNowResult,
-  ZCodeAgentSavedWorkflowTarget,
-  ZCodeAgentSendPromptParams,
-  ZCodeAgentServiceEvent,
-  ZCodeAgentSessionSubscribeParams,
-  ZCodeAgentSessionTarget,
-  ZCodeAgentSetModeParams,
-  ZCodeAgentSetModelParams,
-  ZCodeAgentSetThoughtLevelParams,
-  ZCodeAgentWorkspaceTarget,
-} from "./zcode-agent/zcodeAgent.js";
+export {
+  ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE,
+  ZCodeAgentMcpStatusModeUnsupportedError,
+  isZCodeAgentMcpStatusModeUnsupportedError,
+} from "./zcode-agent/zcodeAgentErrors.js";
 
 // ZCode session service — app-facing session facade without ZCode Agent naming.
 export { IZCodeSessionService } from "./zcode-session/zcodeSession.js";
@@ -194,8 +197,8 @@ export type {
   ZCodeSessionSetModelParams,
   ZCodeSessionSetThoughtLevelParams,
   ZCodeSessionSubscribeParams,
-  ZCodeTaskTarget,
   ZCodeSessionWorkspaceTarget,
+  ZCodeTaskTarget,
 } from "./zcode-session/zcodeSession.js";
 
 // Bots service — IBotsService is both a type (interface) and value (descriptor).
@@ -219,6 +222,8 @@ export {
 } from "./memory/memory.js";
 export type { ProjectMemoryFileSummary, ProjectMemoryWorkspaceSummary } from "./memory/memory.js";
 
+// OutputStyle service — IOutputStyleService is both a type (interface) and value (descriptor).
+export { IOutputStyleService } from "./output-style/outputStyle.js";
 export type { SessionRealtimePort } from "./session/sessionRealtimePort.js";
 
 // FileWatcher service — IFileWatcherService is both a type (interface) and value (descriptor)
@@ -235,10 +240,6 @@ export type { IStorageService } from "./storage/contract.js";
 
 // CodingPlanSubscription service — ICodingPlanSubscriptionService is both a type (interface) and value (descriptor)
 export {
-  ICodingPlanSubscriptionService,
-  type OffPeakClientConfig,
-} from "./coding-plan-subscription/codingPlanSubscription.js";
-export {
   IClientScenesService,
   type ClientSceneConfig,
   type ClientSceneItem,
@@ -246,30 +247,34 @@ export {
   type ClientSceneResponseBody,
   type ClientScenesResponse,
 } from "./client-scenes/clientScenes.js";
+export {
+  ICodingPlanSubscriptionService,
+  type OffPeakClientConfig,
+} from "./coding-plan-subscription/codingPlanSubscription.js";
 export { isValidCronExpr } from "./session/automationCronValidation.js";
 // 闲时任务管理服务（与 automation 服务面独立）；接口/描述符 browser-safe。
 export { IOffPeakTaskService } from "./session/offPeakTask.js";
 export type { OffPeakUpdateTaskParams } from "./session/offPeakTask.js";
 
 // Skills service — ISkillsService is both a type (interface) and value (descriptor)
-export { ISkillsService } from "./skills/skills.js";
-export { ISkillSyncService } from "./skill-sync/skillSync.js";
-export { IMcpSyncService } from "./mcp-sync/mcpSync.js";
-export { IPluginSyncService } from "./plugin-sync/pluginSync.js";
 export {
   ICuaPermissionService,
-  type CuaPermissionState,
+  isCuaPermissionStatusAvailable,
   type CuaPermissionRestartOptions,
+  type CuaPermissionState,
   type CuaPermissionStatus,
   type CuaPermissionStatusQueryOptions,
   type CuaPermissionStatusResult,
   type CuaPermissionStatusUnavailable,
-  isCuaPermissionStatusAvailable,
 } from "./cua-permission-broker/cuaPermissionService.js";
 export {
   ICuaPipSessionService,
   type CuaPipSessionService,
 } from "./cua-permission-broker/cuaPipSession.js";
+export { IMcpSyncService } from "./mcp-sync/mcpSync.js";
+export { IPluginSyncService } from "./plugin-sync/pluginSync.js";
+export { ISkillSyncService } from "./skill-sync/skillSync.js";
+export { ISkillsService } from "./skills/skills.js";
 
 // Plugins service — IPluginsService is both a type (interface) and value (descriptor)
 export { IPluginsService } from "./plugins/plugins.js";
@@ -284,15 +289,6 @@ export { ICommandsService } from "./commands/commands.js";
 
 export { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 
-export { IFeedbackService } from "./feedback/feedback.js";
-export type { FeedbackUploadProgress } from "./feedback/feedback.js";
-export { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
-export type {
-  PromptAttachmentStageParams,
-  PromptAttachmentStageResult,
-  PromptAttachmentTransferPhase,
-  PromptAttachmentTransferProgress,
-} from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 export type {
   CreateFeedbackTicketInput,
   FeedbackAttachment,
@@ -310,6 +306,61 @@ export type {
   FeedbackTicketSummary,
   FeedbackTicketType,
 } from "@zcode/shared";
+export { IFeedbackService } from "./feedback/feedback.js";
+export type { FeedbackUploadProgress } from "./feedback/feedback.js";
+export { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
+export type {
+  PromptAttachmentStageParams,
+  PromptAttachmentStageResult,
+  PromptAttachmentTransferPhase,
+  PromptAttachmentTransferProgress,
+} from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
+
+// 插件 UI 桥：描述符、参数类型与工厂；App-Provided Tools 另有独立描述符。
 export { IClientConfigService } from "./client-config/clientConfig.js";
 export { IImageGenerationService } from "./image-generation/contract.js";
 export type { ImageGenerationSettings, ImageModelOption } from "./image-generation/contract.js";
+export {
+  IPluginUiBridgeService,
+  type PluginUiCallToolParams,
+  type PluginUiCallToolResult,
+  type PluginUiListResourceTemplatesResult,
+  type PluginUiListResourcesParams,
+  type PluginUiListResourcesResult,
+  type PluginUiPluginScope,
+  type PluginUiPrepareSandboxParams,
+  type PluginUiReadResourceParams,
+  type PluginUiReadResourceResult,
+  type PluginUiResourceSubscriptionParams,
+  type PluginUiSurfaceEntry,
+  type PluginUiWorkspaceTarget,
+} from "./plugin-ui-bridge/contract.js";
+export {
+  IPluginUiAppToolsService,
+  IPluginUiSamplingService,
+  PluginUiBridgeError,
+  createPluginUiAppToolsService,
+  createPluginUiBridgeService,
+  createPluginUiSamplingService,
+  type PluginUiAppToolAcceptedResult,
+  type PluginUiAppToolCallParams,
+  type PluginUiAppToolInstanceParams,
+  type PluginUiCancelSamplingParams,
+  type PluginUiRegisterAppToolsParams,
+  type PluginUiRegisterAppToolsResult,
+  type PluginUiResolveAppToolCallParams,
+  type PluginUiSamplingParams,
+} from "./plugin-ui-bridge/index.js";
+
+export { IHighspeedCardService } from "./highspeed/highspeedCard.js";
+export {
+  HighspeedCardService,
+  buildHighspeedTurnExecution,
+  createHighspeedHttpTransport,
+} from "./highspeed/highspeedCardService.js";
+export { createHighspeedMockTransport } from "./highspeed/highspeedMockTransport.js";
+
+export { IGenUiService } from "./gen-ui/contract.js";
+export type { GenUiPrepareParams } from "./gen-ui/contract.js";
+
+export * from "./chatgpt-subscription/contract.js";

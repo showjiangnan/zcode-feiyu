@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { ZCodeTaskPendingInteraction } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
@@ -12,13 +13,13 @@ interface TaskInteractionBadgeProps {
   onSnoozeCountdown?: (interactionId: string) => boolean | Promise<boolean>;
 }
 
-interface TaskInteractionBadgePresentation {
+export interface TaskInteractionBadgePresentation {
   kind: "permission" | "userInput";
   countdownProgress?: number;
   canSnooze: boolean;
 }
 
-function isAskUserQuestionInteraction(
+export function isAskUserQuestionInteraction(
   interaction: ZCodeTaskPendingInteraction | undefined,
 ): boolean {
   if (!interaction || interaction.kind !== "userInput") return false;
@@ -30,7 +31,7 @@ function isAskUserQuestionInteraction(
   );
 }
 
-function getTaskInteractionBadgePresentation(
+export function getTaskInteractionBadgePresentation(
   interaction: ZCodeTaskPendingInteraction | undefined,
   legacyPending: boolean,
   now: number,

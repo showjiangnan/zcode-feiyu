@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 存储分类目录：把 .zcode 根下的相对路径映射到类别、聚合 key 与可清理性。
  * 纯函数、单一事实源。
@@ -10,7 +11,7 @@ export interface StorageCatalogContext {
   hasCustomDataBaseDir: boolean;
 }
 
-interface StorageClassification {
+export interface StorageClassification {
   categoryId: StorageCategoryId;
   /** 下钻明细的聚合 key：规则命中路径的下一级。 */
   entryKey: string;

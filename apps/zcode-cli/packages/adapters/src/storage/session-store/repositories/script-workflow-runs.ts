@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import type {
   CreateScriptWorkflowRunInput,
@@ -20,9 +21,8 @@ export async function upsertScriptWorkflowDefinition(
   input: UpsertScriptWorkflowDefinitionInput,
 ): Promise<ScriptWorkflowDefinitionRecord> {
   const now = Date.now();
-  db
-    .prepare(
-      `
+  db.prepare(
+    `
       insert into workflow_definition (
         id, name, source, scope, trusted, enabled, script_path, script_hash, meta_json,
         time_created, time_updated
@@ -38,20 +38,19 @@ export async function upsertScriptWorkflowDefinition(
         meta_json = excluded.meta_json,
         time_updated = excluded.time_updated
       `,
-    )
-    .run(
-      input.id,
-      input.name,
-      input.source,
-      input.scope ?? (input.source === "builtin" ? "builtin" : "explicit"),
-      input.trusted === true ? 1 : 0,
-      input.enabled === false ? 0 : 1,
-      input.scriptPath ?? null,
-      input.scriptHash,
-      JSON.stringify(input.meta),
-      now,
-      now,
-    );
+  ).run(
+    input.id,
+    input.name,
+    input.source,
+    input.scope ?? (input.source === "builtin" ? "builtin" : "explicit"),
+    input.trusted === true ? 1 : 0,
+    input.enabled === false ? 0 : 1,
+    input.scriptPath ?? null,
+    input.scriptHash,
+    JSON.stringify(input.meta),
+    now,
+    now,
+  );
   return mustGetDefinition(db, input.id);
 }
 
@@ -60,32 +59,30 @@ export async function createScriptWorkflowRun(
   input: CreateScriptWorkflowRunInput,
 ): Promise<ScriptWorkflowRunRecord> {
   const now = Date.now();
-  db
-    .prepare(
-      `
+  db.prepare(
+    `
       insert into workflow_run (
         id, definition_id, name, kind, parent_session_id, cwd, script_path, script_hash,
         args_json, args_hash, status, current_phase, budget_total, budget_spent,
         stats_json, failure_json, time_created, time_started, time_updated, time_completed
       ) values (?, ?, ?, 'script', ?, ?, ?, ?, ?, ?, ?, null, ?, 0, ?, null, ?, null, ?, null)
       `,
-    )
-    .run(
-      input.id,
-      input.definitionId ?? null,
-      input.name,
-      input.parentSessionId ?? null,
-      input.cwd,
-      input.scriptPath ?? null,
-      input.scriptHash,
-      encodeJson(input.args),
-      input.argsHash ?? null,
-      input.status ?? "pending",
-      input.budgetTotal ?? null,
-      encodeJson(input.stats),
-      now,
-      now,
-    );
+  ).run(
+    input.id,
+    input.definitionId ?? null,
+    input.name,
+    input.parentSessionId ?? null,
+    input.cwd,
+    input.scriptPath ?? null,
+    input.scriptHash,
+    encodeJson(input.args),
+    input.argsHash ?? null,
+    input.status ?? "pending",
+    input.budgetTotal ?? null,
+    encodeJson(input.stats),
+    now,
+    now,
+  );
   return mustGetRun(db, input.id);
 }
 
@@ -96,9 +93,8 @@ export async function updateScriptWorkflowRun(
   const current = await getScriptWorkflowRun(db, input.id);
   if (!current) throw new Error(`Workflow run not found: ${input.id}`);
   const now = Date.now();
-  db
-    .prepare(
-      `
+  db.prepare(
+    `
       update workflow_run set
         status = ?,
         current_phase = ?,
@@ -110,18 +106,17 @@ export async function updateScriptWorkflowRun(
         time_completed = ?
       where id = ?
       `,
-    )
-    .run(
-      input.status ?? current.status,
-      input.currentPhase === undefined ? (current.currentPhase ?? null) : input.currentPhase,
-      input.budgetSpent ?? current.budgetSpent,
-      input.stats === undefined ? encodeJson(current.stats) : encodeJson(input.stats),
-      input.failure === undefined ? encodeJson(current.failure) : encodeJson(input.failure),
-      input.startedAt === undefined ? (current.startedAt ?? null) : input.startedAt,
-      now,
-      input.completedAt === undefined ? (current.completedAt ?? null) : input.completedAt,
-      input.id,
-    );
+  ).run(
+    input.status ?? current.status,
+    input.currentPhase === undefined ? (current.currentPhase ?? null) : input.currentPhase,
+    input.budgetSpent ?? current.budgetSpent,
+    input.stats === undefined ? encodeJson(current.stats) : encodeJson(input.stats),
+    input.failure === undefined ? encodeJson(current.failure) : encodeJson(input.failure),
+    input.startedAt === undefined ? (current.startedAt ?? null) : input.startedAt,
+    now,
+    input.completedAt === undefined ? (current.completedAt ?? null) : input.completedAt,
+    input.id,
+  );
   return mustGetRun(db, input.id);
 }
 

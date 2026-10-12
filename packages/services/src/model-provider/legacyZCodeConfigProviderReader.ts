@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- 已发布旧 ZCode config.json 的多版 Provider 结构读取集中在同一边界。 */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -984,7 +985,7 @@ function resolveRuntimeBaseUrlForStore(
   }
 
   // 旧 store 可能还只有 endpoints.anthropic/openai。
-  // OpenCode runtime config 只能保存当前 kind 的 baseURL，这里按 defaultKind 取一条旧入口。
+  // runtime config 只能保存当前 kind 的 baseURL，这里按 defaultKind 取一条旧入口。
   return resolveLegacyRuntimeBaseUrlForKind(endpoints, defaultKind);
 }
 

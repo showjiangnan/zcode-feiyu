@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { WorkflowRunProgressEnvelope } from "@zcode/shared/zcode-protocol-v4";
 import type { ModelSelection, ZCodeModelOption } from "@zcode/shared";
 import type {
@@ -25,7 +26,10 @@ export type TuiSessionMetadata = Pick<
   "locale" | "model" | "theme" | "thoughtLevel" | "modelOptions" | "effortOptions" | "loginRequired"
 >;
 
-export type TuiSwitchableMode = Extract<CollaborationMode, "plan" | "build" | "edit" | "yolo">;
+export type TuiSwitchableMode = Extract<
+  CollaborationMode,
+  "plan" | "build" | "edit" | "yolo" | "guarded"
+>;
 
 export type TuiSetModeResult = {
   mode: CollaborationMode;

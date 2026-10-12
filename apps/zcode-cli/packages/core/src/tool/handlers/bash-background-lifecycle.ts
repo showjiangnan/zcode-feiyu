@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   BackgroundExecutionStartResult,
   ExecutionPort,
@@ -18,7 +19,7 @@ export type BashBackgroundLifecycleResult =
       task: BackgroundExecutionStartResult;
     };
 
-interface BashBackgroundLifecycleExecutionPort extends ExecutionPort {
+export interface BashBackgroundLifecycleExecutionPort extends ExecutionPort {
   runBashWithBackgroundLifecycle(
     request: ExecutionRequest,
     lifecycle: { mode: BashBackgroundLifecycleMode },

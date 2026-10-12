@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 文件树行集中维护拖拽、打开方式、Git 状态与上下文菜单交互。 */
 import type { EditorInfo, OpenInEditorRemoteTarget } from "@zcode/shared";
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";

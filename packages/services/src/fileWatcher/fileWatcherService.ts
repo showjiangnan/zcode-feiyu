@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { watch, type FSWatcher } from "node:fs";
 import { resolve } from "node:path";
 import { Emitter, Event, type Event as RpcEvent } from "@zcode/rpc";
@@ -20,7 +21,7 @@ interface WatcherInstance {
   hasUnknownChangedPath: boolean;
 }
 
-function resolveFileWatchChangedPath(
+export function resolveFileWatchChangedPath(
   watchedDirectoryPath: string,
   fileName: string | Buffer | null,
 ): string | undefined {

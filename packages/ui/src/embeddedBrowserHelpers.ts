@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export const DEFAULT_BROWSER_URL = "about:blank";
 
 const RECOVERABLE_BROWSER_GUEST_EXIT_REASONS = new Set([
@@ -27,7 +28,7 @@ const WEBVIEW_DETACHED_ERROR_FRAGMENTS = [
   "Render frame was disposed",
 ] as const;
 
-function isWebviewDetachedError(error: unknown): boolean {
+export function isWebviewDetachedError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
   if (!message) {
     return false;
@@ -217,7 +218,7 @@ function isLocalhostName(host: string): boolean {
   return host === "localhost" || host === "localhost.localdomain" || host.endsWith(".localhost");
 }
 
-function isLocalDevelopmentHost(host: string): boolean {
+export function isLocalDevelopmentHost(host: string): boolean {
   const normalizedHost = host.toLowerCase().replace(/^\[(.*)]$/, "$1");
   if (
     isLocalhostName(normalizedHost) ||
@@ -245,7 +246,7 @@ function isLocalDevelopmentHost(host: string): boolean {
   );
 }
 
-function isLocalDevelopmentBrowserUrl(url: string): boolean {
+export function isLocalDevelopmentBrowserUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
@@ -258,7 +259,7 @@ function isLocalDevelopmentBrowserUrl(url: string): boolean {
   }
 }
 
-type MessageLinkOpenTarget = "app-browser" | "external-browser";
+export type MessageLinkOpenTarget = "app-browser" | "external-browser";
 
 /**
  * 交互语义：右键菜单的两项是显式互补的目标选择，只有左键单击才走本机/私网启发式。

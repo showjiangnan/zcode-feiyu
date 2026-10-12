@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ZCodeUsage } from "@zcode/shared";
 import type { TaskUsageState } from "@/store/zcodeSessionStoreTypes.js";
 
@@ -100,4 +101,8 @@ export function buildPromptCompletionUsageFallback(
     size: contextWindow,
     used: Math.min(contextWindow, Math.max(currentUsage?.used ?? 0, usage.totalTokens)),
   };
+}
+
+export function resetTaskContextUsageUpdateRecordsForTest() {
+  taskContextUsageUpdateKeys.clear();
 }

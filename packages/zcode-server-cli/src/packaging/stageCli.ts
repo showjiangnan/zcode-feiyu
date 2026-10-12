@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { access, chmod, mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
@@ -155,15 +156,14 @@ async function ensureAgentBundle(repoRoot: string, skipBuild: boolean): Promise<
   return bundlePath;
 }
 
-export async function resolveNativeToolsDir(
-  repoRoot: string,
-  target: ServerTarget,
-): Promise<string> {
-  // 远端 macOS 资源使用 rg13，不能仅凭文件存在就复用为本地发行包。
-  // 统一走目标平台的仓库归档校验；自有缓存也必须通过版本、哈希和架构检查。
+async function resolveNativeToolsDir(repoRoot: string, target: ServerTarget): Promise<string> {
+  // 修复：此前按“文件存在”复用 mock-cdn/releases/*/tools 或 bundled-tools。远端 macOS 资源固定为 rg13，
+  // 会被当成独立 Server 发行包的 rg14 复用；这些目录也可能缺少工具许可声明。现在统一交给
+  // prepare-native-search-tools.mjs 按目标 release plan 准备到 server-cli 自有缓存：内网依赖源已配置时下载，
+  // 未配置时解包仓库归档；缓存命中同样要通过版本、摘要与架构校验，并刷新同目录声明。
   const [platform, arch] = target.split("-");
   const cacheDir = join(repoRoot, "node_modules/.cache/zcode-server-cli", "tools", target);
-  log(`prepare local native search target assets: ${target}`);
+  log(`prepare native search target assets: ${target}`);
   await runCommand(
     process.execPath,
     [
@@ -217,10 +217,13 @@ async function main(): Promise<void> {
   const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
   const repoRoot = await findRepoRoot(packageRoot);
   const target = parseTarget(argv);
-  // 构建只读取并附带已有声明，校验由显式命令负责；运行时 server 不依赖仓库脚本。
-  const { readThirdPartyNotices, readNodeNotices } = await import(
+  // 构建只读取并附带已有声明，校验由显式 licenses 命令负责；运行时 server 不依赖仓库脚本。
+  const { readThirdPartyNotices, readNodeNotices } = (await import(
     pathToFileURL(join(repoRoot, "scripts/third-party-notices.mjs")).href
-  );
+  )) as {
+    readThirdPartyNotices: (root: string) => Promise<Buffer>;
+    readNodeNotices: (version: string, root: string) => Promise<{ source: unknown; bytes: Buffer }>;
+  };
   const [thirdParty, nodeNotice] = await Promise.all([
     readThirdPartyNotices(repoRoot),
     readNodeNotices(SERVER_RUNTIME_NODE_VERSION, repoRoot),
@@ -270,6 +273,4 @@ async function main(): Promise<void> {
   log(`packaged dependencies: ${staged.packagedDependencies.join(", ")}`);
 }
 
-if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {
-  await main();
-}
+await main();

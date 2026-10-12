@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
 const WSL_UNC_PATH_PATTERN = /^[\\/]{2}(?:wsl\.localhost|wsl\$)[\\/]([^\\/]+)(?:[\\/](.*))?$/iu;
 
-interface WslUncWorkspacePath {
+export interface WslUncWorkspacePath {
   distro: string;
   linuxPath: string;
   originalPath: string;
@@ -20,4 +21,8 @@ export function parseWslUncWorkspacePath(path: string): WslUncWorkspacePath | nu
     linuxPath: tail ? `/${tail}` : "/",
     originalPath: path,
   };
+}
+
+export function isWslUncWorkspacePath(path: string): boolean {
+  return parseWslUncWorkspacePath(path) !== null;
 }

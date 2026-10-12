@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createHash } from "node:crypto";
 import type { CommandExecutionTelemetry, ToolExecutionTelemetry } from "@zcode/contracts";
 import type { ToolExecutionContext } from "../types.js";
@@ -87,9 +88,7 @@ export function fileByteCount(content: string): number {
   return Buffer.byteLength(content, "utf8");
 }
 
-export function readToolExecutionTelemetry(
-  output: unknown,
-): ToolExecutionTelemetry | undefined {
+export function readToolExecutionTelemetry(output: unknown): ToolExecutionTelemetry | undefined {
   if (typeof output !== "object" || output === null || Array.isArray(output)) {
     return undefined;
   }

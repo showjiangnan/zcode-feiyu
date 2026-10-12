@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { Dirent } from "node:fs";
 import { readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
@@ -108,7 +109,8 @@ export function scheduleLogRetentionCleanup(
     status: "waiting",
   });
   const scheduleTimer =
-    options.setTimeout ?? ((callback: () => void, timeoutMs: number) => setTimeout(callback, timeoutMs));
+    options.setTimeout ??
+    ((callback: () => void, timeoutMs: number) => setTimeout(callback, timeoutMs));
   const timer = scheduleTimer(() => {
     void cleanupLogRetention({
       logDir: options.logDir,

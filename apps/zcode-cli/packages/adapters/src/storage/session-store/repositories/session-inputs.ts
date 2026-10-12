@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // session_input 账本仓库。
 // 语义：admitted（已接受）→ promoted（与 user message/parts 同事务落 transcript）
 // / cancelled / discarded / failed。promotion 的原子性是硬要求：杜绝
@@ -275,7 +275,7 @@ export async function promoteSessionInput(
           saveMessageSync(db, {
             ...contextMessage.info,
             metadata: {
-              ...(contextMessage.info.metadata ?? {}),
+              ...contextMessage.info.metadata,
               sharedContextStatus: "attached",
             },
           });

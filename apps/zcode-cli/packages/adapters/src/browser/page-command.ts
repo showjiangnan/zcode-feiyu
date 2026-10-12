@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   BrowserCommand,
   BrowserCommandResult,
@@ -6,7 +7,7 @@ import type {
   BrowserPoint,
 } from "@zcode/contracts";
 import type { ElementHandle, Page } from "playwright-core";
-import { executeManagedPlaywrightAction, evaluatePage } from "./playwright-command.js";
+import { evaluatePage, executeManagedPlaywrightAction } from "./playwright-command.js";
 import {
   captureManagedCdpSnapshot,
   resolveSnapshotElement,
@@ -72,7 +73,7 @@ async function pointFor(
   throw new Error("Browser action requires a ref or x/y coordinates");
 }
 
-async function readManagedPageState(page: Page): Promise<BrowserPageState> {
+export async function readManagedPageState(page: Page): Promise<BrowserPageState> {
   const client = await page.context().newCDPSession(page);
   try {
     const history = (await client.send("Page.getNavigationHistory")) as {

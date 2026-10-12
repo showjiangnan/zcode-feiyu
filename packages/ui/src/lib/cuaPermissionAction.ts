@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { CuaAccessibilitySettingsResult } from "@zcode/shared";
 
 function normalizeToolName(value: string | null | undefined): string {
@@ -15,7 +16,7 @@ export function isZCodeCuaToolName(value: string | null | undefined): boolean {
   return normalized === "computer-use" || normalized.includes("computer-use");
 }
 
-function didReturnFromCuaPermissionSettings(
+export function didReturnFromCuaPermissionSettings(
   result: CuaAccessibilitySettingsResult | null | undefined,
 ): boolean {
   // main 只有在整组 staged pane 都完成并观察到 ZCode 应用级返回后才置 true。renderer focus

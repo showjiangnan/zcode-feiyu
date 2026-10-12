@@ -1,31 +1,31 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { join } from "node:path";
 
-import {
-  traceContextToLogContext,
-  createContextBuilder,
-  createSubagentContextBuilder,
-} from "../deps.js";
-import type {
-  Model,
-  ModelToolCall,
-  SkillLoadOutcome,
-  TraceContext,
-  ContextSourceSnapshot,
-  ContextBuilder,
-  ContextBuilderConfig,
-} from "../deps.js";
-import type { AgentRuntimeInternal } from "../internal.js";
+import { budgetProjectMemoryContext } from "../../memory/context-budget.js";
 import { ensureMemoryDirectoryExists } from "../../memory/directory.js";
 import { formatProjectMemoryIndexContent } from "../../memory/index-content.js";
-import { budgetProjectMemoryContext } from "../../memory/context-budget.js";
 import { assertMemoryToolPathSafe } from "../../memory/tool-path-guard.js";
 import {
   createReadFileStateKey,
   normalizeReadFileStateMtimeMs,
 } from "../../tool/read-file-state.js";
-import { resolveEnabledProjectMemoryRoot } from "../helpers/project-memory.js";
+import type {
+  ContextBuilder,
+  ContextBuilderConfig,
+  ContextSourceSnapshot,
+  Model,
+  ModelToolCall,
+  SkillLoadOutcome,
+  TraceContext,
+} from "../deps.js";
+import {
+  createContextBuilder,
+  createSubagentContextBuilder,
+  traceContextToLogContext,
+} from "../deps.js";
 import { recoverProjectMemoryWorkspace } from "../helpers/project-memory-batch.js";
+import { resolveEnabledProjectMemoryRoot } from "../helpers/project-memory.js";
+import type { AgentRuntimeInternal } from "../internal.js";
 import { buildContextHistoryEntries } from "./context-history-entries.js";
 import { resolveRuntimeEmbeddedSearchEnabled } from "./embedded-search-branch.js";
 import { getContextSourceShellDisplayName } from "./session-shell-environment.js";

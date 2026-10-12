@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 公开协议允许列表集中维护，防止分散配置遗漏授权边界。 */
 /** 显式公布的公网能力允许列表；新增内部方法不会自动扩大远控权限。 */
 export const RCS_SERVICE_MANIFEST: Record<
@@ -165,8 +166,11 @@ export const RCS_SERVICE_MANIFEST: Record<
       "listPlugins",
       "getPluginReferenceCatalog",
       "getSkillReferenceCatalog",
+      "syncDynamicWorkflowUserMode",
       "listSavedWorkflows",
       "getSavedWorkflow",
+      "findSavedWorkflowForRun",
+      "saveSavedWorkflowFromRun",
       "updateSavedWorkflowMeta",
       "deleteSavedWorkflow",
       "listSavedWorkflowRuns",
@@ -407,6 +411,7 @@ export const RCS_SERVICE_MANIFEST: Record<
     methods: [],
     events: [],
   },
+  "chatgpt-subscription": { methods: ["execute"], events: [] },
   broadcast: {
     methods: ["send", "sendWithAcknowledgements"],
     events: ["onMessage"],

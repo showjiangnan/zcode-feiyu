@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines */
 // 安全说明：Cookie 快照、跨平台解密选择与整批写入必须留在同一事务审计边界，
 // 避免拆分后让 Windows App-Bound 原子失败语义与 Linux helper 回退顺序发生漂移。
@@ -55,7 +56,7 @@ interface CookieDecryptorResource {
   dispose(): void;
 }
 
-interface ChromeCookieImportResult {
+export interface ChromeCookieImportResult {
   databaseFound: boolean;
   issues: ChromeBrowserDataImportError[];
   rowCount: number;

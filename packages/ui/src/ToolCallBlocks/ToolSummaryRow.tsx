@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { KeyboardEvent, ReactNode } from "react";
 import { ChevronRightIcon } from "lucide-react";
 import { testId, TID_TOOL_SUMMARY_TRIGGER } from "@zcode/shared";
@@ -11,7 +12,7 @@ export interface ToolSummaryAction {
   testId?: string;
 }
 
-function handleToolSummaryActionKeyDown(
+export function handleToolSummaryActionKeyDown(
   event: Pick<KeyboardEvent<HTMLDivElement>, "key" | "preventDefault">,
   onActivate: () => void,
 ): boolean {

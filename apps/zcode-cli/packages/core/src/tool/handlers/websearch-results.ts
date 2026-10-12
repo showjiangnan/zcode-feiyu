@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   WebSearchOutputSchema,
   modelMessageContentToText,
@@ -44,10 +45,10 @@ export function formatWebSearchModelContent(output: unknown): string {
   if (!parsed.success) return modelMessageContentToText(JSON.stringify(output) ?? "");
 
   const data = parsed.data;
-  const links = dedupeSources([
-    ...data.sources,
-    ...extractSourcesFromResults(data.results),
-  ]).slice(0, MAX_SOURCE_LINKS);
+  const links = dedupeSources([...data.sources, ...extractSourcesFromResults(data.results)]).slice(
+    0,
+    MAX_SOURCE_LINKS,
+  );
   const lines = [`Web search results for query: "${data.query}"`, ""];
 
   if (data.summary) {
@@ -87,7 +88,8 @@ function collectResults(value: unknown): WebSearchResultItem[] {
   if (Array.isArray(value.content)) {
     return value.content.flatMap((item) => collectResults(item));
   }
-  if (Array.isArray(value.sources)) return value.sources.flatMap((source) => collectResults(source));
+  if (Array.isArray(value.sources))
+    return value.sources.flatMap((source) => collectResults(source));
   return [];
 }
 
@@ -136,7 +138,8 @@ function collectSources(value: unknown): WebSearchSource[] {
   if (Array.isArray(value.content)) {
     return value.content.flatMap((item) => collectSources(item));
   }
-  if (Array.isArray(value.sources)) return value.sources.flatMap((source) => collectSources(source));
+  if (Array.isArray(value.sources))
+    return value.sources.flatMap((source) => collectSources(source));
   return [];
 }
 

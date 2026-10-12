@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import React, { useEffect, useMemo, useState } from "react";
 import { palette } from "./app-model.js";
 
@@ -8,8 +9,9 @@ const h = React.createElement as (
 ) => React.ReactElement;
 
 const SHIMMER_FRAME_INTERVAL_MS = 80;
-const SHIMMER_SWEEP_PERIOD_MS = 1_800;
-const SPINNER_FRAME_INTERVAL_MS = 80;
+export const SHIMMER_SWEEP_PERIOD_MS = 1_800;
+export const SPINNER_FRAME_INTERVAL_MS = 80;
+export const SPINNER_WIDTH = 1;
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
 const SHIMMER_PADDING_COLUMNS = 10;
 const SHIMMER_BAND_HALF_WIDTH = 5;
@@ -78,7 +80,7 @@ export function ShimmerText({
   );
 }
 
-function shimmerTextSegments(
+export function shimmerTextSegments(
   text: string,
   frameMs: number,
   options: {

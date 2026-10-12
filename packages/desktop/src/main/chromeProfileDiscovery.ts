@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { execFile } from "node:child_process";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -43,7 +44,7 @@ interface ChromeLocalState {
   };
 }
 
-interface ChromeProfileDiscoveryOptions extends ChromeInstallationPathOptions {
+export interface ChromeProfileDiscoveryOptions extends ChromeInstallationPathOptions {
   installations?: ChromeInstallationCandidate[];
   processCommandLines?: string[];
 }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // 世界读取的执行侧（Boundary B 的 executeWorldRead）
 // ============================================================
@@ -13,6 +14,216 @@
 //      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
 //   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
 
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
+// ============================================================
+// 世界读取的执行侧（Boundary B 的 executeWorldRead）
+// ============================================================
+// 从 workflow-driver.ts 里分出来的一半。driver 那边是 actor 会话、turn 编排与 submit 桥接；
+// 这边是"把一个 (op, args) 变成一次真实的只读观察"——两者唯一的接触面是
+// {@link executeWorldRead}，且这一半完全不碰会话、模型与 journal。
+//
+// 三件事在这里，而且只在这里：
+//   1. **每个 op 的元数与实参校验**。Boundary A 的 `worldRead(siteId, op, args)` 只承诺
+//      "实参按位置原样送达"（lowering 不看 op），所以"一个 pattern / 一个 base ref 长什么样"
+//      归这一侧。
+//   2. **上限的执行**。常量在纯包（`@zcode/dynamic-workflow` 的 WORLD_READ_CAPS），执行在这里，
+//      因为只有这一侧能"不生产"——让 ripgrep 在 2000 条上停手，胜过物化一百万条再回头量。
+//   3. **git 的固定 argv**。构造在 workflow-git-world-read.ts（纯），spawn 在这里。
 import {
   isAbsolute as isAbsolutePath,
   relative as relativePath,
@@ -43,12 +254,6 @@ export interface WorldReadDeps {
   readonly executionPort: ExecutionPort;
   /** 路径解析与相对化的基准目录（workspace 根）。 */
   readonly cwd: string;
-  /**
-   * world.run 的已批准命令集（编译期从字面量 cmd 收集、确认窗展示过的那一份）。**缺席即拒绝一切 world.run**（fail-closed）：
-   * 授权面的空集与「忘了接线」必须同样安全，而复验在这里只是纵深防御——真正的授权
-   * 发生在编译期字面量 + 提交确认。
-   */
-  readonly declaredRunCommands?: ReadonlySet<string>;
 }
 
 /**
@@ -297,9 +502,12 @@ interface WorldRunResult {
  *   1. **非零退出是值**。执行适配器把非零退出映射成 `status:"failed"` 且 `error` 缺席
  *      （node-execution-adapter-results.ts 的 statusFromExit/statusFailure），据此与
  *      spawn 失败 / 超时可靠区分。门控循环的常态路径不该走异常控制流。
- *   2. **cmd 复验**。授权发生在编译期字面量 + 提交确认；这里对 declaredRunCommands 的
- *      比对只防接线错误（lowering / 线协议把别的字符串送了进来），且 fail-closed——
- *      集合缺席与命令不在集合里同样拒绝。
+ *   2. **没有运行期命令白名单**。授权只在编译期：cmd 必须是字面量（9003），脚本能跑的命令
+ *      因此在提交前就全部可读、确认图逐条展示。这里曾经再拿一份 launch 时从种子脚本收集的
+ *      `declaredRunCommands` 复验一遍（"只防接线错误"）——但补全（FillWorkflowHole）编译的是
+ *      有效脚本，driver 手里的集合却还是种子那份，函数体里第一次出现的命令就被当"接线错误"
+ *      拒掉了。lowering 跑的就是脚本自己的文本，补全的 code 也是有效脚本自己的 lowering，
+ *      那份复验防不住任何真实情况，只多出一个要手工同步的第二数据源，故删除。
  *   3. **超时无上限**。缺省 300s，脚本可任意加大（为真正长跑的测试设计）；
  *      cancel 仍是最后的控制。
  *
@@ -308,15 +516,6 @@ interface WorldRunResult {
  */
 async function worldRun(deps: WorldReadDeps, args: unknown[]): Promise<WorldRunResult> {
   const { argv, cmd, timeoutMs } = worldRunArgs(args);
-
-  const declared = deps.declaredRunCommands;
-  if (declared === undefined || !declared.has(cmd)) {
-    // fail-closed 的接线防御：能到这里的 cmd 理应经过编译期字面量收集与确认。
-    throw new WorkflowError(
-      "DriverError",
-      `world.run: command '${cmd}' is not in the declared set of commands (a wiring error).`,
-    );
-  }
 
   const stdoutCap = WORLD_READ_CAPS.runStdoutMaxBytes;
   const stderrCap = WORLD_READ_CAPS.runStderrMaxBytes;

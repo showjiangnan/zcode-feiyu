@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -114,12 +115,16 @@ export function createScriptWorkflowToolPort(deps: ScriptWorkflowToolPortDeps): 
             taskId: runId,
           };
           launchSnapshots.set(runId, snapshot);
-          deps.logger?.error("Background workflow failed before status was persisted", toError(error), {
-            event: "workflow.tool.background_failed",
-            module: "bootstrap.workflow",
-            runId,
-            status: "failed",
-          });
+          deps.logger?.error(
+            "Background workflow failed before status was persisted",
+            toError(error),
+            {
+              event: "workflow.tool.background_failed",
+              module: "bootstrap.workflow",
+              runId,
+              status: "failed",
+            },
+          );
           return snapshot;
         },
       );

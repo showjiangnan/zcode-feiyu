@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { AppUsageQueryResult } from "@zcode/contracts";
 import type {
   AppUsageHeatmap,
@@ -9,7 +10,7 @@ import type {
 
 const DAY_MS = 86_400_000;
 
-interface BuildAppUsageOptions {
+export interface BuildAppUsageOptions {
   range: AppUsageRange;
   timeZone: string;
   tzOffsetMs: number;

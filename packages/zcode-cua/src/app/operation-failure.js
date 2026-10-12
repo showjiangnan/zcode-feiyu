@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { contextKey, READ_ONLY } from "../domain/protocol.js";
 import { revokeQualification } from "./application-access.js";
 import { interruptionState } from "../domain/control-interruption.js";

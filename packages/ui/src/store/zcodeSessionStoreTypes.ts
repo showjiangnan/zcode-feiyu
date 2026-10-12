@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- ZCode Agent store 类型和默认状态集中导出，避免切片间重复定义共享结构。 */
 /**
  * ZCode Session Store 类型定义、接口、常量与默认值工厂
@@ -484,7 +484,7 @@ export const DEFAULT_WORKSPACE_INIT_STATE: WorkspaceInitState = {
   attempts: 0,
 };
 
-const FALLBACK_PROVIDER: ZCodeProvider = ZCODE_AGENT_PROVIDER;
+export const FALLBACK_PROVIDER: ZCodeProvider = ZCODE_AGENT_PROVIDER;
 
 export const DEFAULT_TASK_UI_STATE: TaskUiState = {
   permissionRequest: null,

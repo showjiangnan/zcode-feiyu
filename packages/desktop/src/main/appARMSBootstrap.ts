@@ -1,23 +1,23 @@
-// Modified by ZCode Feiyu contributors (2026).
-import { wrapStartupReporterRequest } from "./startupTelemetryDelivery.js";
-import { createArmsTelemetryConsent } from "./armsTelemetryConsent.js";
-import { randomUUID } from "node:crypto";
-import { basename } from "node:path";
+// Modified by ZCode Feiyu.
 import armsRum from "@arms/rum-electron";
-import { ZCODE_AGENT_LIFECYCLE_LOG_MARKER } from "@zcode/shared/process-diagnostic";
 import {
   ZCODE_ARMS_RUM_ENDPOINT,
-  ZCODE_VERSION,
   ZCODE_TELEMETRY_ENABLED,
+  ZCODE_VERSION,
   mapZCodeEnvToArmsRumEnv,
 } from "@zcode/shared";
+import { ZCODE_AGENT_LIFECYCLE_LOG_MARKER } from "@zcode/shared/process-diagnostic";
+import { randomUUID } from "node:crypto";
+import { basename } from "node:path";
 import { ARMS_BROWSER_COLLECTORS, parseArmsViewName } from "../shared/armsRumShared.js";
 import { redactArmsEventBatch } from "./armsEventRedaction.js";
+import { createArmsTelemetryConsent } from "./armsTelemetryConsent.js";
 import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
 import { ingestArmsApiEventsFromBatch } from "./desktopNetworkTelemetry.js";
 import { desktopRuntimeEnv, runtimeApplicationName } from "./desktopRuntimeEnv.js";
-import { summarizeLongTaskAttribution } from "./longTaskAttributionSummary.js";
 import { logger } from "./logger.js";
+import { summarizeLongTaskAttribution } from "./longTaskAttributionSummary.js";
+import { wrapStartupReporterRequest } from "./startupTelemetryDelivery.js";
 
 // LoAF 长任务事件的 snapshots(SDK 已采集的 top-5 attribution)默认不落 SLS，此处补写进
 // event.properties，使归因摘要(top 耗时/占比/invokerType)可查询。不上报原始脚本名/URL。

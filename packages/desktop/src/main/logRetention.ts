@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { readdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
@@ -38,7 +39,7 @@ function getLogRetentionCutoffDate(now: Date, retentionDays: number = LOG_RETENT
   return cutoff;
 }
 
-function shouldDeleteExpiredLogFile(
+export function shouldDeleteExpiredLogFile(
   fileName: string,
   now: Date,
   retentionDays: number = LOG_RETENTION_DAYS,

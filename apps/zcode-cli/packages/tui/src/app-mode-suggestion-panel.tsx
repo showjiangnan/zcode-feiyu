@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import React from "react";
 import { clampIndex } from "./app-input.js";
 import { palette } from "./app-model.js";
@@ -94,7 +95,7 @@ export function ModeSuggestionPanel({
   );
 }
 
-function visibleModeOptionWindow(
+export function visibleModeOptionWindow(
   modes: readonly TuiModeOption[],
   selectedIndex: number,
   maxVisible: number,

@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import type { IPlatformService } from "@zcode/shared";
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
 import type { FeedbackSubmitDraft } from "@/feedback/feedbackStore.js";
 import { runExportLogsAction } from "@/lib/exportLogsAction.js";
 import { ZCODE_PRODUCT_DOCS_URL } from "@/lib/productDocs.js";
 
-interface HelpMenuActionHandlers {
+export interface HelpMenuActionHandlers {
   openIssueReport: () => Promise<void>;
   openProductDocs: () => void;
   exportLogs: () => void;
@@ -25,7 +26,7 @@ export function createHelpMenuActionHandlers({
         type: "bug",
         module: "其它",
         severity: "P2-中",
-        includeLogs: false,
+        includeLogs: true,
         screenshots: [],
       });
     },

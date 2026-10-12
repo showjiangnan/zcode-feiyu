@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { Model, ModelInputMessage, ModelToolContract, TraceContext } from "../deps.js";
 import type { AgentTelemetryCausation, ModelApiOperation } from "@zcode/contracts";
 import {

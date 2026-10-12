@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export type ObservationSourceKind = "log" | "eventlog" | "sqlite" | "network";
 
 export interface SourceStatus {
@@ -80,7 +80,11 @@ export interface TraceSpan {
 }
 
 export type ContextSectionSource = "system_prompt" | "skills" | "tools" | "other";
-export type TokenMethod = "estimated" | "provider_count" | "proportional_estimate" | "provider_usage";
+export type TokenMethod =
+  | "estimated"
+  | "provider_count"
+  | "proportional_estimate"
+  | "provider_usage";
 export type TokenConfidence = "high" | "medium" | "low";
 
 export interface TokenMeasurement {

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { realpathSync } from "node:fs";
 import { platform as currentPlatform } from "node:process";
 import type { ExecutionResult } from "@zcode/contracts";
@@ -9,7 +10,7 @@ import {
 } from "../path-normalization.js";
 import type { ToolRuntimeScope } from "../types.js";
 
-interface BashCwdPolicyInput {
+export interface BashCwdPolicyInput {
   resolvedCwd: string | undefined;
   status: ExecutionResult["status"];
   exitCode: number | undefined;
@@ -18,7 +19,7 @@ interface BashCwdPolicyInput {
   runtimeScope?: ToolRuntimeScope;
 }
 
-interface BashCwdPolicyDecision {
+export interface BashCwdPolicyDecision {
   nextWorkingDirectory?: string;
   stderrSuffix?: string;
 }

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useCallback, useMemo, useState } from "react";
 import type { ZCodeInstalledPluginSummary, ZCodePluginInfo } from "@zcode/shared";
 import { isSystemManagedDesktopPlugin } from "@zcode/shared";
@@ -14,7 +14,7 @@ interface UsePluginUninstallInput {
   onAfterUninstall: () => Promise<void>;
 }
 
-interface PluginUninstallController {
+export interface PluginUninstallController {
   pendingPlugin: ZCodePluginInfo | ZCodeInstalledPluginSummary | null;
   uninstalling: boolean;
   requestUninstall: (pluginId: string) => void;

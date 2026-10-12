@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- 附件采集、分 scope 上传调度和生命周期必须在同一 hook 中原子收口。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast.js";
@@ -44,14 +45,14 @@ import {
 } from "@/store/composerAttachmentUploadStore.js";
 import { uploadComposerAttachment, type AttachmentPutFn } from "@/v4/composer/attachmentUpload.js";
 
-const COMPOSER_ATTACHMENT_UPLOAD_CONCURRENCY = 2;
-const COMPOSER_ATTACHMENT_AUTO_RETRY_DELAY_MS = 500;
-const COMPOSER_ATTACHMENT_COMPLETE_VISIBLE_MS = 300;
+export const COMPOSER_ATTACHMENT_UPLOAD_CONCURRENCY = 2;
+export const COMPOSER_ATTACHMENT_AUTO_RETRY_DELAY_MS = 500;
+export const COMPOSER_ATTACHMENT_COMPLETE_VISIBLE_MS = 300;
 /**
  * 换代重传的兜底上限。dev 实测同一 workspace 可达 runtimeGeneration=4（3 次换代），
  * 取 5 留余量；它只防 Helper 反复崩溃时的无限重传，正常使用不该触达。
  */
-const COMPOSER_ATTACHMENT_REBUILD_RETRY_LIMIT = 5;
+export const COMPOSER_ATTACHMENT_REBUILD_RETRY_LIMIT = 5;
 const EMPTY_COMPOSER_ATTACHMENTS: ComposerAttachmentUploadItem[] = [];
 const REMOTE_ATTACHMENT_NOT_STAGED_ERROR_CODE = "remoteAttachmentNotStaged";
 export type {
@@ -73,7 +74,7 @@ interface UploadQueueEntry {
   attachmentId: string;
 }
 
-interface ComposerAttachmentsApi {
+export interface ComposerAttachmentsApi {
   attachments: ComposerAttachmentUploadItem[];
   attachmentError: string | null;
   hasAttachments: boolean;
@@ -88,6 +89,8 @@ interface ComposerAttachmentsApi {
   handleDragLeaveComposer: (event: React.DragEvent<HTMLElement>) => void;
   handleDropComposer: (event: React.DragEvent<HTMLElement>) => void;
   handleWhiteboardMentionSelected: (boardId: string) => Promise<void>;
+  /** 程序化加入文件（插件 UI 图片上下文等）；返回被接受的附件 id，超出上限的部分被丢弃。 */
+  addAttachmentFiles: (files: File[]) => string[];
   removeAttachment: (id: string) => void;
   retryAttachment: (id: string) => void;
   /** 发送成功只清冻结的附件 id；不传表示用户主动清空整个附件区。 */
@@ -101,7 +104,7 @@ interface ComposerAttachmentsApi {
   setAttachmentError: (message: string | null) => void;
 }
 
-interface UseComposerAttachmentsOptions {
+export interface UseComposerAttachmentsOptions {
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;
@@ -125,7 +128,7 @@ interface UseComposerAttachmentsOptions {
   listenAddToChatEvents?: boolean;
 }
 
-async function selectAttachmentLocalPaths(
+export async function selectAttachmentLocalPaths(
   platform: Pick<IPlatformService, "selectFile" | "selectFiles">,
 ): Promise<string[]> {
   const selectedPaths = platform.selectFiles
@@ -151,7 +154,7 @@ class RemoteAttachmentNotStagedError extends Error {
   readonly code = REMOTE_ATTACHMENT_NOT_STAGED_ERROR_CODE;
 }
 
-function isTransientAttachmentUploadError(error: unknown): boolean {
+export function isTransientAttachmentUploadError(error: unknown): boolean {
   if (isAbortError(error)) return false;
   if (error instanceof OversizedInlineVideoAttachmentError) return false;
   if (error instanceof OversizedInlinePdfAttachmentError) return false;
@@ -362,6 +365,9 @@ export function useComposerAttachments(
               fileName: item.filename,
               mime: item.mimeType,
               bytes: result.bytes,
+              ...(item.sourceKind
+                ? { sourceKind: item.sourceKind, messageCount: item.messageCount }
+                : {}),
             },
             result.staged,
           );
@@ -626,14 +632,14 @@ export function useComposerAttachments(
   }, [intl, scopeKey]);
 
   const addPreparedAttachments = useCallback(
-    (selectedAttachments: ChatComposerAttachment[]) => {
-      if (selectedAttachments.length === 0) return;
+    (selectedAttachments: ChatComposerAttachment[]): string[] => {
+      if (selectedAttachments.length === 0) return [];
       const current = readComposerAttachmentScope(scopeKey);
       const remainingSlots = MAX_CHAT_ATTACHMENTS - current.length;
       if (remainingSlots <= 0) {
         selectedAttachments.forEach(revokeChatComposerAttachment);
         showAttachmentLimitWarning();
-        return;
+        return [];
       }
       const accepted = selectedAttachments.slice(0, remainingSlots);
       selectedAttachments.slice(remainingSlots).forEach(revokeChatComposerAttachment);
@@ -673,13 +679,14 @@ export function useComposerAttachments(
       for (const item of items) {
         if (item.uploadStatus === "queued") enqueueUpload(scopeKey, item.id);
       }
+      return items.map((item) => item.id);
     },
     [commitScope, enqueueUpload, scopeKey, showAttachmentLimitWarning],
   );
 
   const addAttachmentFiles = useCallback(
-    (selectedFiles: File[]) => {
-      addPreparedAttachments(
+    (selectedFiles: File[]): string[] => {
+      return addPreparedAttachments(
         selectedFiles.map((file) => {
           let localPath: string | undefined;
           try {
@@ -761,7 +768,9 @@ export function useComposerAttachments(
       event.stopPropagation?.();
       // 浏览器不具备本地临时路径；通过同一附件上传通道传输文本字节。
       if (!platform.canSelectFilePath) {
-        addAttachmentFiles([new File([text], createClipboardTextAttachmentFilenameForDate(), { type: "text/plain" })]);
+        addAttachmentFiles([
+          new File([text], createClipboardTextAttachmentFilenameForDate(), { type: "text/plain" }),
+        ]);
         return;
       }
       void (async () => {
@@ -1010,6 +1019,9 @@ export function useComposerAttachments(
         return {
           id,
           filename: attachmentRef.fileName,
+          ...(attachmentRef.sourceKind
+            ? { sourceKind: attachmentRef.sourceKind, messageCount: attachmentRef.messageCount }
+            : {}),
           mimeType: attachmentRef.mime,
           sizeBytes: attachmentRef.bytes,
           referenceOwnership: "session",
@@ -1082,6 +1094,7 @@ export function useComposerAttachments(
       handleDragLeaveComposer,
       handleDropComposer,
       handleWhiteboardMentionSelected,
+      addAttachmentFiles,
       removeAttachment,
       retryAttachment,
       clearAttachments,
@@ -1091,6 +1104,7 @@ export function useComposerAttachments(
       setAttachmentError,
     }),
     [
+      addAttachmentFiles,
       attachmentError,
       adoptSentAttachments,
       attachments,

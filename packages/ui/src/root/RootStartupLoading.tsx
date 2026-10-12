@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ReactNode } from "react";
 import { cn } from "@/components/lib/utils.js";
 
@@ -33,7 +34,7 @@ export function ZCodeStartupLogoBadge({ animated = true }: { animated?: boolean 
   );
 }
 
-function ZCodeStartupLogo({
+export function ZCodeStartupLogo({
   className,
   animated = true,
 }: {

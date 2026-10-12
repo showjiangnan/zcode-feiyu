@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // sessions-index 的 SessionSummary → 侧栏实时 detail ZCodeTaskMeta 映射。
 // 这些对象不独立决定列表行存在性；后续以 tasks-index.sqlite 持久行为左表 join。
 // 注意：summary.sessionEnded 是「成功轮收口」语义（completedSuccess 即 true），不是删除；
@@ -25,7 +26,7 @@ function phaseToStatus(phase: SessionSummary["phase"]): ZCodeTaskMeta["status"] 
   }
 }
 
-interface MapSessionSummaryOptions {
+export interface MapSessionSummaryOptions {
   workspacePath: string;
   workspaceIdentity?: string;
   /** 本地已有 meta（保留手动标题/provider 等旧值，避免被列表刷新冲掉）。 */
@@ -62,7 +63,7 @@ export function mapSessionSummaryToTaskMeta(
       ...(options.workspaceIdentity ? { workspaceIdentity: options.workspaceIdentity } : {}),
       createdAt: summary.createdAt || previous?.createdAt || 0,
       updatedAt: summary.lastActivityAt || previous?.updatedAt || 0,
-      mode: previous?.mode ?? "build",
+      mode: previous?.mode ?? "default",
       ...(previous?.model ? { model: previous.model } : {}),
       ...(summary.parentSessionId ? { forkedFromTaskId: summary.parentSessionId } : {}),
       ...(previous?.provider ? { provider: previous.provider as ZCodeProvider } : {}),

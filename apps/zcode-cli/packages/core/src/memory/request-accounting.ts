@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { Model, ModelRequest, ModelRequestAdmission, ModelUsage } from "@zcode/contracts";
 import { getModelUsageTotalTokens, hasModelTokenUsage } from "@zcode/contracts";
 import { estimateProviderRequestInputTokens } from "../model/provider-request-estimate.js";

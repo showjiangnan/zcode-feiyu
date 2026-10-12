@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- CUA 设置页同时编排插件总开关、双权限状态与授权返回恢复链；后续单独拆分组件。 */
 // 设置页「电脑控制 (Computer Use)」分区：
 //  - 顶部一个总开关：开/关 zcode-cua 插件（连带其 MCP server 与 skill 一起启用/禁用）。

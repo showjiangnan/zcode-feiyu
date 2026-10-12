@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   type MessageWithParts,
   type ReadSessionContextInput,
@@ -116,6 +117,9 @@ export function formatReadSessionContextModelContent(output: ReadSessionContextO
     `ReadSessionContext returned ${output.source} context for ${output.sessionId}.`,
     output.title ? `Title: ${output.title}` : undefined,
     output.truncated ? "The returned context is truncated." : undefined,
+    output.nextCursor !== undefined
+      ? `More matches: call again with cursor=${output.nextCursor}.`
+      : undefined,
     "",
     output.content,
   ]

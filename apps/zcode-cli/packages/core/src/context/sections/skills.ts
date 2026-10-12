@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Skills Section Builder
 // ============================================================
@@ -37,10 +38,7 @@ export function buildSkillsSection(options: SkillsSectionOptions): ContextSectio
 }
 
 function buildSkillsContent(skills: SkillMetadata[], budget: number): string {
-  const lines = [
-    "The following skills are available for use with the Skill tool:",
-    "",
-  ];
+  const lines = ["The following skills are available for use with the Skill tool:", ""];
 
   const sortedSkills = [...skills].sort((a, b) =>
     skillDisplayName(a).localeCompare(skillDisplayName(b)),

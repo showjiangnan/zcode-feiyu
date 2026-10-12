@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import { addOcc, collapse, liveField, mergeInto, singleOcc, type AbstractValue } from "./domain.js";
 import type { EvalContext, Evaluator } from "./taint.js";
@@ -8,7 +9,12 @@ import type { EvalContext, Evaluator } from "./taint.js";
  * that file under the line cap; `evalCall` dispatches here via the site lookups.
  */
 
-export function handleAsk(ev: Evaluator, node: ts.CallExpression, askId: string, ctx: EvalContext): AbstractValue {
+export function handleAsk(
+  ev: Evaluator,
+  node: ts.CallExpression,
+  askId: string,
+  ctx: EvalContext,
+): AbstractValue {
   ev.s.markFacade(ctx.regionStack);
   const site = ev.s.askSites.get(askId);
   if (site !== undefined) {
@@ -52,7 +58,11 @@ export function handleJoin(
   // node grew must not terminate the fixpoint, or a consumer evaluated earlier in the pass
   // (a function body, a later re-read) would never observe the growth.
   const result = ev.s.joinResultOf(node);
-  if (arg !== undefined && ts.isArrayLiteralExpression(arg) && !arg.elements.some(ts.isSpreadElement)) {
+  if (
+    arg !== undefined &&
+    ts.isArrayLiteralExpression(arg) &&
+    !arg.elements.some(ts.isSpreadElement)
+  ) {
     // Static array literal: element positions become ports.
     arg.elements.forEach((el, port) => {
       const elemValue = ev.evalExpr(el, ctx);

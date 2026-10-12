@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export type SidebarTaskGroupToggleMessageId =
   | "workspaceSidebar.collapseAllGroups"
   | "workspaceSidebar.expandAllGroups";
@@ -8,14 +9,14 @@ export interface SidebarTaskGroupTogglePresentation {
   messageId: SidebarTaskGroupToggleMessageId;
 }
 
-interface SidebarTaskGroupToggleRawState {
+export interface SidebarTaskGroupToggleRawState {
   visible: boolean;
   canToggle: boolean;
   areAllExpanded: boolean;
   transitionPending: boolean;
 }
 
-function resolveSidebarTaskGroupToggleMessageId(
+export function resolveSidebarTaskGroupToggleMessageId(
   areAllExpanded: boolean,
 ): SidebarTaskGroupToggleMessageId {
   return areAllExpanded ? "workspaceSidebar.collapseAllGroups" : "workspaceSidebar.expandAllGroups";

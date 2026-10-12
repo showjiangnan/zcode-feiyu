@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 /** 一条 TS 诊断（CreateWorkflow 与 EvalWorkflowSnippet 的 display 共用同一形状）。 */
@@ -16,7 +17,7 @@ interface WorkflowDiagnosticEntry {
 const ANALYZER_RULE_CODE_MIN = 9001;
 const ANALYZER_RULE_CODE_MAX = 9099;
 
-function isWorkflowAnalyzerRuleCode(code: number): boolean {
+export function isWorkflowAnalyzerRuleCode(code: number): boolean {
   return code >= ANALYZER_RULE_CODE_MIN && code <= ANALYZER_RULE_CODE_MAX;
 }
 

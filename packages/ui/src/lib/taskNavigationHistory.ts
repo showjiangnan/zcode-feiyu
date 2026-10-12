@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * Workspace 导航历史 —— 浏览器式前进/后退栈
  *
@@ -48,7 +49,7 @@ export function createTaskNavigationHistory(): TaskNavigationHistory {
   return { entries: [], cursor: -1 };
 }
 
-function isTaskNavEntry(entry: WorkspaceNavEntry): entry is TaskNavEntry {
+export function isTaskNavEntry(entry: WorkspaceNavEntry): entry is TaskNavEntry {
   return entry.kind === "task";
 }
 

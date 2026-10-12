@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { memo, useMemo } from "react";
 import type { QueueItem, UserInputRow } from "@zcode/shared/zcode-protocol-v4";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -40,7 +40,8 @@ function ConversationPendingGuideListImpl({
 
   if (rows.length === 0) return null;
   return (
-    <div data-v4-pending-guide-list="true" className="flex flex-col gap-5 pt-5">
+    // 待引导消息直接渲染行，绕过了普通轮容器；补齐输入框 dock 的水平留白，避免气泡和状态贴边。
+    <div data-v4-pending-guide-list="true" className="flex flex-col gap-5 px-4 pt-5">
       {rows.map((row) => (
         <ConversationTurnRow
           key={row.sourceCommandId}

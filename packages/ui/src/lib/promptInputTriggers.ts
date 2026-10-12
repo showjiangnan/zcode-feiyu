@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export type PromptInputTrigger = "/" | "@" | "$" | "#";
 
 export interface ActivePromptInputTrigger {
@@ -24,6 +25,11 @@ export interface PromptInputSuggestionItem {
     source?: "built-in" | "user" | "plugin";
     model?: string;
   };
+}
+
+interface PromptInputReplacement {
+  cursorOffset: number;
+  text: string;
 }
 
 type PromptInputReplacementCandidates = string | readonly string[];
@@ -253,4 +259,29 @@ export function getBestPromptInputSuggestionIndex(
   });
 
   return bestIndex;
+}
+
+export function replaceActivePromptInputToken(
+  textBeforeCursor: string,
+  textAfterCursor: string,
+  suggestion: Pick<PromptInputSuggestionItem, "trigger" | "value">,
+): PromptInputReplacement | null {
+  const activeTrigger = extractActivePromptInputTrigger(textBeforeCursor);
+  if (!activeTrigger || activeTrigger.trigger !== suggestion.trigger) {
+    return null;
+  }
+
+  const tokenStart = textBeforeCursor.length - activeTrigger.query.length - 1;
+  const tailLength = getActivePromptInputTokenTailLength(
+    activeTrigger,
+    textAfterCursor,
+    suggestion.value,
+  );
+  const prefix = textBeforeCursor.slice(0, tokenStart);
+  const suffix = textAfterCursor.slice(tailLength);
+
+  return {
+    cursorOffset: prefix.length + suggestion.value.length + 2,
+    text: `${prefix}${suggestion.trigger}${suggestion.value} ${suffix}`,
+  };
 }

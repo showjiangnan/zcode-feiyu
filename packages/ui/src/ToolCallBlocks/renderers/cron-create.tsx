@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { ClockIcon } from "lucide-react";
 import { TID_CRON_CREATE_CARD, TID_CRON_CREATE_OPEN } from "@zcode/shared";
 import type { ZCodeAutomationScheduleRule } from "@zcode/shared";
@@ -6,6 +7,7 @@ import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { describeAutomationCardSchedule } from "@/settings/automationCardSchedule.js";
 import type { ToolCallBlockRenderContext } from "@/ToolCallBlocks/shared.js";
+import { FallbackToolCallBlock } from "@/ToolCallBlocks/renderers/fallback.js";
 
 export interface CronCreateAutomationSummary {
   automationId?: string;
@@ -37,6 +39,14 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+export function isCronCreateToolCall(
+  toolCall: ToolCallBlockRenderContext["toolCallNode"]["toolCall"],
+): boolean {
+  return [toolCall.toolName, toolCall.kind, toolCall.title].some(
+    (value) => normalizeToolName(value) === "croncreate",
+  );
+}
+
 export function isCronAutomationCardToolCall(
   toolCall: ToolCallBlockRenderContext["toolCallNode"]["toolCall"],
 ): boolean {
@@ -63,7 +73,9 @@ function normalizeOutputCandidate(value: unknown): unknown {
   return typeof value === "string" ? parseJsonString(value) : value;
 }
 
-function readCronCreateAutomationOutputSummary(value: unknown): CronCreateAutomationSummary | null {
+export function readCronCreateAutomationOutputSummary(
+  value: unknown,
+): CronCreateAutomationSummary | null {
   const normalizedValue = normalizeOutputCandidate(value);
   if (!isPlainRecord(normalizedValue)) {
     return null;
@@ -192,5 +204,21 @@ export function CronCreateAutomationCard({
         </Button>
       </div>
     </div>
+  );
+}
+
+export function CronCreateToolCallBlock(context: ToolCallBlockRenderContext) {
+  const { toolCall } = context.toolCallNode;
+  const automation = readCronCreateAutomationSummary(toolCall);
+
+  if (toolCall.status === "failed" || !automation) {
+    return <FallbackToolCallBlock {...context} />;
+  }
+
+  return (
+    <CronCreateAutomationCard
+      automation={automation}
+      onOpenAutomationsMain={context.onOpenAutomationsMain}
+    />
   );
 }

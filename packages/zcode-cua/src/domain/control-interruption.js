@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // 原生输入来源只能携带有界语义，不能把键值、窗口正文或任意错误串写入生产诊断。
 const reasons = new Set([
   "target-escape",

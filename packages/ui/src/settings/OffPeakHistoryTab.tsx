@@ -1,5 +1,6 @@
-/* 闲时任务 History tab：
-   一行汇总一次完整执行（3h 续跑分段对用户透明）：Instructions / Triggered /
+// Modified by ZCode Feiyu.
+/* 闲时任务 History tab（spec §5 / Figma 4866-2819 · 4866-3106 空态）：
+   一行汇总一次完整执行（3h 续跑分段对用户透明，D30-6）：Instructions / Triggered /
    Status / Duration + 行菜单 Go to session / Delete；无执行记录 → 「No history yet.」 */
 import { isOffPeakTerminalStatus, type ZCodeOffPeakTask } from "@zcode/shared";
 import {
@@ -27,7 +28,7 @@ const STATUS_INDICATOR_CLASS = {
   running: { dot: "bg-brand", text: "text-brand" },
 } as const satisfies Record<string, { dot: string; text: string }>;
 
-function resolveOffPeakHistoryStatus(
+export function resolveOffPeakHistoryStatus(
   task: Pick<ZCodeOffPeakTask, "status">,
 ): keyof typeof STATUS_INDICATOR_CLASS {
   if (task.status === "completed") return "succeeded";
@@ -59,7 +60,7 @@ export function OffPeakHistoryTab({
   const durationMin = Math.max(1, Math.round((endAt - task.startedAt) / 60_000));
   return (
     <div className="overflow-x-auto rounded-[8px]">
-      {/* History 表格字号可缩放，使用相对行高避免大字号内容被固定 18px 行盒裁切。*/}
+      {/* 修复原因：History 表格字号可缩放，使用相对行高避免大字号内容被固定 18px 行盒裁切。 */}
       <table className="w-full text-left text-ui-base font-normal leading-snug tracking-[-0.08px]">
         <thead className="bg-surface text-foreground-subtle">
           <tr className="h-[30px] border-b border-border">

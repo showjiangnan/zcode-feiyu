@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { randomBytes, randomUUID } from "node:crypto";
 import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";

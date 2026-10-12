@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 
 /**
@@ -8,17 +9,22 @@ import ts from "typescript";
  * 这是**铸造期**（interpret.ts）的工作——它要看 AST 与 checker，而投影不许再看代码。
  * 原则是宁缺毋滥：任何不确定都给缺席，交接图随之画一张 `many` 卡，绝不猜一个数。
  */
-export function literalCardinality(iterated: ts.Expression, checker: ts.TypeChecker): number | undefined {
+export function literalCardinality(
+  iterated: ts.Expression,
+  checker: ts.TypeChecker,
+): number | undefined {
   const expr = unwrap(iterated);
   if (ts.isArrayLiteralExpression(expr)) return spreadFreeLength(expr);
   if (!ts.isIdentifier(expr)) return undefined;
 
   const symbol = checker.getSymbolAtLocation(expr);
   const decl = symbol?.valueDeclaration;
-  if (symbol === undefined || decl === undefined || !ts.isVariableDeclaration(decl)) return undefined;
+  if (symbol === undefined || decl === undefined || !ts.isVariableDeclaration(decl))
+    return undefined;
   if (!ts.isIdentifier(decl.name)) return undefined;
   const list = decl.parent;
-  if (!ts.isVariableDeclarationList(list) || (list.flags & ts.NodeFlags.Const) === 0) return undefined;
+  if (!ts.isVariableDeclarationList(list) || (list.flags & ts.NodeFlags.Const) === 0)
+    return undefined;
   if (decl.initializer === undefined) return undefined;
   const init = unwrap(decl.initializer);
   if (!ts.isArrayLiteralExpression(init)) return undefined;
@@ -32,7 +38,8 @@ function unwrap(expr: ts.Expression): ts.Expression {
   let current = expr;
   for (;;) {
     if (ts.isParenthesizedExpression(current)) current = current.expression;
-    else if (ts.isAsExpression(current) || ts.isSatisfiesExpression(current)) current = current.expression;
+    else if (ts.isAsExpression(current) || ts.isSatisfiesExpression(current))
+      current = current.expression;
     else if (ts.isNonNullExpression(current)) current = current.expression;
     else if (ts.isTypeAssertionExpression(current)) current = current.expression;
     else return current;
@@ -40,14 +47,29 @@ function unwrap(expr: ts.Expression): ts.Expression {
 }
 
 function spreadFreeLength(literal: ts.ArrayLiteralExpression): number | undefined {
-  if (literal.elements.some((element) => ts.isSpreadElement(element) || ts.isOmittedExpression(element))) {
+  if (
+    literal.elements.some(
+      (element) => ts.isSpreadElement(element) || ts.isOmittedExpression(element),
+    )
+  ) {
     return undefined;
   }
   return literal.elements.length > 0 ? literal.elements.length : undefined;
 }
 
 /** 就地改变数组内容的方法：经它们调用过的绑定不再是字面量长度。 */
-const MUTATORS = new Set(["push", "pop", "shift", "unshift", "splice", "sort", "reverse", "fill", "copyWithin", "length"]);
+const MUTATORS = new Set([
+  "push",
+  "pop",
+  "shift",
+  "unshift",
+  "splice",
+  "sort",
+  "reverse",
+  "fill",
+  "copyWithin",
+  "length",
+]);
 
 /**
  * 该绑定是否被写过：`xs.push(…)` 之类的就地方法、`xs[i] = …` / `xs[i]++`、`xs.length = 0`，
@@ -58,7 +80,11 @@ function isEverWritten(symbol: ts.Symbol, file: ts.SourceFile, checker: ts.TypeC
   let written = false;
   const visit = (node: ts.Node): void => {
     if (written) return;
-    if (ts.isIdentifier(node) && node.parent !== undefined && checker.getSymbolAtLocation(node) === symbol) {
+    if (
+      ts.isIdentifier(node) &&
+      node.parent !== undefined &&
+      checker.getSymbolAtLocation(node) === symbol
+    ) {
       if (isWriteReference(node)) written = true;
     }
     ts.forEachChild(node, visit);
@@ -79,7 +105,8 @@ function isWriteReference(id: ts.Identifier): boolean {
     return ts.isCallExpression(parent.parent) && parent.parent.expression === parent;
   }
   // xs[i] = ... / xs[i]++ / delete xs[i]
-  if (ts.isElementAccessExpression(parent) && parent.expression === id) return isAssignmentTarget(parent);
+  if (ts.isElementAccessExpression(parent) && parent.expression === id)
+    return isAssignmentTarget(parent);
   // xs = ... （const 下类型错误，但仍算写）
   return isAssignmentTarget(id);
 }
@@ -91,16 +118,34 @@ function isAssignmentTarget(node: ts.Expression): boolean {
     return op >= ts.SyntaxKind.FirstAssignment && op <= ts.SyntaxKind.LastAssignment;
   }
   if (ts.isPrefixUnaryExpression(parent) || ts.isPostfixUnaryExpression(parent)) {
-    return parent.operator === ts.SyntaxKind.PlusPlusToken || parent.operator === ts.SyntaxKind.MinusMinusToken;
+    return (
+      parent.operator === ts.SyntaxKind.PlusPlusToken ||
+      parent.operator === ts.SyntaxKind.MinusMinusToken
+    );
   }
   if (ts.isDeleteExpression(parent)) return true;
   // 解构赋值目标：[xs[0]] = ... / ({ a: xs[0] } = ...)
-  if (ts.isArrayLiteralExpression(parent) || ts.isPropertyAssignment(parent) || ts.isShorthandPropertyAssignment(parent)) {
+  if (
+    ts.isArrayLiteralExpression(parent) ||
+    ts.isPropertyAssignment(parent) ||
+    ts.isShorthandPropertyAssignment(parent)
+  ) {
     let up: ts.Node = parent;
-    while (ts.isArrayLiteralExpression(up) || ts.isObjectLiteralExpression(up) || ts.isPropertyAssignment(up) || ts.isShorthandPropertyAssignment(up) || ts.isSpreadElement(up)) {
+    while (
+      ts.isArrayLiteralExpression(up) ||
+      ts.isObjectLiteralExpression(up) ||
+      ts.isPropertyAssignment(up) ||
+      ts.isShorthandPropertyAssignment(up) ||
+      ts.isSpreadElement(up)
+    ) {
       up = up.parent;
     }
-    return ts.isBinaryExpression(up) && up.operatorToken.kind === ts.SyntaxKind.EqualsToken && up.left !== undefined && containsNode(up.left, node);
+    return (
+      ts.isBinaryExpression(up) &&
+      up.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      up.left !== undefined &&
+      containsNode(up.left, node)
+    );
   }
   return false;
 }

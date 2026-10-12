@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- Coding Plan 登录、订阅与 Start/Coding 互斥校验需要集中维护，拆散会让系统禁用原因更难追踪。 */
 import {
   ApiError,
@@ -17,7 +18,6 @@ import {
 } from "#src/bigmodel/codingPlanEntitlement.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { readApiJson } from "../providers/api/apiJson.js";
-import { normalizeApiKeyForHeader } from "../providers/api/index.js";
 import { resolveBigModelStartPlanZcodeJwt } from "./bigmodelStartPlanZcodeJwt.js";
 import {
   buildZaiStartPlanBalanceUrl,
@@ -99,7 +99,7 @@ export interface CodingPlanAvailabilityProvider {
   readonly apiKey?: string | null;
 }
 
-async function validateCodingPlanProviderAvailability(
+export async function validateCodingPlanProviderAvailability(
   provider: CodingPlanAvailabilityProvider,
   context: CodingPlanAvailabilityContext,
 ): Promise<CodingPlanAvailabilityResult> {
@@ -371,8 +371,12 @@ async function validateSubscriptionListAvailability(
   context: CodingPlanAvailabilityContext,
   url: string,
 ): Promise<CodingPlanAvailabilityResult> {
-  const authorization = normalizeApiKeyForHeader(provider.apiKey ?? "");
-  // Key 尚未准备好只能表示权益未知；不能用调用凭据的缺失证明未订阅。
+  // 账号凭据已是三段 PAT；旧手工 Key 归一化会按 id.secret 截掉签名。
+  const authorization = (provider.apiKey ?? "")
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+  // 请求期 Token 尚未准备好只能表示权益未知；不能用凭据缺失证明未订阅。
   if (!authorization) return { kind: "unknown" };
   try {
     const result = await fetchPersonalCodingPlanEntitlement({
@@ -453,7 +457,10 @@ async function resolveStartPlanAuthorization(
   }
 
   const credentialJwt = await loadZaiProviderConnectionZcodeJwtToken(context);
-  const providerJwt = normalizeApiKeyForHeader(provider.apiKey ?? "");
+  const providerJwt = (provider.apiKey ?? "")
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .trim();
   return {
     value: credentialJwt || providerJwt ? `Bearer ${credentialJwt || providerJwt}` : "",
     missingReason: "coding_plan_not_authenticated",

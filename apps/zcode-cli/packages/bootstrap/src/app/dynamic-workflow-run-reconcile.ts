@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Dynamic Workflow Run Service：孤儿 run 的构造时收敛
 // ============================================================
@@ -5,6 +6,96 @@
 // （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
 // dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
 
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
+// ============================================================
+// Dynamic Workflow Run Service：孤儿 run 的构造时收敛
+// ============================================================
+// dynamic-workflow-run-service.ts 顶到 oxlint max-lines 上限（400 行），把孤儿收敛
+// （interruptedRunFailure / reconcileOrphanRuns）拆到本文件；公开面仍从
+// dynamic-workflow-run-service.ts 导出。语义见那边文件头的不变式 4。
 import type { Logger } from "@zcode/contracts";
 import type { JournalStorePort, RunRecord, WorkflowErrorJson } from "@zcode/dynamic-workflow";
 import { supportsNonTerminalRunQuery } from "./dynamic-workflow-run-journal.js";

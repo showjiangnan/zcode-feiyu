@@ -1,3 +1,34 @@
+// Modified by ZCode Feiyu.
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
+// v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
+// ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
 // v4 workspace-config 只承载 workspace presentation；模型候选与首选项由目标 Host
 // ModelSelectionView 提供，不能再从 live Session settings 反向建立第二份模型目录。
 import { getZCodeAgentModeSelectOptions, normalizeAvailableZCodeMode } from "@zcode/shared";
@@ -8,7 +39,7 @@ import { listProtocolSlashCommands } from "./slash-commands.js";
 import type { ZCodeProtocolAgentServerContext } from "./server-types.js";
 
 /** Session settings 只投影非模型的 workspace mode 与 slash commands。 */
-function toV4WorkspaceConfigState(
+export function toV4WorkspaceConfigState(
   settings: ZCodeSessionSettingsState,
   slashCommands: readonly ZCodeSlashCommand[],
 ): WorkspaceConfigState {

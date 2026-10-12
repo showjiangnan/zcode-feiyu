@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { AssistantTextRow, ReasoningRow, ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
 import type { TaskChatToolCallTreeNode } from "@/lib/toolCallTree.js";
 import type { AssistantWorkRow } from "@/v4/conversationTurnRenderUnits.js";
@@ -32,7 +33,7 @@ function isToolCallRow(row: AssistantWorkRow): row is ToolCallRow {
   return row.kind === "toolCall";
 }
 
-function isOfficialCuaToolCallRow(row: AssistantWorkRow): boolean {
+export function isOfficialCuaToolCallRow(row: AssistantWorkRow): boolean {
   return (
     isToolCallRow(row) &&
     OFFICIAL_CUA_TOOL_PREFIXES.some((prefix) => row.toolName.startsWith(prefix))

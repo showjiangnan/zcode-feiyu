@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   HookOutcome,
   SessionEventType,
@@ -24,13 +25,15 @@ import {
 } from "./runner-helpers.js";
 import type {
   HookRegistration,
-  HookCallbackDiagnostics,
   HookCallbackResult,
   HookRunOptions,
   HookRunResult,
   HookRunner,
   HookRunnerOptions,
 } from "./types.js";
+
+import { unwrapHookCallbackResult, sanitizeHookDiagnostics } from "./runner-callback-result.js";
+// 按职责拆分；保留原始规则、执行顺序与状态所有者。
 
 export class InMemoryHookRunner implements HookRunner {
   private readonly defaultTimeoutMs: number;
@@ -417,44 +420,6 @@ export class InMemoryHookRunner implements HookRunner {
       },
     });
   }
-}
-
-function unwrapHookCallbackResult(result: HookJSONOutput | HookCallbackResult | void): {
-  output: HookJSONOutput | undefined;
-  diagnostics: HookCallbackDiagnostics | undefined;
-} {
-  if (isHookCallbackResult(result)) {
-    return { output: result.output, diagnostics: result.diagnostics };
-  }
-  return { output: result as HookJSONOutput | undefined, diagnostics: undefined };
-}
-
-function isHookCallbackResult(value: unknown): value is HookCallbackResult {
-  return Boolean(
-    value &&
-    typeof value === "object" &&
-    "kind" in value &&
-    (value as { kind?: unknown }).kind === "hookCallbackResult",
-  );
-}
-
-function sanitizeHookDiagnostics(
-  diagnostics: HookCallbackDiagnostics | undefined,
-): HookCallbackDiagnostics | undefined {
-  if (!diagnostics) return undefined;
-  const sanitize = (value: string | undefined): string | undefined => {
-    const trimmed = value?.trim();
-    return trimmed ? sanitizeHookDisplayText(trimmed).slice(0, 4000) : undefined;
-  };
-  const errorMessage = sanitize(diagnostics.errorMessage);
-  const stderrPreview = sanitize(diagnostics.stderrPreview);
-  const stdoutPreview = sanitize(diagnostics.stdoutPreview);
-  if (!errorMessage && !stderrPreview && !stdoutPreview) return undefined;
-  return {
-    ...(errorMessage ? { errorMessage } : {}),
-    ...(stderrPreview ? { stderrPreview } : {}),
-    ...(stdoutPreview ? { stdoutPreview } : {}),
-  };
 }
 
 export function createInMemoryHookRunner(options?: HookRunnerOptions): InMemoryHookRunner {

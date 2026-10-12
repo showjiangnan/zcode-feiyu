@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { create } from "zustand";
 import type {
   CommandAck,
@@ -17,7 +18,7 @@ export interface WorkspaceHookCommandBinding {
   onCommandSettled?: (commandId: string) => void;
 }
 
-interface WorkspaceHookReviewBinding {
+export interface WorkspaceHookReviewBinding {
   request: WorkspaceHookReviewRequestPayload;
   workspacePath: string;
   sendCommand(envelope: CommandEnvelope): Promise<CommandAck>;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ReactNode } from "react";
 import { Anchor, Download, ShieldCheck } from "lucide-react";
 import type { Hook, PluginHookDetail, PluginScope } from "@zcode/shared";
@@ -27,7 +28,7 @@ type HookSection =
   | { kind: "legacy"; title: "Legacy"; count: number; hooks: Hook[] }
   | { kind: "plugin"; title: string; pluginId: string; count: number; hooks: PluginHookRow[] };
 
-function groupHookSections(
+export function groupHookSections(
   editableHooks: Hook[],
   compatibilityHooks: Hook[],
   pluginHooks: PluginHookRow[],

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 const SIDEBAR_LEADER_TIMEOUT_MS = 2_000;
 export const SIDEBAR_LEADER_HINT = "Press B for sidebar, M for files, A for APIs.";
 export const SIDEBAR_HIDDEN_STATUS = "Sidebar hidden.";
@@ -31,8 +32,7 @@ export function resolveSidebarShortcut(
   nowMs: number,
   timeoutMs = SIDEBAR_LEADER_TIMEOUT_MS,
 ): SidebarShortcutIntent {
-  const leaderActive =
-    state.leaderArmedUntilMs !== undefined && nowMs <= state.leaderArmedUntilMs;
+  const leaderActive = state.leaderArmedUntilMs !== undefined && nowMs <= state.leaderArmedUntilMs;
 
   if (leaderActive && isSidebarToggleKey(key)) {
     state.leaderArmedUntilMs = undefined;
@@ -74,9 +74,6 @@ function isApisToggleKey(key: SidebarShortcutKey): boolean {
 
 function isPlainLeaderFollowupKey(key: SidebarShortcutKey, name: string): boolean {
   return (
-    key.name.toLowerCase() === name &&
-    key.ctrl !== true &&
-    key.meta !== true &&
-    key.option !== true
+    key.name.toLowerCase() === name && key.ctrl !== true && key.meta !== true && key.option !== true
   );
 }

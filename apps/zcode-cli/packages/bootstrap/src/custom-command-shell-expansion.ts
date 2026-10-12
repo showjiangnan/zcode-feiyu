@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { basename, dirname } from "node:path";
 import {
   type CustomCommandContent,
@@ -93,7 +94,10 @@ function pickNextMatch(
 }
 
 function normalizeFencedShellCommand(command: string): string {
-  return command.replace(/^\r?\n/u, "").replace(/\r?\n$/u, "").trim();
+  return command
+    .replace(/^\r?\n/u, "")
+    .replace(/\r?\n$/u, "")
+    .trim();
 }
 
 async function runShellExpansion(input: {

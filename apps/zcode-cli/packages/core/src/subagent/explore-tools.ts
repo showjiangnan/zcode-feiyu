@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 对齐文件搜索型子 agent 的工具面。direct branch 会暴露 Glob/Grep；
 // embedded search branch 则通过 Bash find/grep 接管搜索。注意：白名单刻意不含任何
 // 文件写工具（Write/Edit/ApplyPatch），因此 Bash 是唯一的副作用入口，只读语义靠 Explore prompt 约束。
@@ -34,17 +35,21 @@ const EXPLORE_AGENT_DESCRIPTION_TOOL_PRIORITY_SET = new Set<ExploreAgentAllowedT
   EXPLORE_AGENT_DESCRIPTION_TOOL_PRIORITY,
 );
 
-export function buildExploreAllowedTools(options: {
-  embeddedSearchEnabled?: boolean;
-} = {}): readonly ExploreAgentAllowedTool[] {
+export function buildExploreAllowedTools(
+  options: {
+    embeddedSearchEnabled?: boolean;
+  } = {},
+): readonly ExploreAgentAllowedTool[] {
   return options.embeddedSearchEnabled
     ? EXPLORE_AGENT_EMBEDDED_SEARCH_ALLOWED_TOOLS
     : EXPLORE_AGENT_ALLOWED_TOOLS;
 }
 
-export function formatExploreAllowedToolsForAgentDescription(options: {
-  embeddedSearchEnabled?: boolean;
-} = {}): string {
+export function formatExploreAllowedToolsForAgentDescription(
+  options: {
+    embeddedSearchEnabled?: boolean;
+  } = {},
+): string {
   const allowedTools = buildExploreAllowedTools(options);
   const allowedToolSet = new Set(allowedTools);
   const prioritizedTools = EXPLORE_AGENT_DESCRIPTION_TOOL_PRIORITY.filter((tool) =>

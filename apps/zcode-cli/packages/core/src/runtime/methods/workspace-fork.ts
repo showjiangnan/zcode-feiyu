@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   CoreErrorType,
   RewindStrategy,
@@ -7,12 +8,7 @@ import {
   createPartId,
   parseWorkspaceCheckpointArtifact,
 } from "../deps.js";
-import type {
-  MessageId,
-  SessionId,
-  TraceContext,
-  WorkspaceCheckpointArtifact,
-} from "../deps.js";
+import type { MessageId, SessionId, TraceContext, WorkspaceCheckpointArtifact } from "../deps.js";
 import {
   selectCheckpointsForMessages,
   formatWorkspaceForkAtMessageNoticeBody,

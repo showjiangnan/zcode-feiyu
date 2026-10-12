@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 虚拟滚动核心：v4 timeline 底部锚定状态机（纯函数，无 DOM/React 依赖）。
 //
 // 语义（scrollAnchor）：
@@ -10,9 +11,9 @@
 //
 
 /** 离底判定容差：小于该距离视为「在底部」。取值覆盖亚像素滚动与最后一行 padding。 */
-const BOTTOM_ANCHOR_EPSILON_PX = 48;
+export const BOTTOM_ANCHOR_EPSILON_PX = 48;
 
-interface TimelineScrollMetrics {
+export interface TimelineScrollMetrics {
   /** 滚动容器 scrollTop。 */
   scrollTop: number;
   /** 滚动容器可视高度（clientHeight）。 */
@@ -38,14 +39,14 @@ export function isAtBottom(
  * 覆盖三种来源且无需区分：用户上滚（离底 → 解除）、用户滚回（贴底 → 恢复）、
  * 程序化贴底（落点即底部 → 保持）。
  */
-function nextFollowingAfterScroll(
+export function nextFollowingAfterScroll(
   metrics: TimelineScrollMetrics,
   epsilonPx: number = BOTTOM_ANCHOR_EPSILON_PX,
 ): boolean {
   return isAtBottom(metrics, epsilonPx);
 }
 
-type TimelineScrollEventSource = "user" | "programmatic" | "layout";
+export type TimelineScrollEventSource = "user" | "programmatic" | "layout";
 
 /**
  * scroll 事件后的滚动权裁决。布局/程序化 scroll 不得改变用户意图；只有用户输入
@@ -90,7 +91,7 @@ export function shouldAdjustVirtualizerForItemSizeChange(input: {
 }
 
 /** 未观察滚动的判定容差：小于该值的 scrollTop 回退视为亚像素抖动，不算用户上滚。 */
-const UNOBSERVED_SCROLL_EPSILON_PX = 2;
+export const UNOBSERVED_SCROLL_EPSILON_PX = 2;
 
 export type TimelineUserScrollIntent = "none" | "awayFromBottom" | "towardBottom" | "unknown";
 
@@ -222,7 +223,7 @@ export function prependVirtualAnchorAdjustment(
   return next.start - previous.offsetTop - currentScrollTop;
 }
 
-interface PrependAnchorInput {
+export interface PrependAnchorInput {
   /** 上一 commit 的窗口首行 rowId（null = 尚无行）。 */
   prevFirstRowId: number | null;
   /** 本 commit 的窗口首行 rowId（null = 行被清空）。 */
@@ -247,10 +248,10 @@ export function prependScrollAdjustment(input: PrependAnchorInput): number | nul
 }
 
 /** 顶部触发阈值：距顶小于该距离视为「到顶」，自动拉取更早一窗。 */
-const LOAD_OLDER_TRIGGER_PX = 64;
+export const LOAD_OLDER_TRIGGER_PX = 64;
 
 /** 提前两个视口补页，网络与渲染应在用户抵达窗口边界前完成。 */
-const LOAD_OLDER_PREFETCH_VIEWPORTS = 2;
+export const LOAD_OLDER_PREFETCH_VIEWPORTS = 2;
 
 export function historyPrefetchTriggerPx(viewportHeight: number): number {
   if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) {

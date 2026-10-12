@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import { WORKFLOW_FUNCTION_NAME, type ScriptLoc } from "../compiler/compile.js";
 
@@ -154,7 +155,11 @@ export function addPlaceholder(target: AbstractValue, ph: Placeholder): boolean 
     }
     return false;
   }
-  target.phs.set(key, { fnId: ph.fnId, param: ph.param, ...(ph.rest === true ? { rest: true } : {}) });
+  target.phs.set(key, {
+    fnId: ph.fnId,
+    param: ph.param,
+    ...(ph.rest === true ? { rest: true } : {}),
+  });
   return true;
 }
 
@@ -236,7 +241,11 @@ export function mergeInto(target: AbstractValue, source: AbstractValue, depth = 
  * here, so persistent `bound` arrays never exceed the cap — which is also what bounds
  * `substitute`, whose output prefix is a 1:1 map of an already-capped summary prefix.
  */
-export function mergeBound(target: AbstractValue, sourceBound: AbstractValue[], depth: number): boolean {
+export function mergeBound(
+  target: AbstractValue,
+  sourceBound: AbstractValue[],
+  depth: number,
+): boolean {
   let changed = false;
   if (depth >= VALUE_DEPTH_CAP) {
     for (const el of sourceBound) changed = collapseInto(target, el) || changed;
@@ -307,7 +316,11 @@ export function collapse(v: AbstractValue): AbstractValue {
  * folded once (its occs already contributed on first visit), so `a.self = a` folds in
  * finite time. Returning growth keeps the depth-cap fold in {@link mergeInto} sound.
  */
-export function collapseInto(out: AbstractValue, v: AbstractValue, seen = new Set<AbstractValue>()): boolean {
+export function collapseInto(
+  out: AbstractValue,
+  v: AbstractValue,
+  seen = new Set<AbstractValue>(),
+): boolean {
   if (seen.has(v)) return false;
   seen.add(v);
   let changed = false;
@@ -396,7 +409,11 @@ export function provisionalFanoutId(order: number): string {
  * (a sound over-approximation, never a kill), and a member that actually HOLDS a tracked
  * script-local function dispatches as an ordinary call (see evalCall's mutator branch).
  */
-export const HEAP_MUTATORS = new Set<string>(["push", "unshift", "splice", "set", "add"]);
+// `send` 是 facade `Channel<T>` 的入队（docs/dynamic-workflow/authoring.md「Streams」）：一次向容器
+// 写入，与 push / Map.set 同规——`ch.send(x)` 把 x 的 taint 并进 channel 的 place，`for await` 再从
+// place 读出，于是每个生产者到每个消费者各画一条数据边。按名字匹配（与其余 mutator 一致），
+// 脚本自己声明的 `send` 方法照旧走 calls.ts 里「成员持有脚本函数则按调用分派」的守卫。
+export const HEAP_MUTATORS = new Set<string>(["push", "unshift", "splice", "set", "add", "send"]);
 
 /**
  * Every compound-assignment token (`+=`, `-=`, … and the logical `||=`/`&&=`/`??=`).
@@ -468,7 +485,9 @@ export function isDirectCallee(callee: ts.Expression): boolean {
 
 export function isJsonStringify(access: ts.PropertyAccessExpression): boolean {
   return (
-    ts.isIdentifier(access.expression) && access.expression.text === "JSON" && access.name.text === "stringify"
+    ts.isIdentifier(access.expression) &&
+    access.expression.text === "JSON" &&
+    access.name.text === "stringify"
   );
 }
 
@@ -496,7 +515,8 @@ export function peelPlace(expr: ts.Expression): ts.Expression {
     else if (ts.isNonNullExpression(cur)) cur = cur.expression;
     else if (ts.isAsExpression(cur) || ts.isSatisfiesExpression(cur)) cur = cur.expression;
     else if (ts.isTypeAssertionExpression(cur)) cur = cur.expression;
-    else if (ts.isBinaryExpression(cur) && cur.operatorToken.kind === ts.SyntaxKind.CommaToken) cur = cur.right;
+    else if (ts.isBinaryExpression(cur) && cur.operatorToken.kind === ts.SyntaxKind.CommaToken)
+      cur = cur.right;
     else if (ts.isCommaListExpression(cur) && cur.elements.length > 0) {
       cur = cur.elements[cur.elements.length - 1] as ts.Expression;
     } else return cur;
@@ -523,7 +543,11 @@ export function liveField(container: AbstractValue, key: string): AbstractValue 
  * identity seen-set and depth-capped (beyond the cap the collapsed write smears into the
  * target's occs — a widening, never a drop). Returns true iff any target grew.
  */
-export function replayMayAliasWrite(container: AbstractValue, key: string, value: AbstractValue): boolean {
+export function replayMayAliasWrite(
+  container: AbstractValue,
+  key: string,
+  value: AbstractValue,
+): boolean {
   if (container.mayAlias === undefined) return false;
   return replayFieldInto(container.mayAlias, key, clearExact(value), new Set(), 0);
 }
@@ -544,7 +568,8 @@ function replayFieldInto(
       continue;
     }
     changed = mergeInto(liveField(target, key), write) || changed;
-    if (target.mayAlias !== undefined) changed = replayFieldInto(target.mayAlias, key, write, seen, depth + 1) || changed;
+    if (target.mayAlias !== undefined)
+      changed = replayFieldInto(target.mayAlias, key, write, seen, depth + 1) || changed;
   }
   return changed;
 }
@@ -560,13 +585,18 @@ export function replayMayAliasMerge(container: AbstractValue, value: AbstractVal
   return replayMergeInto(container.mayAlias, clearExact(collapse(value)), new Set());
 }
 
-function replayMergeInto(targets: Set<AbstractValue>, write: AbstractValue, seen: Set<AbstractValue>): boolean {
+function replayMergeInto(
+  targets: Set<AbstractValue>,
+  write: AbstractValue,
+  seen: Set<AbstractValue>,
+): boolean {
   let changed = false;
   for (const target of targets) {
     if (seen.has(target)) continue;
     seen.add(target);
     changed = mergeInto(target, write) || changed;
-    if (target.mayAlias !== undefined) changed = replayMergeInto(target.mayAlias, write, seen) || changed;
+    if (target.mayAlias !== undefined)
+      changed = replayMergeInto(target.mayAlias, write, seen) || changed;
   }
   return changed;
 }
@@ -616,6 +646,8 @@ export interface TaintFacts {
   askActor: Map<string, TaintOcc[]>;
   /** Artifact occurrences reaching each world-read argument. */
   worldReadData: Map<string, TaintOcc[]>;
+  /** Artifact occurrences reaching each OPEN hole's prompt (a sink, like an ask's instructions). */
+  holeData: Map<string, TaintOcc[]>;
   /** Artifact occurrences reaching each join, carrying the join input port. */
   joinIn: Map<string, TaintOcc[]>;
   /** Artifact occurrences reaching each promoted fan-out (provisional id). */

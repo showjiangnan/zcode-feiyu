@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createHash, randomBytes } from "node:crypto";
 import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -6,7 +7,7 @@ import { getRuntimeToolRuntime, type RuntimeToolId } from "@zcode/shared/runtime
 
 type CliEnv = Record<string, string | undefined>;
 
-interface SeaRuntimeModule {
+export interface SeaRuntimeModule {
   getAsset(key: string, encoding: "utf8"): string;
   getRawAsset(key: string): ArrayBuffer;
   isSea(): boolean;
@@ -36,7 +37,7 @@ interface RuntimeToolMarker {
   version: 1;
 }
 
-interface EnsureSeaRuntimeToolsOptions {
+export interface EnsureSeaRuntimeToolsOptions {
   arch?: string;
   env?: CliEnv;
   platform?: NodeJS.Platform;

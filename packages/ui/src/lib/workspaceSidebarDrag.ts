@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { WorkspaceTabState } from "@/store/tabStore.js";
 import type { SortingStrategy } from "@dnd-kit/sortable";
 
@@ -5,7 +6,7 @@ import type { SortingStrategy } from "@dnd-kit/sortable";
 // 兄弟让位必须固定按完全收起后的 32px 计算，不能沿用 dnd-kit 缓存的展开高度。
 const WORKSPACE_DRAG_COLLAPSED_ROW_HEIGHT = 32;
 
-function resolveWorkspaceDragSiblingDisplacement(params: {
+export function resolveWorkspaceDragSiblingDisplacement(params: {
   activeIndex: number;
   index: number;
   itemGap: number;

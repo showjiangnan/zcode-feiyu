@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // CreateWorkflow display graph bounding - 工具输出边界的有界投影
 // ============================================================
@@ -12,9 +13,23 @@
 // （折叠与缩点归约在 create-workflow-graph-fold.ts）。边只有 `{from, to, back?}` 一种形状；
 // region / certainty / 边种类留在分析器里，GUI 从不读它们。函数名与载荷字段名沿用历史。
 
+// ============================================================
+// CreateWorkflow display graph bounding - 工具输出边界的有界投影
+// ============================================================
+// 从 create-workflow.ts 拆出：阶段词汇表让
+// handler 文件越过 max-lines 上限，而裁剪本身是一段自洽的纯逻辑——分析器全图进，契约
+// 形状出，无 I/O、无 memo、无端口。与 zcode-protocol-v4/create-workflow-display.ts 从
+// rows.ts 拆出同一先例。
+//
+// 这里装的是一张**显示图**而不再是因果图的镜像。第二层是子代理导向：step 层只剩站点表
+// （运行状态与检视器的键，不再画、不再带边），参与者层（每阶段的子代理卡 + 交接边）由
+// 分析器的交接图投影供给、这里只做上限与转发，阶段层仍是控制流图的阶段商、仍由本层归约
+// （折叠与缩点归约在 create-workflow-graph-fold.ts）。边只有 `{from, to, back?}` 一种形状；
+// region / certainty / 边种类留在分析器里，GUI 从不读它们。函数名与载荷字段名沿用历史。
 import {
   CREATE_WORKFLOW_GRAPH_MAX_HANDOFF_TYPES,
   CREATE_WORKFLOW_GRAPH_MAX_HANDOFFS,
+  CREATE_WORKFLOW_GRAPH_MAX_HOLES,
   CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS,
   CREATE_WORKFLOW_GRAPH_MAX_LANES,
   CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS,
@@ -25,11 +40,13 @@ import {
   type CreateWorkflowCausalityGraph,
   type CreateWorkflowEdge,
   type CreateWorkflowHandoff,
+  type CreateWorkflowHole,
   type CreateWorkflowLane,
   type CreateWorkflowNamePattern,
   type CreateWorkflowParticipant,
   type CreateWorkflowPhase,
   type CreateWorkflowStep,
+  type CreateWorkflowStream,
 } from "@zcode/contracts";
 import {
   FLOW_ABORT,
@@ -37,11 +54,11 @@ import {
   FLOW_SINK,
   type CausalityGraph,
   type ControlFlowGraph,
+  type FlowHole,
   type HandoffGraph,
   UNPHASED,
-  // 浏览器端回放视图直接复用本函数：走 /projections
-  // 子路径而非根桶，根桶会把 typescript 编译器一起拖进浏览器包。语义与根桶导出完全相同。
 } from "@zcode/dynamic-workflow/projections";
+// 阶段边的折叠与归约（含有环输入上的缩点规则）单独成模块，见该文件的文件头。
 // 阶段边的折叠与归约（含有环输入上的缩点规则）单独成模块，见该文件的文件头。
 import { foldPhaseEdges, type RawEdge } from "./create-workflow-graph-fold.js";
 
@@ -149,18 +166,22 @@ export function boundCausalityGraph(
     to: boundGraphText(edge.to, CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS),
     ...(edge.back ? { back: true as const } : {}),
   }));
+  const phaseStreams = boundPhaseStreams(graph, declaredPhases, phaseIds);
   // 边的上界管的是发出去的东西，所以在归约**之后**判。
   const phaseVocabularyDropped =
     declaredPhases !== undefined &&
     (declaredPhases.length > CREATE_WORKFLOW_GRAPH_MAX_PHASES ||
-      phaseEdges.length > CREATE_WORKFLOW_GRAPH_MAX_PHASE_EDGES);
+      phaseEdges.length > CREATE_WORKFLOW_GRAPH_MAX_PHASE_EDGES ||
+      phaseStreams.length > CREATE_WORKFLOW_GRAPH_MAX_PHASE_EDGES);
   truncated = truncated || phaseVocabularyDropped;
   const emitPhases = declaredPhases !== undefined && !phaseVocabularyDropped;
 
   const boundPhases: CreateWorkflowPhase[] = (declaredPhases ?? []).map((phase) => {
     // 合成阶段 `unphased` 无 name（UI 本地化）；空名同样按「无名」处理而不是让整个输出
     // 解析失败，与车道 name 同一姿态。
-    const name = phase.name ? boundGraphText(phase.name, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS) : undefined;
+    const name = phase.name
+      ? boundGraphText(phase.name, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS)
+      : undefined;
     // `alongside`：进入这个阶段时还在跑的其他阶段（strand 未 join）。与边同一条引用完整性
     // 规则——指向未列出阶段的引用丢掉，自引用丢掉（自己不与自己并行），去重保序，上界同
     // 阶段表。它**不**经过 foldEdges / reduceOrdering：这是节点事实不是边，控制没有从那里
@@ -179,6 +200,11 @@ export function boundCausalityGraph(
       ...(name === undefined ? {} : { name }),
       ...(phase.loc === undefined ? {} : { line: phase.loc.line, column: phase.loc.column }),
       ...(alongside.length === 0 ? {} : { alongside }),
+      // 补全写进来的阶段带补全它的留白 id；控制流图的阶段表没标时退回因果图同 id 阶段的标记。
+      ...fillMark(
+        phase,
+        graph.phases?.find((candidate) => candidate.id === phase.id),
+      ),
     };
   });
   const exits = (declaredPhases ?? [])
@@ -187,7 +213,9 @@ export function boundCausalityGraph(
 
   const boundLanes: CreateWorkflowLane[] = keptLanes.map((lane) => {
     // 空 name（如 agent("")）会违反契约的 min(1)，按“无名”处理而不是让整个输出解析失败。
-    const name = lane.name ? boundGraphText(lane.name, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS) : undefined;
+    const name = lane.name
+      ? boundGraphText(lane.name, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS)
+      : undefined;
     const namePattern = boundNamePattern(lane.namePattern);
     return {
       id: boundGraphText(lane.id, CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS),
@@ -200,7 +228,9 @@ export function boundCausalityGraph(
   const boundSteps: CreateWorkflowStep[] = steps.map((step) => {
     const lanes = (step.lanes ?? []).filter((lane) => laneIds.has(lane));
     // ask 的 label 来自脚本字面量，可能为空；契约要求 min(1)，退回 step id。
-    const label = step.label ? boundGraphText(step.label, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS) : step.id;
+    const label = step.label
+      ? boundGraphText(step.label, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS)
+      : step.id;
     const labelPattern = boundNamePattern(step.labelPattern);
     return {
       id: boundGraphText(step.id, CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS),
@@ -225,6 +255,9 @@ export function boundCausalityGraph(
         ? { phase: boundGraphText(step.phase, CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS) }
         : {}),
       ...(step.repeat === undefined ? {} : { repeat: step.repeat }),
+      // 补全写进来的站点带补全它的留白 id（docs/dynamic-workflow/presentation.md「Holes on the timeline」）。
+      // 只搬、不校验它指向的留白：那个留白已经补过，不在 `holes` 里，也不是任何节点。
+      ...fillMark(step),
     };
   });
 
@@ -232,8 +265,30 @@ export function boundCausalityGraph(
   // （契约：`participant.phase` ∈ `phases[].id`，或 `phases` 缺席时全部为 `unphased`）。卡 id
   // 不改——它是不透明键，交接边与运行状态都按它关联；UI 的隐式模块只看 `phase` 字段。
   const boundParticipants: CreateWorkflowParticipant[] = participants.map((participant) =>
-    emitPhases && phaseIds.has(participant.phase) ? participant : { ...participant, phase: UNPHASED },
+    emitPhases && phaseIds.has(participant.phase)
+      ? participant
+      : { ...participant, phase: UNPHASED },
   );
+
+  // 5. Open holes (docs/dynamic-workflow/presentation.md「The display contract」): source order,
+  //    capped like the phase table. A hole's `phase` follows the step rule — dropped when the
+  //    vocabulary went or the phase is unlisted — so the payload never references a phase it
+  //    does not carry.
+  const openHoles: readonly FlowHole[] = flow?.holes ?? [];
+  truncated = truncated || openHoles.length > CREATE_WORKFLOW_GRAPH_MAX_HOLES;
+  const holes: CreateWorkflowHole[] = openHoles
+    .slice(0, CREATE_WORKFLOW_GRAPH_MAX_HOLES)
+    .map((hole) => ({
+      siteId: boundGraphText(hole.siteId, CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS),
+      name: hole.name
+        ? boundGraphText(hole.name, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS)
+        : hole.siteId,
+      type: hole.type ? boundGraphText(hole.type, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS) : "unknown",
+      ...(emitPhases && hole.phase !== undefined && phaseIds.has(hole.phase)
+        ? { phase: boundGraphText(hole.phase, CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS) }
+        : {}),
+      ...(hole.tail === true ? { tail: true as const } : {}),
+    }));
 
   return {
     steps: boundSteps,
@@ -241,9 +296,63 @@ export function boundCausalityGraph(
     participants: boundParticipants,
     handoffs,
     ...(emitPhases ? { phases: boundPhases, phaseEdges, exits } : {}),
+    ...(emitPhases && phaseStreams.length > 0 ? { phaseStreams } : {}),
     ...(sink.length > 0 ? { sink } : {}),
+    ...(holes.length > 0 ? { holes } : {}),
     ...(truncated ? { truncated: true } : {}),
   };
+}
+
+/**
+ * 6. 阶段流（docs/dynamic-workflow/presentation.md「Streams」）：channel 串起来的两个 future 阶段在
+ *    控制流视图里只是互为 `alongside` 的两条 strand，没有箭头；因果图的阶段商却有 producer →
+ *    consumer 的 `data` 边（send 是容器写、for await 把它读回来）。流 = 两端互为 alongside 的
+ *    那些 `data` 边：两条都活着的 strand 之间只能经由共享容器传数据，那就是 channel。进入一个
+ *    **不** alongside 的阶段的 `data` 边（join 之后的写作者）是控制箭头的事，不是流。
+ *    因果商已由分析器归约过，这里只做引用完整性（未列出的阶段、自环）、alongside 过滤与去重，
+ *    不再归约；它也**不**并进 phaseEdges——箭头仍然只说 runs after。上界由调用方与边一起判。
+ */
+function boundPhaseStreams(
+  graph: CausalityGraph,
+  declaredPhases: ControlFlowGraph["phases"] | undefined,
+  phaseIds: ReadonlySet<string>,
+): CreateWorkflowStream[] {
+  const alongside = new Set<string>();
+  for (const phase of declaredPhases ?? []) {
+    for (const id of phase.alongside ?? []) {
+      alongside.add(`${phase.id}>${id}`);
+      alongside.add(`${id}>${phase.id}`);
+    }
+  }
+  const streams: CreateWorkflowStream[] = [];
+  const seen = new Set<string>();
+  for (const edge of graph.phaseEdges ?? []) {
+    if (edge.kind !== "data" || edge.from === edge.to) continue;
+    if (!phaseIds.has(edge.from) || !phaseIds.has(edge.to)) continue;
+    const key = `${edge.from}>${edge.to}`;
+    if (!alongside.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    streams.push({
+      from: boundGraphText(edge.from, CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS),
+      to: boundGraphText(edge.to, CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS),
+    });
+  }
+  return streams;
+}
+
+/**
+ * 补全标记（`fill: <留白 id>`，分析器标在因果图的 Step / Phase 与控制流图的 FlowPhase 上）：第一个
+ * 候选带着就搬，第二个候选（因果图的同 id 阶段）在第一个没标时兜底。id 是分析生成的 ASCII，限长
+ * 恒等通过。
+ */
+function fillMark(...nodes: ({ fill?: string } | undefined)[]): { fill?: string } {
+  for (const node of nodes) {
+    const fill = node?.fill;
+    if (fill !== undefined && fill.length > 0) {
+      return { fill: boundGraphText(fill, CREATE_WORKFLOW_GRAPH_MAX_ID_CHARS) };
+    }
+  }
+  return {};
 }
 
 // Bug 预防：actor 名 / ask label 来自脚本字符串字面量（外部输入），直接 slice 可能截断
@@ -266,8 +375,12 @@ function boundNamePattern(
   pattern: { head?: string; tail?: string } | undefined,
 ): CreateWorkflowNamePattern | undefined {
   if (pattern === undefined) return undefined;
-  const head = pattern.head ? boundGraphText(pattern.head, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS) : "";
-  const tail = pattern.tail ? boundGraphText(pattern.tail, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS) : "";
+  const head = pattern.head
+    ? boundGraphText(pattern.head, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS)
+    : "";
+  const tail = pattern.tail
+    ? boundGraphText(pattern.tail, CREATE_WORKFLOW_GRAPH_MAX_NAME_CHARS)
+    : "";
   if (head === "" && tail === "") return undefined;
   return {
     ...(head === "" ? {} : { head }),

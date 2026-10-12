@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useMemo, useState } from "react";
 import { Folder } from "lucide-react";
 import {

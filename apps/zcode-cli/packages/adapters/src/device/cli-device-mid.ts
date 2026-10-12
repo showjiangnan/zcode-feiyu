@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { mkdir, open, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -18,7 +19,7 @@ interface TelemetryLockOwner {
   pid: number;
 }
 
-interface EnsureCliDeviceMidOptions {
+export interface EnsureCliDeviceMidOptions {
   baseDir?: string;
   createId?: () => string;
   env?: Record<string, string | undefined>;

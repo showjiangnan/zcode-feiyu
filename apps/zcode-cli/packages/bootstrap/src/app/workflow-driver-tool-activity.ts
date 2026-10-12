@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
 // ============================================================
@@ -23,6 +24,366 @@
 // started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
 // 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
 
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
+// ============================================================
+// driver 侧的工具活动观察：子代理即将改写工作区 → 引擎关导入缓存
+// ============================================================
+// 与 workflow-driver-concurrency.ts 的模型活动面同一副姿态：只读 actor runtime 的会话事件流，不碰 turn
+// 编排。这里只认一种事件——`ToolCallStarted`，它由执行器在权限判定之后、handler 动手之前发出，载荷上
+// 带着按入参解析后的 `readOnly` / `sideEffectScope`（Bash 的只读命令判定已落定）。判定用 contracts 的
+// `isWorkspaceMutatingToolCall`；同一副载荷还按 `isWorldTouchingToolCall` 数出「碰过外部世界」的调用数，
+// 那个数决定一条缓存条目是不是纯的（见下）。
+//
+// 同一份订阅还负责**数**这个 ask 的工具调用（总数与其中的写入数），因为 AskStats 需要它，而
+// `TurnResult.events` 里没有工具事件——照那里数，`toolCalls` 恒为 0（实测：生产 journal 的 2097 条
+// ask 行无一例外，其中包括明明写过文件的子代理）。计数在 startAsk 归零、跨 repair / nudge 轮累加，
+// 所以最后一次 askStats 上报的是这个 ask 的全量。
+//
+// 两个计数分工不同：`toolCalls` 是全部调用（审计面诚实），`worldToolCalls` 只数看或动了外部世界的那些
+// ——协议工具（`submit_result`、`escalate`）不算，否则每条 typed ask 都会因为交结果而显得「碰过世界」，
+// 纯 ask 的豁免就一条也用不上了。
+//
+// 每个 ask 只上报一次关门：引擎侧关门本就幂等，少报几次只是省事件流量；换 ask 时 reset。
+//
+// 同一份订阅还记下**最近一次**工具调用的名字与一条有界的目标线索（`node-progress` 的 `lastTool`）。名字在 `ToolCallStarted` 上就有，入参没有——
+// 它只在更早的 `ToolCallScheduled` 上，所以这里同时订阅两者：scheduled 把入参按 toolCallId 存一手，
+// started 取回来、压成线索、随即删掉那一手。只在 started 上落 `lastTool`，与两个计数同一时刻，
+// 于是被权限拒掉、从未真正开跑的调用不会冒充「它正在做的事」。
 import {
   isWorkspaceMutatingToolCall,
   isWorldTouchingToolCall,

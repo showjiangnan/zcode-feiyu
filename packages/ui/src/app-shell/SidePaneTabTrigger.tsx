@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- 侧栏 Tab trigger 集中维护拖拽、上下文菜单与各类图标；本次只增加 Browser 驻留态测试属性，不为行数拆散既有交互。 */
 import { useRef, type CSSProperties } from "react";
 import { useSortable } from "@dnd-kit/sortable";
@@ -11,9 +12,11 @@ import {
   MapIcon,
   MessageSquareTextIcon,
   ListTreeIcon,
+  PlugIcon,
   NotepadTextIcon,
   PackageIcon,
   PaletteIcon,
+  ShieldCheckIcon,
   SquareTerminalIcon,
   TerminalIcon,
   WaypointsIcon,
@@ -270,6 +273,9 @@ export function SidePaneTabIcon({ tab }: { tab: WorkspaceSidePaneTab }) {
   if (tab.type === "plan-detail") {
     return <NotepadTextIcon className="size-3.5" />;
   }
+  if (tab.type === "plugin-ui") {
+    return <PlugIcon className="size-3.5" />;
+  }
   // 同一条约定：来源卡片（CreateWorkflow）用 lucide Workflow，tab 必须与它一致。
   if (tab.type === "workflow-run") {
     return <WorkflowIcon className="size-3.5" />;
@@ -306,6 +312,10 @@ export function SidePaneTabIcon({ tab }: { tab: WorkspaceSidePaneTab }) {
 
   if (tab.type === "browser") {
     return <BrowserTabFavicon faviconUrl={tab.faviconUrl} />;
+  }
+
+  if (tab.type === "browser-permissions") {
+    return <ShieldCheckIcon className="size-3.5" />;
   }
 
   if (tab.type === "git") {
@@ -451,7 +461,7 @@ function getPatchHeaderFileDisplayTarget(patch: string): string | null {
   return null;
 }
 
-function getPatchFileDisplayTarget(source: {
+export function getPatchFileDisplayTarget(source: {
   path?: string;
   title: string;
   patch: string;
@@ -516,6 +526,10 @@ export function getSidePaneTabTitle(
     return pageTitle || formatMessage({ id: "browser.title" });
   }
 
+  if (tab.type === "browser-permissions") {
+    return formatMessage({ id: "browser.permission.settings" });
+  }
+
   if (tab.type === "git") {
     return formatMessage({ id: "sidePane.review" });
   }
@@ -545,6 +559,10 @@ export function getSidePaneTabTitle(
   // 用页面标题（agent 导航后由 getState 回填），缺省复用 browser.title 文案。
   if (tab.type === "browser-use") {
     return tab.title?.trim() || formatMessage({ id: "browser.title" });
+  }
+
+  if (tab.type === "plugin-ui") {
+    return tab.title.trim() || formatMessage({ id: "sidePane.pluginUi" });
   }
 
   return tab.source.title || formatMessage({ id: "codeViewer.title" });

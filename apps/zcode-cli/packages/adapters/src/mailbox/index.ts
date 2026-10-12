@@ -1,11 +1,7 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { mkdir, readdir, readFile, rename } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import type {
-  SessionId,
-  SessionMailboxEnvelope,
-  SessionMailboxPort,
-} from "@zcode/contracts";
+import type { SessionId, SessionMailboxEnvelope, SessionMailboxPort } from "@zcode/contracts";
 
 export interface NodeSessionMailboxOptions {
   rootDir: string;
@@ -19,14 +15,21 @@ export class NodeSessionMailboxAdapter implements SessionMailboxPort {
   async peekUnread(sessionId: SessionId): Promise<SessionMailboxEnvelope[]> {
     const directory = this.sessionDir(sessionId, "unread");
     let entries: string[];
-    try { entries = await readdir(directory); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return []; throw error; }
+    try {
+      entries = await readdir(directory);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+      throw error;
+    }
     const messages: SessionMailboxEnvelope[] = [];
     for (const entry of entries.filter((name) => name.endsWith(".json")).sort()) {
       try {
-        const message = parseEnvelope(await readFile(join(directory,entry), "utf8"));
+        const message = parseEnvelope(await readFile(join(directory, entry), "utf8"));
         if (message.toSessionId !== sessionId) throw new Error("Mailbox recipient mismatch");
         messages.push(message);
-      } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
     }
     return messages;
   }
@@ -89,7 +92,10 @@ function parseEnvelope(content: string): SessionMailboxEnvelope {
     typeof parsed.toSessionId !== "string" ||
     typeof parsed.content !== "string" ||
     typeof parsed.createdAt !== "string" ||
-    (parsed.sourceCommandId !== undefined && (typeof parsed.sourceCommandId !== "string" || !parsed.sourceCommandId.trim() || parsed.sourceCommandId.length > 512))
+    (parsed.sourceCommandId !== undefined &&
+      (typeof parsed.sourceCommandId !== "string" ||
+        !parsed.sourceCommandId.trim() ||
+        parsed.sourceCommandId.length > 512))
   ) {
     throw new Error("Invalid session mailbox envelope");
   }

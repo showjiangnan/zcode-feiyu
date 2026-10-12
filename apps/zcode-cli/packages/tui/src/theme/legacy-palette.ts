@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { activeTuiTheme } from "./state.js";
 import type { TuiLegacyPalette, TuiThemeTokens } from "./types.js";
 
@@ -48,4 +49,3 @@ export const palette = new Proxy({} as TuiLegacyPalette, {
     return [...LEGACY_PALETTE_KEYS];
   },
 }) as TuiLegacyPalette;
-

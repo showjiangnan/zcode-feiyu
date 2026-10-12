@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 分屏 Layout/Focus 层的 zustand 装配。
 // 模型与纯状态机在 paneLayoutTree.ts，持久化在 paneLayoutPersistence.ts——
 // 本文件只做 store 装配 + 持久化订阅，并 re-export 两者（消费面单一入口）。
@@ -35,7 +36,7 @@ export function hadPersistedPaneLayoutAtModuleLoad(): boolean {
 export * from "@/v4/paneLayoutTree.js";
 export * from "@/v4/paneLayoutPersistence.js";
 
-interface PaneLayoutStore extends PaneLayoutSnapshot {
+export interface PaneLayoutStore extends PaneLayoutSnapshot {
   /** 在 anchor pane 处拆分出 draft pane（绑 scope，首发 createSession 后原地绑定）。 */
   splitPane: (anchorPaneId: string, direction: SplitDirection, scope: PaneWorkspaceScope) => void;
   /** 在 anchor pane 四周拆出已绑定 session 的 pane（draft drop / 非 group 拖拽入口）。 */

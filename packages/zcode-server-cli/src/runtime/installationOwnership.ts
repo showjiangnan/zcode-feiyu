@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { randomUUID } from "node:crypto";
 import { link, lstat, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -17,7 +18,7 @@ const serverInstallOwnershipSchema = z
   })
   .strict();
 
-type ServerInstallOwnership = z.infer<typeof serverInstallOwnershipSchema>;
+export type ServerInstallOwnership = z.infer<typeof serverInstallOwnershipSchema>;
 
 async function readOwnership(layout: ServerLayout): Promise<ServerInstallOwnership> {
   const markerStat = await lstat(layout.installFile).catch(() => null);

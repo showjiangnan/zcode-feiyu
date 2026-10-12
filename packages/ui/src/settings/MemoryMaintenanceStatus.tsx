@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { WorkspaceMemoryResult } from "@zcode/shared";
 import { formatMemoryRunObservation } from "@/hooks/continuityProjection.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { ContinuityPolicy } from "@zcode/shared";
 import type { AgentRuntimeInternal } from "../internal.js";
 

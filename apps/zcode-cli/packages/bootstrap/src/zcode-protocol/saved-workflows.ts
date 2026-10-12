@@ -1,3 +1,139 @@
+// Modified by ZCode Feiyu.
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
+// 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
+//
+// 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
+// 用户手改 / 模型刚 SaveWorkflow 落盘的文件。
+// 解析器与序列化器只从 @zcode/core 取：这里不解析 frontmatter，也不拼 YAML。
+//
+// 全局作用域：五个方法的 params 收可选 `scope`（缺省
+// `project`）。`global` 时改按本机全局根（`~/.zcode/workflows/`）操作，`workspace` 只是**载体**——
+// 处理器对全局档不读它的路径。`workflows/move` 把全局档搬回 `workspace` 项目（只此一向）。
 // 已保存工作流的 GUI 中枢：workspace 级、无会话的方法。
 //
 // 与 skills/referenceCatalog 同一条先例：不带 sessionId，每次调用现扫目录——挂载时快照会漏掉
@@ -152,7 +288,7 @@ export async function listSavedWorkflowRunsOp(
   if (journal === undefined || !supportsRunIntrospection(journal)) return { runs: [] };
   const limit = Math.min(ZCODE_WORKFLOWS_RUNS_MAX_LIMIT, params.limit);
   const global = scopeOf(params) === "global";
-  // 多取一条**只为判定 truncated**（run service 与 v4 事件分页的同一惯例）。
+  // 多取一条**只为判定 truncated**（run service 的同一惯例）。
   // 全局变体省掉 cwd 谓词（journal 的 cwd 可选 = 跨所有项目）；项目变体传 cwd，逐字不变。
   const rows = journal.listRuns({
     ...(global ? {} : { cwd: params.workspace.workspacePath }),

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type {

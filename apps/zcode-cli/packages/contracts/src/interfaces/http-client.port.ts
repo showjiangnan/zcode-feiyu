@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // HTTP Client Port - network I/O boundary
 // ============================================================
@@ -87,8 +88,5 @@ export interface HttpClientRunOptions {
 }
 
 export interface HttpClientPort {
-  request(
-    request: HttpClientRequest,
-    options?: HttpClientRunOptions,
-  ): Promise<HttpClientResponse>;
+  request(request: HttpClientRequest, options?: HttpClientRunOptions): Promise<HttpClientResponse>;
 }

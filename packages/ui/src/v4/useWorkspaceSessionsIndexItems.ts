@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 把若干 workspace scope 的 sessions-index 会话聚合成 ZCodeTaskMeta[]（响应式），
 // 作为侧栏各列表的实时 activity/detail 输入；持久行集合由 tasks-index 提供。
 // 多消费者共享：同一 endpoint+workspace 的订阅经 sessionsIndexRegistry 引用计数复用（地基）。
@@ -33,7 +34,7 @@ export interface WorkspaceSessionsIndexScope {
   agentService?: SessionsIndexAgentService;
 }
 
-interface WorkspaceSessionsIndexItemsResult {
+export interface WorkspaceSessionsIndexItemsResult {
   /** 聚合会话 meta（running 置顶；其余按 updatedAt 降序；tick 驱动重算，引用稳定）。 */
   items: ZCodeTaskMeta[];
   /**

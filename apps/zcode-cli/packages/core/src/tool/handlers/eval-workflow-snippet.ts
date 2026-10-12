@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // EvalWorkflowSnippet Tool Handler
 // ============================================================
@@ -10,6 +11,17 @@
 //   1. 端口在场（生产接线）：编译 + 执行，返回 {ok, diagnostics, logs, response}。
 //   2. 端口缺席（未接线的宿主、单测）：诚实的业务失败——绝不假装执行过。
 
+// ============================================================
+// EvalWorkflowSnippet Tool Handler
+// ============================================================
+// 动态工作流创作的实验通道：同步编译并运行一段
+// scratch-facade snippet，经 `DynamicWorkflowSnippetPort` 交给 bootstrap 的执行面。
+// 完全瞬态：无后台任务、无持久化。确认门只落在携带 world.run 命令的 snippet 上
+// （prepareApproval）。
+//
+// 两条路径，由端口是否注入决定：
+//   1. 端口在场（生产接线）：编译 + 执行，返回 {ok, diagnostics, logs, response}。
+//   2. 端口缺席（未接线的宿主、单测）：诚实的业务失败——绝不假装执行过。
 import {
   EVAL_WORKFLOW_SNIPPET_DEFAULT_TIMEOUT_MS,
   EVAL_WORKFLOW_SNIPPET_SOURCE_ERROR,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
 // ============================================================
@@ -7,6 +8,126 @@
 // （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
 // 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
 
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
+// ============================================================
+// driver 侧的自适应并发半身：per-actor 准入 + 模型状态观察 + 失败归因
+// ============================================================
+// 从 workflow-driver.ts
+// 拆出：那个文件只管「会话与 turn 的编排」，而这里三件事都不碰 turn 编排——它们只把治理器端口包成
+// 一个 actor 的 `ModelRequestAdmission`、只读 actor runtime 的会话事件流、只看 run 级的成功/重试节拍
+// （stall 时钟）。模型失败归因（原 modelFailureReasonOf）
+// 已移到 adapters 的策略表（`inspectWorkflowModelFailure`）：runner 与 driver 读同一份。
 import {
   SessionEventType,
   type ModelNetworkStatusEvent,
@@ -113,7 +234,8 @@ export function createActorModelActivity(input: {
   live?: () => InstanceRef | undefined;
   handlers: ActorModelActivityHandlers;
   /**
-   * 本 run 的座位闸门与这个子代理在闸门里的键。在场时准入端口再包一层：先等座位、再过治理器。缺席即这个 run
+   * 本 run 的座位闸门与这个子代理在闸门里的键（docs/dynamic-workflow/concurrency.md
+   * 「Retuning a live run」）。在场时准入端口再包一层：先等座位、再过治理器。缺席即这个 run
    * 的上界从不中途变动（snippet 执行、不带闸门的装配），准入端口与从前逐字相同。
    */
   seat?: { gate: WorkflowRunSeatGate; key: string };
@@ -190,7 +312,8 @@ export function createActorModelActivity(input: {
             );
           },
         };
-  // 本 run 自己的上界在**共享 cap 之上**再包一层。闸门要的那条子代理事实——
+  // 本 run 自己的上界在**共享 cap 之上**再包一层（两条界的分工见
+  // docs/dynamic-workflow/concurrency.md「Two bounds on a run」）。闸门要的那条子代理事实——
   // 此刻有没有工具在跑——就取自同一个对象里的工具观察面，所以两个读者共用一份账。
   const admission =
     seat === undefined
@@ -288,8 +411,8 @@ function chainKey(status: ModelNetworkStatusEvent): string {
 
 // ————————————————————————————— run 级 stall 时钟—————————————————————————————
 
-/** 连续多久没有一次成功的模型请求就通知主代理一次。 */
-const WORKFLOW_STALL_NOTIFY_AFTER_MS = 20 * 60_000;
+/** 连续多久没有一次成功的模型请求就通知主代理一次（apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md「Terminal states」）。 */
+export const WORKFLOW_STALL_NOTIFY_AFTER_MS = 20 * 60_000;
 
 /** 时钟与定时器（可注入，测试用假时间）。 */
 export interface WorkflowClock {

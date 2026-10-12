@@ -1,8 +1,9 @@
+// Modified by ZCode Feiyu.
 import type { ZCodeConfigOption, ZCodeProvider } from "@zcode/shared";
 import type { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getConfigOptionEntryLabel } from "@/chat-input-toolbar/display.js";
 
-type ThoughtLevelEntry = NonNullable<ZCodeConfigOption["options"]>[number];
+export type ThoughtLevelEntry = NonNullable<ZCodeConfigOption["options"]>[number];
 
 const NO_THOUGHT_LEVEL_VALUES = new Set([
   "disabled",
@@ -16,6 +17,7 @@ const NO_THOUGHT_LEVEL_VALUES = new Set([
 ]);
 
 const THOUGHT_LEVEL_LABEL_IDS: Record<string, string> = {
+  auto: "chat.toolbar.thoughtLevel.value.auto",
   disabled: "chat.toolbar.thoughtLevel.value.off",
   false: "chat.toolbar.thoughtLevel.value.off",
   no: "chat.toolbar.thoughtLevel.value.off",
@@ -53,6 +55,11 @@ export function thoughtLevelLabelId(value: string): string | undefined {
 
 export function isNoThoughtLevel(entry: ThoughtLevelEntry): boolean {
   return NO_THOUGHT_LEVEL_VALUES.has(normalizeThoughtLevelText(entry.value));
+}
+
+/** 仅真实最高档采用紫色强调，不能把有限目录中的末项 high/xhigh 冒充 max。 */
+export function isMaximumThoughtLevel(value: string): boolean {
+  return ["max", "ultra"].includes(normalizeThoughtLevelText(value));
 }
 
 export function getNextThoughtLevelValue(

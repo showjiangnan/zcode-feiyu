@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { stat, statfs } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createHash } from "node:crypto";
@@ -104,7 +105,9 @@ export class StartupDiskSampler {
     if (this.busy || this.stopped) return;
     this.busy = true;
     try {
-      for (const scope of [...this.scopes.values()]) {
+      // 采样可能修改 scopes，保留本轮快照以避免新 scope 在同轮重复处理。
+      const scopes = Array.from(this.scopes.values());
+      for (const scope of scopes) {
         if (this.stopped) break;
         try {
           const result = await this.probe(scope.path);

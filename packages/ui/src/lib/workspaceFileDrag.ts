@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { buildFileMentionMarkdown } from "@/mentions/mentionMarkdown.js";
 
 export const WORKSPACE_FILE_DRAG_MIME = "application/x-zcode-workspace-file";
@@ -35,7 +36,7 @@ export function serializeWorkspaceFileDragPayload(payload: WorkspaceFileDragPayl
   return JSON.stringify(payload);
 }
 
-function parseWorkspaceFileDragPayload(
+export function parseWorkspaceFileDragPayload(
   rawPayload: string | null | undefined,
 ): WorkspaceFileDragPayload | null {
   if (!rawPayload) {

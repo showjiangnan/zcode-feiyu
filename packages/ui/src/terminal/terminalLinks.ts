@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { IBuffer, IBufferLine, ILink } from "@xterm/xterm";
 
 const HTTP_URL_PATTERN = /\bhttps?:\/\/[^\s<>"'`]+/gi;
@@ -54,7 +55,7 @@ function trimTerminalUrlCandidate(value: string): string {
   }
 }
 
-function findHttpLinksInTerminalText(text: string): TerminalHttpLinkMatch[] {
+export function findHttpLinksInTerminalText(text: string): TerminalHttpLinkMatch[] {
   const links: TerminalHttpLinkMatch[] = [];
 
   for (const match of text.matchAll(HTTP_URL_PATTERN)) {

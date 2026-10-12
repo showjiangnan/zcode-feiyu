@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { OrchestrationMode, OrchestrationState } from "@zcode/shared/zcode-protocol-v4";
 
 export function requestOrchestrationMode(

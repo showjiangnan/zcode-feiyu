@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { Logger } from "@zcode/contracts";
 import type { ToolEntry } from "./types.js";
 
@@ -10,7 +11,7 @@ interface NormalizeToolExecutionInputOptions {
 
 export type RuntimeInputValidationIssue = Readonly<Record<string, unknown>>;
 
-interface PreparedInitialToolExecutionInput {
+export interface PreparedInitialToolExecutionInput {
   input: unknown;
   runtimeValidationIssues?: readonly RuntimeInputValidationIssue[];
 }

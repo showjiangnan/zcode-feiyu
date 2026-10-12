@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   SESSION_TASK_TYPES,
   SESSION_ENTRY_MODEL_SELECTION,
@@ -31,6 +32,7 @@ export function isCollaborationMode(value: unknown): value is CollaborationMode 
     value === "build" ||
     value === "edit" ||
     value === "yolo" ||
+    value === "guarded" ||
     value === "auto"
   );
 }

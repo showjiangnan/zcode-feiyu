@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu.
 import type { ScriptLoc } from "../compiler/compile.js";
 import type { JumpKind, OrderRegion } from "./causality-order.js";
 import type { AnalysisCore } from "./core.js";
-import { collectFlowPhases, quotientFlow } from "./flow-phase.js";
+import { collectFlowHoles, collectFlowPhases, quotientFlow } from "./flow-phase.js";
 import { createStrandPark } from "./flow-strands.js";
 import { buildTree, type LeafNode, type RegionNode, type TreeNode } from "./flow-tree.js";
 
@@ -82,6 +83,23 @@ export interface FlowPhase {
    * when empty. All-or-nothing with the rest of the phase vocabulary.
    */
   alongside?: string[];
+  /** The filled hole whose body wrote this phase (a hole's own phase names the hole enclosing it). */
+  fill?: string;
+}
+
+/**
+ * An OPEN hole as the display lists it (docs/dynamic-workflow/presentation.md, `holes`): the
+ * station the rail draws dashed ahead of the run. `phase` is where the hole STANDS — the
+ * phase of its issue node, the hole's own memberless phase being `siteId` itself.
+ */
+export interface FlowHole {
+  siteId: string;
+  name: string;
+  /** The author's spelling of the type argument. */
+  type: string;
+  phase?: string;
+  /** The tail form `return await hole<T>(...)`: the script's end is open. */
+  tail?: true;
 }
 
 /** Terminal node ids. `sink` is the causality graph's sink: the script completed normally. */
@@ -102,6 +120,8 @@ export interface ControlFlowGraph {
   phaseEdges?: FlowEdge[];
   /** Phases that appear on some node, in first-reach order, {@link UNPHASED_ID} first. */
   phases?: FlowPhase[];
+  /** The open holes in source order; present iff the script has one (see {@link FlowHole}). */
+  holes?: FlowHole[];
 }
 
 // --- Flow ---------------------------------------------------------------------------------
@@ -146,7 +166,9 @@ const RANK: Readonly<Record<FlowEdgeKind, number>> = {
 
 function retype(srcs: readonly Src[], kind: FlowEdgeKind, via?: FlowVia): Src[] {
   return srcs.map((src) =>
-    RANK[kind] > RANK[src.kind] ? { from: src.from, kind, ...(via === undefined ? {} : { via }) } : src,
+    RANK[kind] > RANK[src.kind]
+      ? { from: src.from, kind, ...(via === undefined ? {} : { via }) }
+      : src,
   );
 }
 
@@ -337,7 +359,8 @@ export function projectControlFlow(core: AnalysisCore): ControlFlowGraph {
     if (region.recursive) {
       // A recursion SCC: only the re-entrant calls close the loop. The body completing
       // normally is the helper RETURNING — that is the exit, and nothing is skipped.
-      for (const src of jumpsBack) for (const entry of entries) emit(src.from, entry, src.kind, src.via);
+      for (const src of jumpsBack)
+        for (const entry of entries) emit(src.from, entry, src.kind, src.via);
       return [...bodyExits, ...passed, ...breaks];
     }
     const back = [...retype(bodyExits, "loop"), ...jumpsBack];
@@ -353,7 +376,11 @@ export function projectControlFlow(core: AnalysisCore): ControlFlowGraph {
   };
 
   const fanout = (node: RegionNode, incoming: readonly Src[]): Src[] => {
-    const { entries, exits: bodyExits, passed } = withEntries(node.children, retype(incoming, "fork"));
+    const {
+      entries,
+      exits: bodyExits,
+      passed,
+    } = withEntries(node.children, retype(incoming, "fork"));
     const returns = settle(take(node.region.id, ["return"]), "join", "return");
     if (entries.length === 0) return dedupeSrcs([...bodyExits, ...passed, ...returns]);
     return dedupeSrcs([...retype(bodyExits, "join"), ...retype(passed, "join"), ...returns]);
@@ -405,7 +432,9 @@ export function projectControlFlow(core: AnalysisCore): ControlFlowGraph {
 
   const tryGroup = (node: RegionNode, incoming: readonly Src[]): Src[] => {
     const part = (kind: OrderRegion["kind"]): RegionNode | undefined =>
-      node.children.find((child): child is RegionNode => child.type === "region" && child.region.kind === kind);
+      node.children.find(
+        (child): child is RegionNode => child.type === "region" && child.region.kind === kind,
+      );
     const attempt = part("attempt");
     const handler = part("catch");
     const finalizer = part("finally");
@@ -420,7 +449,10 @@ export function projectControlFlow(core: AnalysisCore): ControlFlowGraph {
     // (An issue inside a NESTED try also lands here — its own catch may rethrow, so the
     // outer handler stays reachable; over-approximating is the licensed direction.)
     let raised: Src[] = [
-      ...nodes.slice(nodeMark).filter((n) => n.kind === "issue").map((n): Src => ({ from: n.id, kind: "may-throw" })),
+      ...nodes
+        .slice(nodeMark)
+        .filter((n) => n.kind === "issue")
+        .map((n): Src => ({ from: n.id, kind: "may-throw" })),
       ...take(attempt.region.id, ["throw"]),
     ];
     if (handler !== undefined) {
@@ -447,7 +479,11 @@ export function projectControlFlow(core: AnalysisCore): ControlFlowGraph {
     ]);
     for (const entry of escaping) {
       const { kind, via } = jumpEdge(entry.kind);
-      pending.push({ kind: entry.kind, srcs: retype(finallyExits, kind, via), target: entry.target });
+      pending.push({
+        kind: entry.kind,
+        srcs: retype(finallyExits, kind, via),
+        target: entry.target,
+      });
     }
     if (raised.length > 0) raiseOutward(node.region, retype(finallyExits, "throw"));
     return normal.length > 0 ? finallyExits : [];
@@ -460,7 +496,8 @@ export function projectControlFlow(core: AnalysisCore): ControlFlowGraph {
   // doubled at each one until `push(...exits)` overflowed the call stack with 135,200 copies
   // of ONE source. Dedup at the one seam every construct flows through, so no list ever
   // exceeds |nodes| × |kinds| entries whatever the shape.
-  const flow = (node: TreeNode, incoming: readonly Src[]): Src[] => dedupeSrcs(flowRaw(node, incoming));
+  const flow = (node: TreeNode, incoming: readonly Src[]): Src[] =>
+    dedupeSrcs(flowRaw(node, incoming));
   const flowRaw = (node: TreeNode, incoming: readonly Src[]): Src[] => {
     if (node.type === "leaf") return leaf(node, incoming);
     // `strand` rides on a `call` or a `fanout` and overrides both: what matters is that
@@ -507,10 +544,14 @@ export function projectControlFlow(core: AnalysisCore): ControlFlowGraph {
 
   sortEdges(nodes, edges);
   const phases = collectFlowPhases(trace, nodes);
+  const holes = collectFlowHoles(core, nodes);
   return {
     edges,
     nodes,
-    ...(trace.phases.length === 0 ? {} : { phaseEdges: quotientFlow(nodes, edges, phases), phases }),
+    ...(trace.phases.length === 0
+      ? {}
+      : { phaseEdges: quotientFlow(nodes, edges, phases), phases }),
+    ...(holes.length === 0 ? {} : { holes }),
   };
 }
 
@@ -528,4 +569,3 @@ function sortEdges(nodes: readonly FlowNode[], edges: FlowEdge[]): void {
       (a.via ?? "").localeCompare(b.via ?? ""),
   );
 }
-

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -111,7 +111,7 @@ export function startDebugServer(options: DebugServerOptions = {}) {
   const networkCapture =
     options.networkCapture === false
       ? undefined
-      : options.networkCapture ?? createNetworkCaptureServiceFromEnv();
+      : (options.networkCapture ?? createNetworkCaptureServiceFromEnv());
   const app = createDebugApp({ ...options, networkCapture });
   const server = serve({
     fetch: app.fetch,

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export type V4ComposerConfigPicker = "mode" | "orchestration" | "model" | "thought";
 
 export function resolveV4ComposerConfigPickerState(

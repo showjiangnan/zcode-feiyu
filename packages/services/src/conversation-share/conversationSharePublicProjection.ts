@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 /* oxlint-disable eslint(max-lines) -- 公开 Row 的 allow-list 构建与闭包校验必须同处一个策略边界，拆分会让 builder/validator 规则漂移。 */
 import type { ConversationShareArtifactDescriptor } from "@zcode/shared";
 import type { ArtifactRow, ConversationRow } from "@zcode/shared/zcode-protocol-v4";
 
 import { ConversationShareServiceError } from "./conversationShare.js";
 
-interface ConversationSharePublicProjection {
+export interface ConversationSharePublicProjection {
   rows: ConversationRow[];
   selectedProductTurnIds: string[];
   artifacts: ConversationSharePublicArtifact[];
@@ -412,7 +413,7 @@ function assertUnique(values: string[], label: string): void {
   }
 }
 
-function assertConversationSharePublicProjection(input: {
+export function assertConversationSharePublicProjection(input: {
   rows: ConversationRow[];
   selectedProductTurnIds: string[];
 }): void {

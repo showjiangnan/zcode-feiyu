@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createMessageId, traceContextToLogContext } from "../deps.js";
 import type { TraceContext } from "../deps.js";
 import type { AgentRuntimeInternal } from "../internal.js";
@@ -12,10 +13,7 @@ export async function recordGoalStateChangeReminder(
 ): Promise<void> {
   const traceContext = input.traceContext ?? this.rootTraceContext;
   const activeTurn = this.activeTurn;
-  if (
-    activeTurn?.kind === "regular" &&
-    activeTurn.goalStateChangeReminderDeferralOpen
-  ) {
+  if (activeTurn?.kind === "regular" && activeTurn.goalStateChangeReminderDeferralOpen) {
     // Stop 会先暂停 goal、再 abort 正在执行的工具。此处若立即写 history，
     // reminder 会落在 tool_use 与 cancelled tool_result 之间，导致下一次请求违反 provider grammar。
     activeTurn.pendingGoalStateChangeReminder = { text: input.text };

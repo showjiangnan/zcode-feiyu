@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { execFile } from "node:child_process";
 import { win32 } from "node:path";
 import type { ApplicationIconInfo } from "@zcode/shared";
@@ -86,7 +87,7 @@ const defaultDependencies: WindowsAumidIconDependencies = {
   systemRoot: process.env.SystemRoot ?? "C:\\Windows",
 };
 
-function createWindowsAumidIconReader(
+export function createWindowsAumidIconReader(
   dependencies: WindowsAumidIconDependencies = defaultDependencies,
 ) {
   return async (aumid: string): Promise<ApplicationIconInfo | null> => {

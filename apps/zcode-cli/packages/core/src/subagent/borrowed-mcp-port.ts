@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu.
 import type { McpConnectionSnapshot, McpPort } from "@zcode/contracts";
 import { SUBAGENT_COMPUTER_USE_UNAVAILABLE_MESSAGE } from "./computer-use-policy.js";
 
-interface BorrowedSubagentMcpAccess {
+export interface BorrowedSubagentMcpAccess {
   port: McpPort;
   snapshot: McpConnectionSnapshot;
 }

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+// Modified by ZCode Feiyu.
 import type {
   BrowserBackendDescriptor,
   BrowserCommand,
@@ -8,7 +8,9 @@ import type {
   BrowserControlPort,
   BrowserErrorCode,
 } from "@zcode/contracts";
+import { randomUUID } from "node:crypto";
 import type { Browser } from "playwright-core";
+import { waitForPromise } from "./browser-close-wait.js";
 import { createManagedCdpDescriptor } from "./descriptor.js";
 import {
   loadPlaywrightChromium,
@@ -422,23 +424,7 @@ export {
   resolveInstalledBrowserExecutable,
   validateExplicitBrowserExecutable,
 } from "./executable.js";
-export type { BrowserExecutableResolutionOptions, PlaywrightChromiumModule } from "./executable.js";
-export { isAllowedManagedBrowserUrl } from "./page-command.js";
 
-function waitForPromise(promise: Promise<unknown>, timeoutMs: number): Promise<boolean> {
-  return new Promise<boolean>((resolve) => {
-    let settled = false;
-    let timer: NodeJS.Timeout | undefined;
-    const finish = (completed: boolean) => {
-      if (settled) return;
-      settled = true;
-      if (timer) clearTimeout(timer);
-      resolve(completed);
-    };
-    timer = setTimeout(() => finish(false), timeoutMs);
-    void promise.then(
-      () => finish(true),
-      () => finish(true),
-    );
-  });
-}
+export type { BrowserExecutableResolutionOptions, PlaywrightChromiumModule } from "./executable.js";
+
+export { isAllowedManagedBrowserUrl } from "./page-command.js";

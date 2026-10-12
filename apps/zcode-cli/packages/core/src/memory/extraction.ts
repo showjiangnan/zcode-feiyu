@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { MessageId, MessageWithParts, ToolPart } from "@zcode/contracts";
 import { resolveContainedMemoryFilePath } from "./memory-file-path.js";
 import { formatMemoryManifest } from "./recall/manifest.js";

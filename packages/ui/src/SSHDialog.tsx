@@ -1,35 +1,27 @@
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 远程连接向导的状态编排暂集中在同一组件，后续有独立拆分计划。 */
-import { createPortal } from "react-dom";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { createUuid, type RemoteTarget, type RemoteWorkspaceSessionEntry } from "@zcode/shared";
-import {
-  TID_SSH_CONNECT_TRIGGER,
-  TID_SSH_DIALOG,
-  TID_SSH_ERROR,
-  TID_SSH_SUCCESS,
-} from "@zcode/shared";
-import { AlertTriangleIcon } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button.js";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog.js";
 import { useCancelPendingRemoteConnection } from "@/hooks/useCancelPendingRemoteConnection.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
 import { useRemoteConnectionForm } from "@/hooks/useRemoteConnectionForm.js";
 import { useRemoteConnectionLogs } from "@/hooks/useRemoteConnectionLogs.js";
+import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { getErrorMessage } from "@/lib/errorMessage.js";
-import {
-  buildRemoteTarget,
-  getRemoteWizardStepCopy,
-  withDefaultRemoteResourcePackages,
-} from "@/lib/remoteConnectionWizard.js";
 import {
   getRemoteConnectionCompletionDialogState,
   getRemoteConnectionDirectoryFailureState,
   isRemoteConnectionFlowActive,
   shouldResetRemoteConnectionOnOpen,
 } from "@/lib/remoteConnectionDialogState.js";
-import { logger } from "@/logger.js";
+import {
+  buildRemoteTarget,
+  getRemoteWizardStepCopy,
+  withDefaultRemoteResourcePackages,
+} from "@/lib/remoteConnectionWizard.js";
 import { startUserAction } from "@/lib/userActionTelemetry.js";
+import { logger } from "@/logger.js";
 import {
   RemoteConnectionConnectingStep,
   RemoteConnectionDirectoryStep,
@@ -42,8 +34,19 @@ import {
   type RemoteWizardStep,
 } from "@/RemoteConnectionWizardChrome.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
-import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
+import {
+  createUuid,
+  TID_SSH_CONNECT_TRIGGER,
+  TID_SSH_DIALOG,
+  TID_SSH_ERROR,
+  TID_SSH_SUCCESS,
+  type RemoteTarget,
+  type RemoteWorkspaceSessionEntry,
+} from "@zcode/shared";
 import type { VariantProps } from "class-variance-authority";
+import { AlertTriangleIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface RemoteConnectionDialogProps {
   inlineContainer?: HTMLElement | null;
@@ -115,6 +118,10 @@ export function RemoteConnectionDialog({
     wslUser,
     dockerContainer,
     manualDockerContainer,
+    serverUrl,
+    serverName,
+    serverToken,
+    serverWorkspacePath,
     sshConfigAliases,
     sshConfigAliasesLoading,
     sshConfigAliasesError,
@@ -136,6 +143,10 @@ export function RemoteConnectionDialog({
     setWslUser,
     setDockerContainer,
     setManualDockerContainer,
+    setServerUrl,
+    setServerName,
+    setServerToken,
+    setServerWorkspacePath,
     refreshDockerContainers,
     applySshConfigAlias,
     clearSelectedSshConfigAlias,
@@ -331,6 +342,10 @@ export function RemoteConnectionDialog({
       wslUser,
       dockerContainer,
       manualDockerContainer,
+      serverUrl,
+      serverName,
+      serverToken,
+      serverWorkspacePath,
     });
     if (!nextTarget) {
       // 必填项缺失属于表单校验，不应该和真实连接失败共用 destructive 错误样式。
@@ -515,6 +530,14 @@ export function RemoteConnectionDialog({
               wslDistros={wslDistros}
               dockerContainer={dockerContainer}
               manualDockerContainer={manualDockerContainer}
+              serverUrl={serverUrl}
+              serverName={serverName}
+              serverToken={serverToken}
+              serverWorkspacePath={serverWorkspacePath}
+              onServerUrlChange={setServerUrl}
+              onServerNameChange={setServerName}
+              onServerTokenChange={setServerToken}
+              onServerWorkspacePathChange={setServerWorkspacePath}
               dockerContainers={dockerContainers}
               dockerAvailable={dockerAvailable}
               sshConfigAliases={sshConfigAliases}

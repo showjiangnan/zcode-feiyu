@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   JsInputJsonSchema,
   JsRuntimeInputSchema,
@@ -409,3 +410,5 @@ export const jsToolEntry: ToolEntry = {
   },
   trace: TRACE,
 };
+
+export const nodeReplToolEntries: ToolEntry[] = [jsToolEntry];

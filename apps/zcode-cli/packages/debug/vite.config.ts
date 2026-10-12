@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 

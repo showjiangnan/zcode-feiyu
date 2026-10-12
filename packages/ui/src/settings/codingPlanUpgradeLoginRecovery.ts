@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { OAuthProviderId } from "@zcode/shared";
 import type { PurchaseAudience } from "@/settings/model-provider-section/codingPlanEnterpriseTiers.js";
 
@@ -8,7 +9,7 @@ export interface CodingPlanUpgradeDialogTarget {
   funnelContext?: import("@/lib/codingPlanFunnelTelemetry.js").CodingPlanFunnelContext;
 }
 
-interface PendingCodingPlanUpgradeAfterLogin {
+export interface PendingCodingPlanUpgradeAfterLogin {
   loginAttemptId: number;
   target: CodingPlanUpgradeDialogTarget;
 }

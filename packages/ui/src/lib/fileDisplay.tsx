@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useEffect, useState, type ReactElement } from "react";
 import { getPathLeaf, isAbsoluteFilePath } from "@/lib/path.js";
 import {
@@ -5,9 +6,6 @@ import {
   normalizePath,
   trimTrailingSeparator,
   resolveIconName,
-  getIconPalette,
-  getIconLabel,
-  buildInlineSvgDataUrl,
 } from "@/lib/fileDisplayHelpers.js";
 
 export const INLINE_FALLBACK_FILE_ICON_SRC =
@@ -52,7 +50,7 @@ function resolveMaterialIconBasePath(): string {
   return `${baseUrl.replace(/\/?$/, "/")}material-icons`;
 }
 
-function buildMaterialFileIconSrc(iconName: string): string {
+export function buildMaterialFileIconSrc(iconName: string): string {
   return `${resolveMaterialIconBasePath()}/${iconName}.svg`;
 }
 

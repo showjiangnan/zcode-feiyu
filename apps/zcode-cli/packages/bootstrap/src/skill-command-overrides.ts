@@ -1,4 +1,5 @@
-interface EnableOverride {
+// Modified by ZCode Feiyu.
+export interface EnableOverride {
   enable?: boolean;
 }
 

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export type JsonValue =
   | boolean
   | null
@@ -31,7 +32,6 @@ export type GlobalOptions = {
   browserExecutable?: string;
   browserUse?: "headless";
   detectedLocale?: GlobalDetectedLocale;
-  enableWorkflow?: boolean;
   force: boolean;
   json: boolean;
   locale?: GlobalLocale;

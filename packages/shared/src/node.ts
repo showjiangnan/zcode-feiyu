@@ -1,9 +1,16 @@
+// Modified by ZCode Feiyu.
 /**
  * Node-only shared utilities.
  *
  * This subpath must not be imported by renderer/browser bundles.
  */
 export { acquireFileLock } from "./node/atomicFileLock.js";
+export { createNodeNetworkCapture, withoutNetworkCapture } from "./node/networkCapture.js";
+export {
+  GEN_UI_OUTPUT_ROOT_ENV,
+  GEN_UI_OUTPUT_DIRECTORY,
+  getGenUiOutputDirectory,
+} from "./node/genUiPaths.js";
 export { scanOfficialPluginCacheRoots } from "./node/officialPluginCache.js";
 export {
   migrateUserSubagentMarkdown,

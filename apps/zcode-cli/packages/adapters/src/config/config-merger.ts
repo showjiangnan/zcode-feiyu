@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // Config Merger - Merge configs by priority
 
 import type {
@@ -157,10 +158,10 @@ function mergePluginOptions(
   current: PluginOptions | undefined,
   next: PluginOptions,
 ): PluginOptions {
-  const merged: PluginOptions = { ...(current ?? {}) };
+  const merged: PluginOptions = { ...current };
   for (const [pluginId, options] of Object.entries(next)) {
     merged[pluginId] = {
-      ...(merged[pluginId] ?? {}),
+      ...merged[pluginId],
       ...options,
     };
   }

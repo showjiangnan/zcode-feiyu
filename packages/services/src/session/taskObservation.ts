@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /** 事件驱动的有界观察；订阅先于读取，dirty 水位防止异步读取期间丢掉终态事件。 */
 export function waitForTaskObservation<T>(options: {
   read(): Promise<T>;

@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
 import type { Logger, ModelStreamEvent, ModelToolCall } from "@zcode/contracts";
-import { normalizeModelToolInput } from "./tool-input-normalization.js";
 import { normalizeModelToolName } from "./tool-call-validation.js";
+import { normalizeModelToolInput } from "./tool-input-normalization.js";
 
 interface StreamingToolCallAssemblerOptions {
   logger?: Logger;

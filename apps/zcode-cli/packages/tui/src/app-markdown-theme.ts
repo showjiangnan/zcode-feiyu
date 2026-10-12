@@ -1,7 +1,8 @@
+// Modified by ZCode Feiyu.
 import { SyntaxStyle, type ThemeTokenStyle } from "@mbears/opentui-core";
 import type { TuiThemeTokens } from "./theme/index.js";
 
-function markdownSyntaxRules(theme: TuiThemeTokens): ThemeTokenStyle[] {
+export function markdownSyntaxRules(theme: TuiThemeTokens): ThemeTokenStyle[] {
   return [
     token(["default"], { foreground: theme.markdownText }),
     token(["markup.heading", "markup.heading.1", "markup.heading.2", "markup.heading.3"], {

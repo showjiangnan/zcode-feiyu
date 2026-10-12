@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { computeAutomationNextRunAt, type AutomationRepo } from "@zcode/services/node";
 import type { ZCodeAutomationTrigger } from "@zcode/shared";
 import type { MainToSchedulerMessage } from "./schedulerProtocol.js";
@@ -115,7 +115,7 @@ interface ManualClaimReleaseRepo {
   releaseManualClaim(automationId: string, workspaceKey: string): Promise<void>;
 }
 
-interface ManualClaimReleaseParams {
+export interface ManualClaimReleaseParams {
   repo: ManualClaimReleaseRepo;
   automationId: string;
   runId: string;
@@ -123,7 +123,9 @@ interface ManualClaimReleaseParams {
   logError: (message: string) => void;
 }
 
-async function releaseManualClaimForSettledRun(params: ManualClaimReleaseParams): Promise<void> {
+export async function releaseManualClaimForSettledRun(
+  params: ManualClaimReleaseParams,
+): Promise<void> {
   const releaseWorkspaceKey =
     params.workspaceKey ??
     (await params.repo.getRun(params.runId).then((run) => run?.workspaceKey)) ??

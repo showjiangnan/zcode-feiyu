@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 示例 4: Remote 远程连接 —— 模拟 SSH/WSL/Docker 的完整流程
  *
@@ -133,7 +134,7 @@ class SSHAuthorityResolver implements IRemoteAuthorityResolver {
 const pendingServerSockets: MockSocket[] = [];
 
 class MockWebSocketFactory implements ISocketFactory<RemoteConnectionType.WebSocket> {
-  supports(connectTo: RemoteConnection & { type: RemoteConnectionType.WebSocket }): boolean {
+  supports(_connectTo: RemoteConnection & { type: RemoteConnectionType.WebSocket }): boolean {
     return true;
   }
 

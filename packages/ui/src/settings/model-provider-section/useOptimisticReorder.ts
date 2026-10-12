@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 interface PendingReorder {
@@ -5,7 +6,7 @@ interface PendingReorder {
   readonly ids: readonly string[];
 }
 
-interface OptimisticReorderController {
+export interface OptimisticReorderController {
   readonly renderedIds: readonly string[];
   commit(ids: readonly string[]): Promise<void>;
 }

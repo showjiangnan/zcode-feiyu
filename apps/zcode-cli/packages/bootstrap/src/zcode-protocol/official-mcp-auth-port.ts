@@ -1,3 +1,64 @@
+// Modified by ZCode Feiyu.
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
+/* Agent 侧的官方 MCP 身份头端口。
+   Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
+   由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
+   不持久化、不进日志。 */
 /* Agent 侧的官方 MCP 身份头端口。
    Agent 进程不是身份权威：经 interaction/requestOfficialMcpAuthHeaders 反向请求 host，
    由 host 解析当前 Coding Plan 凭证后回传本次请求的身份头。凭证不落 runtime config、
@@ -13,10 +74,7 @@ import type { ZCodeProtocolAgentServerContext } from "./server-types.js";
 let requestSequence = 0;
 
 /** 端口只需要发反向请求的能力，不需要整个 server context。 */
-export type OfficialMcpAuthRequestContext = Pick<
-  ZCodeProtocolAgentServerContext,
-  "requestClient"
->;
+export type OfficialMcpAuthRequestContext = Pick<ZCodeProtocolAgentServerContext, "requestClient">;
 
 /**
  * 构造经协议反向请求取身份头的端口。

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // GetWorkflowRun Tool - 单 workflow run 的自适应详情（进度摘要 / 产物 / 失败）
 // ============================================================
@@ -25,7 +26,9 @@ export const GetWorkflowRunInputSchema = z
     run_id: z
       .string()
       .min(1)
-      .describe("The workflow run ID to inspect (as returned by CreateWorkflow or ListWorkflowRuns)"),
+      .describe(
+        "The workflow run ID to inspect (as returned by CreateWorkflow or ListWorkflowRuns)",
+      ),
   })
   .strict();
 
@@ -89,6 +92,35 @@ export const GetWorkflowRunPendingQuestionSchema = z
     askedAt: z.number(),
   })
   .strict();
+
+/** `holes` 的上界，与 display 契约的留白上界同值（docs/dynamic-workflow/presentation.md）。 */
+export const GET_WORKFLOW_RUN_MAX_HOLES = 32;
+
+/**
+ * 一处留白（docs/dynamic-workflow/authoring.md「Holes」）。`waiting` 的在等主代理用
+ * `FillWorkflowHole` 补上函数体，`filled` 的已经补过；`since` / `filledAt` 与 createdAt 同一把尺。
+ * 与升级问题一样，这是通知丢失后模型侧唯一的发现面。
+ */
+export const GetWorkflowRunHoleSchema = z
+  .object({
+    /** 留白的站点 id（`hole#21b40fca`，名字键），`FillWorkflowHole` 的 `hole_id` 就是它。 */
+    siteId: z.string(),
+    ordinal: z.number(),
+    /** 留白的字面名。 */
+    name: z.string(),
+    /** 类型实参原文（`Verdict`）。 */
+    type: z.string(),
+    state: z.enum(["waiting", "filled"]),
+    /** 到达时刻（epoch ms）；`waiting` 时在场。 */
+    since: z.number().optional(),
+    /** 补全时刻（epoch ms）；`filled` 时在场。 */
+    filledAt: z.number().optional(),
+    /** 补全它的会话。 */
+    filledBy: z.string().optional(),
+  })
+  .strict();
+
+export type GetWorkflowRunHole = z.infer<typeof GetWorkflowRunHoleSchema>;
 
 /**
  * 一件**用户面产物**：脚本经 `artifact.*` 发布给用户看的
@@ -185,6 +217,11 @@ export const GetWorkflowRunOutputSchema = WorkflowRunSummarySchema.extend({
    */
   subagentModel: z.string().optional(),
   /**
+   * 本 run 的脚本点名的模型：脚本逐字写下的名字 → 规范形，**只在脚本点名过模型时在场**。
+   * AmendWorkflow 里同名的模型沿用的就是这些绑定。
+   */
+  modelBindings: z.record(z.string()).optional(),
+  /**
    * 本 run 的脚本文件，**已经写成模型面该看到的样子**（在会话工作目录之下就是工作区相对路径，
    * 否则绝对路径）。**只在这个 run 记下过文件
    * 时在场**（与 `subagentModel` 的「无则缺席」同规）：草稿写不下去的项目、本特性之前发起的
@@ -198,7 +235,10 @@ export const GetWorkflowRunOutputSchema = WorkflowRunSummarySchema.extend({
    * 阶段表：声明序的已声明阶段，后面接上「进过但没声明」的那些。**脚本没声明阶段、也一个
    * 都没进过时整字段缺席**——那样的 run 没有阶段这回事，空数组读起来像「阶段表是空的」。
    */
-  phases: z.array(GetWorkflowRunPhaseSchema).max(GET_WORKFLOW_RUN_ROSTER_LIMITS.maxPhases).optional(),
+  phases: z
+    .array(GetWorkflowRunPhaseSchema)
+    .max(GET_WORKFLOW_RUN_ROSTER_LIMITS.maxPhases)
+    .optional(),
   /**
    * 子代理花名册，按铸造顺序。**恒在场**，一个 actor 都没有的 run 是空数组：与 `phases`
    * 不同，「这个 run 有几个子代理」永远是个有答案的问题，而 0 就是那个答案。
@@ -226,6 +266,12 @@ export const GetWorkflowRunOutputSchema = WorkflowRunSummarySchema.extend({
    * 读侧据此让整块 pending 区消失，而不是渲染一个空节。
    */
   pendingQuestions: z.array(GetWorkflowRunPendingQuestionSchema).optional(),
+  /**
+   * 本 run 的留白（docs/dynamic-workflow/launch.md「The `FillWorkflowHole` tool」；引擎文档
+   * 「The run snapshot」）：到达过的每一处，`waiting` 的在等主代理的函数体，`filled` 的已经补上。
+   * 与 pendingQuestions 同规：**零条时整字段缺席**、有界 32；它是留白通知丢失后的查询兜底。
+   */
+  holes: z.array(GetWorkflowRunHoleSchema).max(GET_WORKFLOW_RUN_MAX_HOLES).optional(),
   /**
    * 本 run 已发布的用户面产物，按首次发布顺序，**任意状态都附**（一个还在跑的 run 也可能
    * 已经交付了第一张图）。**零件时整字段缺席**，与 pendingQuestions 同规。有界 32

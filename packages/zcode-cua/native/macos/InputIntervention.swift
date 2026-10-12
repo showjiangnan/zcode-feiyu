@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 enum InputIntervention { case ignore, pause, stop }
 
 func inputIntervention(ownEvent: Bool, hasOwner: Bool, targetsWindow: Bool,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { PptxCodeViewerSource, PptxReferencePreviewNavigation } from "@/lib/codeViewer.js";
 import {
   isPptxElementReferenceInWorkspaceScope,
@@ -5,7 +6,7 @@ import {
 } from "@/lib/pptxElementReference.js";
 import { isWorkspaceFilePathInside } from "@/workspace-file-tree/model.js";
 
-interface PptxElementReferencePreviewScope {
+export interface PptxElementReferencePreviewScope {
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
 // ============================================================
@@ -11,6 +12,186 @@
 // 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
 // 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
 
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
+// ============================================================
+// ModelCatalogPort 的宿主实现：Provider Registry → 工具层看得见的模型目录
+// ============================================================
+// 端口契约见 contracts/src/interfaces/model-catalog.port.ts。存在的理由只有一个：
+// `CreateWorkflow` / `AmendWorkflow` 的 `subagent_model` 要把用户说的模型名解析成一次
+// workflow run 的子代理选型，而 core 看不见 provider 注册表。本模块把「有哪些模型」这件宿主
+// 事实递过去，解析本身留在 core 的纯函数里。
+//
+// 与 provider-registry-selection.ts 的 `listRegistryBackedModels` 是同一份注册表的**两张脸**：
+// 那边产出 GUI picker 的 `ZCodeModelOption`（带 label / maxOutputTokens / 格式属性），这边产出
+// 工具层要的窄条目。刻意不共用一个投影函数——两张脸的字段集与在场规则各自独立，硬要合并只会
+// 让一次为 picker 做的改动悄悄改掉模型解析的判据。共用的是**默认档位那条规则**（见下）。
 import type { ModelCatalogEntry, ModelCatalogPort } from "@zcode/contracts";
 import type { ModelSelection } from "@zcode/shared/model-selection";
 import type { ProviderRegistryModelSource } from "./provider-registry-model-runtime.js";

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { memo } from "react";
 import {
   TID_V4_PANE_WORKSPACE_BADGE,
@@ -19,7 +20,7 @@ export interface PaneWorkspaceBadge {
   remote: boolean;
 }
 
-interface ConversationHeaderProps {
+export interface ConversationHeaderProps {
   /** meta.title；仅作为测试/可观测投影，不渲染占位 header。 */
   title: string;
   /** 向右拆分新 draft 窗格（叶子数达上限时宿主不下发）。 */
@@ -61,7 +62,7 @@ function ConversationHeaderImpl({ title, onClosePane, workspaceBadge }: Conversa
               ) : null}
             </span>
           ) : null}
-          {/* 产品侧暂时下线 pane chrome 拆分入口；保留回调接口与底层能力，便于后续恢复。*/}
+          {/* 2026-07-13 产品侧暂时下线 pane chrome 拆分入口；保留回调接口与底层能力，便于后续恢复。 */}
           {/* {onSplitRight ? (
             <Button
               type="button"

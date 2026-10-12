@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 // desktop main 侧的 cron scheduler 进程管理器。
 // 职责：拉起/销毁常驻 scheduler 进程；把 scheduler 的派发请求路由给某个本地 host（转成 CronRun）；
 // 把 host 回报的 CronRunResult 转回 scheduler 结算。scheduler 只碰 tasks-index，createTask 在 host 域执行。

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import {
   isTasksStorageMigrated,
   isTasksStoragePrepared,
@@ -107,7 +107,7 @@ interface AutomationRunRow {
   updated_at: number;
 }
 
-interface ClaimedManualAutomationRun {
+export interface ClaimedManualAutomationRun {
   automation: ZCodeAutomation;
   run: ZCodeAutomationRun;
 }

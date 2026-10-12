@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { memo, useEffect, useMemo, useState } from "react";
 import type { ZCodeSessionEndedSubagent } from "@zcode/shared";
 import type { RunningSubagentSummary } from "@zcode/shared/zcode-protocol-v4";
@@ -26,7 +27,7 @@ type DirectoryItem = RunningSubagentSummary | ZCodeSessionEndedSubagent;
 
 const EMPTY_RUNNING: readonly RunningSubagentSummary[] = [];
 
-function buildSubagentDirectoryOpenRequest(
+export function buildSubagentDirectoryOpenRequest(
   tab: SubagentDirectorySidePaneTab,
   item: DirectoryItem,
 ): OpenScopedSubagentSideTabRequest {

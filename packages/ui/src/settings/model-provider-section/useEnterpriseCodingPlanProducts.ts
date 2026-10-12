@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getModelProviderFamilySpec,
@@ -20,7 +21,7 @@ interface EnterpriseCodingPlanProductsState {
   error: string | null;
 }
 
-interface EnterpriseCodingPlanProductsSnapshot {
+export interface EnterpriseCodingPlanProductsSnapshot {
   productList: EnterpriseCodingPlanProductDisplay[];
   raw: EnterpriseCodingPlanPricingResponse;
   authenticated: boolean;
@@ -28,14 +29,14 @@ interface EnterpriseCodingPlanProductsSnapshot {
   staticProductIds?: string[];
 }
 
-function shouldRetainEnterprisePricingSnapshotForRefresh(
+export function shouldRetainEnterprisePricingSnapshotForRefresh(
   snapshot: EnterpriseCodingPlanProductsSnapshot | null,
   authenticated: boolean,
 ): boolean {
   return snapshot?.authenticated === authenticated;
 }
 
-function resolveEnterprisePricingFailureSnapshot({
+export function resolveEnterprisePricingFailureSnapshot({
   currentSnapshot,
   authenticated,
   staticProducts,

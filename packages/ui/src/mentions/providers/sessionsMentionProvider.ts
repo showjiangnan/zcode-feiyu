@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // composer parity：`#` 会话候选的数据源从旧 zcodeSessionStore/taskQueryCache/remote*
 // 店面切到 v4 sessions-index（useWorkspaceSessionsIndexItems，侧栏同源）。
 // 旧店面在 v4 shell 下不再被会话列表填充，继续读会得到空面板；序列化与排序语义不变
@@ -82,7 +83,7 @@ function mapTaskToMentionItem(task: ZCodeTaskMeta, provider: ZCodeProvider): Ses
   };
 }
 
-function collectSessionMentionItems(
+export function collectSessionMentionItems(
   tasks: ZCodeTaskMeta[],
   provider: ZCodeProvider,
   options: {

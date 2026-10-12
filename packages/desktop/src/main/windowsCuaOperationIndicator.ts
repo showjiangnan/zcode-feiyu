@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { BrowserWindow, screen } from "electron";
 import type { BrowserWindowConstructorOptions, Display, Point, Rectangle } from "electron";
 import type { HostCuaOperationStateResponse, Locale } from "@zcode/shared";
@@ -19,7 +20,7 @@ const HIDE_ANIMATION_MS = 120;
 const AUTO_HIDE_MS = 30_000;
 const CREATE_RETRY_MS = 250;
 
-interface WindowsCuaOperationIndicatorWindow {
+export interface WindowsCuaOperationIndicatorWindow {
   readonly webContents: Pick<BrowserWindow["webContents"], "executeJavaScript">;
   destroy(): void;
   hide(): void;
@@ -34,7 +35,7 @@ interface WindowsCuaOperationIndicatorWindow {
   showInactive(): void;
 }
 
-interface WindowsCuaOperationIndicator {
+export interface WindowsCuaOperationIndicator {
   handleState(source: object, event: HostCuaOperationStateResponse): void;
   clearSource(source: object): void;
   ownsWindow(candidate: object): boolean;

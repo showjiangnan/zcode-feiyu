@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // 分屏拖拽分隔条（rAF + CSS 变量方案按分割节点泛化，行/列双向）：
 // pointer capture 驱动，拖动中占比只走容器 CSS 变量（ref + rAF 合帧），
 // 不进 React state——pane 内容子树在拖动期间零重渲染；
@@ -27,7 +28,7 @@ interface SplitDividerDragState {
   rafId: number | null;
 }
 
-interface WorkbenchSplitDividerProps {
+export interface WorkbenchSplitDividerProps {
   containerRef: RefObject<HTMLDivElement | null>;
   splitId: string;
   direction: SplitDirection;

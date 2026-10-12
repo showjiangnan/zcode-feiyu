@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { SessionId, SubagentPort, TeamBoardPort, TraceContext } from "@zcode/contracts";
 import type { AgentRuntimeInternal } from "./internal.js";
 

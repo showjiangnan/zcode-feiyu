@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { useCallback, useEffect, useState } from "react";
 import {
   IMAGE_SETTINGS_CHANGED_CHANNEL,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // v4 交互应答登记表（原生化，resolveInteraction）。
 //
 // 背景：conversation-product-protocol 的权限/AskUserQuestion 是「反向请求」——CLI 经
@@ -27,9 +28,9 @@ export type V4InteractionAnswer = {
   content?: Record<string, unknown>;
 };
 
-const ASK_USER_QUESTION_HIDDEN_GRACE_MS = 60_000;
-const ASK_USER_QUESTION_AUTO_RESOLUTION_MS = 300_000;
-interface V4InteractionRegistryOptions {
+export const ASK_USER_QUESTION_HIDDEN_GRACE_MS = 60_000;
+export const ASK_USER_QUESTION_AUTO_RESOLUTION_MS = 300_000;
+export interface V4InteractionRegistryOptions {
   hiddenGraceMs?: number;
   autoResolutionMs?: number;
   now?: () => number;

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // sessions-index 传输面（desktop/host 实现）：桥到 IZCodeAgentService 的 v4 sessions-index 转发面
 // （与 agentConversationTransport 同构；web 直连 relay 时换实现即可）。
 import type { IZCodeAgentService } from "@zcode/services";
@@ -43,7 +44,7 @@ export interface SessionsIndexTransport {
   onRuntimeLifecycle?: (listener: (state: "available" | "unavailable") => void) => () => void;
 }
 
-interface AgentSessionsIndexTransportTarget {
+export interface AgentSessionsIndexTransportTarget {
   workspacePath: string;
   workspaceIdentity?: string;
 }

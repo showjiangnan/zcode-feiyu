@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 
 export const RENDERER_ACTION_TRACE_SERVICE_NAME = "zcode-desktop-renderer";

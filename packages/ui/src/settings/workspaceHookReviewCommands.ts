@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type {
   CommandPayloadMap,
   CommandType,
@@ -34,7 +35,7 @@ export async function sendWorkspaceHookCommand<T extends CommandType>(
   }
 }
 
-function toWorkspaceHookReviewCommandTarget(request: WorkspaceHookReviewRequestPayload) {
+export function toWorkspaceHookReviewCommandTarget(request: WorkspaceHookReviewRequestPayload) {
   return {
     sessionId: request.sessionId,
     taskId: request.taskId,

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 #pragma once
 #include <cmath>
 #include <cstdint>

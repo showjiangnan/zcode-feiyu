@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 import { runtimeCapabilitySchema } from "./continuity-policy.js";
 import { proactiveCausalContextSchema } from "./zcode-protocol-v4/orchestration.js";

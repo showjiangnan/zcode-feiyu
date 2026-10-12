@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import type { PipSessionEvent } from "./pip-session.d.ts";
 
 export interface PipSessionApplyResult {

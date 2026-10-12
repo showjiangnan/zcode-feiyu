@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { commandRequestFingerprint } from "../../command-fingerprint.js";
 // 会话管理命令组：createSession / renameSession / deleteSession。
 // 每个命令组一个文件：handler 纯函数 (host, envelope) → CommandResult|undefined，
@@ -9,17 +9,17 @@ import type {
   CommandResult,
 } from "@zcode/shared/zcode-protocol-v4";
 import { mapAttachmentRefsToTurnAttachments } from "../attachment-refs.js";
+import { commandAdmissionOf } from "../execution-context.js";
+import {
+  hasPromptInput,
+  resolveSubmittedExecutionState,
+  V4InputAdmissionRejectedError,
+} from "../input-admission.js";
 import { inputIntentMetadata } from "../input-intent.js";
-import { commandAdmissionOf } from "../executor.js";
 import { startPromptTurn } from "../prompt-turn.js";
 import { requireRecord } from "../record-access.js";
 import type { V4CommandCoreHost } from "../types.js";
 import { applyRequestedSessionConfig } from "./model-config.js";
-import {
-  hasPromptInput,
-  V4InputAdmissionRejectedError,
-  resolveSubmittedExecutionState,
-} from "./session-flow.js";
 
 /**
  * createSession：回落面最后一项的原生化。
@@ -63,19 +63,29 @@ async function createSession(
           title: payload.title,
         }
       : {}),
+    ...(payload.permissionScope ? { permissionScope: payload.permissionScope } : {}),
     mcpServers: payload.mcpServers,
     offPeakToolEnabled: payload.offPeakToolEnabled,
     dynamicWorkflowEnabled: payload.dynamicWorkflowEnabled,
+    dynamicWorkflowMode: payload.dynamicWorkflowMode,
   });
   // createSession.config 消费——草稿态 UI 的先行选择（模型/思考深度/
   // 模式）在首发之前应用并补发事件，首条 turn 即用所选配置。必须在 firstInput 之前。
-  // 应用失败不连坐会话创建（record 已建成，failed ACK 只会泄漏会话）：降级 warn，
-  // 会话保持 runtime 缺省。
+  // 普通配置保留既有 warn 降级；Guarded 是明确的授权选择，失败不得用缺省模式执行。
   if (payload.config) {
     const record = requireRecord(host, sessionId);
     try {
       await applyRequestedSessionConfig(host, record, payload.config);
     } catch (error) {
+      if (payload.config.mode === "guarded" || payload.firstInput?.mode === "guarded") {
+        // 根因：旧 catch 吞掉模式应用失败后仍提交首轮，Guarded 会静默退化。
+        try {
+          await host.closeSession?.(sessionId);
+        } catch (closeError) {
+          host.logger?.warn?.("v4 guarded draft cleanup failed", { sessionId, closeError });
+        }
+        throw error;
+      }
       host.logger?.warn?.("v4 createSession config apply failed; session keeps runtime defaults", {
         error: error instanceof Error ? error.message : String(error),
         sessionId,

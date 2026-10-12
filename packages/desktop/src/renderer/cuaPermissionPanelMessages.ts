@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
 import type { CuaPermissionKind, Locale } from "@zcode/shared";
 
-interface CuaPermissionPanelMessages {
+export interface CuaPermissionPanelMessages {
   documentTitle: string;
   dragTitle: string;
   hintPrefix: string;

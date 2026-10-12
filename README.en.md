@@ -11,49 +11,62 @@ Maintained independently by Feiyu, this repository is separate from official rel
 
 Improved usability of model provider settings.
 
+Feiyu evolves from its delivered capabilities, user feedback, and architecture contracts. Upstream designs are assessed individually and adopted where useful, while this edition retains its features, defaults, and permission experience.
+
+## Current source updates
+
+- Local desktop support for MCP Apps UI and Gen UI: interactive pages, inline/expanded views, restored state, Tweak, follow-ups, tool/resource interactions, and cancellation.
+- Improved dynamic workflow hole filling, run settings, progress and logs, plus saving a workflow from a run. Workflows remain enabled by default; users can disable them or choose on-demand use in settings.
+- Updated subagent definitions and session restoration while preserving standard/coordinator/swarm orchestration, top-level task collaboration, memory maintenance, and execution without cumulative spending stops.
+- Self-hosted RCS keeps the desktop's existing Host and receives the shared workflow and Web updates. Native page sandboxes remain local desktop capabilities; Web/RCS and remote workspaces use accurate platform fallbacks.
+
+These changes describe the current source. Previously published installers below do not automatically include later source updates.
+
 ## Latest update
 
-- Added experimental computer control (CUA).
-- Improved longstanding UI / UX issues.
+- Added ChatGPT subscription sign-in and model access, with more convenient model-provider controls.
+- Improved conversations, tools, and the shared interface while retaining experimental computer control and existing Feiyu capabilities.
 
 ## Download installers
 
-Download Feiyu builds from [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases). The newest release is [v3.14.5-feiyu.1 (prerelease)](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.5-feiyu.1), with application version **3.14.5** and installed name **ZCode Preview**. Packages are built from the production commit identified by that tag; later source changes do not update existing packages.
+Download Feiyu packages from [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases). This release is [v3.14.6-feiyu.1 (prerelease)](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.6-feiyu.1), with application version **3.14.6** and installed name **ZCode**. Packages are built from the production commit identified by that tag; pushing source does not update installed applications.
 
-| Platform                                         | Download                                                                                                                                                                                                                                                        | Validation and scope                                                                                                                                                             |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| macOS Apple Silicon (arm64, macOS 14.4 or later) | [DMG installer](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.5-feiyu.1/ZCode-Feiyu-3.14.5-mac-arm64.dmg) · [ZIP archive](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.5-feiyu.1/ZCode-Feiyu-3.14.5-mac-arm64.zip) | Native Mac build; final archive signatures, contents and bundled Agent checked; computer control is experimental                                                                 |
-| Windows x64                                      | No installer for this version; [version 3.14.4](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.4-feiyu.1) remains available                                                                                                                     | The new native CUA helper requires Windows SDK / MSVC; the build entry rejects cross-compilation on this Mac. The older version does not contain this update's CUA or UI changes |
+| Platform                                         | Download                                                                                                                                                                                                                                                        | Validation and scope                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS Apple Silicon (arm64, macOS 14.4 or later) | [DMG installer](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.6-feiyu.1/ZCode-Feiyu-3.14.6-mac-arm64.dmg) · [ZIP archive](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.6-feiyu.1/ZCode-Feiyu-3.14.6-mac-arm64.zip) | Native Mac build; final archive signatures, contents, and bundled Agent checked. Computer control remains experimental.                                                                                                                                                                                                |
+| Windows x64 / arm64                              | **No Windows installer in this release.** [Version 3.14.4](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.4-feiyu.1) remains available.                                                                                                         | Windows implementations remain in source. The complete package requires Windows SDK/MSVC to build native CUA and validation of credential protection, memory, Shell, tools, installation, and runtime. The old package does not contain this release's subscription sign-in, shared UI, or subsequent runtime updates. |
 
-[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.5-feiyu.1/SHA256SUMS.txt) provides SHA-256 digests for this version's Mac packages. Compare them using `shasum -a 256 <file>`.
+[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.6-feiyu.1/SHA256SUMS.txt) provides SHA-256 digests for the Mac packages. Compare them using `shasum -a 256 <file>`.
 
-- **Install on Mac**: open the DMG, drag ZCode Preview into Applications, and launch it. ZIP users should extract and copy the application first. This build uses an ad-hoc signature without Apple Developer ID or notarization. If macOS blocks it, verify its source and digest, then follow System Settings → Privacy & Security.
+- **Install on Mac**: open the DMG and drag ZCode into Applications before launching. ZIP users should extract and copy the application first. This build uses an ad-hoc signature without Apple Developer ID or notarization. If macOS blocks it, verify its source and digest, then follow System Settings → Privacy & Security.
+- **Previous Preview users**: this application is named ZCode; it does not automatically replace ZCode Preview by renaming. Retain your data and check native application settings such as RCS and OS permissions in this application. Do not directly copy credential files between application identities.
 - **Computer control permissions**: enable Settings → Computer Control and grant macOS Accessibility and Screen Recording permissions. Replacing an ad-hoc signed build may require granting them again.
-- **Windows source**: the Windows implementation is included and requires building with Windows SDK / MSVC on Windows. It has not been tested on a real Windows system; source availability and older cross-built packages do not establish validation of this version.
+- **Windows status**: no Windows installation/runtime test was performed for this release. Mac builds, mocks, and old packages do not establish validation of this Windows version. Shared UI, model adapters, and Windows source remain included.
 - **Updates**: quit the application and install the newer package over the same application while retaining its data directory. No Feiyu automatic-update service is provided; `git pull` does not update an installed application. Earlier versions remain in Releases.
 
 ## Additions and comparison
 
-| Capability                               | Official v3.14.3 baseline                                                    | ZCode Feiyu                                                                                                                           |
-| ---------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Desktop / Web / CLI, Agent, V4           | Available                                                                    | Retained and reused                                                                                                                   |
-| Experimental computer control (CUA)      | Limited computer-control wiring                                              | Local application observation and input, permissions settings, built-in plugin and control previews; this release ships for Mac arm64 |
-| Per-conversation orchestration           | Existing ordinary subagents                                                  | Standard, `coordinator`, and `swarm`; live switching at model-request boundaries                                                      |
-| Workspace memory and review              | Existing conversation and context foundations                                | Workspace isolation, relevant recall, extraction/review, history, diffs, and protected undo                                           |
-| Controlled proactive work                | Existing task runtime                                                        | Application permission plus per-conversation activation, event/timer admission, pause and stop                                        |
-| Consumption-based execution limits       | Existing execution policy                                                    | Removed accumulated consumption stops; usage, compaction, permissions, and cancellation retained                                      |
-| Local top-level task application service | Low-level session operations, without this fork's unified task tools/service | Discovery, creation, reading, input delivery, receipt queries, waiting, and lifecycle controls                                        |
-| Automatic prompts from task A to B       | Foundations such as subagent messaging                                       | Same-workspace top-level messaging, preferring guide/steer while busy                                                                 |
-| Automatic message attribution            | No source type or label introduced here                                      | Persistent provenance and “Sent automatically from another ZCode task”                                                                |
-| Unified telemetry setting                | No single setting spanning the three paths implemented here                  | Controls ARMS, ZCode events, and desktop/Agent OTLP reporting                                                                         |
-| Packaged dynamic workflows               | Forced on in Preview; Production follows upstream gating                     | `alwaysOn` in both Production and Preview packages                                                                                    |
-| Local Session Mailbox                    | Requires `ZCODE_MESSAGE_ENABLED=1/true`                                      | Enabled by default, with an explicit opt-out                                                                                          |
-| Workspace search settings                | Implemented page with hidden navigation                                      | Visible entry for the existing `.zcodeignore` feature                                                                                 |
-| Built-in fal image generation            | No settings/tools/image-job pipeline introduced here                         | Provider key, generation/edit models, loading, storage, preview, resume, and cancellation                                             |
-| Self-hosted RCS                          | Existing remote and SSH foundations                                          | Python bridge, responsive shared Web, existing Host attachment, public API/SDK                                                        |
-| Remote Services settings                 | Existing SSH / bot entries                                                   | RCS Service, SSH, Mobile Chat Bots in a third settings group                                                                          |
-| Subagent image spending                  | Not applicable                                                               | Separate permission switch, off by default                                                                                            |
-| Image parameters                         | Not applicable                                                               | One PNG by default; explicit dimensions/count/format validated against model capabilities                                             |
+| Capability                               | Official v3.14.3 baseline                                                    | ZCode Feiyu                                                                                                                                       |
+| ---------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop / Web / CLI, Agent, V4           | Available                                                                    | Retained and reused                                                                                                                               |
+| ChatGPT subscription model access        | No subscription-connection adapter introduced here                           | Official sign-in, live catalog, OS-protected credentials, renewal, and ZCode local-tool continuation; one current account with account switching. |
+| Experimental computer control (CUA)      | Limited computer-control wiring                                              | Local application observation and input, permissions settings, built-in plugin and control previews; this release ships for Mac arm64             |
+| Per-conversation orchestration           | Existing ordinary subagents                                                  | Standard, `coordinator`, and `swarm`; live switching at model-request boundaries                                                                  |
+| Workspace memory and review              | Existing conversation and context foundations                                | Workspace isolation, relevant recall, extraction/review, history, diffs, and protected undo                                                       |
+| Controlled proactive work                | Existing task runtime                                                        | Application permission plus per-conversation activation, event/timer admission, pause and stop                                                    |
+| Consumption-based execution limits       | Existing execution policy                                                    | Removed accumulated consumption stops; usage, compaction, permissions, and cancellation retained                                                  |
+| Local top-level task application service | Low-level session operations, without this fork's unified task tools/service | Discovery, creation, reading, input delivery, receipt queries, waiting, and lifecycle controls                                                    |
+| Automatic prompts from task A to B       | Foundations such as subagent messaging                                       | Same-workspace top-level messaging, preferring guide/steer while busy                                                                             |
+| Automatic message attribution            | No source type or label introduced here                                      | Persistent provenance and “Sent automatically from another ZCode task”                                                                            |
+| Unified telemetry setting                | No single setting spanning the three paths implemented here                  | Controls ARMS, ZCode events, and desktop/Agent OTLP reporting                                                                                     |
+| Packaged dynamic workflows               | Forced on in Preview; Production follows upstream gating                     | `alwaysOn` in both Production and Preview packages                                                                                                |
+| Local Session Mailbox                    | Requires `ZCODE_MESSAGE_ENABLED=1/true`                                      | Enabled by default, with an explicit opt-out                                                                                                      |
+| Workspace search settings                | Implemented page with hidden navigation                                      | Visible entry for the existing `.zcodeignore` feature                                                                                             |
+| Built-in fal image generation            | No settings/tools/image-job pipeline introduced here                         | Provider key, generation/edit models, loading, storage, preview, resume, and cancellation                                                         |
+| Self-hosted RCS                          | Existing remote and SSH foundations                                          | Python bridge, responsive shared Web, existing Host attachment, public API/SDK                                                                    |
+| Remote Services settings                 | Existing SSH / bot entries                                                   | RCS Service, SSH, Mobile Chat Bots in a third settings group                                                                                      |
+| Subagent image spending                  | Not applicable                                                               | Separate permission switch, off by default                                                                                                        |
+| Image parameters                         | Not applicable                                                               | One PNG by default; explicit dimensions/count/format validated against model capabilities                                                         |
 
 “App Server capabilities” are implemented using **ZCode's own stdio / V4 / Agent architecture**. This fork does not embed OpenAI Codex or promise compatibility with the external Codex App Server protocol. Existing runtimes retain ownership of sessions, admission ordering, recovery, and image artifacts; there is no second task database.
 
@@ -88,6 +101,18 @@ Configure these in Settings → Agent capabilities:
 - **Memory history scope:** current conversation, workspace, or no history. Existing memory files and history remain readable after memory is disabled.
 
 macOS execution after closing the last window depends on background permission and an available managed Host. **Cmd+Q exits the application and its managed processes.** Background operation does not imply login startup or guaranteed execution during lid closure or system sleep.
+
+### ChatGPT subscription sign-in and model access
+
+Open **Settings → Models → ChatGPT subscription sign-in → ChatGPT subscription**, select **Continue with ChatGPT**, and complete official sign-in and subscription-usage authorization in your system browser. The connection sign-in page also provides this entry. No OpenAI API Key is required.
+
+- The current UI maintains one signed-in account and supports switching accounts, reconnecting, signing out, removing the local connection, and refreshing models.
+- Available models are discovered from that connection. Select a model and a supported reasoning level in the conversation model menu; the maximum level has a purple indicator. Access follows the live catalog and actual inference results rather than hardcoded plan names.
+- ZCode's own Agent continues to run local tools, files, Shell, MCP, subagents, memory, compaction, and task collaboration. Missing permissions, exhausted usage, or invalid connections produce explicit errors while retaining history; there is no automatic fallback to another paid API Key route.
+- Requests may consume the ChatGPT account/application's subscription usage. Main agents, subagents, and background work do not receive independent plan allowances. Usage management opens the official page; local statistics are not official remaining usage.
+- This is the official public subscription-access preview, not all ChatGPT product features or all OpenAI models. fal.ai image generation retains its own configuration and fees; local computer/browser control uses ZCode executors.
+- Prompts, required task context, and selected attachments are sent to OpenAI; local tools run on the execution computer. Tokens stay in a private OS-protected local store and do not enter conversation exports or RCS relay payloads.
+- RCS can use the subscription connection established on desktop. Initial sign-in and account management take place on desktop, not through a phone pretending to receive the desktop callback. Independent SSH/Docker execution does not reuse desktop private subscription credentials.
 
 ### Continued execution and usage
 
@@ -211,11 +236,10 @@ Use [.env.example](.env.example) for service endpoints, and untracked `.env` / `
 
 ### Local macOS Apple Silicon build
 
-Use the Preview application identity with production service configuration, and sign during packaging so that the final DMG/ZIP contains the signed application:
+Use the ZCode application identity with production service configuration, and sign during packaging so that the final DMG/ZIP contains the signed application:
 
 ```bash
 ZCODE_ENV=production \
-ZCODE_PREVIEW_IDENTITY=1 \
 ZCODE_SKIP_REMOTE_ASSETS=1 \
 ZCODE_BOOTSTRAP_WITH_REMOTE=1 \
 ZCODE_ENABLE_MAC_SIGN=1 \
@@ -223,20 +247,20 @@ CSC_NAME=- \
 pnpm bundle:desktop -- --os mac --arch arm64
 ```
 
-Outputs in `packages/desktop/dist/` include `mac-arm64/ZCode Preview.app`, DMG, and ZIP files. `ZCODE_SKIP_REMOTE_ASSETS=1` skips remote deployment asset preparation for this local desktop build. Remove it and prepare matching assets when producing remote distributions.
+Outputs in `packages/desktop/dist/` include `mac-arm64/ZCode.app`, DMG, and ZIP files. `ZCODE_SKIP_REMOTE_ASSETS=1` skips remote deployment asset preparation for this local desktop build. Remove it and prepare matching assets when producing remote distributions.
 
 Verify the signature after packaging. Quit the old application, then copy the new `.app` into Applications, replacing the same application:
 
 ```bash
 codesign --verify --deep --strict \
-  "packages/desktop/dist/mac-arm64/ZCode Preview.app"
+  "packages/desktop/dist/mac-arm64/ZCode.app"
 ```
 
-An ad-hoc signature is not an Apple Developer ID signature or notarization. Trusted public distribution requires your own Developer ID and notarization setup. Signing an unpacked `.app` after building does not update existing DMG/ZIP files. Preview supports a separate application installation but **does not guarantee isolated user data**; set `ZCODE_DATA_BASE_DIR` for isolation.
+An ad-hoc signature is not an Apple Developer ID signature or notarization. Trusted public distribution requires your own Developer ID and notarization setup. Signing an unpacked `.app` after building does not update existing DMG/ZIP files. Set `ZCODE_PREVIEW_IDENTITY=1` for a separate Preview application identity; this **does not guarantee isolated user data**; set `ZCODE_DATA_BASE_DIR` for isolation.
 
 To update, preserve local edits, run `git pull --ff-only`, refresh dependencies/build, quit the application, and replace the same `.app`. Source edits do not automatically update an installed application. Preserve its data directory. This repository does not provide a Feiyu automatic-update download service; official installers should not replace a customized fork. Once the new application works, installers and packaging copies in `packages/desktop/dist/` can be deleted.
 
-The Windows x64 cross-build was also completed on this Apple Silicon Mac with:
+The earlier 3.14.4 version was cross-built for Windows x64 on this Apple Silicon Mac using the following commands. The current complete version with native CUA requires a Windows build; these historical commands do not mean this release includes a Windows installer:
 
 ```bash
 ZCODE_ENV=production \

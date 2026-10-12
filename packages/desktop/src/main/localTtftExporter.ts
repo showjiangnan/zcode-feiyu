@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { createLocalTtftSpans } from "./localTtftSpans.js";
 import { LocalTtftExportDedupe } from "./localTtftExportDedupe.js";
 import { resourceFromAttributes } from "@opentelemetry/resources";

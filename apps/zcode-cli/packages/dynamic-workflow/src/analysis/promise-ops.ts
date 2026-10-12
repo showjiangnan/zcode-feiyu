@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import {
   clearExact,
@@ -41,7 +42,11 @@ function appliedCallbackTaint(ev: Evaluator, fn: ts.Node): AbstractValue {
  * over-approximation of the rejection path). Generic: `new X(fn)` may invoke fn and capture
  * what fn's params receive — never special-cased by name.
  */
-export function handleNewUnknown(ev: Evaluator, node: ts.NewExpression, ctx: EvalContext): AbstractValue {
+export function handleNewUnknown(
+  ev: Evaluator,
+  node: ts.NewExpression,
+  ctx: EvalContext,
+): AbstractValue {
   const out = emptyValue();
   const argVals = (node.arguments ?? []).map((arg) => ev.evalExpr(arg, ctx));
   for (const argVal of argVals) collapseInto(out, argVal);
@@ -69,7 +74,11 @@ export function handleNewUnknown(ev: Evaluator, node: ts.NewExpression, ctx: Eva
  * Both exits also RECORD the returned value as the settle oracle for this await. Recording only; the value returned to
  * the evaluator is untouched, so no transfer rule changes.
  */
-export function evalAwait(ev: Evaluator, node: ts.AwaitExpression, ctx: EvalContext): AbstractValue {
+export function evalAwait(
+  ev: Evaluator,
+  node: ts.AwaitExpression,
+  ctx: EvalContext,
+): AbstractValue {
   const at = node.getStart(ev.s.scriptFile);
   const inner = ev.evalExpr(node.expression, ctx);
   const thenField = inner.fields.get("then");
@@ -90,7 +99,11 @@ export function evalAwait(ev: Evaluator, node: ts.AwaitExpression, ctx: EvalCont
 /** `Promise.reject(x)` — a rejected promise. Await unwraps it as a THROW, so feed collapse(x)
  * into the global thrown set (read by every catch binding). Returns collapse(x) as before
  * (the unknown-call result), so nothing on the resolved path regresses. */
-export function handlePromiseReject(ev: Evaluator, node: ts.CallExpression, ctx: EvalContext): AbstractValue {
+export function handlePromiseReject(
+  ev: Evaluator,
+  node: ts.CallExpression,
+  ctx: EvalContext,
+): AbstractValue {
   const arg = node.arguments[0];
   const val = arg === undefined ? emptyValue() : collapse(ev.evalExpr(arg, ctx));
   ev.s.mergeThrown(val);
@@ -99,7 +112,11 @@ export function handlePromiseReject(ev: Evaluator, node: ts.CallExpression, ctx:
 
 /** `Promise.reject` on the global Promise (textual match, mirroring {@link isJsonStringify}). */
 export function isPromiseReject(access: ts.PropertyAccessExpression): boolean {
-  return ts.isIdentifier(access.expression) && access.expression.text === "Promise" && access.name.text === "reject";
+  return (
+    ts.isIdentifier(access.expression) &&
+    access.expression.text === "Promise" &&
+    access.name.text === "reject"
+  );
 }
 
 /**
@@ -119,7 +136,14 @@ export function applyConstructor(
   argPlaces?: (AbstractValue | undefined)[],
   site?: ts.Node,
 ): void {
-  recordCall(ev, id, ctx.regionStack, argVals, argPlaces, site === undefined ? undefined : { site, via: "callee" });
+  recordCall(
+    ev,
+    id,
+    ctx.regionStack,
+    argVals,
+    argPlaces,
+    site === undefined ? undefined : { site, via: "callee" },
+  );
 }
 
 /**

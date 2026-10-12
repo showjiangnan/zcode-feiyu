@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { Jimp, JimpMime, ResizeStrategy } from "jimp";
 import {
   createImageProcessorError,
@@ -49,8 +50,7 @@ export async function prepareJimpImageForModel(
     });
   }
 
-  const detectedMediaType =
-    detectImageMediaType(input) ?? normalizeMediaType(request.mediaType);
+  const detectedMediaType = detectImageMediaType(input) ?? normalizeMediaType(request.mediaType);
   if (detectedMediaType === "image/webp") {
     return prepareWebpPassthrough(input, request);
   }
@@ -127,8 +127,7 @@ async function findFirstFittingCandidate(input: {
     input.image.bitmap.height <= input.maxDimension;
   // PNG 原尺寸优化失败后，旧策略会在每个缩放档重新尝试 PNG，导致较大尺寸 JPEG
   // 尚可满足预算时先命中低分辨率 PNG。PNG 只保留一次原尺寸无损优化机会；失败后单向转 JPEG。
-  const preserveSourceFormatAfterInitialAttempt =
-    input.sourceMediaType !== JimpMime.png;
+  const preserveSourceFormatAfterInitialAttempt = input.sourceMediaType !== JimpMime.png;
 
   if (originalWithinDimensions) {
     const candidate = await findFormatPreservingCandidate(
@@ -141,17 +140,9 @@ async function findFirstFittingCandidate(input: {
   }
 
   const boundedImage = resizeToMaxEdge(input.image, input.maxDimension);
-  if (
-    preserveSourceFormatAfterInitialAttempt &&
-    !sameDimensions(input.image, boundedImage)
-  ) {
+  if (preserveSourceFormatAfterInitialAttempt && !sameDimensions(input.image, boundedImage)) {
     const candidate = await fitCandidate(
-      encodeCandidate(
-        boundedImage,
-        input.sourceMediaType,
-        "resized",
-        input.signal,
-      ),
+      encodeCandidate(boundedImage, input.sourceMediaType, "resized", input.signal),
       input.budget,
     );
     if (candidate) return candidate;
@@ -189,19 +180,12 @@ async function findFirstFittingCandidate(input: {
       if (formatCandidate) return formatCandidate;
     }
 
-    const jpegCandidate = await findJpegQualityCandidate(
-      scaled,
-      input.budget,
-      input.signal,
-    );
+    const jpegCandidate = await findJpegQualityCandidate(scaled, input.budget, input.signal);
     if (jpegCandidate) return jpegCandidate;
   }
 
   for (const maxEdge of AGGRESSIVE_JPEG_MAX_EDGES) {
-    const scaled = resizeToMaxEdge(
-      input.image,
-      Math.min(maxEdge, input.maxDimension),
-    );
+    const scaled = resizeToMaxEdge(input.image, Math.min(maxEdge, input.maxDimension));
     const candidate = await fitCandidate(
       encodeJpegCandidate(scaled, 20, "jpeg-fallback", input.signal),
       input.budget,
@@ -220,19 +204,13 @@ async function findFormatPreservingCandidate(
 ): Promise<ImageCandidate | undefined> {
   throwIfAborted(signal);
   if (mediaType === "image/png") {
-    return fitCandidate(
-      encodePngCandidate(image, "png-optimized", signal),
-      budget,
-    );
+    return fitCandidate(encodePngCandidate(image, "png-optimized", signal), budget);
   }
   if (mediaType === "image/jpeg") {
     return findJpegQualityCandidate(image, budget, signal);
   }
   if (mediaType === "image/gif") {
-    return fitCandidate(
-      encodeCandidate(image, "image/gif", "preserve-format", signal),
-      budget,
-    );
+    return fitCandidate(encodeCandidate(image, "image/gif", "preserve-format", signal), budget);
   }
   return undefined;
 }
@@ -329,8 +307,7 @@ function candidateToResult(
   const resized =
     candidate.width !== undefined &&
     candidate.height !== undefined &&
-    (candidate.width !== input.originalWidth ||
-      candidate.height !== input.originalHeight);
+    (candidate.width !== input.originalWidth || candidate.height !== input.originalHeight);
   return {
     data: candidate.data,
     mediaType: normalizeMediaType(candidate.mediaType),
@@ -360,10 +337,7 @@ function resizeToMaxEdge(image: JimpImage, maxEdge: number): JimpImage {
 }
 
 function sameDimensions(left: JimpImage, right: JimpImage): boolean {
-  return (
-    left.bitmap.width === right.bitmap.width &&
-    left.bitmap.height === right.bitmap.height
-  );
+  return left.bitmap.width === right.bitmap.width && left.bitmap.height === right.bitmap.height;
 }
 
 function longestEdge(image: JimpImage): number {

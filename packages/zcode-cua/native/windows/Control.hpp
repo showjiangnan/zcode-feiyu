@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 #pragma once
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN

@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /** Persistent, observation-bound application objects for the shared Node REPL. */
 
 export function createComputerUseSDK(bridge) {

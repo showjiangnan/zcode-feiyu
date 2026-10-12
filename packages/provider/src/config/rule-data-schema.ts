@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 import { modelConfigDataSchema } from "@zcode/shared/model-config";
 import { manualModelConfigSchema } from "./manual-model-config.js";
@@ -105,7 +106,7 @@ export const builtinProviderConfigRuleSchema = providerConfigRuleSchema.extend({
     group: providerGroupDataSchema.exclude(["standard-personal"]),
   }),
 });
-const personalProviderConfigRuleSchema = providerConfigRuleSchema
+export const personalProviderConfigRuleSchema = providerConfigRuleSchema
   .extend({
     config: providerConfigDataSchema.omit({ builtinModelIds: true }).extend({
       group: providerGroupDataSchema.extract(["standard-personal"]).nullable().optional(),

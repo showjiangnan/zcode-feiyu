@@ -1,9 +1,10 @@
+// Modified by ZCode Feiyu.
 import type { GoalState } from "@zcode/shared/zcode-protocol-v4";
 
 const INTERNAL_GOAL_VERIFICATION_FALLBACK_NEXT_ACTION =
   "Continue verifying and completing the goal.";
 
-interface ConversationGoalIterationSummary {
+export interface ConversationGoalIterationSummary {
   iteration: number;
   title: string | null;
   items: GoalState["iterations"][number]["items"];

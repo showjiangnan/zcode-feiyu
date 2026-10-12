@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Workflow Tool - deterministic multi-agent workflow launcher
 // ============================================================
@@ -20,9 +21,7 @@ export const WorkflowInputSchema = z
     description: z
       .string()
       .optional()
-      .describe(
-        "Ignored — set the workflow description in the script's `meta` block.",
-      ),
+      .describe("Ignored — set the workflow description in the script's `meta` block."),
     name: z
       .string()
       .min(1)

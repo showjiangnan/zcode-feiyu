@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export const TASK_RESOURCE_SCHEMA = `
   create table if not exists task_resource_budget (root_session_id text primary key, started_at integer not null,
     policy_json text not null, generation integer not null default 1, policy_revision integer not null default 0);

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Off-Peak Tool Handlers
 // ============================================================
@@ -7,6 +8,14 @@
 // - create 走判别联合结果：额度(3103)/资格(3101)等业务失败由 host 分类后跨协议保真，
 //   此处翻译为稳定的 CoreError，模型据此向用户转述可行动信息。
 
+// ============================================================
+// Off-Peak Tool Handlers
+// ============================================================
+// 与 cron.ts 兄弟并列。关键差异（勿照抄 cron 的防御方向）：
+// - deny 边界是「闲时派发轮」（context.offPeakTurn），不是 automation 轮——
+//   cron automation 自动轮明确放行 OffPeakCreate（定时派生闲时任务）。
+// - create 走判别联合结果：额度(3103)/资格(3101)等业务失败由 host 分类后跨协议保真，
+//   此处翻译为稳定的 CoreError，模型据此向用户转述可行动信息。
 import {
   CoreErrorType,
   createCoreError,
@@ -118,7 +127,7 @@ function throwOffPeakCreateFailure(
   });
 }
 
-const offPeakCreateHandler: ToolHandler = async (input, context) => {
+export const offPeakCreateHandler: ToolHandler = async (input, context) => {
   assertNotOffPeakTurn(context, "OffPeakCreate");
   const parsed = OffPeakCreateInputSchema.parse(input) as OffPeakCreateInput;
   assertOffPeakPort(context, "OffPeakCreate");
@@ -139,7 +148,7 @@ const offPeakCreateHandler: ToolHandler = async (input, context) => {
   } satisfies OffPeakCreateOutput;
 };
 
-const offPeakListHandler: ToolHandler = async (input, context) => {
+export const offPeakListHandler: ToolHandler = async (input, context) => {
   OffPeakListInputSchema.parse(input);
   assertOffPeakPort(context, "OffPeakList");
 

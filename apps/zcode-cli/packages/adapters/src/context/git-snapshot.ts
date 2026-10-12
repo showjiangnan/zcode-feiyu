@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 import type { EnvInfo } from "@zcode/contracts";
@@ -111,18 +112,12 @@ async function readTrimmedGitOutput(
   return trimmed ? trimmed : undefined;
 }
 
-async function readGitOutput(
-  args: string[],
-  workingDirectory: string,
-): Promise<string> {
+async function readGitOutput(args: string[], workingDirectory: string): Promise<string> {
   const result = await execGitNoThrow(args, workingDirectory);
   return result.stdout;
 }
 
-async function execGitNoThrow(
-  args: string[],
-  workingDirectory: string,
-): Promise<GitCommandResult> {
+async function execGitNoThrow(args: string[], workingDirectory: string): Promise<GitCommandResult> {
   try {
     const result = await execFile(GIT_COMMAND, args, {
       cwd: workingDirectory,

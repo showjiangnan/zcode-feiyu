@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export interface ComputerControlContext {
   sessionId: string;
   turnId: string;

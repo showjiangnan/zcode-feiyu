@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { LogContext, Logger } from "@zcode/contracts";
 
 interface AiSdkWarningLoggerOptions {
@@ -15,9 +16,7 @@ type AiSdkWarningGlobal = typeof globalThis & {
 export function installZCodeProtocolAiSdkWarningLogger(logger: Logger): void {
   // AI SDK 默认 warning logger 第一次会用 console.info 写 stdout；
   // app-server --stdio 的 stdout 是 ZCode Protocol NDJSON 帧通道，任何普通文本都会让宿主解析失败。
-  (globalThis as AiSdkWarningGlobal).AI_SDK_LOG_WARNINGS = (
-    options: AiSdkWarningLoggerOptions,
-  ) => {
+  (globalThis as AiSdkWarningGlobal).AI_SDK_LOG_WARNINGS = (options: AiSdkWarningLoggerOptions) => {
     try {
       const warnings = Array.isArray(options.warnings) ? options.warnings : [];
       logger.warn("AI SDK model warning", {

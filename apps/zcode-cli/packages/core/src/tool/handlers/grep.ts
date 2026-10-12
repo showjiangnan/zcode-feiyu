@@ -1,7 +1,11 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Grep Tool Handler
 // ============================================================
 
+// ============================================================
+// Grep Tool Handler
+// ============================================================
 import { isAbsolute, relative, sep } from "node:path";
 import {
   CoreErrorType,
@@ -29,7 +33,7 @@ const GREP_TOOL_DESCRIPTION = `Content search built on ripgrep. Prefer this over
 - \`output_mode\`: "content" (matching lines), "files_with_matches" (paths only, default), or "count".
 - \`multiline: true\` for patterns that span lines.`;
 
-const grepHandler: ToolHandler = async (input, context) => {
+export const grepHandler: ToolHandler = async (input, context) => {
   const parsed = GrepInputSchema.parse(input) as GrepInput;
   const fileSystemPort = context.fileSystemPort;
 

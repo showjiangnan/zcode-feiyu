@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Saved workflows - 存储层（作用域根目录 + 解析 / 枚举 / 写入）
 // ============================================================
@@ -8,6 +9,15 @@
 // 批准执行。这些文件是本地的、单个的、以 KB 计的，同步读的代价远小于为它另开一条异步审批路径。
 // core 的 handler 侧已有同一形态的先例（bash-git-runtime-safety.ts 的 readFileSync）。
 
+// ============================================================
+// Saved workflows - 存储层（作用域根目录 + 解析 / 枚举 / 写入）
+// ============================================================
+//
+// 全部是**同步** fs。理由不是图省事：确认窗的 `prepareApproval` 契约是同步的（core 的
+// ToolEntry 注释：「it inspects the input the executor already holds」），而以 `saved` 源
+// 发起的 run 必须在弹窗**之前**把脚本读出来——没有脚本就没有因果图，用户就会在一个空窗口上
+// 批准执行。这些文件是本地的、单个的、以 KB 计的，同步读的代价远小于为它另开一条异步审批路径。
+// core 的 handler 侧已有同一形态的先例（bash-git-runtime-safety.ts 的 readFileSync）。
 import {
   mkdirSync,
   readdirSync,

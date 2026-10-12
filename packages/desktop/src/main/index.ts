@@ -1,74 +1,28 @@
-// Modified by ZCode Feiyu contributors (2026).
-import { createLocalTtftExporter } from "./localTtftExporter.js";
-import { installRcsMain } from "./rcsMain.js";
-import {
-  canDispatchToBackgroundWindow,
-  createBackgroundContinuityController,
-} from "./desktopDarwinCloseBehavior.js";
+// Modified by ZCode Feiyu.
+import { installChatGPTSubscription } from "./chatGPTSubscription.js";
 import {
   APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
   appRuntimePreferencesChangedBroadcastPayloadSchema,
 } from "@zcode/shared";
+import {
+  canDispatchToBackgroundWindow,
+  createBackgroundContinuityController,
+} from "./desktopDarwinCloseBehavior.js";
+import { createLocalTtftExporter } from "./localTtftExporter.js";
+import { installRcsMain } from "./rcsMain.js";
+import { installRequestSecurityDiagnostics } from "./request-security-edition/index.js";
 /* eslint-disable max-lines */
-import "./desktopEarlyDataBaseDirBootstrap.js";
-import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
-import { powerMonitor, powerSaveBlocker } from "electron";
-import { crashCapturePaths } from "./appCrashCaptureBootstrap.js";
-import { setArmsTelemetryAllowed } from "./appARMSBootstrap.js";
-import {
-  onLocalDatabaseStartupReady,
-  onHostDatabaseReady,
-  isHostDatabaseReady,
-  configureDatabaseStartupQuit,
-} from "./databaseStartupRelay.js";
 import armsRum from "@arms/rum-electron";
-import { createArmsUserIdentitySync } from "./armsUserIdentity.js";
-import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
 import {
-  createDesktopContextPromptRollout,
-  createElectronDesktopContextPromptConfigFetcher,
-} from "./desktopContextPromptRollout.js";
-import { buildBrowserViewCloseTabNotification } from "./browserView/browserCloseTabNotification.js";
-import { BrowserGuestManager } from "./browserView/browserGuestManager.js";
-import { createElectronBrowserWebmRecorder } from "./browserView/electronBrowserWebmRecorder.js";
-import { installBrowserRestoreBootstrapProtocol } from "./browserView/browserRestoreBootstrapProtocol.js";
-import {
-  createLocalMediaPreviewPathRegistry,
-  installLocalMediaPreviewProtocol,
-  registerLocalMediaPreviewScheme,
-} from "./localMediaPreviewProtocol.js";
-import { createDesktopBrowserScreenshotSurfaceCoordinator } from "./browserView/browserScreenshotSurfaceCoordinatorWiring.js";
-import { EMBEDDED_BROWSER_PARTITION } from "./browserDataManager.js";
-import { EmbeddedBrowserJavaScriptDialogController } from "./embeddedBrowserJavaScriptDialog.js";
-import {
-  browserOperationResetsResizeBaseline,
-  resolveBrowserOperationTabId,
-} from "./browserView/browserOperationIndicator.js";
-import {
-  app,
-  BrowserWindow,
-  dialog,
-  ipcMain,
-  nativeImage,
-  net,
-  protocol,
-  session,
-  webContents,
-} from "electron";
-import type { UtilityProcess as ElectronUtilityProcess } from "electron";
-import { spawn } from "node:child_process";
-import { join, resolve } from "node:path";
-import { homedir, hostname } from "node:os";
-import {
-  createCredentialService,
-  createSettingService,
-  createTelemetryCore,
-  createTelemetryConsentGate,
-  createTelemetryMarketingParamsLoader,
-  createTelemetryUserIdLoader,
-  createTelemetryAuthorizationLoader,
   buildRuntimeProcessEnvPatch,
   captureLoginShellEnvSnapshot,
+  createCredentialService,
+  createSettingService,
+  createTelemetryAuthorizationLoader,
+  createTelemetryConsentGate,
+  createTelemetryCore,
+  createTelemetryMarketingParamsLoader,
+  createTelemetryUserIdLoader,
   getConversationWorkspaceDir,
   getDataBaseDir,
   getZCodeDataRootDir,
@@ -76,28 +30,58 @@ import {
   setDataBaseDir,
 } from "@zcode/services/node";
 import {
-  desktopMenuMessageIds,
-  type Locale,
-  type AppSettings,
-  PlatformChannels,
-  ZCODE_ENV,
-  ZCODE_PRODUCT_FLAVOR,
-  DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-  DEFAULT_LOCALE,
-  ZCODE_VERSION,
-  ZCODE_TELEMETRY_ENABLED,
-  ZCODE_ARMS_RUM_ENDPOINT,
   buildZCodeEndpointUrls,
+  DEFAULT_LOCALE,
+  appSettingsPatchSchema,
+  DEFAULT_ZCODE_ENDPOINT_ORIGIN,
+  desktopMenuMessageIds,
+  HostMessageTypes,
+  mapZCodeEnvToArmsRumEnv,
+  PlatformChannels,
+  resolveWebRemoteControlRelayWsUrl,
   resolveZCodeEndpointOrigin,
   shouldEnableE2ETestBridge,
-  type UpdateStatePayload,
+  TEST_ZCODE_ENDPOINT_ORIGIN,
+  ZCODE_AUTO_UPDATE_ENABLED,
+  ZCODE_TELEMETRY_ENABLED,
+  ZCODE_ARMS_RUM_ENDPOINT,
+  ZCODE_ENV,
+  ZCODE_PRODUCT_FLAVOR,
+  ZCODE_VERSION,
+  type AppSettings,
+  type Locale,
   type TelemetryEventPayload,
-  HostMessageTypes,
+  type UpdateStatePayload,
 } from "@zcode/shared";
-import { logger } from "./logger.js";
-import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
-import { createCuaPipFocusRouter, resolveCuaPipWindowKey } from "./cuaPipFocusRouter.js";
-import { createDesktopTelemetryFetch } from "./desktopTelemetryFetch.js";
+import type { UtilityProcess as ElectronUtilityProcess } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  nativeImage,
+  net,
+  powerMonitor,
+  powerSaveBlocker,
+  protocol,
+  session,
+  webContents,
+} from "electron";
+import { spawn } from "node:child_process";
+import { homedir, hostname } from "node:os";
+import { join, resolve } from "node:path";
+import { resolveWindowsAppUserModelIdForFlavor } from "../../scripts/desktop-product-identity.mjs";
+import { setArmsTelemetryAllowed } from "./appARMSBootstrap.js";
+import { crashCapturePaths } from "./appCrashCaptureBootstrap.js";
+import { createAppLaunchCoordinator } from "./appLaunchCoordinator.js";
+import { createAppLaunchGate } from "./appLaunchGate.js";
+import {
+  resolveAppShutdownPolicy,
+  selectAppShutdownPolicy,
+  type AppShutdownKind,
+} from "./appShutdownPolicy.js";
+import { createAppTelemetryRuntime } from "./appTelemetryRuntime.js";
+import { createArmsUserIdentitySync } from "./armsUserIdentity.js";
 import {
   acknowledgePostUpdateReleaseNotes,
   getAutoUpdaterState,
@@ -111,69 +95,48 @@ import {
   syncReadyUpdateToWindow,
 } from "./autoUpdater.js";
 import { BroadcastHub } from "./broadcastHub.js";
-import { TaskRealtimeBus } from "./taskRealtimeBus.js";
-import { createAppLaunchGate } from "./appLaunchGate.js";
-import { createAppLaunchCoordinator } from "./appLaunchCoordinator.js";
-import { createAppTelemetryRuntime } from "./appTelemetryRuntime.js";
-import { createRendererActionTraceBroker } from "./rendererActionTraceBroker.js";
-import { createRendererActionTraceExporter } from "./rendererActionTraceExporter.js";
-import { registerRendererActionTraceIpc } from "./rendererActionTraceIpc.js";
-import { createRendererActionTraceRollout } from "./rendererActionTraceRollout.js";
+import { EMBEDDED_BROWSER_PARTITION } from "./browserDataManager.js";
+import { buildBrowserViewCloseTabNotification } from "./browserView/browserCloseTabNotification.js";
+import { BrowserGuestManager } from "./browserView/browserGuestManager.js";
 import {
-  resolveAppShutdownPolicy,
-  selectAppShutdownPolicy,
-  type AppShutdownKind,
-} from "./appShutdownPolicy.js";
-import { createPrimaryWindowCoordinator } from "./primaryWindowCoordinator.js";
-import { createTempTextAttachment } from "./tempTextAttachment.js";
-import { flushMainE2ECoverage } from "./e2eCoverage.js";
-import { resolveStartupWindowBootstrap, type StartupWindowBootstrap } from "./startupWorkspace.js";
+  browserOperationResetsResizeBaseline,
+  resolveBrowserOperationTabId,
+} from "./browserView/browserOperationIndicator.js";
+import { installBrowserRestoreBootstrapProtocol } from "./browserView/browserRestoreBootstrapProtocol.js";
+import { createDesktopBrowserScreenshotSurfaceCoordinator } from "./browserView/browserScreenshotSurfaceCoordinatorWiring.js";
+import { createElectronBrowserWebmRecorder } from "./browserView/electronBrowserWebmRecorder.js";
+import { createCuaPipFocusRouter, resolveCuaPipWindowKey } from "./cuaPipFocusRouter.js";
 import {
-  createStartupDeepLinkConsumptionGate,
-  type ExplicitStartupWorkspaceRequest,
-  resolveExplicitStartupWorkspaceBootstrap,
-} from "./startupWorkspaceDeepLinkGate.js";
-import { executeDesktopCommand } from "./desktopCommandHandlers.js";
-import { clampDesktopZoomLevel, resolveDesktopZoomLevelFromFactor } from "./desktopZoom.js";
+  configureDatabaseStartupQuit,
+  isHostDatabaseReady,
+  onHostDatabaseReady,
+  onLocalDatabaseStartupReady,
+} from "./databaseStartupRelay.js";
 import {
   getDesktopMenuLabel as getDesktopMenuLabelByLocale,
   rebuildApplicationMenu,
   resolveSystemApplicationLocale,
   updateZCodeStdioTapDevMenuState,
 } from "./desktopApplicationMenu.js";
-import { applyAppIcon } from "./desktopWindowChrome.js";
-import { resolveWindowsAppUserModelIdForFlavor } from "../../scripts/desktop-product-identity.mjs";
-import type { DesktopWindowSize } from "./desktopWindowSize.js";
 import { maybeWarnArchitectureMismatch } from "./desktopArchitectureGuard.js";
-import { maybeBlockStartupForForceUpdate } from "./forceUpdateGuard.js";
-import { createWindowsDesktopTray, updateWindowsDesktopTrayMenu } from "./desktopTray.js";
-import { createWindowsCuaOperationIndicator } from "./windowsCuaOperationIndicator.js";
+import { executeDesktopCommand } from "./desktopCommandHandlers.js";
 import {
-  configureDockMenu,
-  createWindow,
-  focusWorkspaceInExistingWindow,
-  showCurrentWindowFromDock,
-  syncApplicationUnreadBadge,
-  handleDesktopWindowCloseRequest,
-} from "./desktopWindowLifecycle.js";
-import { resolveZCodeBuiltinProviderConfigFilePath } from "./desktopProviderConfig.js";
+  createDesktopContextPromptRollout,
+  createElectronDesktopContextPromptConfigFetcher,
+} from "./desktopContextPromptRollout.js";
+import { spawnCronScheduler, type CronSchedulerHandle } from "./desktopCronScheduler.js";
 import {
-  getCredentialsDir,
-  isDockerDaemonAvailable,
-  listSSHConfigAliases,
-  listAvailableDockerContainers,
-  listAvailableWSLDistros,
-  loadHostProcessEnvFromLocalFiles,
-  resolveBundledGlmBinaryPath,
-  resolveRemoteAssetDirs,
-  resolveZCodeEndpointEnvBaseOrigin,
-  desktopRuntimeEnv,
-  runtimeApplicationName,
-  runtimeHomePath,
-  runtimeSessionDataPath,
-  runtimeUserDataPath,
-  shouldUseElectronDefaultUserDataPath,
-} from "./desktopRuntimeEnv.js";
+  createDeepLinkSingleInstanceData,
+  extractDeepLinkUrlFromArgs,
+  extractOpenWorkspacePathFromArgs,
+  extractWorkspaceOpenPath,
+  isWorkspaceOpenUrl,
+} from "./desktopDeepLinkUrl.js";
+import { ensureDesktopDeviceMidSync } from "./desktopDeviceMid.js";
+import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
+import "./desktopEarlyDataBaseDirBootstrap.js";
+import { installFinderOpenFolderWorkflow } from "./desktopFinderOpenFolderWorkflow.js";
+import { createDesktopHelpConfigReader } from "./desktopHelpConfig.js";
 import {
   disposeHostProcess,
   disposeHostProcessAndWait,
@@ -181,7 +144,16 @@ import {
   loadWindow,
   spawnHostProcess,
 } from "./desktopHostProcess.js";
-import { spawnCronScheduler, type CronSchedulerHandle } from "./desktopCronScheduler.js";
+import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
+import { registerPlatformIpcHandlers } from "./desktopMainIpcPlatform.js";
+import { registerRemoteIpcHandlers } from "./desktopMainIpcRemote.js";
+import { configureDesktopMcpTelemetry, reportMcpTelemetryToArms } from "./desktopMcpTelemetry.js";
+import { applyDesktopChromiumNetworkPolicies } from "./desktopNetworkPolicy.js";
+import {
+  configureDesktopNetworkTelemetry,
+  registerDesktopNetworkTelemetry,
+  stopDesktopNetworkTelemetry,
+} from "./desktopNetworkTelemetry.js";
 import {
   clearOAuthRoutesForWindow,
   handleDeepLink,
@@ -189,69 +161,129 @@ import {
   registerDeepLinkProtocol,
   resolveExternalWorkspaceOpenDialogCopy,
 } from "./desktopOAuthDeepLink.js";
-import { handleSecondInstanceWorkspaceRequest } from "./desktopSecondInstanceDeepLink.js";
-import { installFinderOpenFolderWorkflow } from "./desktopFinderOpenFolderWorkflow.js";
-import { installWindowsOpenFolderContextMenu } from "./desktopWindowsOpenFolderContextMenu.js";
-import {
-  createDeepLinkSingleInstanceData,
-  extractWorkspaceOpenPath,
-  extractDeepLinkUrlFromArgs,
-  extractOpenWorkspacePathFromArgs,
-  isWorkspaceOpenUrl,
-} from "./desktopDeepLinkUrl.js";
+import { resolveZCodeBuiltinProviderConfigFilePath } from "./desktopProviderConfig.js";
 import { createRemoteWorkspaceSessionManager } from "./desktopRemoteSessions.js";
 import {
   reportRemoteConnectionStateChangedToArms,
   reportRemoteDisconnectToArms,
   stopRemoteUsageArmsPeriodicSampling,
 } from "./desktopRemoteUsageArmsTelemetry.js";
-import { resolveCanonicalWslTarget } from "./desktopWslTargetResolver.js";
-import {
-  listRegisteredHostAgentProcessIds,
-  isMainApplicationWindowWebContents,
-  setBrowserUseGuestWebContentsIdsProvider,
-} from "./resourceManagerWindow.js";
-import { createDesktopHelpConfigReader } from "./desktopHelpConfig.js";
-import { registerPlatformIpcHandlers } from "./desktopMainIpcPlatform.js";
-import {
-  loadCliMcpFromUserDirectory,
-  migrateLegacyCommonMcp,
-  saveCliMcpToUserDirectory,
-} from "./mcpUserDirectory/index.js";
-import { registerRemoteIpcHandlers } from "./desktopMainIpcRemote.js";
-import {
-  configureDesktopStabilityTelemetry,
-  getStabilityLifecycleScene,
-  notifyStabilityAppExit,
-  notifyStabilityLifecycle,
-  reportAgentProcessExitToArms,
-  reportAgentProcessReadyToArms,
-  reportAgentProcessStartToArms,
-  reportAgentProcessSpawnErrorToArms,
-  reportAgentProcessExceptionToArms,
-  registerDesktopStabilityMonitors,
-  registerStabilityMainWindow,
-  scheduleReportPerfAppStartAfterMainViewReady,
-} from "./desktopStabilityTelemetry.js";
 import {
   configureDesktopResourceTelemetry,
   registerDesktopResourceTelemetry,
   resolveResourceUsageScene,
   stopDesktopResourceTelemetry,
 } from "./desktopResourceTelemetry.js";
-import { registerRendererHeapSampleIpc } from "./processResourceRendererHeapSource.js";
+import {
+  desktopRuntimeEnv,
+  getCredentialsDir,
+  isDockerDaemonAvailable,
+  listAvailableDockerContainers,
+  listAvailableWSLDistros,
+  listSSHConfigAliases,
+  loadHostProcessEnvFromLocalFiles,
+  resolveBundledGlmBinaryPath,
+  resolveRemoteAssetDirs,
+  resolveZCodeEndpointEnvBaseOrigin,
+  runtimeApplicationName,
+  runtimeHomePath,
+  runtimeSessionDataPath,
+  runtimeUserDataPath,
+  shouldUseElectronDefaultUserDataPath,
+} from "./desktopRuntimeEnv.js";
+import { handleSecondInstanceWorkspaceRequest } from "./desktopSecondInstanceDeepLink.js";
+import {
+  configureDesktopStabilityTelemetry,
+  getStabilityLifecycleScene,
+  notifyStabilityAppExit,
+  notifyStabilityLifecycle,
+  registerDesktopStabilityMonitors,
+  registerStabilityMainWindow,
+  reportAgentProcessExceptionToArms,
+  reportAgentProcessExitToArms,
+  reportAgentProcessReadyToArms,
+  reportAgentProcessSpawnErrorToArms,
+  reportAgentProcessStartToArms,
+  scheduleReportPerfAppStartAfterMainViewReady,
+} from "./desktopStabilityTelemetry.js";
+import { createDesktopTelemetryFetch } from "./desktopTelemetryFetch.js";
+import { createDesktopTray, updateWindowsDesktopTrayMenu } from "./desktopTray.js";
+import {
+  createCloseToTrayCapabilityMonitor,
+  resolveCloseToTrayBootstrapValue,
+  resolveCloseToTrayRuntimeValue,
+  resolveCloseToTraySupported,
+} from "./desktopTraySupport.js";
+import { applyAppIcon } from "./desktopWindowChrome.js";
+import {
+  configureDockMenu,
+  createWindow,
+  focusWorkspaceInExistingWindow,
+  handleDesktopWindowCloseRequest,
+  showCurrentWindowFromDock,
+  syncApplicationUnreadBadge,
+} from "./desktopWindowLifecycle.js";
+import type { DesktopWindowSize } from "./desktopWindowSize.js";
+import { installWindowsOpenFolderContextMenu } from "./desktopWindowsOpenFolderContextMenu.js";
+import { resolveCanonicalWslTarget } from "./desktopWslTargetResolver.js";
 import {
   registerDesktopZCodeDataSizeTelemetry,
   stopDesktopZCodeDataSizeTelemetry,
 } from "./desktopZCodeDataSizeTelemetry.js";
-import { configureDesktopMcpTelemetry, reportMcpTelemetryToArms } from "./desktopMcpTelemetry.js";
+import { clampDesktopZoomLevel, resolveDesktopZoomLevelFromFactor } from "./desktopZoom.js";
+import { flushMainE2ECoverage } from "./e2eCoverage.js";
+import { EmbeddedBrowserJavaScriptDialogController } from "./embeddedBrowserJavaScriptDialog.js";
+import { applyEmbeddedBrowserPermissionPolicy } from "./embeddedBrowserPermissionPolicy.js";
 import {
-  configureDesktopNetworkTelemetry,
-  registerDesktopNetworkTelemetry,
-  stopDesktopNetworkTelemetry,
-} from "./desktopNetworkTelemetry.js";
-import { applyDesktopChromiumNetworkPolicies } from "./desktopNetworkPolicy.js";
-import { mapZCodeEnvToArmsRumEnv } from "@zcode/shared";
+  createEmbeddedBrowserPermissionUiBridge,
+  setActiveEmbeddedBrowserPermissionUiBridge,
+} from "./embeddedBrowserPermissionUiBridge.js";
+import { createEmbeddedBrowserSitePermissionStore } from "./embeddedBrowserSitePermissionStore.js";
+import { maybeBlockStartupForForceUpdate } from "./forceUpdateGuard.js";
+import {
+  createLocalMediaPreviewPathRegistry,
+  installLocalMediaPreviewProtocol,
+  registerLocalMediaPreviewScheme,
+} from "./localMediaPreviewProtocol.js";
+import { logger, webRemoteControlRelayLogger } from "./logger.js";
+import { mainMemoryDiagnosticsRegistry } from "./mainMemoryDiagnostics.js";
+import {
+  loadCliMcpFromUserDirectory,
+  migrateLegacyCommonMcp,
+  saveCliMcpToUserDirectory,
+} from "./mcpUserDirectory/index.js";
+import {
+  getPluginSandboxHost,
+  installPluginSandboxHost,
+  PLUGIN_SANDBOX_PRIVILEGED_SCHEME,
+} from "./pluginSandbox/index.js";
+import { createPrimaryWindowCoordinator } from "./primaryWindowCoordinator.js";
+import { registerRendererHeapSampleIpc } from "./processResourceRendererHeapSource.js";
+import { createRendererActionTraceBroker } from "./rendererActionTraceBroker.js";
+import { createRendererActionTraceExporter } from "./rendererActionTraceExporter.js";
+import { registerRendererActionTraceIpc } from "./rendererActionTraceIpc.js";
+import { createRendererActionTraceRollout } from "./rendererActionTraceRollout.js";
+import {
+  isMainApplicationWindowWebContents,
+  listRegisteredHostAgentProcessIds,
+  setBrowserUseGuestWebContentsIdsProvider,
+} from "./resourceManagerWindow.js";
+import { resolveStartupWindowBootstrap, type StartupWindowBootstrap } from "./startupWorkspace.js";
+import {
+  createStartupDeepLinkConsumptionGate,
+  resolveExplicitStartupWorkspaceBootstrap,
+  type ExplicitStartupWorkspaceRequest,
+} from "./startupWorkspaceDeepLinkGate.js";
+import { TaskRealtimeBus } from "./taskRealtimeBus.js";
+import { createTempTextAttachment } from "./tempTextAttachment.js";
+import { createWebRemoteControlFeatureGate } from "./webRemoteControlFeatureGate.js";
+import { createWebRemoteControlManager } from "./webRemoteControlManager.js";
+import { createNodeWebRemoteControlRelayAuthProvider } from "./webRemoteControlRelayAuthProvider.js";
+import { createWebRemoteControlRelayAuthStorageProvider } from "./webRemoteControlRelayAuthStorageProvider.js";
+import { reconnectWebRemoteControlWorkspaceInRenderer } from "./webRemoteControlRendererReconnect.js";
+import { createWebRemoteControlSharedHostAttachments } from "./webRemoteControlSharedHostAttachments.js";
+import { sendWebRemoteControlStatusChangedToWindow } from "./webRemoteControlStatusEvents.js";
+import { createWindowsCuaOperationIndicator } from "./windowsCuaOperationIndicator.js";
 import {
   findWindowsProcessesReferencingResourceMarkers,
   probeWindowsPackagedResourceWritable,
@@ -260,9 +292,8 @@ import {
   snapshotWindowsPackagedResources,
   WINDOWS_UPDATE_LOCK_RELEASE_GRACE_MS,
 } from "./windowsInstallResourceLocks.js";
-import { mainMemoryDiagnosticsRegistry } from "./mainMemoryDiagnostics.js";
 
-registerLocalMediaPreviewScheme(protocol);
+registerLocalMediaPreviewScheme(protocol, [PLUGIN_SANDBOX_PRIVILEGED_SCHEME]);
 const localMediaPreviewPathRegistry = createLocalMediaPreviewPathRegistry();
 
 // e2e 由 Chromedriver 管理远程调试端口；如果这里继续固定到 9229，
@@ -308,6 +339,14 @@ const linuxDesktopIntegrationIconPath =
 let currentApplicationLocale: Locale = DEFAULT_LOCALE;
 let closeToTrayOnWindows = true;
 let continueAfterCloseOnMac = false;
+// CR-01：托盘实例创建结果（模块级，关窗分支读取）。DBus 能力探测通过不等于 Electron
+// Tray 创建成功；隐藏窗口前必须确认最终用户入口真实存在，否则隐藏即失联。
+let desktopTrayReady = false;
+// 关闭驻留托盘能力 monitor（spec：docs/desktop/linux-close-to-tray.md）。
+// Linux 关窗分支是同步回调，只能读缓存；启动后首次探测完成前按"不可用"安全默认。
+const closeToTrayCapabilityMonitor = createCloseToTrayCapabilityMonitor({
+  platform: process.platform,
+});
 // keep-awake：全局开关 keepAwakeWhileRunning。打开后主进程持有
 // powerSaveBlocker("prevent-app-suspension")，阻止系统闲置休眠（防不了合盖/手动睡眠）。
 // 不再绑定闲时任务活跃计数——设置页「常规」与 Automations 入口镜像同一配置。
@@ -790,6 +829,9 @@ const disposingHostProcessTimers = new WeakMap<
   ElectronUtilityProcess,
   ReturnType<typeof setTimeout>
 >();
+const webRemoteControlManagerRef = {
+  current: null as ReturnType<typeof createWebRemoteControlManager> | null,
+};
 let updateStatusWindow: BrowserWindow | null = null;
 const UPDATE_STATUS_WINDOW_WIDTH = 512;
 const UPDATE_STATUS_WINDOW_COMPACT_HEIGHT = 205;
@@ -797,6 +839,8 @@ const UPDATE_STATUS_WINDOW_PROGRESS_HEIGHT = 224;
 const UPDATE_STATUS_WINDOW_READY_HEIGHT = UPDATE_STATUS_WINDOW_PROGRESS_HEIGHT - 54;
 const UPDATE_STATUS_WINDOW_TRAFFIC_LIGHT_POSITION = { x: 10, y: 10 } as const;
 const mainSettingService = createSettingService();
+let subscriptionProcessEnv: Record<string, string> = {};
+const webRemoteControlCredentialService = createCredentialService();
 const appLaunchGate = createAppLaunchGate();
 const appLaunchCoordinator = createAppLaunchCoordinator(appLaunchGate);
 const appTelemetryCredentialService = createCredentialService();
@@ -860,7 +904,9 @@ const appTelemetryCore = createTelemetryCore({
   loadAuthorization: createTelemetryAuthorizationLoader(appTelemetryCredentialService),
   loadMarketingParams: createTelemetryMarketingParamsLoader(appTelemetryCredentialService),
   resolveZCodeEndpointOrigin: resolveCurrentZCodeEndpointOrigin,
-  fetchImpl: createDesktopTelemetryFetch(net),
+  fetchImpl: createDesktopTelemetryFetch({
+    fetch: (input, init) => net.fetch(input instanceof URL ? input.toString() : input, init),
+  }),
 });
 const appTelemetryRuntime = createAppTelemetryRuntime({
   telemetryCore: appTelemetryCore,
@@ -916,8 +962,15 @@ const remoteSessionManager = createRemoteWorkspaceSessionManager({
   resolveWslTarget: resolveCanonicalWslTarget,
   reportRemoteConnectionStateChanged: reportRemoteConnectionStateChangedToArms,
   reportRemoteDisconnect: reportRemoteDisconnectToArms,
+  webRemoteControlManagerRef,
 });
 
+const webRemoteControlAuthProvider = createNodeWebRemoteControlRelayAuthProvider();
+const webRemoteControlSharedHostAttachments = createWebRemoteControlSharedHostAttachments({
+  windowHostProcessMap,
+  attachRemoteWorkspaceSessionHost: remoteSessionManager.attachRemoteWorkspaceSessionHost,
+  logger,
+});
 const deviceMid = ensureDesktopDeviceMidSync();
 // 帮助配置是公开读取，不能复用下面附带账号鉴权的灰度响应缓存。
 const readHelpConfig = createDesktopHelpConfigReader({
@@ -995,6 +1048,13 @@ const armsUserIdentitySync = createArmsUserIdentitySync({
         }
       : () => {},
 });
+const webRemoteControlAppVersion = ZCODE_VERSION || app.getVersion();
+const defaultZCodeEndpointUrls = buildZCodeEndpointUrls(DEFAULT_ZCODE_ENDPOINT_ORIGIN, {
+  appVersion: webRemoteControlAppVersion,
+});
+const webRemoteControlRelayWsEnvOverride =
+  process.env["ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL"]?.trim();
+const webRemoteControlUrlEnvOverride = process.env["ZCODE_WEB_REMOTE_CONTROL_URL"]?.trim();
 
 function extractOpenWorkspacePathFromDeepLinkUrl(url: string): string | null {
   try {
@@ -1017,6 +1077,97 @@ let startupOpenWorkspaceRequest: ExplicitStartupWorkspaceRequest | null =
     : startupDeepLinkWorkspacePath
       ? { path: startupDeepLinkWorkspacePath, source: "deep-link" }
       : null;
+
+const webRemoteControlManager = createWebRemoteControlManager({
+  getEndpointUrls: async () => {
+    const derived = buildZCodeEndpointUrls(await resolveCurrentZCodeEndpointOrigin(), {
+      appVersion: webRemoteControlAppVersion,
+    });
+    return {
+      ...derived,
+      relayWsUrl: resolveWebRemoteControlRelayWsUrl({
+        endpointOrigin: derived.origin,
+        overrideUrl: webRemoteControlRelayWsEnvOverride,
+      }),
+      remoteUrl: webRemoteControlUrlEnvOverride || derived.remoteUrl,
+    };
+  },
+  relayWsUrl: resolveWebRemoteControlRelayWsUrl({
+    endpointOrigin: DEFAULT_ZCODE_ENDPOINT_ORIGIN,
+    overrideUrl: webRemoteControlRelayWsEnvOverride,
+  }),
+  mobileRemoteControlUrl: webRemoteControlUrlEnvOverride || defaultZCodeEndpointUrls.remoteUrl,
+  deviceMid,
+  deviceName: hostname(),
+  appVersion: webRemoteControlAppVersion,
+  authProvider: webRemoteControlAuthProvider,
+  authStorageProvider: createWebRemoteControlRelayAuthStorageProvider({
+    credentialService: webRemoteControlCredentialService,
+    loadSettings: () => mainSettingService.get(),
+    patchSettings: (patch) => mainSettingService.update(patch),
+    logger,
+  }),
+  startupRestoreStorageProvider: {
+    load: async () => (await mainSettingService.get()).webRemoteControlLastEnabledContext,
+    save: async (context) => {
+      await mainSettingService.update({
+        webRemoteControlLastEnabledContext: {
+          workspacePath: context.workspacePath,
+          workspaceIdentity: context.workspaceIdentity,
+          initialTaskId: context.initialTaskId,
+        },
+      });
+    },
+    clear: async () => {
+      await mainSettingService.update({
+        webRemoteControlLastEnabledContext: undefined,
+      });
+    },
+  },
+  featureGate: createWebRemoteControlFeatureGate(),
+  logger,
+  relayMessageLogger: webRemoteControlRelayLogger,
+  platformHandlers: {
+    isDockerAvailable: () => isDockerDaemonAvailable(),
+    listWSLDistros: () => listAvailableWSLDistros(),
+    listDockerContainers: () => listAvailableDockerContainers(),
+    listSSHConfigAliases: () => listSSHConfigAliases(),
+    createTempTextAttachment: (payload) => createTempTextAttachment(payload),
+    loadMcpFromUserDirectory: (payload) => loadCliMcpFromUserDirectory(payload),
+    saveMcpToUserDirectory: async (payload) => {
+      try {
+        await saveCliMcpToUserDirectory(payload);
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn("[web-remote-control] MCP save failed", message);
+        return { success: false, error: message };
+      }
+    },
+    migrateLegacyCommonMcp: (payload) => migrateLegacyCommonMcp(payload),
+  },
+  reconnectWorkspace: reconnectWebRemoteControlWorkspaceInRenderer,
+  reportRendererTelemetryEvent: (event) => {
+    void appTelemetryCore.reportEvent(event).catch(() => {});
+  },
+  reportRemoteUsageEvent: (windowId, event) => {
+    const win = BrowserWindow.fromId(windowId);
+    if (!win || win.webContents.isDestroyed()) {
+      return;
+    }
+    reportRemoteUsageEventForRenderer(win.webContents.id, event);
+  },
+  onStatusChanged: (windowId, status) => {
+    sendWebRemoteControlStatusChangedToWindow(BrowserWindow.fromId(windowId), status);
+  },
+  attachWorkspaceHost: webRemoteControlSharedHostAttachments.attachWorkspaceHost,
+  releaseWorkspaceHostAttachment: webRemoteControlSharedHostAttachments.releaseAttachment,
+  disposeWorkspaceHostAttachmentsForWindow: (windowId) =>
+    webRemoteControlSharedHostAttachments.disposeWindow(windowId),
+  disposeWorkspaceHostAttachmentsForRemoteSession: (remoteSessionId) =>
+    webRemoteControlSharedHostAttachments.disposeRemoteSession(remoteSessionId),
+});
+webRemoteControlManagerRef.current = webRemoteControlManager;
 
 let forceUpdateMainWindowCreationBlocked = false;
 
@@ -1113,7 +1264,16 @@ function syncCloseToTrayOnWindows(value: unknown) {
   logger.info(`[settings] closeToTrayOnWindows=${value}`);
 }
 
-function syncImmediateAppSettings(patch: Partial<AppSettings>) {
+function syncImmediateAppSettings(
+  patch: Pick<
+    Partial<AppSettings>,
+    | "closeToTrayOnWindows"
+    | "keepAwakeWhileRunning"
+    | "receivePreviewUpdates"
+    | "shortcutBindings"
+    | "autoDownloadAndInstallUpdates"
+  >,
+) {
   syncCloseToTrayOnWindows(patch.closeToTrayOnWindows);
 
   // 后台许可由带版本和 ACK 的策略提交拥有；旧 Renderer 的即时同步不能覆盖新许可。
@@ -1638,11 +1798,17 @@ async function resolveZCodeEndpointSelection(): Promise<"production" | "test" | 
   if (origin === DEFAULT_ZCODE_ENDPOINT_ORIGIN) {
     return "production";
   }
+  if (origin === TEST_ZCODE_ENDPOINT_ORIGIN) {
+    return "test";
+  }
   return "custom";
 }
 
 async function handleZCodeEndpointChanged() {
   rebuildMenu();
+  for (const win of getApplicationWindowsExcludingCuaIndicator()) {
+    await webRemoteControlManagerRef.current?.suspend(win.id, "endpoint-changed");
+  }
 }
 
 /** 快捷键设置页录制态（renderer 经 SetShortcutRecordingActive 同步）；true 时菜单摘除可配置 accelerator。 */
@@ -1942,7 +2108,14 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
         platform: process.platform,
         forceQuit: forceQuitRef.current,
         explicitQuitRequested: explicitQuitRef.current,
-        closeToTrayOnWindows,
+        closeToTray: closeToTrayOnWindows,
+        // 空缓存按不可用处理：隐藏前兜底确认托盘真的可渲染，防 GNOME 静默失败失联。
+        // CR-01：DBus 探测 ∧ Tray 实例创建成功才可隐藏；任一不满足按不可用走确认退出。
+        closeToTraySupported: resolveCloseToTraySupported({
+          platform: process.platform,
+          desktopTrayReady,
+          capabilitySupported: closeToTrayCapabilityMonitor.getSync()?.supported,
+        }),
         isLastWindow: getMainApplicationWindows().length === 1,
         label,
         logger,
@@ -1963,12 +2136,11 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
         label,
         {
           ...initMessage,
-          zcodeBuiltinProviderConfigFilePath: resolveZCodeBuiltinProviderConfigFilePath({
-            env: { ...hostProcessLocalEnv, ...process.env },
-          }),
+          zcodeBuiltinProviderConfigFilePath: resolveZCodeBuiltinProviderConfigFilePath(),
         },
         {
           hostProcessLocalEnv,
+          subscriptionProcessEnv,
           desktopContextPromptEnabled: resolveDesktopContextPromptEnabledForHost,
           logger,
           broadcastHub,
@@ -1994,6 +2166,12 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
           onCronSchedulerWakeRequested: wakeCronScheduler,
           onOffPeakSchedulerWakeRequested: wakeOffPeakScheduler,
           authorizeLocalMediaPreviewPath: localMediaPreviewPathRegistry.authorize,
+          registerPluginSandbox: (input) => {
+            const host = getPluginSandboxHost();
+            if (!host) throw new Error("Plugin UI sandbox host is not installed.");
+            const { requestId: _requestId, ...registerInput } = input;
+            return host.registerFromHost(registerInput);
+          },
           // Bugfix: bot service 运行在本地窗口 host 内，/reconnect 必须能从本地 host 请求 main 创建远端 session。
           handleBotRemoteWorkspaceReconnectRequest: async ({
             win,
@@ -2090,6 +2268,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     syncAutoUpdaterStateToWindow,
     syncReadyUpdateToWindow,
     syncPostUpdateReleaseNotesToWindow,
+    webRemoteControlManager,
     disposeRemoteWorkspaceSessionsForWindow:
       remoteSessionManager.disposeRemoteWorkspaceSessionsForWindow,
     reattachRemoteWorkspaceSessionsForWindow:
@@ -2104,6 +2283,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     // startupBootstrap 只标记 active workspace 是否不可用，但 local Host 会为所有
     // 已恢复 workspace 建立后台索引。始终注入 canonical fallback，才能覆盖非 active 历史目录已删除的情况。
     agentSpawnFallbackCwd: getConversationWorkspaceDir(),
+    zcodeBuiltinProviderConfigFilePath: resolveZCodeBuiltinProviderConfigFilePath(),
     deviceMid,
     runtimeProcessEnvPatchPromise: runtimeProcessEnvPreparation.patchPromise,
     runtimeProcessEnvFallbackPatch: runtimeProcessEnvPreparation.fallbackPatch,
@@ -2111,7 +2291,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
     initialWindowSize: currentDesktopWindowSize,
     currentApplicationLocale: () => currentApplicationLocale,
     resolveBrowserViewOwner: (webContentsId) =>
-      browserGuestManager.getTabOwnerByWebContentsId(webContentsId),
+      browserGuestManager.getTabOwnerByWebContentsId(webContentsId) ?? undefined,
     persistWindowSize: async (state) => {
       currentDesktopWindowSize = state;
       await mainSettingService.update({ desktopWindowSize: state });
@@ -2188,8 +2368,26 @@ app.whenReady().then(async () => {
   const rcsMain = installRcsMain(windowHostProcessMap);
   app.once("will-quit", () => rcsMain.dispose());
   markMainLaunchAppReady();
+  installRequestSecurityDiagnostics(session.defaultSession.webRequest, logger);
   installLocalMediaPreviewProtocol(session.defaultSession.protocol, {
     isPathAuthorized: localMediaPreviewPathRegistry.isAuthorized,
+  });
+  // 插件 UI 沙箱：注册表 + renderer 可调 IPC；scheme 的 privileged 注册已随 zcode-media 在 ready 前完成。
+  installPluginSandboxHost({
+    preloadPath: join(import.meta.dirname, "../preload/pluginSandbox.cjs"),
+    rendererDir: join(import.meta.dirname, "../renderer"),
+    aliasDir: join(import.meta.dirname, "../plugin-sandbox"),
+    // 开发模式 out/renderer 没有 shell 产物，从 renderer dev server 代理（同 cua-permission-panel 的做法）。
+    ...(!app.isPackaged && process.env["ELECTRON_RENDERER_URL"]
+      ? { devServerUrl: process.env["ELECTRON_RENDERER_URL"] }
+      : {}),
+    logger: console,
+    // e2e L05（配额）：只在 e2e run 里允许缩小注册表容量。
+    ...(process.env.ZCODE_E2E_RUN_ID?.trim() &&
+    Number.isInteger(Number(process.env.ZCODE_E2E_PLUGIN_SANDBOX_MAX_ENTRIES)) &&
+    Number(process.env.ZCODE_E2E_PLUGIN_SANDBOX_MAX_ENTRIES) > 0
+      ? { registryMaxEntries: Number(process.env.ZCODE_E2E_PLUGIN_SANDBOX_MAX_ENTRIES) }
+      : {}),
   });
   // Electron 的 net.request 只能在 app ready 后使用；灰度请求仍是旁路预热，不阻塞首个 Host。
   void desktopContextPromptRollout?.refresh();
@@ -2210,7 +2408,36 @@ app.whenReady().then(async () => {
       loadedBootstrapLocale = true;
       currentApplicationLocale = bootstrapSettings.locale;
     }
-    closeToTrayOnWindows = bootstrapSettings.closeToTrayOnWindows ?? true;
+    // Linux 默认值归位迁移（spec：docs/desktop/linux-close-to-tray.md）：shared 迁移无平台
+    // 概念、曾把存量 Linux 用户归为 true，但 Linux 此前无设置入口，存量 true 非用户显式
+    // 选择；首次启动强制归位为默认关并落标记，之后尊重用户选择。
+    const closeToTrayBootstrap = resolveCloseToTrayBootstrapValue({
+      platform: process.platform,
+      stored: bootstrapSettings.closeToTrayOnWindows,
+      linuxMigrationInitialized: bootstrapSettings.closeToTrayLinuxMigrationInitialized,
+    });
+    // CR-02：必须 await 持久化完成再继续启动，renderer 设置页才不会读到文件旧值。
+    // 写失败时不阻断启动，但内存值回退为文件当前值（resolveCloseToTrayRuntimeValue）：
+    // 持久层不可写时维持"文件是唯一可信来源"，避免 main 按 false、设置页显示 true 的
+    // 双数据源；迁移在下次启动重试，失败期间保持迁移未完成的旧行为。
+    let closeToTrayMigrationPersisted = true;
+    if (closeToTrayBootstrap.needsLinuxMigration) {
+      try {
+        await mainSettingService.update({
+          closeToTrayOnWindows: false,
+          closeToTrayLinuxMigrationInitialized: true,
+        });
+      } catch (error) {
+        closeToTrayMigrationPersisted = false;
+        logger.warn("[settings] failed to persist linux close-to-tray default migration", error);
+      }
+    }
+    closeToTrayOnWindows = resolveCloseToTrayRuntimeValue({
+      platform: process.platform,
+      stored: bootstrapSettings.closeToTrayOnWindows,
+      linuxMigrationInitialized: bootstrapSettings.closeToTrayLinuxMigrationInitialized,
+      migrationPersisted: closeToTrayMigrationPersisted,
+    });
     continueAfterCloseOnMac = bootstrapSettings.continueAfterCloseOnMac ?? false;
     appliedNativePolicyRevision = bootstrapSettings.policyRevision ?? 0;
     keepAwakeWhileRunning = bootstrapSettings.keepAwakeWhileRunning ?? false;
@@ -2223,6 +2450,15 @@ app.whenReady().then(async () => {
   }
 
   // scheduler 也会打开 tasks-index；等 Host 完成统一准备，避免在启动页出现前抢先迁移。
+  const subscription = await installChatGPTSubscription({
+    loadSettings: () => mainSettingService.get(),
+    windows: getMainApplicationWindows,
+  });
+  subscriptionProcessEnv = subscription.env;
+  app.once("will-quit", () => {
+    void subscription.dispose();
+  });
+
   configureDatabaseStartupQuit(() => {
     markExplicitQuit("database-startup-exit");
     app.quit();
@@ -2277,14 +2513,34 @@ app.whenReady().then(async () => {
     logger.warn("[desktop-network] Chromium network policy bootstrap failed:", error);
   }
 
+  // 内置浏览器权限闸门（CNVD 未授权访问修复）：必须在任何 guest attach 前完成注册。
+  // 弹窗桥把策略决策点接到主窗口 UI；store 落盘「访问此网站时允许/阻止」的站点同意记录。
+  const embeddedBrowserPermissionUiBridge = createEmbeddedBrowserPermissionUiBridge({ logger });
+  embeddedBrowserPermissionUiBridge.registerResolveListener();
+  setActiveEmbeddedBrowserPermissionUiBridge(embeddedBrowserPermissionUiBridge);
+  try {
+    await applyEmbeddedBrowserPermissionPolicy(session.fromPartition(EMBEDDED_BROWSER_PARTITION), {
+      logger,
+      prompt: embeddedBrowserPermissionUiBridge.promptPermission,
+      devicePicker: embeddedBrowserPermissionUiBridge.devicePicker,
+      onDisplayMediaRequest: embeddedBrowserPermissionUiBridge.onDisplayMediaRequest,
+      store: createEmbeddedBrowserSitePermissionStore(
+        join(app.getPath("userData"), "embedded-browser-site-permissions.json"),
+      ),
+    });
+  } catch (error) {
+    logger.warn("[embedded-browser-permission] policy bootstrap failed:", error);
+  }
+
   await hydratePendingPostUpdateReleaseNotes(mainSettingService);
   logWindowsBundledRuntimeIntegrityDiagnostic();
 
   // 启动自动更新检查（后台执行，不阻塞主界面）
   // Preview 身份无论连接哪个后端都不自动更新：stable feed 上只分发正式 ZCode 安装包，
-  // 不向 Preview 渠道提供更新。
+  // 不向 Preview 渠道提供更新。构建期未启用自动更新时同样不更新
+  // （见 docs/desktop/build-time-optional-capabilities.md）。
   void initAutoUpdater({
-    enabled: ZCODE_PRODUCT_FLAVOR === "production",
+    enabled: ZCODE_PRODUCT_FLAVOR === "production" && ZCODE_AUTO_UPDATE_ENABLED,
     onBeforeQuitAndInstall: async () => {
       notifyStabilityLifecycle("update_install");
       await prepareAppQuit("auto-update quitAndInstall", "update-install");
@@ -2315,7 +2571,7 @@ app.whenReady().then(async () => {
       ),
     () => showCurrentWindowFromDock(primaryWindowCoordinator),
   );
-  createWindowsDesktopTray({
+  const desktopTrayOptions = {
     getLocale: () => currentApplicationLocale,
     showCurrentWindow: () =>
       primaryWindowCoordinator.ensurePrimaryWindow("tray-show-current-window"),
@@ -2325,7 +2581,31 @@ app.whenReady().then(async () => {
       app.quit();
     },
     logger,
-  });
+  };
+  // CR-01：托盘实例是否创建成功必须成为可隐藏能力的一部分。DBus watcher 只能证明桌面
+  // 可能有 host，new Tray() 仍可能因图标缺失/会话未就绪抛错；此时隐藏窗口会让用户失去
+  // 唯一入口（失联）。trayReady 由创建结果置位，关窗与设置页能力查询都读它。
+  if (process.platform === "win32") {
+    desktopTrayReady = createDesktopTray(desktopTrayOptions) !== null;
+  }
+
+  const ensureLinuxDesktopTray = async (): Promise<void> => {
+    if (process.platform !== "linux" || desktopTrayReady) {
+      return;
+    }
+    // Linux 托盘创建跟随能力而非设置开关（spec：docs/desktop/linux-close-to-tray.md）：
+    // 无 StatusNotifierWatcher 的桌面（GNOME 默认）上 new Tray() 静默失败，注册无人渲染的
+    // DBus name 没有意义；能力探测通过后再创建。用户装扩展后经设置页查询也会走到这里补建。
+    const capability = await closeToTrayCapabilityMonitor.refresh();
+    if (capability.supported) {
+      desktopTrayReady = createDesktopTray({ ...desktopTrayOptions, platform: "linux" }) !== null;
+    }
+  };
+  if (process.platform === "linux") {
+    void ensureLinuxDesktopTray().catch((error: unknown) => {
+      logger.warn("[desktop-tray] linux tray capability probe failed", error);
+    });
+  }
 
   registerPlatformIpcHandlers({
     fetchHelpConfig: readHelpConfig,
@@ -2417,6 +2697,9 @@ app.whenReady().then(async () => {
         taskRealtimeBus.updateHostWorkspaceKeys(hostId, workspaceKeys);
       }
     },
+    restorePreviouslyEnabledWebRemoteControl: (windowId, contexts) => {
+      void webRemoteControlManager.restorePreviouslyEnabled(windowId, contexts);
+    },
     getUpdateState: getAutoUpdaterState,
     openUpdateStatusWindow,
     getAutoUpdatePreferences,
@@ -2424,10 +2707,31 @@ app.whenReady().then(async () => {
     getDesktopSessionActivity: () => ({
       runningAgentSessionCount: getRunningAgentSessionCount(),
     }),
-    syncAppSettings: syncImmediateAppSettings,
+    syncWebRemoteControlWorkspaces: (windowId, workspaces) => {
+      webRemoteControlManager.syncAvailableWorkspaces(windowId, workspaces);
+      void webRemoteControlManager.restorePreviouslyEnabled(windowId, workspaces);
+    },
+    syncWebRemoteControlTasks: (windowId, tasks) =>
+      webRemoteControlManager.syncAvailableTasks(windowId, tasks),
+    syncAppSettings: (patch) => syncImmediateAppSettings(appSettingsPatchSchema.parse(patch)),
     applyTelemetryConsent: applyPersistedTelemetryConsent,
     readBackgroundContinuity,
     stopBackgroundContinuity,
+    // 设置页置灰查询：monitor 带 stale 缓存，装完 AppIndicator 扩展重开设置页即可刷新。
+    // 设置页置灰查询：先确保托盘实例就绪（用户装扩展后首次查询会补建），再返回合并了
+    // trayReady 的最终能力，避免设置页显示可开启但关窗实际走确认退出的不一致（CR-01）。
+    refreshCloseToTrayCapability: async () => {
+      await ensureLinuxDesktopTray();
+      const capability = await closeToTrayCapabilityMonitor.refresh();
+      return {
+        supported: resolveCloseToTraySupported({
+          platform: process.platform,
+          desktopTrayReady,
+          capabilitySupported: capability.supported,
+        }),
+        gnomeLikeWithoutTray: capability.gnomeLikeWithoutTray,
+      };
+    },
     setShortcutRecordingActive,
     deviceMid,
   });
@@ -2457,6 +2761,7 @@ app.whenReady().then(async () => {
       armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
     },
     finalArmsCustomEventE2EEnabled: shouldEnableE2ETestBridge(process.env),
+    webRemoteControlManager,
     createRemoteWorkspaceSession: remoteSessionManager.createRemoteWorkspaceSession,
     getRemoteConnectionStats: remoteSessionManager.getRemoteConnectionStats,
     disposeRemoteWorkspaceSession: remoteSessionManager.disposeRemoteWorkspaceSession,
@@ -2483,6 +2788,7 @@ app.whenReady().then(async () => {
     appVersion: ZCODE_VERSION,
     armsEnv: mapZCodeEnvToArmsRumEnv(desktopRuntimeEnv),
   });
+  // 未配置端点时 ARMS 不会初始化；网络 context 已由上方同意门禁装配，重复写入会阻断启动。
   registerDesktopStabilityMonitors(logger, crashCapturePaths);
   registerDesktopResourceTelemetry(logger);
   // 主窗口 renderer 的 60 秒 heap 样本入口；随 App 生命周期常驻，只注册一次。
@@ -2554,7 +2860,7 @@ app.whenReady().then(async () => {
 
   const protocolUrl = extractDeepLinkUrlFromArgs(process.argv);
   if (startupDeepLinkConsumptionGate.shouldHandleReadyProtocolUrl(protocolUrl)) {
-    handleDeepLink(protocolUrl, logger, {
+    handleDeepLink(protocolUrl!, logger, {
       confirmationCopy: resolveExternalWorkspaceConfirmationCopy(),
       resolveApplicationWindow: () => getApplicationWindowsExcludingCuaIndicator()[0] ?? null,
     });

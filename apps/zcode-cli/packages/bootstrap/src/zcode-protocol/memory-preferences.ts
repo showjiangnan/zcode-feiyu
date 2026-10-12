@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { zcodeWorkspaceUpdateMemoryPreferencesParamsSchema } from "@zcode/shared";
 import { parseParams, type ZCodeProtocolAgentServerContext } from "./server-types.js";
 import { getWorkspaceMaintenanceApps } from "./maintenance-registry.js";

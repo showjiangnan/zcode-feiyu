@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { StartPlanPreviewConfig } from "@zcode/shared";
 import { useCallback, useEffect, useState } from "react";
 import { useOptionalServices } from "@/hooks/useServices.js";
@@ -78,6 +79,19 @@ export function useStartPlanPreview(options?: { enabled?: boolean }) {
     ...state,
     refresh,
   };
+}
+
+export function clearStartPlanPreviewCacheForTest() {
+  previewCache = null;
+  previewRequest = null;
+}
+
+export function primeStartPlanPreviewCacheForTest(preview: StartPlanPreviewConfig | null) {
+  previewCache = {
+    preview,
+    expiresAt: Date.now() + START_PLAN_PREVIEW_CACHE_TTL_MS,
+  };
+  previewRequest = null;
 }
 
 async function loadStartPlanPreview(

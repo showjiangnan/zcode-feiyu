@@ -324,6 +324,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - @modelcontextprotocol/core@2.0.0 — MIT
 
+- @modelcontextprotocol/ext-apps@2.0.0 — MIT
+
 - @modelcontextprotocol/sdk@1.29.0 — MIT
 
 - @modelcontextprotocol/server@2.0.0 — MIT
@@ -552,9 +554,9 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - @rive-app/webgl2@2.37.1 — MIT
 
-- @rrweb/types@2.1.6 — MIT
+- @rrweb/types@2.0.0 — MIT
 
-- @rrweb/utils@2.1.6 — MIT
+- @rrweb/utils@2.0.0 — MIT
 
 - @sec-ant/readable-stream@0.4.1 — MIT
 
@@ -907,6 +909,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 - chevrotain-allstar@0.4.1 — MIT
 
 - chevrotain@12.0.0 — Apache-2.0
+
+- chokidar@4.0.3 — MIT
 
 - class-variance-authority@0.7.1 — Apache-2.0
 
@@ -1320,6 +1324,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - hachure-fill@0.5.2 — MIT
 
+- has-flag@4.0.0 — MIT
+
 - has-property-descriptors@1.0.2 — MIT
 
 - has-symbols@1.1.0 — MIT
@@ -1559,6 +1565,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 - longest-streak@3.1.0 — MIT
 
 - loose-envify@1.4.0 — MIT
+
+- lottie-web@5.13.0 — MIT
 
 - lowercase-keys@2.0.0 — MIT
 
@@ -1970,6 +1978,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - readable-stream@2.3.8 — MIT
 
+- readdirp@4.1.2 — MIT
+
 - recast@0.23.11 — MIT
 
 - recharts@3.8.0 — MIT
@@ -2040,11 +2050,11 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - router@2.2.0 — MIT
 
-- rrdom@2.1.6 — MIT
+- rrdom@2.0.0 — MIT
 
-- rrweb-snapshot@2.1.6 — MIT
+- rrweb-snapshot@2.0.0 — MIT
 
-- rrweb@2.1.6 — MIT
+- rrweb@2.0.0 — MIT
 
 - run-applescript@7.1.0 — MIT
 
@@ -2167,6 +2177,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 - stylis@4.3.6 — MIT
 
 - sumchecker@3.0.1 — Apache-2.0
+
+- supports-color@8.1.1 — MIT
 
 - swr@2.5.1 — MIT
 
@@ -2481,6 +2493,10 @@ Fig autocomplete source carries the repository's MIT license; the generated regi
 Electron/Chromium target-specific notices are shipped separately under Resources/licenses/electron. Distributions containing an independent Node runtime also include its exact-version LICENSE.node.txt; SEA includes that text in --licenses output.
 
 ## Modified npm packages
+
+- vitest@4.1.7: modified by ZCode; the changes are recorded in patches/vitest@4.1.7.patch in the source repository.
+
+- wdio-electron-service@9.2.1: modified by ZCode; the changes are recorded in patches/wdio-electron-service@9.2.1.patch in the source repository.
 
 - @arms/rum-electron@0.0.3: modified by ZCode; the changes are recorded in patches/@arms__rum-electron@0.0.3.patch in the source repository.
 
@@ -4706,6 +4722,8 @@ SOFTWARE.
 
 - @modelcontextprotocol/core@2.0.0: LICENSE
 
+- @modelcontextprotocol/ext-apps@2.0.0: LICENSE
+
 - @modelcontextprotocol/server@2.0.0: LICENSE
 
 
@@ -6153,15 +6171,15 @@ SOFTWARE.
 
 ### Notice e49e62397b603438476e0d6b5ca3b6e6d4f23a80594e596aff29ac04fa3e1b1c
 
-- @rrweb/types@2.1.6: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE
+- @rrweb/types@2.0.0: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE
 
-- @rrweb/utils@2.1.6: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE
+- @rrweb/utils@2.0.0: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE
 
-- rrdom@2.1.6: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE
+- rrdom@2.0.0: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE
 
-- rrweb-snapshot@2.1.6: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE
+- rrweb-snapshot@2.0.0: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE
 
-- rrweb@2.1.6: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.1.6/LICENSE
+- rrweb@2.0.0: https://raw.githubusercontent.com/rrweb-io/rrweb/rrweb%402.0.0/LICENSE
 
 
 
@@ -6445,6 +6463,8 @@ SOFTWARE.
 - strip-ansi@7.2.0: license
 
 - strip-final-newline@4.0.0: license
+
+- supports-color@8.1.1: license
 
 - tagged-tag@1.0.0: license
 
@@ -7733,6 +7753,8 @@ SOFTWARE.
 - find-up@4.1.0: license
 
 - got@11.8.6: license
+
+- has-flag@4.0.0: license
 
 - is-fullwidth-code-point@3.0.0: license
 
@@ -9355,6 +9377,8 @@ SOFTWARE.
 
 - decamelize@1.2.0: readme.md (license section)
 
+- has-flag@4.0.0: readme.md (license section)
+
 - is-fullwidth-code-point@3.0.0: readme.md (license section)
 
 - locate-path@5.0.0: readme.md (license section)
@@ -10174,6 +10198,50 @@ BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR P
 NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+````
+
+### Notice bdfd5e0edb6089e6586c8f15e6a86fab83ffbeeda3b3b7b33734ccb8c5906965
+
+- chokidar@4.0.3: LICENSE
+
+
+
+````text
+The MIT License (MIT)
+
+Copyright (c) 2012 Paul Miller (https://paulmillr.com), Elan Shanker
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+````
+
+### Notice 22748b67aba7858f24730a8dc6aa876d13d666d74178f8aa0e01af41617e75e7
+
+- chokidar@4.0.3: README.md (license section)
+
+
+
+````text
+## License
+
+MIT (c) Paul Miller (<https://paulmillr.com>), see [LICENSE](LICENSE) file.
 
 ````
 
@@ -22736,6 +22804,36 @@ THE SOFTWARE.
 
 ````
 
+### Notice 9d8d4d8b4bb99572ee8b51025a30b8493d949798cac465c6c15b1b29420bcb06
+
+- lottie-web@5.13.0: LICENSE.md
+
+
+
+````text
+The MIT License (MIT)
+
+Copyright (c) 2015 Bodymovin
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+````
+
 ### Notice 0a7cda7d15aca7baaa3035e1f90466dde9ecc980c103cd230382d6675714bf2a
 
 - lru_map@0.4.1: node_modules/lru_map/README.md
@@ -32004,6 +32102,52 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 IN THE SOFTWARE.
 """
+
+````
+
+### Notice dffec71d93f273d2af7b54c6c7e7e70b3289c632ec0d7253210ec21ac336d5ac
+
+- readdirp@4.1.2: LICENSE
+
+
+
+````text
+MIT License
+
+Copyright (c) 2012-2019 Thorsten Lorenz, Paul Miller (https://paulmillr.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+````
+
+### Notice d7659b795379812cc8df27e1feb7d6c7570c734b7714b844a561fdb20a949009
+
+- readdirp@4.1.2: README.md (license section)
+
+
+
+````text
+## License
+
+Copyright (c) 2012-2019 Thorsten Lorenz, Paul Miller (<https://paulmillr.com>)
+
+MIT License, see [LICENSE](LICENSE) file.
 
 ````
 

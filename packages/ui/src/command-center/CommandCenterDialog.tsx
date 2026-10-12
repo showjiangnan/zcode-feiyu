@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 /* eslint-disable max-lines -- 聚合命令、任务、文件三类搜索结果，后续可按 result section 拆分。 */
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { unpackWorkspaceFileEntries } from "@zcode/shared/workspaceFileEntriesCodec";
@@ -226,7 +226,7 @@ function buildTaskResultRows(params: {
   return rows;
 }
 
-function CommandCenterScopeButton({
+export function CommandCenterScopeButton({
   active,
   label,
   onClick,
@@ -281,7 +281,7 @@ function scopeToPrefix(scope: CommandCenterSearchScope): string {
  * 独立组件便于复用与单测；按 DESIGN.md 语义角色，列表项里的相对时间属于
  * secondary copy，使用 text-ui-sm（不用 text-ui-xs，避免偏小）。
  */
-function CommandCenterConversationTimestamp({
+export function CommandCenterConversationTimestamp({
   className,
   children,
 }: {
@@ -309,7 +309,7 @@ function CommandCenterConversationTimestamp({
  * - 历史 chip 搜索词：text-ui-base（可读内容，与列表主体一致）
  * - chip 内 scope 前缀：text-ui-xs（badge 标记，比主体小一级形成层级）
  */
-function CommandCenterSearchHistory({
+export function CommandCenterSearchHistory({
   entries,
   expanded,
   onToggleExpanded,

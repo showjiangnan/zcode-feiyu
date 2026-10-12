@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // CreateWorkflow 的实时工具卡。
 //
 // 为什么不是 ToolTranscriptPart 上的几行 detailLines：工具行是**事件时刻的快照**，而
@@ -18,7 +19,7 @@ const CARD_LOG_INDENT = "    ";
 export const MAX_ACTOR_ROWS = 6;
 const MAX_RESULT_PREVIEW_WIDTH = 200;
 
-/** 六行位置按状态分桶：跑着的排前面。 */
+/** 六行位置按状态分桶（docs/dynamic-workflow/launch.md「The inline card」）：跑着的排前面。 */
 const ACTOR_ROW_RANK: Record<WorkflowRunActor["status"], number> = {
   running: 0,
   waiting: 1,

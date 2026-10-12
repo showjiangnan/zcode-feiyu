@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { RefreshCcw } from "lucide-react";
 import { Fragment, lazy, useState } from "react";
 import { APP_USAGE_RANGES } from "@zcode/shared";
@@ -47,7 +48,7 @@ export function AppUsagePanel() {
           </div>
           <AppUsageRangeTabs range={range} onRangeChange={setRange} />
         </div>
-        {/* App Usage 只聚合本地 session 历史，不能复用 Coding Plan 的 monitor API 加载说明。*/}
+        {/* Bugfix: App Usage 只聚合本地 session 历史，不能复用 Coding Plan 的 monitor API 加载说明。 */}
         <UsageEmptyState
           title={intl.formatMessage({ id: "settings.usage.loadingTitle" })}
           description={intl.formatMessage({
@@ -130,7 +131,7 @@ export function AppUsagePanel() {
   );
 }
 
-function AppUsageLifetimeSummaryStrip({ snapshot }: { snapshot: AppUsageSnapshot | null }) {
+export function AppUsageLifetimeSummaryStrip({ snapshot }: { snapshot: AppUsageSnapshot | null }) {
   const { intl, locale } = useZCodeIntl();
   const items = [
     {

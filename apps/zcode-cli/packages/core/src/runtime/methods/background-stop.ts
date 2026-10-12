@@ -1,0 +1,320 @@
+// Modified by ZCode Feiyu.
+import { SessionEventType, traceContextToLogContext } from "../deps.js";
+import { isContinuityBackgroundWorkKind } from "@zcode/shared/zcode-protocol-v4";
+import { stopContinuityBackgroundWork } from "./background-stop-continuity.js";
+import type {
+  BackgroundTaskCancelResult,
+  BackgroundTaskInfoStatus,
+  TraceContext,
+} from "../deps.js";
+import type { AgentRuntimeInternal } from "../internal.js";
+import { stopDynamicWorkflowBackgroundTask } from "./background-stop-dynamic-workflow.js";
+import type {
+  RuntimeBackgroundStopOptions,
+  RuntimeBackgroundStopResult,
+  RuntimeBackgroundStopTarget,
+  TypedRuntimeBackgroundStopTarget,
+} from "./background-stop-types.js";
+import {
+  hasRunningBackgroundRuntimeTask,
+  isTerminalRuntimeTask,
+} from "../../runtime-task/registry.js";
+import {
+  toBackgroundTaskInfoStatus,
+  commandFromRuntimeTask,
+  backgroundInfoFromRuntimeTask,
+  runtimeTaskTypeFromBackgroundInfo,
+  isTerminalBackgroundTaskInfoStatus,
+} from "./background-projection.js";
+
+/**
+ * Session 常驻池的同步权威查询。
+ *
+ * 协议层的 activeAbortController 只覆盖前台 turn，后台 Bash/Agent/Workflow
+ * 已经从前台 turn 脱离但仍需要当前 runtime 接收终态与唤醒通知。回收判定必须直接读取
+ * runtime task registry，不能从协议投影或 UI 状态猜测。
+ */
+export function hasRunningBackgroundTasks(this: AgentRuntimeInternal): boolean {
+  return hasRunningBackgroundRuntimeTask(this.runtimeTaskRegistry);
+}
+
+export async function cancelBackgroundTask(
+  this: AgentRuntimeInternal,
+  taskId: string,
+  options: { traceContext?: TraceContext } = {},
+): Promise<BackgroundTaskCancelResult> {
+  // cancelBackgroundTask 只有 GUI 与后台面板会调（v4 cancelBackgroundWork）：这就是用户的手。
+  const result = await this.stopBackgroundTask(taskId, {
+    initiator: "user",
+    traceContext: options.traceContext,
+  });
+  if (!result.ok) {
+    return {
+      cancelled: false,
+      reason: result.reason,
+      status: toBackgroundTaskInfoStatus(result.status) ?? "lost",
+      taskId,
+    };
+  }
+  const projection = await this.rebuildProjection();
+  const status = toBackgroundTaskInfoStatus(result.status) ?? "lost";
+  return {
+    cancelled: status === "cancelled",
+    reason: result.alreadyTerminal ? "background_task_not_running" : undefined,
+    snapshot: projection.backgroundTasks.find((task) => task.taskId === taskId),
+    status,
+    taskId,
+  };
+}
+
+export async function stopBackgroundTask(
+  this: AgentRuntimeInternal,
+  taskId: string,
+  options: RuntimeBackgroundStopOptions,
+): Promise<RuntimeBackgroundStopResult> {
+  const traceContext = options.traceContext ?? this.rootTraceContext;
+  const target = await resolveBackgroundStopTarget.call(this, taskId);
+  if (!target) {
+    return {
+      ok: false,
+      reason: "background_task_not_found",
+      taskId,
+    };
+  }
+  // 连续工作（记忆提取 / 整理 / 主动执行）不登记 runtime task registry，因此没有 registry taskType。
+  // 分派按投影条目上的 taskKind 走**已存在**的授权路径（复审 GAP-03）：整理复用整理自己的取消、
+  // 主动执行复用 orchestration 的 stop、提取只中止当前这一轮。不新增取消能力，
+  // 也不改写 bash / subagent / workflow 的任何分支语义。
+  if (isContinuityBackgroundWorkKind(target.existing?.taskKind)) {
+    return stopContinuityBackgroundWork.call(this, target, target.existing!.taskKind!, options);
+  }
+  if (!isTypedBackgroundStopTarget(target)) {
+    return unsupportedBackgroundStopResult(target);
+  }
+
+  if (isTerminalBackgroundStopTarget(target)) {
+    if (options.strict) {
+      return {
+        ok: false,
+        reason: "background_task_not_running",
+        status: target.currentStatus,
+        taskId,
+        type: target.taskType,
+      };
+    }
+    return {
+      alreadyTerminal: true,
+      command: commandFromRuntimeTask(target.registryTask, target.existing),
+      ok: true,
+      status: target.currentStatus ?? "lost",
+      taskId,
+      type: target.taskType,
+    };
+  }
+
+  if (target.taskType === "local_agent") {
+    return stopLocalAgentBackgroundTask.call(this, target);
+  }
+
+  if (target.taskType === "local_bash") {
+    return stopLocalBashBackgroundTask.call(this, target, traceContext);
+  }
+
+  if (target.taskType === "local_dynamic_workflow") {
+    return stopDynamicWorkflowBackgroundTask.call(
+      this,
+      target,
+      unsupportedBackgroundStopResult,
+      options.initiator,
+    );
+  }
+
+  return unsupportedBackgroundStopResult(target);
+}
+
+export async function resolveBackgroundStopTarget(
+  this: AgentRuntimeInternal,
+  taskId: string,
+): Promise<RuntimeBackgroundStopTarget | undefined> {
+  const registryTask = this.runtimeTaskRegistry.get(taskId);
+  const projection = await this.rebuildProjection();
+  const existing =
+    projection.backgroundTasks.find((task) => task.taskId === taskId) ??
+    (registryTask ? backgroundInfoFromRuntimeTask(registryTask) : undefined);
+  if (!registryTask && !existing) {
+    return undefined;
+  }
+
+  const taskType = registryTask?.type ?? runtimeTaskTypeFromBackgroundInfo(existing);
+  return {
+    currentStatus: registryTask?.status ?? existing?.status,
+    existing,
+    registryTask,
+    taskId,
+    taskType,
+  };
+}
+
+export function isTerminalBackgroundStopTarget(target: RuntimeBackgroundStopTarget): boolean {
+  return (
+    (target.registryTask ? isTerminalRuntimeTask(target.registryTask) : false) ||
+    isTerminalBackgroundTaskInfoStatus(target.existing?.status)
+  );
+}
+
+export function isTypedBackgroundStopTarget(
+  target: RuntimeBackgroundStopTarget,
+): target is TypedRuntimeBackgroundStopTarget {
+  return target.taskType !== undefined;
+}
+
+export function unsupportedBackgroundStopResult(
+  target: RuntimeBackgroundStopTarget,
+): RuntimeBackgroundStopResult {
+  return {
+    ok: false,
+    reason: "background_task_cancel_not_supported",
+    status: target.currentStatus,
+    taskId: target.taskId,
+    ...(target.taskType ? { type: target.taskType } : {}),
+  };
+}
+
+export async function stopLocalAgentBackgroundTask(
+  this: AgentRuntimeInternal,
+  target: TypedRuntimeBackgroundStopTarget,
+): Promise<RuntimeBackgroundStopResult> {
+  if (!this.subagentPort?.stopTask) {
+    return unsupportedBackgroundStopResult(target);
+  }
+  const snapshot = await this.subagentPort.stopTask(target.taskId);
+  if (!snapshot) {
+    return {
+      ok: false,
+      reason: "background_task_not_found",
+      status: "lost",
+      taskId: target.taskId,
+      ...(target.taskType ? { type: target.taskType } : {}),
+    };
+  }
+  return {
+    command: commandFromRuntimeTask(target.registryTask, target.existing),
+    ok: true,
+    status: snapshot.status,
+    taskId: target.taskId,
+    type: "local_agent",
+  };
+}
+
+export async function stopLocalBashBackgroundTask(
+  this: AgentRuntimeInternal,
+  target: TypedRuntimeBackgroundStopTarget,
+  traceContext: TraceContext,
+): Promise<RuntimeBackgroundStopResult> {
+  if (!this.executionPort?.cancelBackgroundTask) {
+    return unsupportedBackgroundStopResult(target);
+  }
+
+  const cancelRequestedAt = new Date();
+  if (target.existing?.status === "running") {
+    await this.appendEvent(
+      this.createEvent(
+        SessionEventType.BackgroundTaskUpdated,
+        this.buildBackgroundTaskPayload(target.taskId, target.existing, undefined, {
+          cancelRequestedAt,
+          cancellable: false,
+          status: "running",
+        }),
+        traceContext,
+      ),
+      traceContext,
+    );
+  }
+
+  const snapshot = await this.executionPort.cancelBackgroundTask(target.taskId);
+  if (!snapshot) {
+    const completedAt = new Date();
+    if (target.registryTask) {
+      this.runtimeTaskRegistry.update(target.taskId, (current) =>
+        isTerminalRuntimeTask(current)
+          ? current
+          : {
+              ...current,
+              completedAt,
+              isBackgrounded: true,
+              status: "lost",
+            },
+      );
+    }
+    await this.appendEvent(
+      this.createEvent(
+        SessionEventType.BackgroundTaskCompleted,
+        this.buildBackgroundTaskPayload(target.taskId, target.existing, undefined, {
+          cancelRequestedAt,
+          cancellable: false,
+          completedAt,
+          status: "lost",
+        }),
+        traceContext,
+      ),
+      traceContext,
+    );
+    return {
+      ok: false,
+      reason: "background_task_not_found",
+      status: "lost",
+      taskId: target.taskId,
+      type: "local_bash",
+    };
+  }
+
+  const status: BackgroundTaskInfoStatus =
+    snapshot.status === "running" ? "cancelled" : snapshot.status;
+  if (!target.registryTask) {
+    await this.appendEvent(
+      this.createEvent(
+        SessionEventType.BackgroundTaskCompleted,
+        this.buildBackgroundTaskPayload(target.taskId, target.existing, snapshot, {
+          cancelRequestedAt,
+          cancellable: false,
+          completedAt: snapshot.completedAt ?? new Date(),
+          status,
+        }),
+        traceContext,
+      ),
+      traceContext,
+    );
+  }
+  return {
+    command: commandFromRuntimeTask(target.registryTask, target.existing),
+    ok: true,
+    status,
+    taskId: target.taskId,
+    type: "local_bash",
+  };
+}
+
+export async function cancelRunningRuntimeBackgroundTasks(
+  this: AgentRuntimeInternal,
+  input: { reason: "subagent_cancelled"; traceContext?: TraceContext },
+): Promise<void> {
+  if (this.config.taskType !== "subagent_child") return;
+  const traceContext = input.traceContext ?? this.rootTraceContext;
+  const tasks = Object.values(this.runtimeTaskRegistry.all()).filter(
+    (task) =>
+      task.type === "local_bash" && task.isBackgrounded === true && task.status === "running",
+  );
+
+  for (const task of tasks) {
+    this.logger?.info?.("Cancelling subagent background task during runtime cleanup", {
+      ...traceContextToLogContext(traceContext),
+      event: "runtime.background_task.cleanup_cancel",
+      module: "core.runtime",
+      reason: input.reason,
+      taskId: task.taskId,
+    });
+    await this.stopBackgroundTask(task.taskId, {
+      traceContext,
+    });
+  }
+}

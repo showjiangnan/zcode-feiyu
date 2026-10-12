@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useCallback, useRef } from "react";
 import { ensureAgentV4ConnectionHandshake } from "@/v4/agentV4ConnectionHandshake.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
@@ -6,7 +7,7 @@ import { resolveWorkspaceRemoteSessionId } from "@/lib/workspaceServiceResolver.
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import { sendInteractionAutoResolutionSnooze } from "@/v4/interactionAutoResolutionCommand.js";
 
-interface TaskInteractionAutoResolutionTarget {
+export interface TaskInteractionAutoResolutionTarget {
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;

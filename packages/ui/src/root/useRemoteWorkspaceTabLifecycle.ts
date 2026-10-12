@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useEffect, useRef } from "react";
 import type { IPlatformService } from "@zcode/shared";
 import { logger } from "@/logger.js";
@@ -18,7 +19,7 @@ function remoteWorkspaceKey(tab: WorkspaceTabState): string | null {
   return tab.workspaceIdentity?.trim() || tab.workspacePath;
 }
 
-function collectClosedRemoteWorkspaceKeys(
+export function collectClosedRemoteWorkspaceKeys(
   previousWorkspaceTabs: WorkspaceTabState[],
   nextWorkspaceTabs: WorkspaceTabState[],
 ): string[] {
@@ -41,7 +42,7 @@ function collectClosedRemoteWorkspaceKeys(
   return [...closedRemoteWorkspaceKeys];
 }
 
-function collectClosedRemoteWorkspaceSessionIds(
+export function collectClosedRemoteWorkspaceSessionIds(
   previousWorkspaceTabs: WorkspaceTabState[],
   nextWorkspaceTabs: WorkspaceTabState[],
   rememberedSessionIdsByWorkspaceKey: ReadonlyMap<string, string>,

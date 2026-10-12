@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { createOpenInEditorRemoteTarget, type EditorInfo, type RemoteTarget } from "@zcode/shared";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button.js";
@@ -124,7 +125,7 @@ export function WorkspaceEditorButtonGroup({
     });
   };
 
-  if (!selectedEditor) {
+  if (!selectedEditor || remoteTarget?.kind === "server") {
     return null;
   }
 

@@ -1,10 +1,11 @@
+// Modified by ZCode Feiyu.
 import type { FileEntry, ZCodeTaskMeta, ZCodeTaskRuntimeStatus } from "@zcode/shared";
 import type { IFileService } from "@zcode/services";
 import type { WorkspaceZCodeUIState } from "@/store/zcodeSessionStoreTypes.js";
 import { isChatTaskRunning } from "@/lib/chatStatus.js";
 import { logger } from "@/logger.js";
 
-const WINDOWS_RESERVED_NAME_SCAN_SKIPPED_DIRECTORIES = new Set([
+export const WINDOWS_RESERVED_NAME_SCAN_SKIPPED_DIRECTORIES = new Set([
   ".git",
   "node_modules",
   "dist",
@@ -17,13 +18,13 @@ const WINDOWS_RESERVED_NAME_SCAN_SKIPPED_DIRECTORIES = new Set([
   ".vite",
 ]);
 
-interface WorkspaceRemovalRiskScanOptions {
+export interface WorkspaceRemovalRiskScanOptions {
   maxEntries?: number;
   maxFindings?: number;
   skippedDirectories?: ReadonlySet<string>;
 }
 
-interface WorkspaceRemovalRiskScanResult {
+export interface WorkspaceRemovalRiskScanResult {
   findings: string[];
   scannedEntries: number;
   truncated: boolean;
@@ -51,11 +52,11 @@ export function hasRunningWorkspaceChat(params: {
   );
 }
 
-function isWorkspaceRemovalBlockingRuntimeStatus(status: ZCodeTaskRuntimeStatus): boolean {
+export function isWorkspaceRemovalBlockingRuntimeStatus(status: ZCodeTaskRuntimeStatus): boolean {
   return isChatTaskRunning(status);
 }
 
-function isWindowsReservedDevicePathSegment(segment: string): boolean {
+export function isWindowsReservedDevicePathSegment(segment: string): boolean {
   const normalizedSegment = segment.replace(/[ .]+$/u, "");
   if (!normalizedSegment) {
     return false;

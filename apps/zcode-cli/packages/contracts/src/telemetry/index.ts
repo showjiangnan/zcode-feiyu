@@ -1,5 +1,5 @@
-// Modified by ZCode Feiyu contributors (2026).
-import type { ModelId, ModelProviderId } from "../model/index.js";
+// Modified by ZCode Feiyu.
+import type { ModelId, ModelProviderId, ModelRequestObservation } from "../model/index.js";
 import type {
   AgentExecutionTelemetryPort,
   AgentTelemetryAbandonReason,
@@ -19,6 +19,8 @@ export const ModelApiOperation = {
   GitCommitMessage: "workspace_git_commit_message",
   ProjectMemoryExtract: "project_memory_extract",
   ProjectMemoryReview: "project_memory_review",
+  ProjectMemoryDream: "project_memory_dream",
+  ProjectMemoryRecall: "project_memory_recall",
   ReadSessionContextExtract: "read_session_context_extract",
   ReadSessionContextSynthesize: "read_session_context_synthesize",
   SessionTitle: "session_title_generation",
@@ -199,9 +201,19 @@ function mapQuerySourceToModelApiOperation(querySource: string | undefined): {
         operation: ModelApiOperation.ProjectMemoryExtract,
         actorKind: ModelApiActorKind.System,
       };
+    case "project_memory_dream":
+      return {
+        operation: ModelApiOperation.ProjectMemoryDream,
+        actorKind: ModelApiActorKind.System,
+      };
     case "project_memory_review":
       return {
         operation: ModelApiOperation.ProjectMemoryReview,
+        actorKind: ModelApiActorKind.System,
+      };
+    case "project_memory_recall":
+      return {
+        operation: ModelApiOperation.ProjectMemoryRecall,
         actorKind: ModelApiActorKind.System,
       };
     default:
@@ -346,6 +358,8 @@ export interface ModelAttemptSpanWriter extends AgentTelemetryScope {
   markFirstContent(): void;
   markFirstText(): void;
   markStreamStalled(idleMs: number): void;
+  /** 请求观测交由发行实现映射到 Attribute 与 Event。 */
+  recordRequestObservation(observation: ModelRequestObservation): void;
   finishCompleted(): void;
   finishFailed(
     stage: ModelAttemptFailureStage,

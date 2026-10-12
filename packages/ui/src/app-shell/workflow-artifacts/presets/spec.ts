@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 预置产物（chart / table / metrics / board）的 spec 类型镜像 + 宽松解析。
  *
@@ -222,4 +223,49 @@ export function chartSeriesFields(spec: ChartSpec): ArtifactField[] {
 /** 字段在界面上的名字：显式 `label` 优先，否则用点路径本身。 */
 export function artifactFieldLabel(field: ArtifactField): string {
   return field.label ?? field.field;
+}
+
+/**
+ * 一张看板会读到的全部字段路径（去重、按 spec 里出现的顺序）：看板取数只让 CLI 取这些字段，
+ * 而不是整条 item（docs/execution-engine.md「Reading the journal」）。`applyArtifactItems` 读的
+ * 每一个路径都必须在这里——漏一个，那一列 / 那条序列就永远是空的。spec 画不了时回 `undefined`
+ * （调用方退回取整条 item，渲染层自会显示「无法渲染」）。
+ */
+export function artifactPresetFieldPaths(
+  kind: ArtifactPresetKind,
+  rawSpec: unknown,
+): string[] | undefined {
+  const spec = parseArtifactPresetSpec(kind, rawSpec);
+  if (spec === undefined) return undefined;
+  const paths: string[] = [];
+  const add = (path: string | undefined): void => {
+    if (path !== undefined && !paths.includes(path)) paths.push(path);
+  };
+  switch (kind) {
+    case "chart": {
+      const chart = spec as ChartSpec;
+      add(chart.x.field);
+      for (const field of chartSeriesFields(chart)) add(field.field);
+      add(chart.baseline?.field);
+      break;
+    }
+    case "table": {
+      const table = spec as TableSpec;
+      add(table.key);
+      for (const column of table.columns) add(column.field);
+      break;
+    }
+    case "metrics":
+      for (const metric of (spec as MetricsSpec).metrics) add(metric.field);
+      break;
+    case "board": {
+      const board = spec as BoardSpec;
+      add(board.key);
+      add(board.status);
+      add(board.cardTitle);
+      for (const field of board.detail ?? []) add(field.field);
+      break;
+    }
+  }
+  return paths;
 }

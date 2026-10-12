@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * 「工作了 1 分 42 秒」的时长写法（`chat.history.workedFor`），从 `ConversationTurnGroup` 抽出，
  * 好让工作流完成卡的「时间」格与轮头的折叠标签
@@ -44,4 +45,16 @@ export function workDurationParts(
 /** 中文时长单位与数字之间留空格以保持可读；英文缩写单位紧贴数字。 */
 export function workDurationUnitSeparator(locale: string): string {
   return locale === "zh-CN" ? " " : "";
+}
+
+export function formatWorkDuration(
+  durationMs: number | undefined,
+  formatMessage: FormatMessage,
+  locale: string,
+): string | null {
+  if (durationMs === undefined) return null;
+  const separator = workDurationUnitSeparator(locale);
+  return workDurationParts(durationMs, formatMessage)
+    .map((part) => `${part.value}${separator}${part.unit}`)
+    .join(" ");
 }

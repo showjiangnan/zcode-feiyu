@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import ts from "typescript";
 import type { WorkflowProgram } from "../compiler/compile.js";
 import type { SiteTable } from "./sites.js";
@@ -13,6 +14,7 @@ import type {
   CoreAskSite,
   CoreFacts,
   CoreFanoutSite,
+  CoreHoleSite,
   CoreSimpleSite,
   CoreSites,
   CoreTypes,
@@ -70,8 +72,12 @@ function mintCore(
   // (a named callback `xs.map(review)`, a helper called from the inline callback, and so on
   // transitively, per the call oracle). "Nearest" = the innermost containing span, i.e. the
   // one with the greatest start offset.
-  const spanOf = (node: ts.Node): { start: number; end: number } => ({ end: node.getEnd(), start: node.getStart(scriptFile) });
-  const insideSpan = (pos: number, span: { start: number; end: number }): boolean => span.start <= pos && pos < span.end;
+  const spanOf = (node: ts.Node): { start: number; end: number } => ({
+    end: node.getEnd(),
+    start: node.getStart(scriptFile),
+  });
+  const insideSpan = (pos: number, span: { start: number; end: number }): boolean =>
+    span.start <= pos && pos < span.end;
   const promotedSpans: Array<{ id: string; start: number; end: number }> = [];
   for (const cand of table.iterations) {
     const id = fanoutId.get(provisionalFanoutId(cand.order));
@@ -122,7 +128,13 @@ function mintCore(
     order: site.order,
     ...withinOf(site.call),
   }));
-  const simple = (site: { id: string; order: number; label: string; loc: CoreSimpleSite["loc"]; call: ts.Node }): CoreSimpleSite => ({
+  const simple = (site: {
+    id: string;
+    order: number;
+    label: string;
+    loc: CoreSimpleSite["loc"];
+    call: ts.Node;
+  }): CoreSimpleSite => ({
     id: site.id,
     label: site.label,
     loc: site.loc,
@@ -154,10 +166,25 @@ function mintCore(
       ...(cardinality === undefined ? {} : { cardinality }),
     };
   });
+  // 只有开放的留白是站点（docs/analysis.md「Sites」）：已补全的留白是一个阶段，不是一步。
+  // 名字 / 类型缺席的留白在 9012 处已挡下，这里的兜底只是把不变量写下来。
+  const holes: CoreHoleSite[] = table.holes
+    .filter((site) => site.body === undefined)
+    .map((site) => ({
+      ...(site.fill === undefined ? {} : { fill: site.fill }),
+      id: site.id,
+      loc: site.loc,
+      name: site.name ?? site.id,
+      order: site.order,
+      ...(site.tail ? { tail: true as const } : {}),
+      type: site.typeText ?? "unknown",
+      ...withinOf(site.call),
+    }));
   const sites: CoreSites = {
     actors,
     asks,
     fanouts,
+    holes,
     joins: table.joins.map(simple),
     worldReads: table.worldReads.map(simple),
   };
@@ -179,7 +206,11 @@ function mintFacts(
   rename: (site: string) => string,
 ): CoreFacts {
   const renameOccs = (occs: TaintOcc[]): TaintOcc[] =>
-    occs.map((occ) => ({ exact: occ.exact, site: rename(occ.site), ...(occ.port === undefined ? {} : { port: occ.port }) }));
+    occs.map((occ) => ({
+      exact: occ.exact,
+      site: rename(occ.site),
+      ...(occ.port === undefined ? {} : { port: occ.port }),
+    }));
   const renameMap = (map: Map<string, TaintOcc[]>): Map<string, TaintOcc[]> => {
     const out = new Map<string, TaintOcc[]>();
     for (const [sink, occs] of map) out.set(sink, renameOccs(occs));
@@ -195,6 +226,7 @@ function mintFacts(
     askActor: renameMap(facts.askActor),
     askData: renameMap(facts.askData),
     fanoutIn,
+    holeData: renameMap(facts.holeData),
     joinIn: renameMap(facts.joinIn),
     returnData: renameOccs(facts.returnData),
     worldReadData: renameMap(facts.worldReadData),

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 export { BUILTIN_TUI_THEMES, DARK_TUI_THEME, LIGHT_TUI_THEME } from "./defaults.js";
 export { palette, themeToLegacyPalette } from "./legacy-palette.js";
 export {
@@ -7,10 +8,7 @@ export {
   resolveTuiThemeMode,
   setActiveTuiThemeMode,
 } from "./state.js";
-export {
-  inferThemeModeFromTerminalColors,
-  resolveInitialTerminalThemeMode,
-} from "./terminal.js";
+export { inferThemeModeFromTerminalColors, resolveInitialTerminalThemeMode } from "./terminal.js";
 export type {
   TuiLegacyPalette,
   TuiThemeMode,

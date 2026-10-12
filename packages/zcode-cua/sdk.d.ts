@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 export interface ComputerControlSelection {
   appId?: string;
   pid?: number;

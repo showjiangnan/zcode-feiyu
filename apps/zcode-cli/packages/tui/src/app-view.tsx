@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ModelUsageSummary, TodoItem, TurnId } from "@zcode/contracts";
 import React from "react";
 import { ApprovalPanel } from "./app-approval-panel.js";
@@ -231,7 +232,7 @@ export function AppView(props: {
   );
 }
 
-function ComposerInputArea(props: {
+export function ComposerInputArea(props: {
   focused?: boolean;
   busy: boolean;
   contentWidth: number;

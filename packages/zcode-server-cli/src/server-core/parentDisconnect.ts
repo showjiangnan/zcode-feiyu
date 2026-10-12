@@ -1,4 +1,5 @@
-interface ParentDisconnectSource {
+// Modified by ZCode Feiyu.
+export interface ParentDisconnectSource {
   once(event: "disconnect", listener: () => void): unknown;
   off(event: "disconnect", listener: () => void): unknown;
 }

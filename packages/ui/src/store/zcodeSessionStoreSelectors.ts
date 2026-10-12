@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 /**
  * ZCode Session Store 选择器与内部辅助函数
  *
@@ -209,6 +210,29 @@ export function getWorkspaceDisplayedTaskState(
 
 export function getTaskUiState(workspaceState: WorkspaceZCodeUIState, taskId: string) {
   return workspaceState.taskUiByTaskId[taskId] ?? DEFAULT_TASK_UI_STATE;
+}
+
+export function hasTaskPendingPermissionRequest(
+  workspaceState: WorkspaceZCodeUIState,
+  taskId: string,
+): boolean {
+  const taskUiState = getTaskUiState(workspaceState, taskId);
+  return (
+    taskUiState.permissionRequest != null ||
+    (taskUiState.pendingPermissionRequests?.length ?? 0) > 0
+  );
+}
+
+export function hasTaskPendingHumanInterventionRequest(
+  workspaceState: WorkspaceZCodeUIState,
+  taskId: string,
+): boolean {
+  const taskUiState = getTaskUiState(workspaceState, taskId);
+  return (
+    hasTaskPendingPermissionRequest(workspaceState, taskId) ||
+    taskUiState.elicitationRequest != null ||
+    (taskUiState.pendingElicitationRequests?.length ?? 0) > 0
+  );
 }
 
 export function getTaskMeta(

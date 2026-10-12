@@ -1,4 +1,4 @@
-// Modified by ZCode Feiyu contributors (2026).
+// Modified by ZCode Feiyu.
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectMemoryWorkspaceSummary } from "@zcode/services";
 import {

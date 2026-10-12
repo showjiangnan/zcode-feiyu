@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { AlarmClock, GiftIcon, XIcon } from "lucide-react";
 import type { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { formatCodingPlanQuotaResetCountdown } from "@/components/coding-plan-quota-reset/CodingPlanQuotaResetDialog.js";
@@ -5,29 +6,29 @@ import { Button } from "@/components/ui/button.js";
 
 export const CONTEXT_QUOTA_RESET_URGENT_SECONDS = 180;
 
-type ContextQuotaResetOpportunityReminderPhase = "initial" | "urgent";
+export type ContextQuotaResetOpportunityReminderPhase = "initial" | "urgent";
 
-interface ContextQuotaResetOpportunityDismissal {
+export interface ContextQuotaResetOpportunityDismissal {
   opportunityKey: string | null;
   initial: boolean;
   urgent: boolean;
 }
 
-interface ContextQuotaResetOpportunity {
+export interface ContextQuotaResetOpportunity {
   count: number;
   expiresAt: number | null;
   sourceKey: string | null;
   visible: boolean;
 }
 
-interface ContextQuotaResetOpportunityReminder {
+export interface ContextQuotaResetOpportunityReminder {
   count: number;
   opportunityKey: string;
   phase: ContextQuotaResetOpportunityReminderPhase;
   remainingSeconds: number;
 }
 
-function createContextQuotaResetOpportunityDismissalStore() {
+export function createContextQuotaResetOpportunityDismissalStore() {
   let snapshot: ContextQuotaResetOpportunityDismissal = {
     opportunityKey: null,
     initial: false,
@@ -62,7 +63,7 @@ function createContextQuotaResetOpportunityDismissalStore() {
 export const contextQuotaResetOpportunityDismissalStore =
   createContextQuotaResetOpportunityDismissalStore();
 
-type ContextQuotaResetOpportunityTriggerTone = "available" | "urgent";
+export type ContextQuotaResetOpportunityTriggerTone = "available" | "urgent";
 
 export function resolveContextQuotaResetOpportunityTriggerTone({
   now,

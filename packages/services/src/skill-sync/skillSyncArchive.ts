@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, posix, resolve } from "node:path";
 import { Readable } from "node:stream";
@@ -10,12 +11,12 @@ const gzipAsync = promisify(gzip);
 const TAR_BLOCK_SIZE = 512;
 const TAR_END_BLOCK_BYTES = TAR_BLOCK_SIZE * 2;
 
-interface SkillSyncArchiveEntry {
+export interface SkillSyncArchiveEntry {
   sourcePath: string;
   archivePath: string;
 }
 
-interface SkillSyncArchiveExtractOptions {
+export interface SkillSyncArchiveExtractOptions {
   maxExtractedBytes?: number;
 }
 

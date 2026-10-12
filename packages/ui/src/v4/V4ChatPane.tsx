@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ReactNode } from "react";
 import type {
   GitChangeSourceId,
@@ -30,12 +31,13 @@ import type {
   ConversationFindMatchState,
 } from "@/v4/legacyChatViewTypes.js";
 
-interface V4ChatPaneProps {
+export interface V4ChatPaneProps {
   workspacePath: string;
   workspaceIdentity?: string;
   /** Prompt 模板埋点当前仅覆盖 Desktop。 */
   isDesktop?: boolean;
   readOnly?: boolean;
+  compactForRemoteControl?: boolean;
   /** CLI session id；null = draft 首发。 */
   sessionId: string | null;
   /** 当前 workspace 主 pane 的打开入口，未提供时按 sidebar 统计。 */
@@ -87,6 +89,7 @@ export function V4ChatPane({
   workspaceIdentity,
   isDesktop = false,
   readOnly = false,
+  compactForRemoteControl = false,
   sessionId,
   openTrigger = "sidebar",
   provider,
@@ -134,6 +137,7 @@ export function V4ChatPane({
         workspacePath={workspacePath}
         workspaceIdentity={workspaceIdentity}
         isDesktop={isDesktop}
+        compactForRemoteControl={compactForRemoteControl}
         provider={provider}
         onSessionCreated={onSessionCreated}
         onSessionDeleted={onSessionDeleted}

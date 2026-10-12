@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { ITheme } from "@xterm/xterm";
 
 function readTerminalColor(style: CSSStyleDeclaration, name: string, fallback: string) {
@@ -77,7 +78,9 @@ function getTerminalTheme() {
   ) as ITheme;
 }
 
-function restrictInheritedTerminalTheme(profileTheme: ITheme | undefined): ITheme | undefined {
+export function restrictInheritedTerminalTheme(
+  profileTheme: ITheme | undefined,
+): ITheme | undefined {
   if (!profileTheme) {
     return undefined;
   }

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { GitCommitGraphCommit, GitCommitGraphRef, GitCommitGraphRefKind } from "@zcode/shared";
 import {
   createGitGraphLayoutModel,
@@ -35,7 +36,7 @@ export interface GitGraphLayoutEdge {
   truncated: boolean;
 }
 
-interface GitGraphLayoutLaneSegment {
+export interface GitGraphLayoutLaneSegment {
   id: string;
   hash: string;
   laneIndex: number;

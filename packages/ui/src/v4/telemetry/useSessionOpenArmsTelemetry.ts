@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { useLayoutEffect, useRef } from "react";
 import { createSessionTraceId } from "@zcode/shared";
 import type { ConversationOpenTiming, ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
@@ -99,7 +100,7 @@ function finishSessionOpen(
   );
 }
 
-interface UseSessionOpenArmsTelemetryParams {
+export interface UseSessionOpenArmsTelemetryParams {
   sessionId: string | null;
   snapshot: ConversationSnapshot | null;
   openTiming?: ConversationOpenTiming;

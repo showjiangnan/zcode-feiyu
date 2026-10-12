@@ -1,6 +1,7 @@
+// Modified by ZCode Feiyu.
 import { createContext, useContext } from "react";
 
-interface SessionPluginIconProjection {
+export interface SessionPluginIconProjection {
   sessionId: string;
   iconByPluginId: ReadonlyMap<string, string>;
 }

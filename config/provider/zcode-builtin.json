@@ -902,6 +902,50 @@
               "key": "bigmodel"
             }
           }
+        },
+        {
+          "providerId": "account:zai-highspeed-card",
+          "providerName": "Z.AI Highspeed card",
+          "config": {
+            "group": "zai-family",
+            "builtinModelIds": ["GLM-5.3", "GLM-5.3-Flash"],
+            "visibility": "hidden",
+            "access": {
+              "type": "zhipu-account",
+              "mode": "highspeed",
+              "accountType": "zai"
+            },
+            "api": {
+              "type": "anthropic-messages",
+              "baseUrl": "https://zcode.z.ai/api/v1/highspeed/anthropic"
+            },
+            "logo": {
+              "type": "builtin",
+              "key": "zai"
+            }
+          }
+        },
+        {
+          "providerId": "account:bigmodel-highspeed-card",
+          "providerName": "BigModel Highspeed card",
+          "config": {
+            "group": "bigmodel-family",
+            "builtinModelIds": ["GLM-5.3", "GLM-5.3-Flash"],
+            "visibility": "hidden",
+            "access": {
+              "type": "zhipu-account",
+              "mode": "highspeed",
+              "accountType": "bigmodel"
+            },
+            "api": {
+              "type": "anthropic-messages",
+              "baseUrl": "https://zcode.z.ai/api/v1/highspeed/anthropic"
+            },
+            "logo": {
+              "type": "builtin",
+              "key": "bigmodel"
+            }
+          }
         }
       ]
     },
@@ -4088,6 +4132,18 @@
           }
         },
         {
+          "modelMatch": ".*",
+          "baseUrlMatch": "https://zcode\\.z\\.ai/api/v1/highspeed/anthropic/?",
+          "config": {
+            "properties": {
+              "inputFormat": {
+                "supportsImage": true,
+                "supportsVideo": true
+              }
+            }
+          }
+        },
+        {
           "modelMatch": ".*claude-.*",
           "apiTypeMatch": "anthropic-messages",
           "baseUrlMatch": "(?:https://api\\.anthropic\\.com/v1)",
@@ -4170,6 +4226,17 @@
           "config": {
             "properties": {
               "supportsNativeWebSearch": false,
+              "supportsMidConversationSystem": true
+            }
+          }
+        },
+        {
+          "modelMatch": ".*",
+          "apiTypeMatch": "anthropic-messages",
+          "baseUrlMatch": "https://zcode\\.z\\.ai/api/v1/highspeed/anthropic/?",
+          "config": {
+            "properties": {
+              "supportsNativeWebSearch": true,
               "supportsMidConversationSystem": true
             }
           }
@@ -6245,6 +6312,34 @@
         },
         {
           "providerId": "account:bigmodel-offpeak-idle-plan",
+          "modelId": "GLM-5.3",
+          "config": {
+            "enabled": true
+          }
+        },
+        {
+          "providerId": "account:zai-highspeed-card",
+          "modelId": "GLM-5.3-Flash",
+          "config": {
+            "enabled": true
+          }
+        },
+        {
+          "providerId": "account:zai-highspeed-card",
+          "modelId": "GLM-5.3",
+          "config": {
+            "enabled": true
+          }
+        },
+        {
+          "providerId": "account:bigmodel-highspeed-card",
+          "modelId": "GLM-5.3-Flash",
+          "config": {
+            "enabled": true
+          }
+        },
+        {
+          "providerId": "account:bigmodel-highspeed-card",
           "modelId": "GLM-5.3",
           "config": {
             "enabled": true

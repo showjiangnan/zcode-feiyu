@@ -1,0 +1,131 @@
+/* Modified by ZCode Feiyu. */
+/* 档位专用主题 token；紫色仅表示 max/ultra，不借用费用或执行状态颜色。 */
+:root {
+  --color-reasoning-max: #8b5cf6;
+  --color-reasoning-max-start: #353de6;
+  --color-reasoning-max-middle: #c7b4ff;
+  --color-reasoning-sparkle: #fff;
+}
+.dark {
+  --color-reasoning-max: #b59aff;
+  --color-reasoning-max-start: #5745f1;
+  --color-reasoning-max-middle: #d0bdff;
+}
+.composer-thought-indicator[data-maximum="true"] {
+  color: var(--color-reasoning-max);
+}
+.composer-reasoning-rail {
+  position: absolute;
+  inset: 5px 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-hover);
+}
+.composer-reasoning-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--reasoning-progress);
+  background: var(--color-icon-blue);
+  border-radius: inherit;
+}
+.composer-reasoning-control[data-maximum="true"] .composer-reasoning-fill {
+  background: linear-gradient(
+    100deg,
+    var(--color-reasoning-max-start),
+    var(--color-reasoning-max-middle),
+    var(--color-reasoning-max)
+  );
+  background-size: 200% 100%;
+  animation: composer-reasoning-flow 4s ease-in-out infinite alternate;
+}
+.composer-reasoning-control[data-maximum="true"] .composer-reasoning-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, var(--color-reasoning-sparkle) 1px, transparent 1.5px),
+    radial-gradient(circle, var(--color-reasoning-sparkle) 0.5px, transparent 1px);
+  background-size:
+    29px 17px,
+    41px 13px;
+  background-position:
+    5px 4px,
+    16px 8px;
+  opacity: 0.6;
+  animation: composer-reasoning-sparkle 5s linear infinite;
+}
+.composer-reasoning-ticks {
+  position: absolute;
+  inset: 0 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.composer-reasoning-ticks span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-foreground-subtlest);
+  opacity: 0.5;
+}
+.composer-reasoning-slider {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding: 0;
+  appearance: none;
+  background: transparent !important;
+  cursor: pointer;
+  touch-action: pan-y;
+  border-radius: 999px;
+}
+.composer-reasoning-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  box-shadow: 0 1px 2px var(--color-border);
+}
+.composer-reasoning-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  box-shadow: 0 1px 2px var(--color-border);
+}
+.composer-reasoning-slider:focus-visible {
+  outline: 2px solid var(--color-icon-blue);
+  outline-offset: 2px;
+}
+.composer-reasoning-control[data-disabled="true"] {
+  opacity: 0.5;
+}
+.composer-reasoning-slider:disabled {
+  cursor: default;
+}
+@keyframes composer-reasoning-flow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+@keyframes composer-reasoning-sparkle {
+  to {
+    background-position:
+      34px 4px,
+      57px 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-reasoning-fill,
+  .composer-reasoning-fill::after {
+    animation: none !important;
+  }
+}
