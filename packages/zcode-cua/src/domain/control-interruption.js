@@ -8,6 +8,7 @@ const reasons = new Set([
   "foreground-changed",
   "locked",
   "input-cleanup-unconfirmed",
+  "stop-monitor-interrupted",
   "trusted-ui-stop",
   "model-stop",
   "qualification-lost",

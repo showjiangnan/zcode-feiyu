@@ -7,8 +7,8 @@
     "gcc-runtime": "GPL-3.0 with GCC Runtime Library Exception 3.1; this does not relicense ZCode as GPL"
   },
   "inputs": {
-    "scripts/native-search-tools-config.mjs": "22bfc60e1aed783300335d4b2f8815b5ce3ac6ccaf981af842a4ac09b488e08c",
-    "scripts/remote-native-search-tools-config.mjs": "fa1859c6403dc0a0b779fa85ea8bee7b56ed29815a55efca719488bfff1b3c8a"
+    "scripts/native-search-tools-config.mjs": "06e9d2b066a22f4bb731fb7356d786b52cf08e20dd6faf91e1a82b167d7462e8",
+    "scripts/remote-native-search-tools-config.mjs": "2ddb7054e219ea487596cbdcb83d5c7eac9f239cfe169cfac22e3759d95d7c35"
   },
   "archives": [
     {

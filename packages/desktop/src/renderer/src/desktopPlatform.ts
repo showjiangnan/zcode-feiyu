@@ -192,6 +192,14 @@ export function createDesktopPlatform(options: {
       window.zcode.getApplicationIcon?.(bundleId) ?? Promise.resolve(null),
     openInEditor: (editorId, path, editorOptions) =>
       window.zcode.openInEditor(editorId, path, editorOptions),
+    openComputerControlPreview: async () => {
+      await window.zcode.executeDesktopCommand(DesktopCommandIds.OpenComputerControlPreview);
+      return window.open(
+        "about:blank#zcode-computer-control-preview",
+        "zcode-computer-control-preview",
+        "popup,width=560,height=420",
+      );
+    },
     executeDesktopCommand: (command) => window.zcode.executeDesktopCommand(command),
     setApplicationLocale: (locale) => window.zcode.setApplicationLocale(locale),
     getSystemLocale: () =>

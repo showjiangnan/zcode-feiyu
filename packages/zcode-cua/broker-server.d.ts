@@ -135,7 +135,10 @@ export type ManagedCuaProductHelperHost = CuaProductHelperHost;
 
 export interface CuaHelperHost extends CuaProductHelperHost {
   setControlPresentation(presentation: ControlPresentation): void;
-  getControlSnapshot(workspaceKey?: string): import("./control-contract.js").ControlSnapshot;
+  getControlSnapshot(
+    workspaceKey?: string,
+    known?: { generation: string; frames: Record<string, number> },
+  ): import("./control-contract.js").ControlSnapshot;
   respondToControlApproval(
     id: string,
     allowed: boolean,

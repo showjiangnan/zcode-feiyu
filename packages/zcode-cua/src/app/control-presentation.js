@@ -19,7 +19,20 @@ export function setControlVisibility(owner, ids, subscriber = "default") {
     }
   owner.changed();
 }
-export function controlSnapshot(owner, workspaceKey) {
+export function controlSnapshot(owner, workspaceKey, known) {
+  if (
+    known &&
+    (typeof known.generation !== "string" ||
+      known.generation.length > 256 ||
+      !known.frames ||
+      typeof known.frames !== "object" ||
+      Array.isArray(known.frames) ||
+      Object.keys(known.frames).length > LIMITS.sources ||
+      Object.entries(known.frames).some(
+        ([id, sequence]) => id.length > 4096 || !Number.isSafeInteger(sequence) || sequence < 0,
+      ))
+  )
+    throw new CuaError("invalid_request", "Invalid preview frame baseline");
   const permitted = (context) => !workspaceKey || context.workspaceKey === workspaceKey;
   return {
     schemaVersion: 1,
@@ -29,6 +42,12 @@ export function controlSnapshot(owner, workspaceKey) {
       .filter((s) => permitted(s.context))
       .map(({ input: _input, context, ...s }) => ({
         ...s,
+        ...(s.image &&
+        known?.generation === owner.native.generation &&
+        Number.isSafeInteger(s.imageRevision) &&
+        known.frames?.[s.id] === s.imageRevision
+          ? { image: undefined, frameUnchanged: true }
+          : { frameUnchanged: false }),
         context,
         stopRevision: (
           owner.stopped.get(contextKey(context)) || owner.paused.get(contextKey(context))

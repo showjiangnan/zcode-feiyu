@@ -3,6 +3,10 @@ import { readdir, mkdir, writeFile, readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join, resolve } from "node:path";
+import {
+  resolveMacControlDistribution,
+  readMacControlSignature,
+} from "./computer-control-signing-policy.mjs";
 import { getTargetPlatform } from "./target-platform.mjs";
 import { verifyComputerControlVersions } from "./computer-control-versions.mjs";
 
@@ -25,6 +29,7 @@ function run(command, args) {
 }
 if (target.os === "darwin") {
   if (process.platform !== "darwin") throw new Error("Build the macOS control runtime on macOS");
+  const policy = resolveMacControlDistribution();
   const bundle = join(output, "ZCode Computer Use.app");
   const contents = join(bundle, "Contents");
   const executable = join(contents, "MacOS", "zcode-computer-control");
@@ -60,11 +65,17 @@ if (target.os === "darwin") {
   await run("/usr/bin/codesign", [
     "--force",
     "--sign",
-    process.env.CSC_NAME || "-",
+    policy.identity,
     "--options",
     "runtime",
     bundle,
   ]);
+  const signing = await readMacControlSignature(bundle);
+  if (
+    policy.mode === "developer-id" &&
+    (signing.mode !== "developer-id" || signing.teamId !== policy.teamId)
+  )
+    throw new Error("Computer Control signing team mismatch");
   const sha256 = createHash("sha256")
     .update(await readFile(executable))
     .digest("hex");
@@ -78,6 +89,7 @@ if (target.os === "darwin") {
         platform: "darwin",
         architectures: [target.arch],
         minimumOSVersion: "14.4",
+        signing,
         sha256,
       },
       null,

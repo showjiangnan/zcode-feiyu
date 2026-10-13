@@ -17,6 +17,7 @@ export const METHODS = new Set([
   "launch_app",
   "request_access",
   "get_state",
+  "read_text",
   "activate",
   "click",
   "move",
@@ -31,7 +32,13 @@ export const METHODS = new Set([
   "close_session",
   "close_target",
 ]);
-export const READ_ONLY = new Set(["capabilities", "list_apps", "list_windows", "get_state"]);
+export const READ_ONLY = new Set([
+  "capabilities",
+  "list_apps",
+  "list_windows",
+  "get_state",
+  "read_text",
+]);
 const selectors = [
   "appId",
   "app",
@@ -44,6 +51,7 @@ const selectors = [
   "elementId",
 ];
 const fields = {
+  activate: [],
   get_state: [
     "image",
     "text",
@@ -52,9 +60,11 @@ const fields = {
     "diff",
     "disableDiff",
     "baselineRevision",
+    "compact",
     "region",
     "autoLaunch",
   ],
+  read_text: ["offset", "length", "field"],
   click: ["x", "y", "button", "clickCount", "verifyImage"],
   move: ["x", "y", "verifyImage"],
   drag: ["path", "button", "verifyImage"],
@@ -115,7 +125,15 @@ export function validateCall(method, value) {
     if (!allowed.has(key)) throw new CuaError("invalid_request", `Unsupported input field: ${key}`);
   if (input.inputMode !== undefined && !["isolated", "foreground"].includes(input.inputMode))
     throw new CuaError("invalid_request", "inputMode must be isolated or foreground");
-  for (const key of ["image", "diff", "disableDiff", "autoLaunch", "verifyImage", "extended"])
+  for (const key of [
+    "image",
+    "diff",
+    "disableDiff",
+    "compact",
+    "autoLaunch",
+    "verifyImage",
+    "extended",
+  ])
     if (input[key] !== undefined && typeof input[key] !== "boolean")
       throw new CuaError("invalid_request", `${key} must be boolean`);
   if (method === "get_state" && input.text !== undefined && typeof input.text !== "boolean")
@@ -183,6 +201,8 @@ export function validateCall(method, value) {
     ["windowId", 1, Number.MAX_SAFE_INTEGER],
     ["maxNodes", 1, 5000],
     ["childOffset", 0, 100000],
+    ["offset", 0, 4_000_000],
+    ["length", 1, 65536],
     ["occurrence", 0, 100000],
     ["button", 0, 2],
   ])

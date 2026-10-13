@@ -23,6 +23,10 @@ import {
 } from "./scripts/desktop-product-identity.mjs";
 import { verifyStagedKoffi } from "./scripts/koffi-package-assets.mjs";
 import { bundledAgentExtraResources } from "./scripts/bundled-agent-resources.mjs";
+import {
+  resolveMacControlDistribution,
+  finishMacControlDistribution,
+} from "./scripts/computer-control-signing-policy.mjs";
 const ELECTRON_BUILDER_ARCH = {
   1: "x64",
   3: "arm64",
@@ -84,8 +88,11 @@ const nativeSearchReleasePlan = resolveNativeSearchReleasePlan({
 const rawMacSigningIdentity = process.env.APPLE_SIGNING_IDENTITY || process.env.CSC_NAME;
 const macSigningIdentity =
   rawMacSigningIdentity?.replace(/^Developer ID Application:\s*/, "") ?? null;
+const macControlDistribution =
+  targetPlatform.os === "darwin" ? resolveMacControlDistribution() : undefined;
 const shouldEnableMacSigning =
-  process.env.ZCODE_ENABLE_MAC_SIGN === "1" && Boolean(macSigningIdentity);
+  (process.env.ZCODE_ENABLE_MAC_SIGN === "1" || macControlDistribution?.mode === "developer-id") &&
+  Boolean(macSigningIdentity);
 const workspaceRoot = resolve(import.meta.dirname, "../..");
 const desktopPackageRoot = import.meta.dirname;
 const runtimeModuleLookupRoots = [
@@ -542,6 +549,19 @@ export default {
         ? resolve(context.appOutDir, framework.distMacOsAppName, "Contents", "Resources")
         : resolve(context.appOutDir, "resources");
     await stageElectronNotices(context.appOutDir, resources, framework.version);
+  },
+  afterSign: async (context) => {
+    if (
+      context.electronPlatformName !== "darwin" ||
+      macControlDistribution?.mode !== "developer-id"
+    )
+      return;
+    const appPath = join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`);
+    await finishMacControlDistribution(
+      appPath,
+      join(appPath, "Contents/Resources/cua-helper/ZCode Computer Use.app"),
+      macControlDistribution,
+    );
   },
   afterPack: async (context) => {
     const memoryResources =

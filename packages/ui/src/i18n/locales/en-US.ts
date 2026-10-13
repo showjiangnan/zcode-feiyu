@@ -105,6 +105,11 @@ const enUS: Record<string, string> = {
   "computerControl.resize": "Preview size",
   "computerControl.smaller": "Smaller preview",
   "computerControl.larger": "Larger preview",
+  "computerControl.detach": "Open detached preview",
+  "computerControl.dock": "Return preview to conversation",
+  "computerControl.stalled": "Frame updates stalled",
+  "computerControl.reason.stop-monitor-interrupted":
+    "Input monitoring was interrupted; paused until you continue locally",
   "computerControl.title": "Computer control",
   "computerControl.move": "Move preview",
   "computerControl.collapse": "Collapse preview",

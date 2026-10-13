@@ -10,6 +10,8 @@ struct WindowTarget {
   let title: String
   let ax: AXUIElement?
   var structureReason: String? = nil
+  var layer: Int = 0
+  var parentWindowId: CGWindowID? = nil
   var incarnation: String {
     accessibilityIncarnation(app)
   }
@@ -22,6 +24,8 @@ struct WindowTarget {
       "displayName": app.localizedName ?? "Application", "title": title, "frame": rectangle(frame),
       "processIncarnation": incarnation, "structureAvailable": ax != nil,
       "structureReason": structureReason ?? "available",
+      "windowFamily": ["kind": ax.map { axString($0, kAXRoleAttribute) } ?? (layer == 0 ? "window" : "transient"), "layer": layer,
+        "relation": parentWindowId == nil ? "verified-window-server-process" : "verified-accessibility-parent", "capture": "shareable-window-dependent", "parentWindowId": (parentWindowId.map { NSNumber(value: $0) } as Any?) ?? NSNull()],
     ]
   }
 }
@@ -108,6 +112,19 @@ extension NativeEngine {
     let lookup = try applicationAccessibilityWindows(app)
     let axWindows = lookup.windows
     let axFrames = axWindows.map { axFrame($0) }
+    let boundIds = Set(axWindows.compactMap { NativeWindowIdentity.window($0, pid: app.processIdentifier) })
+    let needsFamily = rows.contains { row in
+      guard row[kCGWindowOwnerPID as String] as? Int32 == app.processIdentifier,
+        let id = row[kCGWindowNumber as String] as? UInt32,
+        (row[kCGWindowAlpha as String] as? Double ?? 1) > 0 else { return false }
+      return (row[kCGWindowLayer as String] as? Int ?? 0) != 0 || !boundIds.contains(id)
+    }
+    // 每次核对真实窗口清单；没有额外窗口时不遍历菜单，不用时间缓存掩盖新模态。
+    let family = needsFamily ? accessibilityWindowFamily(app, windows: axWindows) : axWindows
+    var verifiedById: [CGWindowID: [AXUIElement]] = [:]
+    for element in family {
+      if let id = NativeWindowIdentity.window(element, pid: app.processIdentifier) { verifiedById[id, default: []].append(element) }
+    }
     let processFrames: [CGRect] = rows.compactMap { row in
       guard (row[kCGWindowOwnerPID as String] as? Int32) == app.processIdentifier,
         (row[kCGWindowLayer as String] as? Int ?? 0) == 0,
@@ -120,18 +137,28 @@ extension NativeEngine {
         let id = row[kCGWindowNumber as String] as? UInt32,
         let bounds = row[kCGWindowBounds as String] as? [String: Double],
         let frame = CGRect(dictionaryRepresentation: bounds as CFDictionary), frame.width > 1,
-        frame.height > 1,
-        (row[kCGWindowLayer as String] as? Int ?? 0) == 0
+        frame.height > 1
       else { return nil }
       let title = row[kCGWindowName as String] as? String ?? ""
+      let layer = row[kCGWindowLayer as String] as? Int ?? 0
+      let verified = verifiedById[id] ?? []
+      let primary = verified.filter { axString($0, kAXRoleAttribute) == "AXWindow" }
+      let exact = primary.count == 1 ? primary.first : verified.count == 1 ? verified.first : nil
       let binding = uniqueAccessibilityWindowIndex(
         frame: frame, processWindowFrames: processFrames, accessibilityFrames: axFrames)
-      let ax = binding.map { axWindows[$0] }
+      // 非普通层的 popup/menu 只能通过原生 AX→WindowServer 身份关联进入目录。
+      let ax = exact ?? (layer == 0 ? binding.map { axWindows[$0] } : nil)
+      let transientLayers = [CGWindowLevelKey.floatingWindow, .modalPanelWindow, .popUpMenuWindow, .tornOffMenuWindow, .utilityWindow, .statusWindow].map { Int(CGWindowLevelForKey($0)) }
+      // 无 AX 关联的菜单只接受 WindowServer 已验证 PID、已知系统层级及实际可见窗口。
+      if layer != 0 && ax == nil && (!transientLayers.contains(layer) || row[kCGWindowIsOnscreen as String] as? Bool != true) { return nil }
+      var parentId: CGWindowID?
+      if let ax, let parent = axValue(ax, kAXParentAttribute), CFGetTypeID(parent) == AXUIElementGetTypeID(),
+        let candidate = NativeWindowIdentity.window(parent as! AXUIElement, pid: app.processIdentifier), candidate != id { parentId = candidate }
       guard ax != nil || row[kCGWindowIsOnscreen as String] as? Bool == true else { return nil }
       return WindowTarget(
         app: app, id: id, frame: frame,
         title: ax.map { axString($0, kAXTitleAttribute) }.flatMap { $0.isEmpty ? nil : $0 } ?? title,
-        ax: ax, structureReason: lookup.reason ?? (ax == nil ? "ax-window-unmatched-or-ambiguous" : nil))
+        ax: ax, structureReason: lookup.reason ?? (ax == nil ? "ax-window-unmatched-or-ambiguous" : nil), layer: layer, parentWindowId: parentId)
     }
   }
   func target(_ input: [String: Any]) throws -> WindowTarget {

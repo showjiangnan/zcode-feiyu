@@ -26,6 +26,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { showAboutDialog } from "./about.js";
 import { checkForUpdateMenuClick } from "./autoUpdater.js";
+import { prepareComputerControlPreviewWindow } from "./computerControlPreviewWindow.js";
 import { readComputerControlUiCredential } from "./computerControlUiCredential.js";
 import { resolveCuaOsSupport } from "./cuaOsSupport.js";
 import { syncWindowControlsOverlayForZoomLevel } from "./desktopWindowButtonPosition.js";
@@ -694,6 +695,11 @@ export async function executeDesktopCommand(options: {
         arch: process.arch,
         credential: readComputerControlUiCredential(options.senderWindow),
       };
+    case DesktopCommandIds.OpenComputerControlPreview:
+      if (!options.senderWindow || !readComputerControlUiCredential(options.senderWindow))
+        throw new Error("Local desktop preview requires an attached Host");
+      prepareComputerControlPreviewWindow(options.senderWindow);
+      return;
     case DesktopCommandIds.GetCuaOsSupport:
       return resolveCuaOsSupport();
   }

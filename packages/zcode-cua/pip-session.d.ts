@@ -31,4 +31,4 @@ export type PipSessionEvent = (
       sequenceNumber?: number;
       eventId?: string;
     }
-) & { workspaceKey?: string };
+) & { workspaceKey?: string; workspacePath?: string; workspaceIdentity?: string };

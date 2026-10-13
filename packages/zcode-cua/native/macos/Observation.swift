@@ -8,8 +8,8 @@ struct ObservedNode {
   let element: AXUIElement
   let path: String
   let role: String
-  let label: String
-  let value: String
+  let labelFingerprint: String
+  let valueFingerprint: String
   let json: [String: Any]
 }
 struct Observation {
@@ -23,6 +23,7 @@ struct Observation {
   let imageBounds: CGRect
   let fingerprint: String
   let flat: [[String: Any]]
+  let scope: String
 }
 struct AccessibilitySample {
   let nodes: [String: ObservedNode]
@@ -30,69 +31,60 @@ struct AccessibilitySample {
   let continuations: [[String: Any]]
   let truncated: Bool
 }
-func sampleAccessibility(_ root: AXUIElement, _ id: String, _ operation: Operation, maximum: Int)
+func sampleAccessibility(_ root: AXUIElement, _ id: String, _ operation: Operation, maximum: Int, rootPath: String = "0", childOffset: Int = 0, previous: Observation? = nil)
   throws -> AccessibilitySample
 {
-  var nodes: [String: ObservedNode] = [:]
-  var flat: [[String: Any]] = []
-  var visited: [AXUIElement] = []
-  var continuation: [[String: Any]] = []
-  var stack: [(AXUIElement, String, Int)] = [(root, "0", 0)]
-  while let (element, path, depth) = stack.popLast() {
-    try operation.check()
-    if flat.count >= maximum {
-      continuation.append(["rootPath": path, "offset": 0])
-      break
-    }
-    if visited.contains(where: { CFEqual($0, element) }) { continue }
-    visited.append(element)
+  let oldByPath = Dictionary(uniqueKeysWithValues: (previous?.nodes ?? [:]).values.map { ($0.path, $0) })
+  var fingerprints: [String: (label: String, value: String)] = [:]
+  let tree = try sampleElementTree(root: root, rootPath: rootPath, childOffset: childOffset, maximum: maximum,
+    check: { try operation.check() }, equal: { CFEqual($0, $1) }, describe: { element, path in
     AXUIElementSetMessagingTimeout(element, 0.15)
-    let role = axString(element, kAXRoleAttribute)
+    let attributes = try observationAttributes(element)
+    let role = attributes[kAXRoleAttribute] as! String
     let label =
       [
-        axString(element, kAXTitleAttribute), axString(element, kAXDescriptionAttribute),
-        axString(element, kAXHelpAttribute),
+        attributes[kAXTitleAttribute] as? String ?? "", attributes[kAXDescriptionAttribute] as? String ?? "",
+        attributes[kAXHelpAttribute] as? String ?? "",
       ].first { !$0.isEmpty } ?? ""
-    let secure = axString(element, kAXSubroleAttribute) == kAXSecureTextFieldSubrole
-    let value = secure ? "[protected]" : axString(element, kAXValueAttribute)
-    let key = "\(id):\(path)"
+    let secure = attributes[kAXSubroleAttribute] as? String == kAXSecureTextFieldSubrole
+    let value = secure ? "[protected]" : try checkedAccessibilityText(element, kAXValueAttribute, optional: true)
+    let labelFingerprint = textFingerprint(label), valueFingerprint = textFingerprint(value)
+    fingerprints[path] = (labelFingerprint, valueFingerprint)
+    // 只有同路径、同原生对象才保留引用；复用路径的新控件必须获得新 ID。
+    let oldNode = oldByPath[path]
+    let key = oldNode.map { CFEqual($0.element, element) && $0.role == role ? $0.json["elementId"] as? String : nil } ?? nil
+    let elementId = key ?? "\(id):\(path)"
     var names: CFArray?
     AXUIElementCopyActionNames(element, &names)
     var json: [String: Any] = [
-      "elementId": key, "path": path, "role": role, "label": String(label.prefix(2048)),
-      "value": String(value.prefix(4096)), "secure": secure,
-      "enabled": (axValue(element, kAXEnabledAttribute) as? Bool) ?? true,
-      "focused": (axValue(element, kAXFocusedAttribute) as? Bool) ?? false,
+      "elementId": elementId, "path": path, "role": role, "label": textSlice(label, offset: 0, length: 2048).text,
+      "value": textSlice(value, offset: 0, length: 4096).text, "secure": secure,
+      "labelTruncated": label.utf16.count > 2048, "valueTruncated": !secure && value.utf16.count > 4096,
+      "valueLength": secure ? 0 : value.utf16.count, "textUnit": "utf16",
+      "textRevision": oldNode?.labelFingerprint == labelFingerprint && oldNode?.valueFingerprint == valueFingerprint ? oldNode?.json["textRevision"] as? String ?? UUID().uuidString : UUID().uuidString,
+      "enabled": (attributes[kAXEnabledAttribute] as? Bool) ?? true,
+      "focused": (attributes[kAXFocusedAttribute] as? Bool) ?? false,
       "actions": names as? [String] ?? [],
     ]
     if let frame = axFrame(element) { json["frame"] = rectangle(frame) }
-    nodes[key] = ObservedNode(
-      element: element, path: path, role: role, label: label, value: value, json: json)
-    flat.append(json)
+    return json
+  }, children: { element, offset, remaining in
     var count: CFIndex = 0
-    guard
-      AXUIElementGetAttributeValueCount(element, kAXChildrenAttribute as CFString, &count)
-        == .success, count > 0
-    else { continue }
-    let remaining = max(0, maximum - flat.count - stack.count)
-    let amount = min(count, remaining)
-    if depth >= 128 || amount == 0 {
-      continuation.append(["elementId": key, "offset": 0])
-      continue
-    }
+    guard AXUIElementGetAttributeValueCount(element, kAXChildrenAttribute as CFString, &count) == .success, count > 0 else { return (0, []) }
+    guard offset < count else { throw ControlError("stale_element", "Continuation children changed") }
+    let amount = min(count - offset, remaining)
+    if amount == 0 { return (count, []) }
     var values: CFArray?
-    if AXUIElementCopyAttributeValues(element, kAXChildrenAttribute as CFString, 0, amount, &values)
-      == .success, let children = values as? [AXUIElement]
-    {
-      if count > amount { continuation.append(["elementId": key, "offset": amount]) }
-      for (index, child) in children.enumerated().reversed() {
-        stack.append((child, "\(path).\(index)", depth + 1))
-      }
-    }
-
-  }
-  return AccessibilitySample(
-    nodes: nodes, flat: flat, continuations: continuation, truncated: !continuation.isEmpty)
+    guard AXUIElementCopyAttributeValues(element, kAXChildrenAttribute as CFString, offset, amount, &values) == .success,
+      let children = values as? [AXUIElement] else { throw ControlError("accessibility-busy", "Children could not be sampled consistently") }
+    return (count, children)
+  })
+  let nodes = Dictionary(uniqueKeysWithValues: tree.records.map { record in
+    let row = record.row
+    return (row["elementId"] as! String, ObservedNode(element: record.element, path: record.path,
+      role: row["role"] as! String, labelFingerprint: fingerprints[record.path]!.label, valueFingerprint: fingerprints[record.path]!.value, json: row))
+  })
+  return AccessibilitySample(nodes: nodes, flat: tree.records.map { $0.row }, continuations: tree.continuations, truncated: !tree.continuations.isEmpty)
 }
 extension NativeEngine {
   func observe(
@@ -108,8 +100,16 @@ extension NativeEngine {
     let textRequested = !preview && (input["text"] as? Bool ?? true)
     let started = Date().timeIntervalSince1970
     var body = window.json
+    // 预览只是图片投影；能力由 Agent 的正式观察读取，不能每帧重复查询焦点树。
+    if !preview { body["inputCapabilities"] = inputCapabilities(window) }
     var channels: [String: Any] = [:]
     var sample: AccessibilitySample?
+    var rootPath = "0"
+    let rawOffset = try finite(input["childOffset"], "childOffset", default: 0)
+    guard rawOffset >= 0, rawOffset <= 100000, rawOffset.rounded() == rawOffset else { throw ControlError("invalid_request", "Invalid childOffset") }
+    let childOffset = Int(rawOffset)
+    let targeted = input["elementId"] != nil || input["childOffset"] != nil
+    var scope = "0:0"
     if textRequested {
       if freshAccessibility, AXIsProcessTrusted(), let ax = window.ax {
         let contentReady = try await waitForAccessibilityContent(window, operation)
@@ -125,32 +125,30 @@ extension NativeEngine {
             throw ControlError("stale_element", "Targeted element has expired; read a fresh state")
           }
           root = node.element
+          rootPath = node.path
         }
-        if let offsetValue = input["childOffset"] {
-          let offset = try finite(offsetValue, "childOffset")
-          guard offset >= 0, offset.rounded() == offset else {
-            throw ControlError("invalid_request", "Invalid childOffset")
-          }
-          var children: CFArray?
+        if input["childOffset"] != nil {
           var count: CFIndex = 0
-          guard
-            AXUIElementGetAttributeValueCount(root, kAXChildrenAttribute as CFString, &count)
-              == .success, offset < Double(count),
-            AXUIElementCopyAttributeValues(
-              root, kAXChildrenAttribute as CFString, Int(offset), 1, &children) == .success,
-            let child = (children as? [AXUIElement])?.first
-          else { throw ControlError("stale_element", "Continuation children changed") }
-          root = child
+          guard childOffset >= 0,
+            AXUIElementGetAttributeValueCount(root, kAXChildrenAttribute as CFString, &count) == .success,
+            childOffset < count else { throw ControlError("stale_element", "Continuation children changed") }
         }
-        sample = try await Task.detached(priority: .userInitiated) {
-          try sampleAccessibility(root, id, operation, maximum: Int(maximum))
-        }.value
+        scope = "\(rootPath):\(childOffset)"
+        do {
+          sample = try await Task.detached(priority: .userInitiated) {
+            try sampleAccessibility(root, id, operation, maximum: Int(maximum), rootPath: rootPath, childOffset: childOffset, previous: previous)
+          }.value
+        } catch let error as ControlError where ["accessibility_busy", "accessibility-busy", "structure_unavailable", "text_limit", "text_unsupported"].contains(error.code) {
+          // AX 临时繁忙不得伪造空控件，也不能丢掉仍然合法的窗口截图。
+          channels["text"] = ["status": error.code.hasPrefix("accessibility") ? "busy" : "unsupported", "reason": error.code]
+          body["structureReason"] = error.code
+        }
         var textChannel: [String: Any] = ["status": contentReady ? "available" : "busy",
           "sampledAt": Date().timeIntervalSince1970]
         if !contentReady { textChannel["reason"] = "accessibility-initializing" }
-        channels["text"] = textChannel
+        if channels["text"] == nil { channels["text"] = textChannel }
         // 初始窗口描述采样早于内容就绪；不能把成功观察继续标成 initializing。
-        if contentReady { body["structureReason"] = "available" }
+        if contentReady && sample != nil { body["structureReason"] = "available" }
       } else {
         channels["text"] = [
           "status": ["accessibility-busy", "accessibility-initializing"].contains(window.structureReason ?? "") ? "busy"
@@ -192,6 +190,7 @@ extension NativeEngine {
           }
         }
       } else {
+        if preview { try await closePreviewCaptures(operation.key) }
         channels["image"] = [
           "status": "permission-denied", "reason": "Screen Recording permission is required",
         ]
@@ -199,7 +198,7 @@ extension NativeEngine {
     }
     try operation.check()
     guard sessionActive, !stopped.contains(operation.key),
-      let current = try targets(window.app).first(where: { $0.id == window.id }),
+      let current = preview ? try previewTarget(window.json) : try targets(window.app).first(where: { $0.id == window.id }),
       current.identity == window.identity, current.frame.equalTo(window.frame)
     else {
       throw ControlError(
@@ -209,21 +208,23 @@ extension NativeEngine {
     body["observationId"] = id
     body["revision"] = id
     body["capturedAt"] = Date().timeIntervalSince1970
+    if preview && imageData != nil, let capture = previewCaptures[key] { body["capturedAt"] = capture.capturedAt }
     body["sampleStartedAt"] = started
     body["consistency"] = "bounded-sampling"
     body["channels"] = channels
     if let sample {
       body["nodes"] = sample.flat
+      if targeted { body["scope"] = ["rootPath": rootPath, "childOffset": childOffset] }
       body["truncated"] = sample.truncated
       body["continuation"] = sample.continuations
       if input["disableDiff"] as? Bool != true, input["diff"] as? Bool == true, let previous,
-        input["baselineRevision"] as? String == previous.id
+        input["baselineRevision"] as? String == previous.id, previous.scope == scope, !previous.flat.isEmpty
       {
         let old = Dictionary(
           uniqueKeysWithValues: previous.flat.compactMap { row -> (String, String)? in
             guard let path = row["path"] as? String else { return nil }
-            var stable = row
-            stable.removeValue(forKey: "elementId")
+            let stable = row
+
             return (
               path,
               String(
@@ -232,8 +233,8 @@ extension NativeEngine {
             )
           })
         let changes = sample.flat.filter { row in
-          var stable = row
-          stable.removeValue(forKey: "elementId")
+          let stable = row
+
           let encoded =
             String(
               data: (try? JSONSerialization.data(withJSONObject: stable, options: .sortedKeys))
@@ -247,6 +248,7 @@ extension NativeEngine {
           },
         ]
         body["fullReset"] = false
+        body["compact"] = input["compact"] as? Bool == true
       } else {
         body["fullReset"] = true
       }
@@ -272,7 +274,7 @@ extension NativeEngine {
         id: id, target: window, nodes: sample?.nodes ?? [:], imageId: imageId, imageWidth: width,
         imageHeight: height, changeSequence: sampleSequence,
         imageBounds: imageRegion(window, record(input["region"])), fingerprint: fingerprint,
-        flat: sample?.flat ?? [])
+        flat: sample?.flat ?? [], scope: scope)
     }
     return body
   }
@@ -297,16 +299,24 @@ extension NativeEngine {
     let config = SCStreamConfiguration()
     config.colorSpaceName = CGColorSpace.sRGB
     let maxDimension = preview ? 1280.0 : 2000.0
-    let scale = min(2.0, maxDimension / max(window.frame.width, window.frame.height))
+    let scale = min(preview ? 1.0 : 2.0, maxDimension / max(window.frame.width, window.frame.height))
     config.width = max(1, Int(window.frame.width * scale))
     config.height = max(1, Int(window.frame.height * scale))
     // 原图只包含目标内容；系统光标会污染背景图，未缩放内容则使 Retina 像素坐标失真。
     config.showsCursor = false
     config.scalesToFit = true
     config.ignoreShadowsSingleWindow = true
+    // 单目标截图不得默认合成窗口家族，否则浮动窗图像与输入坐标会失配。
+    config.includeChildWindows = false
     let filter = SCContentFilter(desktopIndependentWindow: window)
-    let image = try await SCScreenshotManager.captureImage(
-      contentFilter: filter, configuration: config)
+    // SCS 内部初始化 SCStream/CoreAudio 可能同步阻塞；不能占住停止监控的主线程。
+    // 后台完成后仍校验同一 operation，迟到画面不能恢复已取消资格。
+    let image: CGImage
+    if preview { image = try await previewImage(target, operation: operation, filter: filter, configuration: config) }
+    else { image = try await Task.detached(priority: .userInitiated) {
+        try operation.check()
+        return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+      }.value }
     try operation.check()
     guard CGPreflightScreenCaptureAccess(), sessionActive else {
       throw ControlError("capture_revoked", "Screen capture permission or desktop state changed")

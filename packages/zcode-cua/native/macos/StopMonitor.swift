@@ -39,42 +39,34 @@ extension NativeEngine {
       | (1 << CGEventType.rightMouseDown.rawValue)
       | (1 << CGEventType.mouseMoved.rawValue) | (1 << CGEventType.leftMouseDragged.rawValue)
       | (1 << CGEventType.otherMouseDown.rawValue)
-    let pointer = Unmanaged.passUnretained(self).toOpaque()
-    guard
-      let tap = CGEvent.tapCreate(
-        tap: .cgSessionEventTap, place: .headInsertEventTap, options: .listenOnly,
-        eventsOfInterest: CGEventMask(mask),
-        callback: { _, type, event, pointer in
-          guard let pointer else { return Unmanaged.passUnretained(event) }
-          let engine = Unmanaged<NativeEngine>.fromOpaque(pointer).takeUnretainedValue()
-          if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let tap = engine.eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
-            return Unmanaged.passUnretained(event)
-          }
-          if event.getIntegerValueField(.eventSourceUserData) == nativeEventTag {
-            if type != .keyDown { engine.taggedGlobalPointerEvents += 1 }
-            return Unmanaged.passUnretained(event)
-          }
-          if type == .mouseMoved || type == .leftMouseDragged { return Unmanaged.passUnretained(event) }
-          if engine.device.owner == nil { return Unmanaged.passUnretained(event) }
-          let targeted = engine.currentTarget.map { engine.humanEventTargetsWindow(event, type, $0) } ?? false
-          let origin = event.getIntegerValueField(.eventSourceUnixProcessID) > 0 ? "external-input" : "system-or-unclassified"
-          let decision = inputIntervention(ownEvent: false, hasOwner: true, targetsWindow: targeted,
-            escape: type == .keyDown && event.getIntegerValueField(.keyboardEventKeycode) == 53,
-            foregroundRoute: engine.currentInputRoute == .foreground)
-          switch decision {
-          case .stop: engine.stopCurrentControl(reason: "target-escape", origin: origin)
-          case .pause:
-            engine.pauseCurrentControl(reason: targeted ? (type == .keyDown ? "target-keyboard" : "target-pointer") : "foreground-changed", origin: origin)
-          case .ignore: break
-          }
-          return Unmanaged.passUnretained(event)
-        }, userInfo: pointer)
-    else { return }
-    eventTap = tap
-    eventSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-    if let source = eventSource { CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes) }
-    CGEvent.tapEnable(tap: tap, enable: true)
+    let monitor = ManagedEventTap { [weak self] type, event in
+      Task(priority: .high) { @MainActor in self?.receiveMonitoredInput(type, event) }
+    }
+    monitor.start(mask: CGEventMask(mask))
+    managedEventTap = monitor
+    eventTap = monitor.tap
+  }
+  func receiveMonitoredInput(_ type: CGEventType, _ value: CGEvent?) {
+    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+      pauseCurrentControl(reason: "stop-monitor-interrupted", origin: "native")
+      return
+    }
+    guard let event = value else { pauseCurrentControl(reason: "stop-monitor-interrupted", origin: "native"); return }
+    if event.getIntegerValueField(.eventSourceUserData) == nativeEventTag {
+      if type != .keyDown { taggedGlobalPointerEvents += 1 }
+      return
+    }
+    if type == .mouseMoved || type == .leftMouseDragged || device.owner == nil { return }
+    let targeted = currentTarget.map { humanEventTargetsWindow(event, type, $0) } ?? false
+    let origin = event.getIntegerValueField(.eventSourceUnixProcessID) > 0 ? "external-input" : "system-or-unclassified"
+    let decision = inputIntervention(ownEvent: false, hasOwner: true, targetsWindow: targeted,
+      escape: type == .keyDown && event.getIntegerValueField(.keyboardEventKeycode) == 53,
+      foregroundRoute: currentInputRoute == .foreground)
+    switch decision {
+    case .stop: stopCurrentControl(reason: "target-escape", origin: origin)
+    case .pause: pauseCurrentControl(reason: targeted ? (type == .keyDown ? "target-keyboard" : "target-pointer") : "foreground-changed", origin: origin)
+    case .ignore: break
+    }
   }
   func humanEventTargetsWindow(_ event: CGEvent, _ type: CGEventType, _ target: WindowTarget)
     -> Bool

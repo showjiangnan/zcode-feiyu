@@ -129,3 +129,15 @@ void Engine::isolatedAction(const std::string &method, const Target &target, con
     } else if (method != "move") throw Fault("unknown_method", "Unknown isolated input action");
   }
 }
+
+Json Engine::inputCapabilities(const Target &target) {
+  Json keyboard = {{"status", "unavailable"}, {"reason", "no-verified-standard-text-focus"}};
+  try {
+    auto child = textTarget(target);
+    DWORD pid = 0; GetWindowThreadProcessId(child, &pid);
+    if (pid == target.pid) keyboard = {{"status", "conditional"}, {"reason", "standard-edit-control-only"}, {"shortcuts", false}, {"scanCodes", false}};
+  } catch (const Fault &error) { keyboard["reason"] = error.code == "manual_input_required" ? "protected-input" : "no-verified-standard-text-focus"; }
+  return {{"schemaVersion", 1}, {"isolated", {{"mouse", {{"status", "conditional"}, {"reason", "client-area-window-messages-only"}, {"nonClient", false}}}, {"keyboard", keyboard}}},
+    {"semantic", {{"status", automation ? "element-dependent" : "unavailable"}}},
+    {"foreground", {{"status", interactiveDesktop() ? "available" : "unavailable"}, {"requiresExplicitActivation", true}}}};
+}

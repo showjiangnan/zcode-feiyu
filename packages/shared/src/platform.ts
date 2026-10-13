@@ -631,6 +631,7 @@ export const DesktopCommandIds = {
   ClearCodingPlanWebviewStorage: "clearCodingPlanWebviewStorage",
   GetCuaOsSupport: "getCuaOsSupport",
   GetComputerControlUi: "getComputerControlUi",
+  OpenComputerControlPreview: "openComputerControlPreview",
 } as const;
 
 export type DesktopCommandId = (typeof DesktopCommandIds)[keyof typeof DesktopCommandIds];
@@ -659,6 +660,8 @@ export type CuaOsSupport =
  * 业务服务（文件、终端、凭据等）走 IServiceAccessor 的 RPC 通道。
  */
 export interface IPlatformService {
+  /** 本地展示子窗，复用当前 Renderer 的状态，不创建 Host。Web 不提供。 */
+  openComputerControlPreview?(): Promise<unknown>;
   /** 设备级远程服务；Web 不提供根凭据配置面。 */
   rcs?: import("./rcs.js").RcsPlatform;
   /** 受 Host 授权的远程能力，不改变 Web 平台身份。 */

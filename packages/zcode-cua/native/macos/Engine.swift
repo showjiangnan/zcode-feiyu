@@ -15,6 +15,7 @@ import ScreenCaptureKit
   var focusBlocked = Set<String>()
   var sessionActive = true
   var eventTap: CFMachPort?
+  var managedEventTap: ManagedEventTap?
   var eventSource: CFRunLoopSource?
   var observers: [NSObjectProtocol] = []
   var activeOperation: Operation?
@@ -33,6 +34,10 @@ import ScreenCaptureKit
   var lastChange: UInt64 = 0
   var onControlEvent: (([String: Any]) -> Void)?
   var shareableContentTask: Task<SCShareableContent, Error>?
+  var previewCaptures: [String: PreviewCapture] = [:]
+  var previewClosing: [ObjectIdentifier: Int] = [:]
+  var previewVisibleKeys: Set<String>?
+  var previewVisibilityRevision = -1.0
   init(_ cancellations: CancellationRegistry) { self.cancellations = cancellations }
   func permissionStatus() -> [String: Any] {
     let ax = AXIsProcessTrusted()
@@ -78,7 +83,7 @@ import ScreenCaptureKit
       try device.acquire(operation.key, requireNeutral: requireNeutral)
       controlContext = operation.context
       installStopMonitor()
-      guard eventTap != nil else {
+      guard let eventTap, CGEvent.tapIsEnabled(tap: eventTap) else {
         device.release(operation.key)
         throw ControlError("stop_monitor_unavailable", "Native user-stop monitoring is unavailable")
       }
@@ -106,12 +111,14 @@ import ScreenCaptureKit
         "bundleId": "dev.zcode.cua-helper", "protocolVersion": protocolVersion,
         "minimumOSVersion": "14.4", "structure": AXIsProcessTrusted(),
         "capture": CGPreflightScreenCaptureAccess(), "input": AXIsProcessTrusted(),
-        "backgroundInput": AXIsProcessTrusted() && WindowEventCoordinates.setter != nil, "backgroundInputScope": "conditional-per-operation", "nativeStop": eventTap != nil,
+        "backgroundInput": AXIsProcessTrusted() && WindowEventCoordinates.setter != nil, "backgroundInputScope": "conditional-per-operation", "nativeStop": eventTap.map { CGEvent.tapIsEnabled(tap: $0) } ?? false,
         "inputRoutes": ["isolated": "process-targeted", "foreground": "system-events"],
         "nativeFeedback": ["windowIndicators": true, "agentPointer": true],
         "interactiveDesktop": sessionActive,
+        "nativePreviewStreams": previewCaptures.count + previewClosing.count,
       ]
     case "presentation": return ["status": "configured"]
+    case "preview_visibility": return try await setPreviewVisibility(params)
     case "feedback_state":
       try admit(operation, params)
       var value = feedback.state(operation.key)
@@ -125,6 +132,10 @@ import ScreenCaptureKit
     case "request_screen_recording": return ["ok": CGRequestScreenCaptureAccess()]
     case "list_apps": return listApplications()
     case "resolve_application": return try descriptor(input)
+    case "target_status":
+      guard params["approved"] as? Bool == true else { throw ControlError("not_authorized", "Registered target probe required") }
+      try operation.check()
+      return try targetStatus(input, contextKey: operation.key)
     case "launch_app":
       try admit(operation, params, mutation: true)
       restoreSyntheticFocus()
@@ -142,13 +153,23 @@ import ScreenCaptureKit
       return try target(input).json
     case "get_state", "preview":
       try admit(operation, params)
-      var window = try target(input)
+      var window: WindowTarget
+      if method == "preview" {
+        do { window = try previewTarget(input) }
+        catch {
+          if let id = input["targetId"] as? String, let capture = previewCaptures.removeValue(forKey: "\(operation.key):\(id)") { try await finishPreviewCapture(capture) }
+          throw error
+        }
+      } else { window = try target(input) }
       if method == "get_state", input["text"] as? Bool != false {
         window = try await waitForAccessibilityWindowBinding(window, operation)
       }
       let state = try await observe(window, input, operation, preview: method == "preview")
       if method == "get_state" { try feedback.bind(window, operation, phase: focusBlocked.contains(operation.key) ? .paused : activeOperation?.key == operation.key && currentTarget?.identity == window.identity ? .active : .observing) }
       return state
+    case "read_text":
+      try admit(operation, params)
+      return try readText(target(input), input, operation)
     case "stop":
       feedback.remove(operation.key)
       stopped.insert(operation.key)
@@ -162,6 +183,7 @@ import ScreenCaptureKit
       device.release(operation.key)
       observations = observations.filter { !$0.key.hasPrefix(operation.key) }
       pruneChangeObservers()
+      try await closePreviewCaptures(operation.key)
       return ["status": "stopped"]
     case "resume":
       guard params["approved"] as? Bool == true else {
@@ -177,9 +199,11 @@ import ScreenCaptureKit
       pruneChangeObservers()
       return ["status": "ready"]
     case "close_target":
-      let window = try target(input)
-      feedback.remove(operation.key, targetId: window.identity)
-      observations.removeValue(forKey: "\(operation.key):\(window.identity)")
+      // 已关闭窗口不能重新 resolve；清理只作用于该 context 下登记的旧 identity。
+      let identity = try (input["targetId"] as? String) ?? target(input).identity
+      if let capture = previewCaptures.removeValue(forKey: "\(operation.key):\(identity)") { try await finishPreviewCapture(capture) }
+      feedback.remove(operation.key, targetId: identity)
+      observations.removeValue(forKey: "\(operation.key):\(identity)")
       if !observations.keys.contains(where: { $0.hasPrefix(operation.key) }) {
         if device.owner == operation.key {
           guard cleanupInput() else {
@@ -206,6 +230,7 @@ import ScreenCaptureKit
         stopped.remove(operation.key)
         focusBlocked.remove(operation.key)
       }
+      try await closePreviewCaptures(operation.key)
       return ["status": "closed"]
     case "click", "move", "drag", "scroll", "press_key", "type_text", "set_value",
       "secondary_action", "select_text", "activate":
@@ -245,7 +270,9 @@ import ScreenCaptureKit
     default: throw ControlError("unknown_method", "Unknown native computer method")
     }
   }
-  func shutdown() {
+  func shutdown() async {
+    managedEventTap?.close()
+    managedEventTap = nil
     feedback.dispose()
     for observer in changeObservers.values {
       CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes)
@@ -267,5 +294,6 @@ import ScreenCaptureKit
     eventTap = nil
     if let source = eventSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
     eventSource = nil
+    try? await closePreviewCaptures()
   }
 }

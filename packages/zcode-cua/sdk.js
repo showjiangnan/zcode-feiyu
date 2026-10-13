@@ -1,5 +1,6 @@
 // Modified by ZCode Feiyu.
 /** Persistent, observation-bound application objects for the shared Node REPL. */
+import { actionEnvelope, hydrateObservation, observationRequest } from "./sdk-observation.js";
 
 export function createComputerUseSDK(bridge) {
   const call = async (method, input = {}) => {
@@ -51,7 +52,7 @@ export function createComputerUseSDK(bridge) {
         : {}),
     });
     const absorb = (result) => {
-      const state = result.state || result;
+      const state = hydrateObservation(result.state || result, observation);
       if (state.observationId) {
         observation = state;
         image = state.image || undefined;
@@ -69,12 +70,18 @@ export function createComputerUseSDK(bridge) {
           );
         args.imageId = image.imageId;
       }
-      return absorb(await guardedCall(method, args));
+      const result = await guardedCall(method, args);
+      return actionEnvelope(result, absorb(result));
     };
     const readState = async (options) => {
       for (let attempt = 0; ; attempt++) {
         try {
-          const state = absorb(await guardedCall("get_state", { ...base(), ...options }));
+          const state = absorb(
+            await guardedCall("get_state", {
+              ...base(),
+              ...observationRequest(options, observation),
+            }),
+          );
           // 结构树在按应用初始化后可能尚未就绪；只重读 busy，不把不支持的目标改称成功。
           if (options.text !== false && state.channels?.text?.status === "busy" && attempt < 2)
             continue;
@@ -108,6 +115,10 @@ export function createComputerUseSDK(bridge) {
         await access(selection);
         return (await guardedCall("list_windows", selection)).windows || [];
       },
+      readText: async (options) => {
+        await access(selection);
+        return guardedCall("read_text", { ...base(), ...options });
+      },
       activate: (options) => action("activate", options),
       click: (options) => action("click", options),
       move: (options) => action("move", options),
@@ -135,6 +146,7 @@ export function createComputerUseSDK(bridge) {
     };
     // SDK aliases share one observation owner; they never keep a second state cache.
     api.get_state = api.getState;
+    api.read_text = api.readText;
     api.press_key = api.pressKey;
     api.type_text = api.typeText;
     api.set_value = api.setValue;

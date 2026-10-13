@@ -1,5 +1,6 @@
 // Modified by ZCode Feiyu.
 #include "Control.hpp"
+#include "TextFingerprint.hpp"
 #include <algorithm>
 #include <memory>
 static auto automationString(const std::string &text) {
@@ -57,7 +58,7 @@ Node &Engine::element(Observation &observation, const Json &input) {
         "Element enabled state unavailable");
   check(node.element->get_CurrentIsPassword(&password),
         "Protected field state unavailable");
-  if (std::to_string(type) != node.role || name != node.label || !enabled ||
+  if (std::to_string(type) != node.role || textFingerprint(name) != node.labelFingerprint || !enabled ||
       (password != FALSE) != node.row.value("secure", false))
     throw Fault("stale_element", "Element identity changed");
   return node;
@@ -356,7 +357,7 @@ Json Engine::action(const std::string &method, const Target &target,
       std::string current =
           value ? utf8(std::wstring(value, SysStringLen(value))) : "";
       SysFreeString(value);
-      if (current != node.value)
+      if (textFingerprint(current) != node.valueFingerprint)
         throw Fault("stale_element", "Editable value changed");
       verifyForeground(target, op);
       // UIA 参数是有长度前缀的 BSTR，普通 wchar_t 缓冲区会在 COM 编组时越界。

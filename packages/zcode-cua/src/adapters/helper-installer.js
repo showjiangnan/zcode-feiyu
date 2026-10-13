@@ -105,7 +105,15 @@ export function createInstaller(options = {}) {
     if (major < 23 || (major === 23 && minor < 4))
       throw new CuaError("unsupported_system", "macOS 14.4 or newer is required");
     await dependencies.verifyCodeSignature(identity.appPath);
-    await dependencies.verifyTeamIdentifier(identity.appPath, options.teamIdentifier);
+    if (
+      manifest.signing?.mode === "developer-id" &&
+      !/^[A-Z0-9]{10}$/.test(manifest.signing.teamId || "")
+    )
+      throw new CuaError("invalid_signature", "Developer ID manifest is missing its signing team");
+    await dependencies.verifyTeamIdentifier(
+      identity.appPath,
+      options.teamIdentifier || manifest.signing?.teamId,
+    );
     const architectures = await dependencies.readExecutableArchs(resolved);
     if (!architectures.includes(process.arch))
       throw new CuaError(

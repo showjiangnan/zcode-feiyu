@@ -4,7 +4,10 @@ import {
   type ModelMessageContent,
   type ModelMessageContentBlock,
 } from "@zcode/contracts";
-import { findOfficialCuaFrameContentPair } from "@zcode/zcode-cua/frame-contract";
+import {
+  findOfficialCuaFrameContentPair,
+  isOfficialCuaImageRefText,
+} from "@zcode/zcode-cua/frame-contract";
 import type { ToolResultSerialization } from "../types.js";
 
 export interface HookStringProjection {
@@ -21,7 +24,7 @@ export class OfficialCuaFrameContractError extends Error {
   readonly code = OFFICIAL_CUA_FRAME_CONTRACT_ERROR_CODE;
 
   constructor() {
-    super("Official CUA frame pair must be the first two result blocks");
+    super("Official CUA frame pairs must be consecutive leading result blocks");
     this.name = "OfficialCuaFrameContractError";
   }
 }
@@ -33,24 +36,32 @@ export function projectOfficialCuaStructuredContent(
 ): { content: ModelMessageContentBlock[]; truncated: boolean } | undefined {
   const pair = findOfficialCuaFrameContentPair(content);
   if (!pair) return undefined;
-  // 官方 producer 的 canonical pair 必须已经位于结果首部。consumer 只校验、
-  // 预算并保序，不再猜测或提升非 canonical 布局。这里直接失败，避免后续通用
-  // 小结果直通路径重新把带前缀的 frame authority 交给模型。
-  if (pair.imageIndex !== 0 || pair.imageRefIndex !== 1) {
+  // 原因：Node REPL 已按窗口保留多对 canonical frame，旧实现只找最后一对并要求
+  // 它在第 0 块，导致一次观察两窗被误报无效栅格。只接受首部连续配对并全部保序，
+  // 不提升正文后面的凭证；签名/摘要仍由 producer 和 MCP 入口验证。
+  let protectedLength = 0;
+  while (
+    content[protectedLength]?.type === "image" &&
+    content[protectedLength + 1]?.type === "text"
+  ) {
+    const reference = content[protectedLength + 1];
+    if (reference?.type !== "text" || !isOfficialCuaImageRefText(reference.text)) break;
+    protectedLength += 2;
+  }
+  if (protectedLength === 0 || pair.imageRefIndex >= protectedLength) {
     throw new OfficialCuaFrameContractError();
   }
 
-  const pairContent: ModelMessageContentBlock[] = [pair.image, pair.imageRef];
+  const pairContent = content.slice(0, protectedLength);
   const suffixBlocks = content
-    .slice(2)
+    .slice(protectedLength)
     .filter(
       (block): block is Extract<ModelMessageContentBlock, { type: "text" }> =>
         block.type === "text" && block.text.length > 0,
     );
-  const hasOtherStructuredBlocks = content.some(
-    (block, index) =>
-      index !== pair.imageRefIndex && index !== pair.imageIndex && block.type !== "text",
-  );
+  const hasOtherStructuredBlocks = content
+    .slice(protectedLength)
+    .some((block) => block.type !== "text");
   const completeContent: ModelMessageContentBlock[] = [...pairContent, ...suffixBlocks];
   if (
     !hasOtherStructuredBlocks &&
@@ -75,8 +86,7 @@ export function projectOfficialCuaStructuredContent(
   const projectedSuffix = fitStringToBytes(suffixText, suffixBudget, direction);
 
   const projected: ModelMessageContentBlock[] = [
-    pair.image,
-    pair.imageRef,
+    ...pairContent,
     ...(projectedSuffix ? [{ type: "text" as const, text: projectedSuffix }] : []),
     ...(projectedMarker ? [{ type: "text" as const, text: projectedMarker }] : []),
   ];

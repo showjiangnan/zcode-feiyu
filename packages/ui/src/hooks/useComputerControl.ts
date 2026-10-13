@@ -12,7 +12,10 @@ export function useComputerControl(
   workspacePath: string,
   workspaceIdentity?: string,
   sessionId?: string | null,
+  keepVisible = false,
 ) {
+  const keepVisibleRef = useRef(keepVisible);
+  keepVisibleRef.current = keepVisible;
   const platform = usePlatform();
   const service = useServices().cuaPermissionService;
   const presentation = useNativeControlPresentation();
@@ -33,7 +36,20 @@ export function useComputerControl(
         throw new Error("Computer control requires the local desktop");
       const epoch = generation.current;
       const sequence = ++requestSequence.current;
+      const cached = useComputerControlStore.getState().snapshots[key];
+      const knownFrames =
+        action === "snapshot" && cached?.generation
+          ? {
+              generation: cached.generation,
+              frames: Object.fromEntries(
+                cached.sources
+                  .filter((source) => source.image && source.imageRevision !== undefined)
+                  .map((source) => [source.id, source.imageRevision!]),
+              ),
+            }
+          : undefined;
       const request = {
+        knownFrames,
         ...values,
         action,
         credential: credential.current,
@@ -78,7 +94,7 @@ export function useComputerControl(
     let disposed = false;
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
-      if (disposed || document.visibilityState === "hidden") {
+      if (disposed || (document.visibilityState === "hidden" && !keepVisibleRef.current)) {
         if (!disposed) timer = setTimeout(() => void poll(), 1000);
         return;
       }

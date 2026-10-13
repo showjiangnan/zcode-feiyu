@@ -62,14 +62,18 @@ export class NativeProcess {
           if (cancellation) {
             clearTimeout(cancellation);
             this.cancelling.delete(result.id);
+            this.quarantineCaptureFailure(result.error);
             continue;
           }
           const pending = this.pending.get(result.id);
-          if (!pending) continue;
+          if (!pending) {
+            this.quarantineCaptureFailure(result.error);
+            continue;
+          }
           this.pending.delete(result.id);
           pending.cleanup();
           if (result.ok) pending.resolve(result.result);
-          else
+          else {
             pending.reject(
               new CuaError(
                 result.error?.code || "native_error",
@@ -77,6 +81,8 @@ export class NativeProcess {
                 result.error?.details,
               ),
             );
+            this.quarantineCaptureFailure(result.error);
+          }
         } catch {
           this.fail(new CuaError("invalid_response", "Native response is invalid"));
           child.kill();
@@ -97,6 +103,13 @@ export class NativeProcess {
         ),
       );
     });
+  }
+  quarantineCaptureFailure(error) {
+    if (error?.code === "capture_cleanup_failed" && !this.disposed) {
+      // 取消后的迟到错误仍代表系统资源未释放，不能用 cancel ACK 或移除图片越过隔离。
+      this.options.onEvent?.({ kind: "runtime-unresponsive" });
+      void this.close().catch(() => undefined);
+    }
   }
   clearCancellations() {
     for (const timer of this.cancelling.values()) clearTimeout(timer);

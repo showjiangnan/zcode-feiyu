@@ -2105,7 +2105,7 @@ export function createLocalServices(options: {
         // Host 保存可信 UI 投影并在创建 Helper 时种入，不为主题同步启动原生进程。
         nativeControlPresentation = validateControlPresentation(request.presentation);
         host?.setControlPresentation(nativeControlPresentation);
-        return host?.getControlSnapshot(key) || empty;
+        return host?.getControlSnapshot(key, request.knownFrames) || empty;
       }
       if (!host) {
         return empty;
@@ -2133,7 +2133,10 @@ export function createLocalServices(options: {
       } else if (request.action === "revoke-grants") await host.revokeControlGrants(key);
       else if (request.action !== "snapshot")
         throw new Error("Unsupported computer control UI action");
-      return host.getControlSnapshot(key);
+      return host.getControlSnapshot(
+        key,
+        request.action === "snapshot" ? request.knownFrames : undefined,
+      );
     },
     async getStatus(
       workspacePath: string,
@@ -2514,6 +2517,8 @@ export function createLocalServices(options: {
             void cuaPipSessionService.publishLifecycle({
               ...event,
               workspaceKey: workspace.workspaceIdentity?.trim() || workspace.workspacePath,
+              workspacePath: workspace.workspacePath,
+              workspaceIdentity: workspace.workspaceIdentity,
             });
           },
         }

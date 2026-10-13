@@ -44,7 +44,7 @@ import Foundation
         let data = FileHandle.standardInput.availableData
         if data.isEmpty {
           Task { @MainActor in
-            engine.shutdown()
+            await engine.shutdown()
             app.terminate(nil)
           }
           return
@@ -52,7 +52,7 @@ import Foundation
         buffer.append(data)
         if buffer.count > 1_048_576 {
           Task { @MainActor in
-            engine.shutdown()
+            await engine.shutdown()
             app.terminate(nil)
           }
           return

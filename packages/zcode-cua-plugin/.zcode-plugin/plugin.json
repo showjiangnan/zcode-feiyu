@@ -1,6 +1,6 @@
 {
   "name": "computer-use",
-  "version": "0.7.13",
+  "version": "0.7.16",
   "description": "Control approved desktop applications with observation-bound input, native stop and live session previews.",
   "author": {
     "name": "feiyu",

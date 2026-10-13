@@ -28,8 +28,17 @@ export interface ComputerWindow extends ComputerControlSelection {
   frame: ComputerRect;
   structureAvailable?: boolean;
   structureReason?: string;
+  windowFamily?: {
+    kind: string;
+    relation: string;
+    layer?: number;
+    parentWindowId?: number | null;
+    parentTargetId?: string;
+  };
 }
 export interface ComputerElement {
+  textRevision?: string;
+  textRevisionScope?: "sampled-prefix" | "full-value";
   elementId: string;
   path: string;
   role: string;
@@ -40,6 +49,10 @@ export interface ComputerElement {
   focused?: boolean;
   actions: string[];
   frame?: ComputerRect;
+  valueTruncated?: boolean;
+  labelTruncated?: boolean;
+  valueLength?: number;
+  textUnit?: "utf16";
 }
 export interface ComputerImage {
   imageId: string;
@@ -50,6 +63,16 @@ export interface ComputerImage {
   colorSpace?: string;
 }
 export interface ComputerObservation extends ComputerWindow {
+  inputCapabilities?: {
+    schemaVersion: 1;
+    isolated: {
+      mouse: { status: string; reason?: string };
+      keyboard: { status: string; reason?: string; shortcuts?: boolean; scanCodes?: boolean };
+    };
+    semantic: { status: string };
+    foreground: { status: string; requiresExplicitActivation: true };
+  };
+  appGuidance?: { id: string; version: string; text: string; provenance: "trusted-builtin" };
   observationId: string;
   revision: string;
   capturedAt: number;
@@ -60,6 +83,7 @@ export interface ComputerObservation extends ComputerWindow {
   fullReset?: boolean;
   truncated?: boolean;
   continuation?: { elementId: string; offset: number }[];
+  scope?: { rootPath: string; childOffset: number };
   diff?: {
     baseRevision: string;
     nextRevision: string;
@@ -67,12 +91,13 @@ export interface ComputerObservation extends ComputerWindow {
     removed: string[];
   };
 }
-export interface ComputerControlResult {
+export interface ComputerControlResult extends Partial<ComputerObservation> {
   status?: string;
   outcome?: string;
   acceptedSegments?: number;
   settled?: boolean;
   inputMode?: "isolated" | "foreground";
+  verification?: string;
   state?: ComputerObservation;
   target?: ComputerWindow;
 }
@@ -85,6 +110,7 @@ export interface ComputerObservationOptions {
   diff?: boolean;
   disableDiff?: boolean;
   baselineRevision?: string;
+  compact?: boolean;
   region?: ComputerRect;
   autoLaunch?: boolean;
 }
@@ -130,8 +156,14 @@ export interface ComputerTextSelectionOptions extends ComputerActionOptions {
 }
 export interface ComputerControlObject {
   getState(options?: ComputerObservationOptions): Promise<ComputerObservation>;
+  readText(options: {
+    elementId: string;
+    offset?: number;
+    length?: number;
+    field?: "label" | "value";
+  }): Promise<ComputerTextRange>;
   listWindows(): Promise<ComputerWindow[]>;
-  activate(): Promise<ComputerControlResult>;
+  activate(options?: ComputerActionOptions): Promise<ComputerControlResult>;
   click(options: ComputerClickOptions): Promise<ComputerControlResult>;
   move(options: ComputerLocation & ComputerActionOptions): Promise<ComputerControlResult>;
   drag(options: ComputerDragOptions): Promise<ComputerControlResult>;
@@ -144,7 +176,20 @@ export interface ComputerControlObject {
   getWindow(window: number | string | ComputerControlSelection): ComputerControlObject;
   close(): Promise<void>;
 }
+export interface ComputerTextRange {
+  elementId: string;
+  field: "label" | "value";
+  observationId: string;
+  text: string;
+  start: number;
+  end: number;
+  totalLength?: number;
+  truncated: boolean;
+  nextOffset?: number;
+  unit: "utf16";
+}
 export interface ComputerCapabilities {
+  nativePreviewStreams?: number;
   platform: "darwin" | "win32";
   protocolVersion: string;
   structure: boolean;

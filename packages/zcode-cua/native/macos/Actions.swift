@@ -23,7 +23,7 @@ extension NativeEngine {
       (axString(node.element, kAXSubroleAttribute) == kAXSecureTextFieldSubrole)
         == (node.json["secure"] as? Bool == true),
       axString(node.element, kAXTitleAttribute).isEmpty
-        || axString(node.element, kAXTitleAttribute) == node.label,
+        || textFingerprint(axString(node.element, kAXTitleAttribute)) == node.labelFingerprint,
       (axValue(node.element, kAXEnabledAttribute) as? Bool) != false
     else {
       throw ControlError("stale_element", "Element identity or capability changed; observe again")
@@ -255,7 +255,7 @@ extension NativeEngine {
       guard node.json["secure"] as? Bool != true else {
         throw ControlError("manual_input_required", "Enter protected values manually")
       }
-      guard axString(node.element, kAXValueAttribute) == node.value else {
+      guard try textFingerprint(checkedAccessibilityText(node.element, kAXValueAttribute)) == node.valueFingerprint else {
         throw ControlError("stale_element", "Editable value changed since observation")
       }
       guard
@@ -373,9 +373,10 @@ extension NativeEngine {
   }
   func selectText(_ input: [String: Any], _ observation: Observation) throws {
     let node = try element(input, observation)
+    guard node.json["secure"] as? Bool != true else { throw ControlError("manual_input_required", "Protected text cannot be selected") }
     let query = try requiredString(input["text"], "text")
-    let value = axString(node.element, kAXValueAttribute) as NSString
-    guard node.json["secure"] as? Bool != true, value as String == node.value else {
+    let value = try checkedAccessibilityText(node.element, kAXValueAttribute) as NSString
+    guard node.json["secure"] as? Bool != true, textFingerprint(value as String) == node.valueFingerprint else {
       throw ControlError("stale_element", "Text changed since observation")
     }
     var ranges: [NSRange] = []

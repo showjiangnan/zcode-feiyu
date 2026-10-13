@@ -45,3 +45,22 @@ export function validateControlPresentation(value) {
     throw new Error("Invalid native control presentation labels");
   return structuredClone(value);
 }
+
+export function mergeControlSnapshot(previous, next) {
+  if (!isControlSnapshot(next)) throw new Error("Invalid control snapshot");
+  return {
+    ...next,
+    sources: next.sources.map((source) => {
+      if (!source.frameUnchanged) return source;
+      const cached = previous?.sources.find(
+        (item) =>
+          item.id === source.id &&
+          item.targetId === source.targetId &&
+          item.imageRevision === source.imageRevision,
+      );
+      if (previous?.generation !== next.generation || !cached?.image)
+        throw new Error("Control frame baseline missing");
+      return { ...source, image: cached.image, frameUnchanged: false };
+    }),
+  };
+}

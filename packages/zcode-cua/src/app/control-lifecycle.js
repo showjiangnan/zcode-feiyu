@@ -1,5 +1,6 @@
 // Modified by ZCode Feiyu.
 import { CuaError, contextKey, validateContext } from "../domain/protocol.js";
+import { rememberEnded, retireEnded } from "./turn-retirement.js";
 import { interruptionState } from "../domain/control-interruption.js";
 
 export async function stopControl(owner, context, privacy = false, reason, origin) {
@@ -105,13 +106,8 @@ export async function resumeControl(owner, context, revision) {
   owner.changed();
 }
 export async function endControl(owner, event) {
-  if (owner.ended.size >= 2048) {
-    const oldest = owner.ended.values().next().value;
-    owner.ended.delete(oldest);
-  }
-  owner.ended.add(
-    `${event.workspaceKey || ""}\0${event.sessionId}\0${event.kind === "session-closed" ? "*" : event.turnId}`,
-  );
+  await retireEnded(owner);
+  const eventKey = `${event.workspaceKey || ""}\0${event.sessionId}\0${event.kind === "session-closed" ? "*" : event.turnId}`;
   const contexts = new Map();
   for (const source of owner.sources.values())
     if (
@@ -141,9 +137,34 @@ export async function endControl(owner, event) {
       (!event.turnId || grant.context.turnId === event.turnId)
     )
       contexts.set(contextKey(grant.context), grant.context);
+  for (const admission of owner.admissions.values()) {
+    const context = admission.context;
+    if (
+      context.sessionId === event.sessionId &&
+      (!event.workspaceKey || context.workspaceKey === event.workspaceKey) &&
+      (!event.turnId || context.turnId === event.turnId)
+    )
+      contexts.set(contextKey(context), context);
+  }
+  // 无 CUA 资源/在途资格时，后来的请求仍须通过 runtime owner；无需保存空会话的永久墓碑。
+  if (contexts.size || event.turnId || !owner.ports.isTurnActive)
+    rememberEnded(
+      owner,
+      eventKey,
+      contexts.values().next().value || {
+        runtimeScope: "main",
+        workspaceKey: event.workspaceKey || "",
+        workspacePath: event.workspacePath,
+        workspaceIdentity: event.workspaceIdentity,
+        sessionId: event.sessionId,
+        turnId: event.turnId,
+      },
+    );
   for (const context of contexts.values()) {
-    owner.ended.add(
+    rememberEnded(
+      owner,
       `${context.workspaceKey}\0${context.sessionId}\0${event.kind === "session-closed" ? "*" : context.turnId}`,
+      context,
     );
     await owner.stop(context, true, "turn-ended");
     await owner.native.call("release", { context, ended: true });
@@ -158,8 +179,17 @@ export async function endControl(owner, event) {
   for (const key of contexts.keys()) {
     owner.stopped.delete(key);
     owner.paused.delete(key);
+    owner.guidanceSeen.delete(key);
     for (const denied of owner.denied)
       if (denied.startsWith(`${key}\0`)) owner.denied.delete(denied);
   }
+  for (const context of contexts.values()) {
+    const marker = `${context.workspaceKey}\0${context.sessionId}\0${event.kind === "session-closed" ? "*" : context.turnId}`;
+    const record = owner.retiredContexts.get(marker);
+    if (record) record.cleanupConfirmed = true;
+  }
+  const eventRecord = owner.retiredContexts.get(eventKey);
+  if (eventRecord) eventRecord.cleanupConfirmed = true;
+  await retireEnded(owner);
   owner.changed();
 }

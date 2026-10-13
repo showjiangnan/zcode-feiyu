@@ -7,5 +7,5 @@ add_executable(zcode-computer-control Main.cpp Protocol.cpp Applications.cpp Eng
 target_compile_features(zcode-computer-control PRIVATE cxx_std_20)
 target_compile_definitions(zcode-computer-control PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00)
 target_compile_options(zcode-computer-control PRIVATE /EHsc /W4 /permissive-)
-target_link_libraries(zcode-computer-control PRIVATE windowsapp d3d11 dxgi windowscodecs uiautomationcore ole32 oleaut32 user32 advapi32 shell32 uuid dwmapi wtsapi32 gdiplus gdi32 shcore)
+target_link_libraries(zcode-computer-control PRIVATE windowsapp d3d11 dxgi windowscodecs uiautomationcore ole32 oleaut32 user32 advapi32 shell32 uuid dwmapi wtsapi32 gdiplus gdi32 shcore bcrypt)
 set_property(TARGET zcode-computer-control PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

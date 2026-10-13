@@ -36,6 +36,9 @@ export interface ControlSource {
   live: boolean;
   capturedAt?: number;
   frameSequence?: number;
+  imageRevision?: number;
+  frameReceivedAt?: number;
+  frameUnchanged?: boolean;
   stopRevision?: number;
   stopOrigin?:
     | "native"
@@ -90,6 +93,12 @@ export interface ControlUiRequest {
     | "runtime";
   sourceIds?: string[];
   subscriber?: string;
+  knownFrames?: { generation: string; frames: Record<string, number> };
 }
 export declare function isControlSnapshot(value: unknown): value is ControlSnapshot;
 export declare function validateControlPresentation(value: unknown): ControlPresentation;
+
+export declare function mergeControlSnapshot(
+  previous: ControlSnapshot | undefined,
+  next: ControlSnapshot,
+): ControlSnapshot;

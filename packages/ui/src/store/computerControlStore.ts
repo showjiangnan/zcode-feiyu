@@ -1,6 +1,6 @@
 // Modified by ZCode Feiyu.
 import { create } from "zustand";
-import type { ControlSnapshot } from "@zcode/zcode-cua/control-contract";
+import { mergeControlSnapshot, type ControlSnapshot } from "@zcode/zcode-cua/control-contract";
 
 interface ComputerControlPresentationStore {
   snapshots: Record<string, ControlSnapshot>;
@@ -15,7 +15,12 @@ export const useComputerControlStore = create<ComputerControlPresentationStore>(
       state.snapshots[key]?.generation === snapshot.generation &&
       (state.snapshots[key]?.revision ?? -1) >= snapshot.revision
         ? state
-        : { snapshots: { ...state.snapshots, [key]: snapshot } },
+        : {
+            snapshots: {
+              ...state.snapshots,
+              [key]: mergeControlSnapshot(state.snapshots[key], snapshot),
+            },
+          },
     ),
   release: (key) =>
     set((state) => {

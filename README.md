@@ -24,19 +24,19 @@ ZCode Feiyu 是基于 [zai-org/ZCode](https://github.com/zai-org/ZCode) 的社�
 
 ## 本次更新
 
-- 支持 ChatGPT 订阅登录与模型供应，提升模型供应的操作便捷性。
-- 完善会话、工具与共享界面体验，保留实验性电脑控制及已有飞鱼版能力。
+- 优化实验性电脑控制的多窗口预览、关闭联动与可靠性。
+- 改善部分 UI / UX，并同步配套远程界面。
 
 ## 下载安装包
 
-飞鱼版安装包请从 [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases) 下载。本次版本为 [v3.14.6-feiyu.1（预发布）](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.6-feiyu.1)，应用版本 **3.14.6**，本次安装名称为 **ZCode**。安装包从该标签指向的生产提交构建；源码推送不会自动更新已安装应用。
+飞鱼版安装包请从 [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases) 下载。本次版本为 [v3.14.7-feiyu.1（预发布）](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.7-feiyu.1)，应用版本 **3.14.7**，本次安装名称为 **ZCode**。安装包从该标签指向的生产提交构建；源码推送不会自动更新已安装应用。
 
 | 平台                                            | 下载                                                                                                                                                                                                                                                        | 验证与范围                                                                                                                                                         |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| macOS Apple Silicon（arm64，macOS 14.4 及以上） | [DMG 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.6-feiyu.1/ZCode-Feiyu-3.14.6-mac-arm64.dmg) · [ZIP 压缩包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.6-feiyu.1/ZCode-Feiyu-3.14.6-mac-arm64.zip) | 本机原生构建；归档签名、内容及内置 Agent 校验；电脑控制仍为实验性能力。                                                                                            |
+| macOS Apple Silicon（arm64，macOS 14.4 及以上） | [DMG 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.1/ZCode-Feiyu-3.14.7-mac-arm64.dmg) · [ZIP 压缩包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.1/ZCode-Feiyu-3.14.7-mac-arm64.zip) | 本机原生构建；归档签名、内容及内置 Agent 校验；电脑控制仍为实验性能力。                                                                                            |
 | Windows x64 / arm64                             | **本轮不发布 Windows 安装包。** [旧版 3.14.4](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.4-feiyu.1) 保留下载。                                                                                                                          | 当前源码保留 Windows 适配；完整包需要 Windows SDK/MSVC 构建原生 CUA，并验证凭据保护、记忆、Shell、工具和安装运行。旧包没有本次订阅登录、共享 UI 及后续运行时更新。 |
 
-[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.6-feiyu.1/SHA256SUMS.txt) 提供本版 Mac 安装包的 SHA-256。可用 `shasum -a 256 <文件>` 核对。
+[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.1/SHA256SUMS.txt) 提供本版 Mac 安装包的 SHA-256。可用 `shasum -a 256 <文件>` 核对。
 
 - **Mac 安装**：打开 DMG，将 ZCode 拖入 Applications 后启动；ZIP 用户先解压再复制应用。本版采用 ad-hoc 签名，没有 Apple Developer ID 或公证；如被系统拦截，核对来源和摘要后按照系统设置 → 隐私与安全性的提示处理。
 - **旧 Preview 用户**：本轮应用名为 ZCode，不会通过改名自动替换旧 ZCode Preview。保留原数据；原生应用目录中的 RCS/系统权限等配置需要在本次应用中检查，不将两种应用身份的凭据文件直接复制。
@@ -164,7 +164,7 @@ node scripts/build-rcs-assets.mjs ../zcode-rcs
 
 导出的 `web/`、`sdk/` 和 `protocol/` 是桥接仓库的交付资产，升级时应一起更新；云服务器无需 Node.js 或 Electron。
 
-配套 RCS / SDK 1.1.0 使用 Web 3.14.5，桥接协议保持 1 / 1 / 3。导出前验证 Web 源码指纹，暂存校验完成后再替换资源，失败时回滚。`web/build-info.json` 记录配套版本及源码、产物摘要；生产升级应停服更新完整发布包，保留认证数据后重启。
+配套 RCS / SDK 1.1.2 使用 Web 3.14.7，桥接协议保持 1 / 1 / 3。导出前验证 Web 源码指纹，暂存校验完成后再替换资源，失败时回滚。`web/build-info.json` 记录配套版本及源码、产物摘要；生产升级应停服更新完整发布包，保留认证数据后重启。
 
 ### 图片生成：fal.ai
 
@@ -297,9 +297,9 @@ pnpm build:zcode --base-url https://downloads.example.com/zcode/
 
 ### 验证状态
 
-RCS 已在 macOS arm64 的 3.14.4 安装版、本地 Python 服务与真实桌面 Host 上完成：浏览器端模型往返、standard/coordinator/swarm、刷新恢复、独立 SDK、同 commandId 对账、授权路径/凭据拒绝、HTTP Range 及同 PTY ID 续接；电脑/320/390/430px 浏览器交互已验收。根 typecheck、Lint（0 errors，存在既有 warnings）与架构检查通过。测试使用本地模型 fixture，不代表所有第三方模型、真实云公网 TLS、实体手机软键盘、远端 SSH 主机或机器人平台均已验证。Docker 部署文件已提供，本轮未在 Docker 引擎上运行。
+RCS 已在 macOS arm64 的 3.14.4 安装版、本地 Python 服务与真实桌面 Host 上完成：浏览器端模型往返、standard/coordinator/swarm、刷新恢复、独立 SDK、同 commandId 对账、授权路径/凭据拒绝、HTTP Range 及同 PTY ID 续接；电脑/320/390/430px 浏览器交互已验收。这些是历史验收；当前版本的门禁与新增 CUA 验证范围见下文。测试使用本地模型 fixture，不代表所有第三方模型、真实云公网 TLS、实体手机软键盘、远端 SSH 主机或机器人平台均已验证。Docker 部署文件已提供，本轮未在 Docker 引擎上运行。
 
-当前更新已执行根类型检查、CLI 类型检查、根 Lint、架构检查，以及真实 Agent/SQLite/stdio 和生产 UI 组件验证。swarm 请求覆盖 OpenAI Chat Completions 与 Anthropic Messages 两种格式、本地任务板及两种恢复链路；本地 HTTP fixture 不代表所有真实模型均已验证。CLI 全量 Lint 仍有既有大文件超限，不能视为全门禁通过。
+当前源码已通过根及 CLI 类型检查、Lint（0 errors / 0 warnings）和架构检查。macOS arm64 本地安装版使用真实 GPT-6.1-Sol 验证同一工具调用的多张截图、文本写入与新鲜观察、多窗叠放，以及关闭一个/最后来源后的预览移除。发布归档独立校验签名、架构、内容和内置 Agent；本次没有重新执行真实 OAuth 或新的付费图片生成验收。Windows 共享 UI 的模拟组合测试不代表当前原生 helper、安装包或 Windows 实机通过；最小化实机、长期压力及所有第三方应用组合尚未完整验证。
 
 macOS arm64 安装包与本机启动有实际验证；较早图片兼容修复还完成了真实 fal 的**无付费连接验证**。实际付费出图、真实 CDN 故障和 Windows 真机仍需独立验收。测试源码和测试记录按发布范围排除。
 

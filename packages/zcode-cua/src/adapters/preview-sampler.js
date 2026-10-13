@@ -28,7 +28,10 @@ export function createPreviewSampler({
       onError?.(error);
     } finally {
       running = false;
-      if (!disposed) schedule(hasActivity() ? Math.max(0, 200 - (now() - started)) : 1000);
+      const elapsed = Math.max(0, now() - started);
+      // 慢捕获已降帧，仍需留出恢复空隙；完成后立即重采会让繁忙后端持续满负荷。
+      const activeDelay = elapsed < 400 ? Math.max(0, 200 - elapsed) : Math.min(1000, elapsed / 4);
+      if (!disposed) schedule(hasActivity() ? activeDelay : 1000);
     }
   };
   return {

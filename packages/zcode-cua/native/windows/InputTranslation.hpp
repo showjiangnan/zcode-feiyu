@@ -4,7 +4,18 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string_view>
+#include <string>
+#include <algorithm>
 namespace zcode::input {
+struct TextSlice { std::wstring text; size_t start; size_t end; };
+inline TextSlice textSlice(const std::wstring &value, size_t offset, size_t length) {
+  size_t start = std::min(offset, value.size());
+  if (start && start < value.size() && value[start] >= 0xDC00 && value[start] <= 0xDFFF) --start;
+  size_t end = std::min(value.size(), start + length);
+  if (end > start && end < value.size() && value[end - 1] >= 0xD800 && value[end - 1] <= 0xDBFF) --end;
+  if (end == start && start < value.size()) end = std::min(value.size(), start + 2);
+  return {value.substr(start, end - start), start, end};
+}
 struct ScanCode { uint16_t scan; bool extended; };
 inline ScanCode physicalScan(double value, bool extended) {
   if (!std::isfinite(value) || value < 1 || value > 511 || value != std::floor(value) || (static_cast<unsigned>(value) & 255) == 0)

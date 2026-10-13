@@ -1,6 +1,6 @@
 {
   "name": "@zcode/zcode-cua",
-  "version": "0.7.13",
+  "version": "0.7.16",
   "private": true,
   "description": "Local computer control runtime with authenticated task routing, native platform adapters and session previews.",
   "license": "Apache-2.0",

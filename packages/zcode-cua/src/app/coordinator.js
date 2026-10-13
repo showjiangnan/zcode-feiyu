@@ -17,10 +17,13 @@ import {
   contextKey,
   validateCall,
   validateContext,
-  LIMITS,
   READ_ONLY,
 } from "../domain/protocol.js";
 
+import { updateControlSource, acceptControlFrame, checkControlSource } from "./control-source.js";
+import { withControlAdmission } from "./control-admission.js";
+import { projectApplicationGuidance } from "./application-guidance.js";
+import { assertRetirementAvailable } from "./turn-retirement.js";
 import { handleOperationFailure } from "./operation-failure.js";
 import { interruptionState } from "../domain/control-interruption.js";
 
@@ -36,9 +39,13 @@ export class CuaCoordinator {
     this.stopping = new Map();
     this.paused = new Map();
     this.operations = new Map();
+    this.admissions = new Map();
     this.visible = new Set();
     this.subscriptions = new Map();
     this.ended = new Set();
+    this.retiredContexts = new Map();
+    this.guidanceSeen = new Map();
+    this.retirementSaturated = false;
     this.revision = 0;
     this.closed = false;
   }
@@ -61,6 +68,11 @@ export class CuaCoordinator {
   }
   async execute(method, value, contextValue, signal) {
     const context = validateContext(contextValue);
+    return withControlAdmission(this, context, () =>
+      this.executeAdmitted(method, value, context, signal),
+    );
+  }
+  async executeAdmitted(method, value, context, signal) {
     const input = validateCall(method, value);
     const key = contextKey(context);
     if (this.closed) throw new CuaError("disposed", "Computer control service has closed");
@@ -103,6 +115,7 @@ export class CuaCoordinator {
       this.changed();
       return this.result({ status: "closed" });
     }
+    assertRetirementAvailable(this);
     if (this.ports.isTurnActive && !(await this.ports.isTurnActive(context)))
       throw new CuaError("turn_ended", "The task runtime no longer owns this turn");
     if (!(await this.ports.enabled(context))) {
@@ -217,6 +230,7 @@ export class CuaCoordinator {
         for (const source of this.sources.values())
           if (contextKey(source.context) === key) source.reason = undefined;
       if (state?.targetId) this.#source(context, app, state, input);
+      projectApplicationGuidance(this, key, app, state);
       return this.result(result, app);
     } catch (error) {
       await handleOperationFailure(this, context, method, operationSubmitted, error);
@@ -240,66 +254,43 @@ export class CuaCoordinator {
     return validateContextGrants(this, context);
   }
   #source(context, app, state, input) {
-    if (typeof state.targetId !== "string" || !state.targetId)
-      throw new CuaError("invalid_native_response", "Native target identity is missing");
-    const id = `${contextKey(context)}\0${state.targetId}`;
-    if (!this.sources.has(id) && this.sources.size >= LIMITS.sources)
-      throw new CuaError("source_limit", "Close unused control sources before adding more");
-    const previous = this.sources.get(id);
-    const source = {
-      ...previous,
-      id,
-      context,
-      sessionId: context.sessionId,
-      turnId: context.turnId,
-      workspaceKey: context.workspaceKey,
-      app,
-      title: state.title || "",
-      targetId: state.targetId,
-      windowId: state.windowId,
-      input: {
-        ...input,
-        appId: app.appId,
-        pid: state.pid,
-        windowId: state.windowId,
-        targetId: state.targetId,
-      },
-      phase: this.paused.has(contextKey(context))
-        ? "paused"
-        : state.observationId
-          ? "observing"
-          : "ready",
-      nativeGeneration: this.native.generation,
-      image: this.visible.has(id) ? state.image : undefined,
-      capturedAt: state.capturedAt,
-      channels: state.channels,
-      live: false,
-    };
-    this.sources.set(id, source);
-    this.changed();
+    updateControlSource(this, context, app, state, input);
   }
-  acceptFrame(id, state, generation) {
-    const source = this.sources.get(id);
+  acceptFrame(id, state, generation, source) {
+    acceptControlFrame(this, id, state, generation, source);
+  }
+  checkSource(source) {
+    return checkControlSource(this, source);
+  }
+  async previewFailed(source, error) {
+    const current = () =>
+      this.sources.get(source.id) === source && source.nativeGeneration === this.native.generation;
+    if (!current()) return;
+    // 窗口可能在周期探测之后关闭；先核对消失事实，不能把它误判成整个 turn 的授权撤销。
     if (
-      !source ||
-      source.nativeGeneration !== generation ||
-      this.stopped.has(contextKey(source.context)) ||
-      !this.visible.has(id)
+      ["application_changed", "target_unavailable", "stale_target", "capture_unavailable"].includes(
+        error.code,
+      )
+    ) {
+      try {
+        await this.checkSource(source);
+      } catch (probeError) {
+        error = probeError;
+      }
+      if (!current()) return;
+    }
+    if (
+      [
+        "locked",
+        "capture_revoked",
+        "turn_stopped",
+        "permission_revoked",
+        "application_changed",
+        "authorization_unavailable",
+      ].includes(error.code)
     )
-      return;
-    source.frameSequence = (source.frameSequence || 0) + 1;
-    source.image = state.image;
-    source.capturedAt = state.capturedAt;
-    source.channels = state.channels;
-    source.phase = this.paused.has(contextKey(source.context))
-      ? "paused"
-      : source.reason === "device_busy"
-        ? "busy"
-        : state.image
-          ? "observing"
-          : "unavailable";
-    source.live = Boolean(state.image);
-    this.changed();
+      await this.stop(source.context, true);
+    else this.frameUnavailable(source.id, error.code || "capture_failed");
   }
   pause(context, reason = "foreground-changed", origin) {
     const key = contextKey(validateContext(context));
@@ -357,8 +348,8 @@ export class CuaCoordinator {
   setVisibility(ids, subscriber) {
     return setControlVisibility(this, ids, subscriber);
   }
-  snapshot(workspaceKey) {
-    return controlSnapshot(this, workspaceKey);
+  snapshot(workspaceKey, known) {
+    return controlSnapshot(this, workspaceKey, known);
   }
   frameUnavailable(id, reason) {
     return markFrameUnavailable(this, id, reason);
@@ -373,6 +364,9 @@ export class CuaCoordinator {
   }
   async dispose() {
     this.closed = true;
+    this.guidanceSeen.clear();
+    this.retiredContexts.clear();
+    this.ended.clear();
     for (const request of this.operations.values())
       request.controller.abort(new CuaError("disposed", "Computer control closed"));
     for (const approval of this.approvals.values()) {

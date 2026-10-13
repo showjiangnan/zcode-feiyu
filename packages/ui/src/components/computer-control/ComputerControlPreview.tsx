@@ -1,21 +1,18 @@
 // Modified by ZCode Feiyu.
+import { ComputerControlPreviewStack } from "./ComputerControlPreviewStack.js";
+import { ComputerControlPreviewMove } from "./ComputerControlPreviewMove.js";
+import { createPortal } from "react-dom";
+import { useComputerControlPreviewWindow } from "@/hooks/useComputerControlPreviewWindow.js";
 import { useEffect, useRef, useState } from "react";
-import {
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Monitor,
-  Play,
-  Square,
-  Move,
-  ArrowUpRight,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Monitor, PictureInPicture2, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu.js";
 import { Button } from "@/components/ui/button.js";
 import { useComputerControlTaskNavigation } from "@/hooks/useComputerControlTaskNavigation.js";
@@ -39,10 +36,13 @@ export function ComputerControlPreview({
     workspaceIdentity,
   );
   const message = (id: string) => intl.formatMessage({ id: `computerControl.${id}` });
+  const floating = useComputerControlPreviewWindow();
+  const [clock, setClock] = useState(() => Date.now());
   const { snapshot, command, act, pending, error, subscriber } = useComputerControl(
     workspacePath,
     workspaceIdentity,
     sessionId,
+    Boolean(floating.window && floating.visible),
   );
   const [pageVisible, setPageVisible] = useState(document.visibilityState !== "hidden");
   useEffect(() => {
@@ -50,7 +50,7 @@ export function ComputerControlPreview({
     document.addEventListener("visibilitychange", listener);
     return () => document.removeEventListener("visibilitychange", listener);
   }, []);
-  const [width, setWidth] = useState(560);
+  const [width, setWidth] = useState(340);
   const [otherTasks, setOtherTasks] = useState<string[]>([]);
   const [hiddenSources, setHiddenSources] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState(false);
@@ -58,20 +58,26 @@ export function ComputerControlPreview({
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const offsetRef = useRef(offset);
   offsetRef.current = offset;
-  const drag = useRef<{ x: number; y: number; originX: number; originY: number } | undefined>(
-    undefined,
-  );
   const panel = useRef<HTMLElement>(null);
   const [narrow, setNarrow] = useState(false);
   const allSources = snapshot?.sources || [];
+  const hasFrames = allSources.some((source) => source.image);
+  useEffect(() => {
+    if (!hasFrames) return;
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [hasFrames]);
   const taskIds = [...new Set(allSources.map((source) => source.sessionId))];
   const sources = allSources.filter(
     (source) => source.sessionId === sessionId || otherTasks.includes(source.sessionId),
   );
   const candidates = sources.filter((source) => !hiddenSources.includes(source.id));
-  const current = candidates.find((source) => source.id === selected) || candidates[0];
-  const visible =
-    collapsed || !pageVisible ? [] : narrow ? (current ? [current] : []) : candidates.slice(0, 4);
+  const current = candidates.find((source) => source.id === selected) || candidates.at(-1);
+  // 选中来源只改变前景；保持其它三个可见来源，不改变控制目标或权限。
+  const stacked = current
+    ? [...candidates.filter((source) => source !== current).slice(-3), current]
+    : [];
+  const visible = collapsed || !(floating.window ? floating.visible : pageVisible) ? [] : stacked;
   const ids = JSON.stringify(visible.map((source) => source.id));
   useEffect(() => {
     if (snapshot)
@@ -82,7 +88,9 @@ export function ComputerControlPreview({
   useEffect(() => {
     const owner = panel.current?.parentElement;
     if (!owner) return;
-    const observer = new ResizeObserver(() => {
+    const view = owner.ownerDocument.defaultView || window;
+    let resizeFrame = 0;
+    const updateBounds = () => {
       setNarrow(owner.clientWidth < 600);
       const parent = owner.getBoundingClientRect();
       const frame = panel.current?.getBoundingClientRect();
@@ -95,102 +103,85 @@ export function ComputerControlPreview({
         const y = Math.min(0, Math.max(minimumY, currentOffset.y));
         return x === currentOffset.x && y === currentOffset.y ? currentOffset : { x, y };
       });
+    };
+    // ResizeObserver 内同步改布局会导致重复通知；按该窗口的下一帧统一测量。
+    const observer = new ResizeObserver(() => {
+      view.cancelAnimationFrame(resizeFrame);
+      resizeFrame = view.requestAnimationFrame(updateBounds);
     });
     observer.observe(owner);
     if (panel.current) observer.observe(panel.current);
-    return () => observer.disconnect();
-  }, [sources.length > 0]);
+    return () => {
+      observer.disconnect();
+      view.cancelAnimationFrame(resizeFrame);
+    };
+  }, [sources.length > 0, Boolean(floating.window)]);
   useEffect(() => {
     setOtherTasks([]);
     setHiddenSources([]);
     setSelected(undefined);
     setOffset({ x: 0, y: 0 });
   }, [sessionId]);
+  useEffect(() => {
+    if (snapshot && !allSources.length) floating.close();
+  }, [allSources.length, Boolean(snapshot), floating.close]);
   if (!allSources.length) return null;
-  return (
+  const content = (
     <>
       {allSources.length ? (
         <section
           ref={panel}
           data-testid="computer-control-preview"
           aria-label={message("title")}
-          className="absolute right-3 bottom-28 z-30 overflow-hidden rounded-2xl border border-border bg-background shadow-md [app-region:no-drag]"
+          className={
+            floating.window
+              ? "relative h-screen overflow-auto bg-background [app-region:no-drag]"
+              : "absolute right-3 bottom-28 z-30 rounded-xl bg-background/90 [app-region:no-drag]"
+          }
           style={{
-            resize: "both",
+            resize: floating.window ? "none" : "both",
             minWidth: 280,
-            maxHeight: "calc(100% - 8rem)",
+            maxHeight: floating.window ? "100vh" : "calc(100% - 8rem)",
             overflow: "auto",
-            width: `min(${width}px, calc(100% - 1.5rem))`,
-            transform: `translate(${offset.x}px, ${offset.y}px)`,
+            width: floating.window ? "100%" : `min(${width}px, calc(100% - 1.5rem))`,
+            transform: floating.window ? undefined : `translate(${offset.x}px, ${offset.y}px)`,
           }}
         >
-          <header className="flex items-center gap-2 border-b border-border px-3 py-2">
-            <button
-              type="button"
-              aria-label={message("move")}
-              className="cursor-move touch-none text-foreground-subtle focus-visible:ring-2 focus-visible:ring-ring"
-              onPointerDown={(event) => {
-                drag.current = {
-                  x: event.clientX,
-                  y: event.clientY,
-                  originX: offset.x,
-                  originY: offset.y,
-                };
-                event.currentTarget.setPointerCapture(event.pointerId);
-              }}
-              onPointerMove={(event) => {
-                if (!drag.current || !panel.current?.parentElement) return;
-                const parent = panel.current.parentElement.getBoundingClientRect();
-                const rect = panel.current.getBoundingClientRect();
-                const x = drag.current.originX + event.clientX - drag.current.x;
-                const y = drag.current.originY + event.clientY - drag.current.y;
-                setOffset({
-                  x: Math.min(0, Math.max(-parent.width + rect.width + 24, x)),
-                  y: Math.min(0, Math.max(-parent.height + rect.height + 120, y)),
-                });
-              }}
-              onPointerUp={() => {
-                drag.current = undefined;
-              }}
-              onPointerCancel={() => {
-                drag.current = undefined;
-              }}
-              onKeyDown={(event) => {
-                const delta = {
-                  ArrowLeft: [-10, 0],
-                  ArrowRight: [10, 0],
-                  ArrowUp: [0, -10],
-                  ArrowDown: [0, 10],
-                }[event.key];
-                if (delta) {
-                  event.preventDefault();
-                  const owner = panel.current?.parentElement;
-                  const frame = panel.current?.getBoundingClientRect();
-                  if (!owner || !frame) return;
-                  const parent = owner.getBoundingClientRect();
-                  setOffset((value) => ({
-                    x: Math.min(
-                      0,
-                      Math.max(parent.left - frame.left + value.x, value.x + delta[0]!),
-                    ),
-                    y: Math.min(0, Math.max(parent.top - frame.top + value.y, value.y + delta[1]!)),
-                  }));
-                }
-              }}
-            >
-              <Move className="size-4" />
-            </button>
+          <header className="flex items-center gap-1 px-2 py-1">
+            <ComputerControlPreviewMove
+              panel={panel}
+              offset={offset}
+              setOffset={setOffset}
+              hidden={Boolean(floating.window)}
+            />
             <Monitor className="size-4 text-foreground-subtle" />
             <span className="min-w-0 flex-1 truncate text-ui-sm font-medium">
               {taskTitle || message("title")}
             </span>
+            {floating.supported ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={message(floating.window ? "dock" : "detach")}
+                onClick={() => (floating.window ? floating.close() : void floating.open())}
+              >
+                {floating.window ? (
+                  <X className="size-4" />
+                ) : (
+                  <PictureInPicture2 className="size-4" />
+                )}
+              </Button>
+            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" aria-label={message("sources")}>
                   {message("sources")}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="max-h-80 overflow-y-auto">
+              <DropdownMenuContent
+                portalContainer={floating.window?.document.body}
+                className="max-h-80 overflow-y-auto"
+              >
                 {taskIds.map((task) => (
                   <DropdownMenuCheckboxItem
                     key={task}
@@ -205,6 +196,42 @@ export function ComputerControlPreview({
                     {task === sessionId ? message("currentTask") : taskLabel(task)}
                   </DropdownMenuCheckboxItem>
                 ))}
+                <DropdownMenuSeparator />
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <span className="flex-1 text-ui-xs text-foreground-subtle">
+                    {message("resize")}
+                  </span>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={message("smaller")}
+                    onClick={() => setWidth((value) => Math.max(280, value - 40))}
+                  >
+                    −
+                  </Button>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={message("larger")}
+                    onClick={() => setWidth((value) => Math.min(720, value + 40))}
+                  >
+                    +
+                  </Button>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={current?.id}
+                  onValueChange={(id) => {
+                    setSelected(id);
+                    setHiddenSources((values) => values.filter((value) => value !== id));
+                  }}
+                >
+                  {sources.map((source) => (
+                    <DropdownMenuRadioItem key={source.id} value={source.id}>
+                      {source.app.displayName} · {source.title || message("window")}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
                 <DropdownMenuSeparator />
                 {sources.map((source) => (
                   <DropdownMenuCheckboxItem
@@ -234,137 +261,31 @@ export function ComputerControlPreview({
           </header>
           {!collapsed ? (
             <>
-              <div className="flex items-center gap-2 px-3 py-2">
-                <span className="shrink-0 text-ui-xs text-foreground-subtle">
-                  {message("resize")}
-                </span>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label={message("smaller")}
-                  onClick={() => setWidth((value) => Math.max(300, value - 40))}
-                >
-                  −
-                </Button>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label={message("larger")}
-                  onClick={() => setWidth((value) => Math.min(720, value + 40))}
-                >
-                  +
-                </Button>
-              </div>
-              {narrow && sources.length > 1 ? (
-                <div className="flex gap-1 overflow-x-auto p-2">
-                  {sources.map((source) => (
-                    <Button
-                      key={source.id}
-                      variant={source.id === current?.id ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setSelected(source.id)}
-                    >
-                      {source.app.displayName}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-              <div
-                className={
-                  visible.length > 1 ? "grid grid-cols-2 gap-px bg-border" : "grid grid-cols-1"
+              <ComputerControlPreviewStack
+                sources={visible}
+                sessionId={sessionId}
+                clock={clock}
+                narrow={narrow}
+                pending={pending}
+                message={message}
+                taskLabel={taskLabel}
+                select={setSelected}
+                stop={(source) => void act("stop", { sourceId: source.id })}
+                resume={(source) =>
+                  void act("resume", { sourceId: source.id, stopRevision: source.stopRevision })
                 }
-              >
-                {visible.map((source) => (
-                  <article key={source.id} className="min-w-0 bg-background">
-                    <div className="relative flex aspect-video items-center justify-center overflow-hidden bg-surface-hover">
-                      {source.image ? (
-                        <img
-                          className="h-full w-full object-contain"
-                          src={`data:${source.image.mimeType};base64,${source.image.data}`}
-                          alt={`${source.app.displayName} — ${source.title}`}
-                          draggable={false}
-                        />
-                      ) : source.phase === "observing" || source.phase === "ready" ? (
-                        <Loader2
-                          className="size-5 animate-spin text-foreground-subtle"
-                          aria-label={message("loading")}
-                        />
-                      ) : (
-                        <span className="px-3 text-center text-ui-sm text-foreground-subtle">
-                          {source.channels?.image?.status === "preview-paused"
-                            ? message("selfPreview")
-                            : source.reason === "device_quarantined"
-                              ? message("deviceQuarantined")
-                              : source.reason && source.stopRevision
-                                ? message(`reason.${source.reason}`)
-                                : message(`phase.${source.phase}`)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 px-2 py-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-ui-sm font-medium">{source.app.displayName}</p>
-                        <p className="truncate text-ui-xs text-foreground-subtle">
-                          {source.title || message("window")} ·{" "}
-                          {source.sessionId === sessionId
-                            ? message("currentTask")
-                            : taskLabel(source.sessionId)}{" "}
-                          ·{" "}
-                          {source.reason && source.stopRevision
-                            ? message(`reason.${source.reason}`)
-                            : message(`phase.${source.phase}`)}
-                        </p>
-                      </div>
-                      {source.sessionId !== sessionId ? (
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          aria-label={message("returnTask")}
-                          onClick={() => returnToTask(source.sessionId)}
-                        >
-                          <ArrowUpRight className="size-4" />
-                        </Button>
-                      ) : null}
-                      {source.stopRevision &&
-                      (source.phase === "stopped" || source.phase === "paused") ? (
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          disabled={pending}
-                          aria-label={message("continue")}
-                          onClick={() =>
-                            void act("resume", {
-                              sourceId: source.id,
-                              stopRevision: source.stopRevision,
-                            })
-                          }
-                        >
-                          <Play className="size-4" />
-                        </Button>
-                      ) : (
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          disabled={pending || source.phase === "stopping"}
-                          aria-label={message("stop")}
-                          onClick={() => void act("stop", { sourceId: source.id })}
-                        >
-                          <Square className="size-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
+                returnToTask={returnToTask}
+              />
             </>
           ) : null}
-          {error ? (
+          {error || floating.error ? (
             <p role="alert" className="px-3 py-2 text-ui-sm text-danger">
-              {error}
+              {error || floating.error}
             </p>
           ) : null}
         </section>
       ) : null}
     </>
   );
+  return floating.window ? createPortal(content, floating.window.document.body) : content;
 }

@@ -18,7 +18,7 @@ export const NODE_REPL_DEFAULT_TIMEOUT_MS = 60_000;
 // 而文档知道的路径宿主自己就能注入。两者实测调用量均为 0。宿主协议变了就得让 serverInfo 能被
 // 据此识别，否则宿主无法区分自己连上的是哪一代工具面。
 // 本轮修复真实凭据绑定及结构化诊断，serverInfo 与新的宿主 seed 同步，避免旧缓存冒充修复版。
-export const NODE_REPL_SERVER_VERSION = "0.7.13";
+export const NODE_REPL_SERVER_VERSION = "0.7.16";
 export const NODE_REPL_SERVER_INSTRUCTIONS =
   "Browser Use and Computer Use only. Run JavaScript with top-level await in a persistent, task-scoped Node kernel. Follow the active official capability skill. Always provide title in the user's language. Global bindings persist within this task; use var for reusable bindings. Cancellation, crash or idle eviction resets the kernel and expires its old bindings. Never use this host for unrelated shell, filesystem or data processing tasks.";
 export const JS_TOOL_DESCRIPTION =

@@ -63,8 +63,8 @@ struct Node {
   ComPtr<IUIAutomationElement> element;
   std::string id;
   std::string role;
-  std::string label;
-  std::string value;
+  std::string labelFingerprint;
+  std::string valueFingerprint;
   Json row;
 };
 struct Observation {
@@ -76,6 +76,7 @@ struct Observation {
   int width = 0;
   int height = 0;
   RECT imageBounds{};
+  std::string scope;
 };
 struct Operation {
   std::string id;
@@ -160,6 +161,8 @@ public:
   std::vector<Target> windows(const Json &input);
   Target target(const Json &input);
   Json observe(const Target &, const Json &, const Operation &, bool preview);
+  Json inputCapabilities(const Target &);
+  Json readText(const Target &, const Json &, const Operation &);
   Json action(const std::string &, const Target &, const Json &,
               const Operation &);
   void isolatedAction(const std::string &, const Target &, const Json &, Observation &, const Operation &);

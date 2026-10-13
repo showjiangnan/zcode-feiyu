@@ -1,5 +1,6 @@
 // Modified by ZCode Feiyu.
 #include "Control.hpp"
+#include "TextFingerprint.hpp"
 #include <sstream>
 static std::string bstr(BSTR value) {
   if (!value)
@@ -17,6 +18,12 @@ Json Engine::observe(const Target &target, const Json &input,
   std::map<std::string, Node> nodes;
   auto key = operation.key() + ":" + target.id;
   auto previous = observations.find(key);
+  body["inputCapabilities"] = inputCapabilities(target);
+  std::string rootPath = "0";
+  const auto rawOffset = number(input, "childOffset", 0);
+  if (rawOffset < 0 || rawOffset > 100000 || std::floor(rawOffset) != rawOffset) throw Fault("invalid_request", "Invalid childOffset");
+  const size_t childOffset = static_cast<size_t>(rawOffset);
+  const bool targeted = input.contains("elementId") || input.contains("childOffset");
   bool wantText = !preview && input.value("text", true);
   bool wantImage = preview || input.value("image", true);
   if (wantText) {
@@ -32,7 +39,9 @@ Json Engine::observe(const Target &target, const Json &input,
       if (input.contains("elementId")) {
         if (previous == observations.end())
           throw Fault("stale_element", "Subtree reference expired");
-        root = element(previous->second, input).element;
+        auto &node = element(previous->second, input);
+        root = node.element;
+        rootPath = node.row["path"].get<std::string>();
       }
       ComPtr<IUIAutomationTreeWalker> walker;
       check(uia()->get_ControlViewWalker(&walker),
@@ -41,18 +50,6 @@ Json Engine::observe(const Target &target, const Json &input,
         auto offset = number(input, "childOffset");
         if (offset < 0 || std::floor(offset) != offset || offset > 100000)
           throw Fault("invalid_request", "Invalid childOffset");
-        ComPtr<IUIAutomationElement> child;
-        check(walker->GetFirstChildElement(root.Get(), &child),
-              "UIA child unavailable");
-        for (int i = 0; child && i < offset; i++) {
-          ComPtr<IUIAutomationElement> next;
-          walker->GetNextSiblingElement(child.Get(), &next);
-          child = next;
-          operation.guard();
-        }
-        if (!child)
-          throw Fault("stale_element", "Continuation child no longer exists");
-        root = child;
       }
       auto maximumValue = number(input, "maxNodes", 1000);
       if (maximumValue < 1 || maximumValue > 5000 ||
@@ -64,7 +61,7 @@ Json Engine::observe(const Target &target, const Json &input,
         std::string path;
         int depth;
       };
-      std::vector<Entry> stack{{root, "0", 0}};
+      std::vector<Entry> stack{{root, rootPath, 0}};
       while (!stack.empty() && rows.size() < maximum) {
         operation.guard();
         auto item = stack.back();
@@ -83,6 +80,7 @@ Json Engine::observe(const Target &target, const Json &input,
               "UIA protected state unavailable");
         item.element->get_CurrentName(&name);
         std::string label = bstr(name), value;
+        bool valueTruncated = false;
         item.element->get_CurrentIsEnabled(&enabled);
         item.element->get_CurrentHasKeyboardFocus(&focused);
         item.element->get_CurrentBoundingRectangle(&rect);
@@ -112,8 +110,9 @@ Json Engine::observe(const Target &target, const Json &input,
           ComPtr<IUIAutomationTextRange> range;
           textual->get_DocumentRange(&range);
           BSTR text = nullptr;
-          if (range && SUCCEEDED(range->GetText(4096, &text)))
+          if (range && SUCCEEDED(range->GetText(4098, &text)))
             value = bstr(text);
+          valueTruncated = wide(value).size() >= 4098;
           actions.push_back("select_text");
         }
         for (auto pair :
@@ -129,11 +128,29 @@ Json Engine::observe(const Target &target, const Json &input,
         }
         auto elementId = id + ":" + item.path;
         auto role = std::to_string(type);
+        const Node *oldNode = nullptr;
+        if (previous != observations.end()) {
+          for (const auto &pair : previous->second.nodes) {
+            if (pair.second.row.value("path", "") != item.path || pair.second.role != role) continue;
+            BOOL equal = FALSE;
+            if (SUCCEEDED(uia()->CompareElements(pair.second.element.Get(), item.element.Get(), &equal)) && equal) { elementId = pair.first; oldNode = &pair.second; }
+            break;
+          }
+        }
+        const auto labelSlice = zcode::input::textSlice(wide(label), 0, 2048);
+        const auto valueSlice = zcode::input::textSlice(wide(value), 0, 4096);
+        const auto labelFingerprint = textFingerprint(label), valueFingerprint = textFingerprint(value);
+        const bool sampledPrefix = valueTruncated;
+        valueTruncated = valueTruncated || valueSlice.end < wide(value).size();
         Json row = {{"elementId", elementId},
                     {"path", item.path},
                     {"role", role},
-                    {"label", label.substr(0, 8192)},
-                    {"value", value},
+                    {"label", utf8(labelSlice.text)},
+                    {"labelTruncated", labelSlice.end < wide(label).size()},
+                    {"value", utf8(valueSlice.text)},
+                    {"valueTruncated", valueTruncated}, {"textUnit", "utf16"},
+                    {"textRevision", oldNode && oldNode->labelFingerprint == labelFingerprint && oldNode->valueFingerprint == valueFingerprint ? oldNode->row.value("textRevision", uniqueId()) : uniqueId()},
+                    {"textRevisionScope", sampledPrefix ? "sampled-prefix" : "full-value"},
                     {"secure", (bool)password},
                     {"enabled", (bool)enabled},
                     {"focused", (bool)focused},
@@ -143,14 +160,22 @@ Json Engine::observe(const Target &target, const Json &input,
                       {"y", rect.top},
                       {"width", rect.right - rect.left},
                       {"height", rect.bottom - rect.top}}}};
+        if (!valueTruncated) row["valueLength"] = password ? 0 : wide(value).size();
         nodes.emplace(elementId,
-                      Node{item.element, elementId, role, label, value, row});
+                      Node{item.element, elementId, role, labelFingerprint, valueFingerprint, row});
         rows.push_back(row);
         ComPtr<IUIAutomationElement> child;
         walker->GetFirstChildElement(item.element.Get(), &child);
         if (!child)
           continue;
-        size_t offset = 0;
+        size_t offset = item.path == rootPath ? childOffset : 0;
+        for (size_t index = 0; child && index < offset; ++index) {
+          operation.guard();
+          ComPtr<IUIAutomationElement> next;
+          check(walker->GetNextSiblingElement(child.Get(), &next), "UIA continuation unavailable");
+          child = next;
+        }
+        if (!child && offset) throw Fault("stale_element", "Continuation child no longer exists");
         std::vector<Entry> children;
         while (child &&
                rows.size() + stack.size() + children.size() < maximum &&
@@ -224,22 +249,24 @@ Json Engine::observe(const Target &target, const Json &input,
   body["consistency"] = "bounded-sampling";
   if (wantText) {
     body["nodes"] = rows;
+    if (targeted) body["scope"] = {{"rootPath", rootPath}, {"childOffset", childOffset}};
     body["truncated"] = !continuation.empty();
     body["continuation"] = continuation;
     body["fullReset"] = true;
     if (input.value("diff", false) && !input.value("disableDiff", false) &&
         previous != observations.end() &&
-        input.value("baselineRevision", "") == previous->second.id) {
+        input.value("baselineRevision", "") == previous->second.id &&
+        previous->second.scope == rootPath + ":" + std::to_string(childOffset) && !previous->second.rows.empty()) {
       Json changed = Json::array(), removed = Json::array();
       std::map<std::string, Json> old;
       for (auto row : previous->second.rows) {
-        row.erase("elementId");
+
         old[row["path"].get<std::string>()] = row;
       }
       for (auto row : rows) {
         auto path = row["path"].get<std::string>();
         auto stable = row;
-        stable.erase("elementId");
+
         if (!old.count(path) || old[path] != stable)
           changed.push_back(row);
         old.erase(path);
@@ -251,13 +278,58 @@ Json Engine::observe(const Target &target, const Json &input,
                       {"changed", changed},
                       {"removed", removed}};
       body["fullReset"] = false;
+      body["compact"] = input.value("compact", false);
     }
   }
   if (!preview) {
     if (!observations.count(key) && observations.size() >= 128)
       throw Fault("observation_limit", "Close unused control references");
     observations[key] = Observation{id,      target, nodes,  rows,
-                                    imageId, width,  height, imageBounds};
+                                    imageId, width,  height, imageBounds, rootPath + ":" + std::to_string(childOffset)};
   }
   return body;
+}
+
+Json Engine::readText(const Target &target, const Json &input, const Operation &op) {
+  auto &observation = fresh(target, input, op);
+  auto &node = element(observation, input);
+  if (node.row.value("secure", false)) throw Fault("protected_input", "Protected text cannot be read");
+  auto offset = number(input, "offset", 0), length = number(input, "length", 4096);
+  if (offset < 0 || offset > 4000000 || length < 1 || length > 65536 || std::floor(offset) != offset || std::floor(length) != length)
+    throw Fault("invalid_request", "Invalid text range");
+  const auto field = input.value("field", "value");
+  if (field != "value" && field != "label") throw Fault("invalid_request", "Invalid text field");
+  const auto limit = static_cast<int>(offset + length + 2);
+  std::wstring value;
+  bool complete = true;
+  ComPtr<IUIAutomationTextPattern> textual;
+  if (field == "label") {
+    BSTR text = nullptr;
+    check(node.element->get_CurrentName(&text), "UIA label unavailable");
+    value = wide(bstr(text));
+  } else if (SUCCEEDED(node.element->GetCurrentPatternAs(UIA_TextPatternId, IID_PPV_ARGS(&textual))) && textual) {
+    ComPtr<IUIAutomationTextRange> range;
+    check(textual->get_DocumentRange(&range), "UIA text range unavailable");
+    BSTR text = nullptr;
+    check(range->GetText(limit, &text), "UIA text unavailable");
+    value = wide(bstr(text));
+    complete = value.size() < static_cast<size_t>(limit);
+  } else {
+    ComPtr<IUIAutomationValuePattern> editable;
+    check(node.element->GetCurrentPatternAs(UIA_ValuePatternId, IID_PPV_ARGS(&editable)), "UIA text range unsupported");
+    BSTR text = nullptr;
+    check(editable->get_CurrentValue(&text), "UIA value unavailable");
+    value = wide(bstr(text));
+    if (value.size() > 4000000) throw Fault("text_limit", "Text exceeds the bounded range reader");
+  }
+  if (value.size() > 4000000) throw Fault("text_limit", "Text exceeds the bounded range reader");
+  op.guard();
+  fresh(target, input, op);
+  auto slice = zcode::input::textSlice(value, static_cast<size_t>(offset), static_cast<size_t>(length));
+  bool truncated = !complete || slice.end < value.size();
+  Json result = {{"elementId", node.id}, {"observationId", observation.id}, {"text", utf8(slice.text)},
+    {"field", field}, {"start", slice.start}, {"end", slice.end}, {"truncated", truncated}, {"unit", "utf16"}};
+  if (complete) result["totalLength"] = value.size();
+  if (truncated) result["nextOffset"] = slice.end;
+  return result;
 }

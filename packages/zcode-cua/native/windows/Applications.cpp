@@ -109,7 +109,7 @@ DWORD integrityLevel(DWORD pid) {
                              *GetSidSubAuthorityCount(label->Label.Sid) - 1);
 }
 Json Target::json() const {
-  return {{"targetId", id},
+  Json result = {{"targetId", id},
           {"windowId", (uint64_t)(uintptr_t)hwnd},
           {"pid", pid},
           {"appId", processPath(pid)},
@@ -120,6 +120,17 @@ Json Target::json() const {
             {"y", bounds.top},
             {"width", bounds.right - bounds.left},
             {"height", bounds.bottom - bounds.top}}}};
+  HWND parent = GetWindow(hwnd, GW_OWNER);
+  DWORD parentPid = 0;
+  if (parent) GetWindowThreadProcessId(parent, &parentPid);
+  Json family = {{"kind", parent && parentPid == pid ? "owned-window" : "window"}, {"relation", "same-process"}};
+  if (parent && parentPid == pid && IsWindow(parent)) {
+    family["relation"] = "verified-hwnd-owner";
+    family["parentWindowId"] = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(parent));
+    family["parentTargetId"] = incarnation(pid) + ":" + std::to_string(reinterpret_cast<uintptr_t>(parent)) + ":" + windowGeneration(parent);
+  }
+  result["windowFamily"] = family;
+  return result;
 }
 std::vector<Target> Engine::windows(const Json &input) {
   struct Search {

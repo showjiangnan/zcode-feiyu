@@ -148,7 +148,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       "../../node-repl-host",
       "../../../node-repl-host",
     ],
-    version: "0.7.13",
+    version: "0.7.16",
   },
   {
     listing: {
@@ -405,7 +405,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     runtimeTopLevelPaths: [],
     // 这里的 version 追踪上游 zcode-cua runtime 版本，使插件 UI 展示、缓存路径、
     // marketplace 条目都对齐；打包前由 producer 一致性门禁核对，漂移时拒绝生成缓存。
-    version: "0.7.13",
+    version: "0.7.16",
   },
 ];
 

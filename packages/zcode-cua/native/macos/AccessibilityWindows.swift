@@ -34,6 +34,7 @@ extension NativeEngine {
     if case .initializing? = preparedAccessibilityIncarnations[incarnation] {
       preparationReason = "accessibility-initializing"
     }
-    return (value as? [AXUIElement] ?? [], preparationReason)
+    guard let windows = value as? [AXUIElement] else { return ([], "accessibility-unavailable") }
+    return (windows, preparationReason)
   }
 }

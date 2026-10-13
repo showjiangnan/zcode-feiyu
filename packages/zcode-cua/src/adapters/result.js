@@ -8,6 +8,8 @@ export function modelResult(body, app, token) {
   const image = state.image;
   const content = [];
   const projection = { ...state };
+  // 仅确认基线的增量省略全量节点；原生仍保留当前完整观察供输入校验。
+  if (state.compact === true && state.fullReset === false && state.diff) delete projection.nodes;
   if (image?.data) {
     const pixels = Buffer.from(image.data, "base64");
     const sha256 = createHash("sha256").update(pixels).digest("hex");

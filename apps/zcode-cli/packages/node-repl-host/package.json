@@ -1,6 +1,6 @@
 {
   "name": "@zcode/node-repl-host",
-  "version": "0.7.13",
+  "version": "0.7.16",
   "private": true,
   "description": "Shared node_repl MCP host. Owns the JS execution surface and the domain bridges (Browser Use, Computer Use) that ride on it; the official plugins contribute only their own skills, docs and runtime assets.",
   "type": "module",

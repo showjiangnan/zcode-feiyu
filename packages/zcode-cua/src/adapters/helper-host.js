@@ -10,6 +10,7 @@ import { persistentGrants, pluginEnabled } from "./configuration.js";
 import { helperIdentity } from "./helper-installer.js";
 import { CuaError } from "../domain/protocol.js";
 import { createPreviewSampler } from "./preview-sampler.js";
+import { createPreviewVisibilitySynchronizer } from "./preview-visibility.js";
 import { validateControlPresentation } from "../../control-contract.js";
 
 export function createHelperHost(options = {}) {
@@ -28,6 +29,7 @@ export function createHelperHost(options = {}) {
   let disposed = false;
   let visibleSourcesKey = "";
   let presentation;
+  let lastTargetCheck = 0;
   const createNative = (executable, args = []) => {
     const instance = new NativeProcess(executable, args, {
       onEvent: (event) => {
@@ -85,6 +87,20 @@ export function createHelperHost(options = {}) {
           });
         }
       }
+      if (Date.now() - lastTargetCheck >= 1000) {
+        lastTargetCheck = Date.now();
+        // 隐藏/折叠不应留下已关闭来源；存活查询只检查身份，不抓取隐藏帧。
+        await Promise.all(
+          [...coordinator.sources.values()].map(async (source) => {
+            try {
+              await coordinator.checkSource(source);
+            } catch (error) {
+              if (coordinator.sources.get(source.id) === source)
+                coordinator.frameUnavailable(source.id, error.code || "target_unavailable");
+            }
+          }),
+        );
+      }
       await Promise.all(
         coordinator.previewSources().map(async (source) => {
           if (!(await enabled(source.context))) {
@@ -104,18 +120,9 @@ export function createHelperHost(options = {}) {
               },
               { timeoutMs: 5000 },
             );
-            coordinator.acceptFrame(source.id, frame, generation);
+            coordinator.acceptFrame(source.id, frame, generation, source);
           } catch (error) {
-            if (
-              error.code === "locked" ||
-              error.code === "capture_revoked" ||
-              error.code === "turn_stopped" ||
-              error.code === "permission_revoked" ||
-              error.code === "application_changed" ||
-              error.code === "authorization_unavailable"
-            )
-              await coordinator.stop(source.context, true);
-            else coordinator.frameUnavailable(source.id, error.code || "capture_failed");
+            await coordinator.previewFailed(source, error);
           }
         }),
       );
@@ -141,8 +148,28 @@ export function createHelperHost(options = {}) {
         .join("\0") || "";
     if (key === visibleSourcesKey) return;
     visibleSourcesKey = key;
+    if (process.platform === "darwin") void visibility.sync();
     if (key) sampler.wake();
   };
+  const visibility = createPreviewVisibilitySynchronizer({
+    getNative: () => (disposed ? undefined : native),
+    getProjection: () => ({
+      revision: coordinator?.revision || 0,
+      sources:
+        coordinator
+          ?.previewSources()
+          .map((source) => ({ context: source.context, targetId: source.targetId })) || [],
+    }),
+    onError: async (error, worker) => {
+      if (!disposed && worker === native && worker?.child && !worker.disposed) {
+        options.logger?.warn?.("Preview resources could not be synchronized", {
+          code: error.code || "capture_cleanup_failed",
+        });
+        coordinator?.invalidate();
+        await worker.close().catch(() => undefined);
+      }
+    },
+  });
   async function start() {
     if (disposed) throw new CuaError("disposed", "Control lifecycle is disposed");
     if (server) return handle();
@@ -197,9 +224,11 @@ export function createHelperHost(options = {}) {
               ["turn-ended", "turn-completed", "turn-failed", "session-closed"].includes(
                 params.kind,
               )
-            )
+            ) {
               await coordinator.end(params);
-            return { applied: true };
+              return { applied: true };
+            }
+            return { applied: false, reason: "observation-owned-presentation" };
           }
           throw new CuaError("unknown_method", "Unsupported broker method");
         },
@@ -311,9 +340,9 @@ export function createHelperHost(options = {}) {
       });
       return { ok: Boolean(frame.image) };
     },
-    getControlSnapshot(workspaceKey) {
+    getControlSnapshot(workspaceKey, known) {
       return (
-        coordinator?.snapshot(workspaceKey) || {
+        coordinator?.snapshot(workspaceKey, known) || {
           schemaVersion: 1,
           revision: 0,
           sources: [],

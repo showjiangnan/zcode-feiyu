@@ -155,9 +155,10 @@ Json Engine::handle(const std::string &method, const Json &params,
     return {{"status", "ready"}};
   }
   if (method == "close_target") {
-    auto selected = target(input);
-    clearControlFeedback(op.key(), selected.id);
-    observations.erase(op.key() + ":" + selected.id);
+    // 已消失的 HWND 无法重新解析；只释放当前 context 登记的旧 identity。
+    auto identity = input.contains("targetId") ? text(input, "targetId") : target(input).id;
+    clearControlFeedback(op.key(), identity);
+    observations.erase(op.key() + ":" + identity);
     bool remaining = false;
     for (auto &row : observations)
       if (row.first.rfind(op.key(), 0) == 0)
@@ -187,6 +188,23 @@ Json Engine::handle(const std::string &method, const Json &params,
     qualify(op, params, false);
     return target(input).json();
   }
+  if (method == "target_status") {
+    qualify(op, params, false);
+    auto expected = text(input, "targetId");
+    auto value = number(input, "windowId");
+    auto pidValue = number(input, "pid");
+    if (value <= 0 || value != std::floor(value) || value > 9007199254740991.0 ||
+        pidValue <= 0 || pidValue != std::floor(pidValue) || pidValue > MAXDWORD)
+      throw Fault("invalid_request", "Invalid registered target identity");
+    auto hwnd = reinterpret_cast<HWND>(static_cast<uintptr_t>(value));
+    DWORD pid = 0;
+    auto closed = Json{{"targetId", expected}, {"status", "closed"}};
+    if (!IsWindow(hwnd) || !GetWindowThreadProcessId(hwnd, &pid) || pid != static_cast<DWORD>(pidValue))
+      return closed;
+    // 存活检查不使用 visible/iconic/cloaked；最小化或遮挡不是关闭。
+    auto identity = incarnation(pid) + ":" + std::to_string(reinterpret_cast<uintptr_t>(hwnd)) + ":" + windowGeneration(hwnd);
+    return {{"targetId", expected}, {"status", identity == expected ? "present" : "closed"}};
+  }
   if (method == "get_state" || method == "preview") {
     qualify(op, params, false);
     auto window = target(input);
@@ -197,6 +215,10 @@ Json Engine::handle(const std::string &method, const Json &params,
       controlFeedbackPhase(window, op, paused ? "paused" : "observing");
     }
     return state;
+  }
+  if (method == "read_text") {
+    qualify(op, params, false);
+    return readText(target(input), input, op);
   }
   const auto mode = input.value("inputMode", "isolated");
   if (mode != "isolated" && mode != "foreground") throw Fault("invalid_request", "Invalid inputMode");
