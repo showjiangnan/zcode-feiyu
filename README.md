@@ -299,7 +299,7 @@ pnpm build:zcode --base-url https://downloads.example.com/zcode/
 
 RCS 已在 macOS arm64 的 3.14.4 安装版、本地 Python 服务与真实桌面 Host 上完成：浏览器端模型往返、standard/coordinator/swarm、刷新恢复、独立 SDK、同 commandId 对账、授权路径/凭据拒绝、HTTP Range 及同 PTY ID 续接；电脑/320/390/430px 浏览器交互已验收。这些是历史验收；当前版本的门禁与新增 CUA 验证范围见下文。测试使用本地模型 fixture，不代表所有第三方模型、真实云公网 TLS、实体手机软键盘、远端 SSH 主机或机器人平台均已验证。Docker 部署文件已提供，本轮未在 Docker 引擎上运行。
 
-当前源码已通过根及 CLI 类型检查、Lint（0 errors / 0 warnings）和架构检查。macOS arm64 本地安装版使用真实 GPT-6.1-Sol 验证同一工具调用的多张截图、文本写入与新鲜观察、多窗叠放，以及关闭一个/最后来源后的预览移除。发布归档独立校验签名、架构、内容和内置 Agent；本次没有重新执行真实 OAuth 或新的付费图片生成验收。Windows 共享 UI 的模拟组合测试不代表当前原生 helper、安装包或 Windows 实机通过；最小化实机、长期压力及所有第三方应用组合尚未完整验证。
+当前源码已通过根及 CLI 类型检查、Lint（0 errors / 0 warnings）和架构检查。macOS arm64 的 3.14.6 本地安装版（CUA 0.7.16）使用真实 GPT-6.1-Sol 验证同一工具调用的多张截图、文本写入与新鲜观察、多窗叠放，以及关闭一个/最后来源后的预览移除。发布归档独立校验签名、架构、内容和内置 Agent；本次没有重新执行真实 OAuth 或新的付费图片生成验收。Windows 共享 UI 的模拟组合测试不代表当前原生 helper、安装包或 Windows 实机通过；最小化实机、长期压力及所有第三方应用组合尚未完整验证。
 
 macOS arm64 安装包与本机启动有实际验证；较早图片兼容修复还完成了真实 fal 的**无付费连接验证**。实际付费出图、真实 CDN 故障和 Windows 真机仍需独立验收。测试源码和测试记录按发布范围排除。
 
