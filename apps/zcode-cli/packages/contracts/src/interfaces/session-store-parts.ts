@@ -180,6 +180,7 @@ export interface StepStartPart {
 }
 
 export interface StepFinishPart {
+  modelSpeed?: import("@zcode/shared").ModelSpeedObservation;
   id: PartId;
   sessionID: SessionId;
   messageID: MessageId;
@@ -299,4 +300,11 @@ export interface SharedContextImportTransition {
   status: SharedContextImportStatus;
   /** queue/input identity or accepted user message identity for audit/recovery. */
   sourceId?: string;
+}
+
+/** 来源历史一次提交：会话、全部消息及 provenance 全有或全无。 */
+export interface ExternalImportCommitBundle {
+  session: CreateSessionInput;
+  messages: MessageWithParts[];
+  provenance: SessionEntryInfo;
 }

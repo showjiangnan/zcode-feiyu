@@ -15,12 +15,18 @@ Feiyu evolves from its delivered capabilities, user feedback, and architecture c
 
 ## Current source updates
 
+- ChatGPT subscription models use catalog-reported reasoning, context, input and speed capabilities. The speed slider defaults to Standard and offers only available Fast / Ultrafast tiers. Single/double lightning icons show the selection; the actual tier from a successful response is displayed separately. Observed Fast requests have returned Standard, so the icon does not prove acceleration.
+- Teamorouter Responses supports per-model Fast / Ultrafast settings, account balances and a top-up link. The recommendation does not imply a partnership. Other providers retain their existing model and conversation paths.
+- Local external conversation imports preserve provenance, attachments and continuation boundaries. Import operations are performed on Desktop.
+- Fix optional ReadSessionContext arguments for subscription requests while retaining topic-attachment validation. Incomplete responses preserve safe reasons and already delivered content, with paired Desktop/RCS error displays.
 - Local desktop support for MCP Apps UI and Gen UI: interactive pages, inline/expanded views, restored state, Tweak, follow-ups, tool/resource interactions, and cancellation.
 - Improved dynamic workflow hole filling, run settings, progress and logs, plus saving a workflow from a run. Workflows remain enabled by default; users can disable them or choose on-demand use in settings.
 - Updated subagent definitions and session restoration while preserving standard/coordinator/swarm orchestration, top-level task collaboration, memory maintenance, and execution without cumulative spending stops.
 - Self-hosted RCS keeps the desktop's existing Host and receives the shared workflow and Web updates. Native page sandboxes remain local desktop capabilities; Web/RCS and remote workspaces use accurate platform fallbacks.
 
 These changes describe the current source. Previously published installers below do not automatically include later source updates.
+
+The 2026-10-15 update synchronizes source and paired RCS assets only; it does not publish a new Release. The repair build was installed locally with data preserved and confirmed usable by the user. This source push does not claim additional live-account, Windows-installer or public remote-control validation.
 
 ## Latest update
 

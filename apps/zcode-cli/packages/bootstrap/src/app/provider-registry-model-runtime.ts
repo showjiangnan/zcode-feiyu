@@ -93,6 +93,7 @@ export class ApiProviderModelRuntime {
         : {}),
       options: {
         reasoningLevel: normalReasoningLevel,
+        speed: target.selection.options?.speed ?? "standard",
       },
     });
   }

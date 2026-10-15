@@ -2,6 +2,7 @@
 import {
   subscriptionErrorCode,
   subscriptionErrorMessageKey,
+  subscriptionIncompleteReason,
 } from "./chatgpt-subscription/errors.js";
 import { useOptionalPlatform } from "./hooks/usePlatform.js";
 import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
@@ -95,7 +96,9 @@ export function resolveChatErrorBannerDisplayMessage(
   intl: IntlInstance,
 ): string {
   const subscriptionCode = subscriptionErrorCode(error);
-  const subscriptionMessage = subscriptionCode && subscriptionErrorMessageKey(subscriptionCode);
+  const subscriptionMessage =
+    subscriptionCode &&
+    subscriptionErrorMessageKey(subscriptionCode, subscriptionIncompleteReason(error));
   if (subscriptionMessage)
     return intl.formatMessage({ id: `chatgptSubscription.${subscriptionMessage}` });
   if (isModelConfigMissingError(error)) {
@@ -242,7 +245,8 @@ export function ChatErrorBanner({
           "w-full flex flex-wrap items-center gap-2 rounded-xl bg-surface backdrop-blur-md border border-border px-3 py-2",
         )}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2 text-ui-base text-foreground">
+        {/* 小屏按钮曾将错误文字挤成零宽；诊断独占首行，桌面继续使用剩余宽度。 */}
+        <div className="flex min-w-0 flex-1 basis-full items-center gap-2 text-ui-base text-foreground sm:basis-0">
           {hookBlocked ? (
             <AnchorIcon
               aria-hidden="true"

@@ -176,6 +176,13 @@ export function createRcsAuthorization(options: {
         if (!entry.methods.includes(method)) denied();
         let args = bind(rawArgs ?? []) as unknown[];
         const first = object(args[0]);
+        // 导入是 Desktop 的本机管理操作，不能经普通建会话接口绕过服务 allowlist。
+        if (
+          ["zcode-agent", "zcode-session"].includes(name) &&
+          method === "createSession" &&
+          (first?.importedHistory !== undefined || first?.sessionId !== undefined)
+        )
+          denied();
         if (name === "chatgpt-subscription") {
           const command = chatGPTSubscriptionCommandSchema.safeParse(first);
           if (

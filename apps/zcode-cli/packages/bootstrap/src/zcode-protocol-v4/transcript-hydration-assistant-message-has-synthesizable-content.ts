@@ -251,6 +251,7 @@ export function isLegacyCompactMaintenanceInput(
 }
 
 export interface TurnOutputCollection {
+  modelSpeed?: import("@zcode/shared").ModelSpeedObservation;
   failure?: {
     type: string;
     message: string;

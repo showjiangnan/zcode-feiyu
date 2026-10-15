@@ -298,6 +298,8 @@ export const RCS_SERVICE_MANIFEST: Record<
       "setPersonalModelEnabled",
       "discoverModels",
       "setPersonalModelFastMode",
+      "setPersonalModelSpeedCapability",
+      "getTeamorouterBalance",
       "testModelConnectivity",
     ],
     events: ["onDidChange"],

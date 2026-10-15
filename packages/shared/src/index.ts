@@ -169,6 +169,7 @@ export * from "./model-provider-types.js";
 export * from "./model-selection-key.js";
 export * from "./model-selection-types.js";
 export * from "./model-selection.js";
+export * from "./model-speed.js";
 export * from "./oauth.js";
 export * from "./off-peak-types.js";
 export * from "./official-glm-model-id.js";
@@ -376,3 +377,7 @@ export * from "./request-security-edition/verification-policy.js";
 export { ZCODE_TELEMETRY_ENABLED } from "./env.js";
 
 export * from "./chatgpt-subscription.js";
+export * from "./chatgpt-subscription-errors.js";
+export * from "./chatgpt-subscription-catalog.js";
+
+export * from "./external-import.js";

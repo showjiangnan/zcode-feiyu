@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { DownloadIcon, Loader2Icon, ZapIcon } from "lucide-react";
+import { DownloadIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useProviderDetailFeedback } from "./ProviderDetailFeedback.js";
 
@@ -86,63 +85,5 @@ export function DiscoverModelsButton({ onDiscover }: { onDiscover: () => Promise
           : "settings.modelProvider.discoverModels",
       })}
     </Button>
-  );
-}
-
-export function ModelFastModeButton({
-  enabled,
-  onChange,
-}: {
-  enabled: boolean;
-  onChange: (enabled: boolean) => Promise<void>;
-}) {
-  const { intl } = useZCodeIntl();
-  const { showFeedback } = useProviderDetailFeedback();
-  const state = useActionState();
-  const toggle = async () => {
-    if (state.running.current) return;
-    state.running.current = true;
-    state.setPending(true);
-    try {
-      await onChange(!enabled);
-    } catch {
-      if (state.active.current)
-        showFeedback({
-          key: "model-fast-mode",
-          state: "failure",
-          message: intl.formatMessage({ id: "settings.modelProvider.fastSaveFailed" }),
-          dismissible: true,
-        });
-    } finally {
-      state.running.current = false;
-      if (state.active.current) state.setPending(false);
-    }
-  };
-  return (
-    <ControlHintTooltip title={intl.formatMessage({ id: "settings.modelProvider.fastHint" })}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        className={enabled ? "text-primary" : "text-foreground-muted"}
-        aria-label={intl.formatMessage({
-          id: enabled ? "settings.modelProvider.disableFast" : "settings.modelProvider.enableFast",
-        })}
-        aria-pressed={enabled}
-        disabled={state.pending}
-        data-testid="model-provider-fast-mode"
-        onClick={() => void toggle()}
-      >
-        {state.pending ? (
-          <Loader2Icon className="size-3.5 animate-spin" aria-hidden="true" />
-        ) : (
-          <ZapIcon
-            className="size-3.5"
-            fill={enabled ? "currentColor" : "none"}
-            aria-hidden="true"
-          />
-        )}
-      </Button>
-    </ControlHintTooltip>
   );
 }

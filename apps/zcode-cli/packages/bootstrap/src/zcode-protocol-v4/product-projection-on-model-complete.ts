@@ -73,6 +73,7 @@ export function onModelComplete(this: ProductProjection, event: SessionEvent): C
     op: "state.updated",
     patch: {
       usage: {
+        ...(usage.modelSpeed ? { modelSpeed: usage.modelSpeed } : {}),
         // Bug 原因：registry 已显式清除窗口时，缺少 contextWindow 的 ModelComplete
         // 过去会用 0 重建对象，破坏未知容量语义。token 继续在侧状态和累计值中更新。
         contextWindow:

@@ -1,14 +1,13 @@
 // Modified by ZCode Feiyu.
 import { z } from "zod";
+import {
+  chatGPTSubscriptionModelSchema,
+  subscriptionCatalogJsonSchema,
+} from "@zcode/shared/chatgpt-subscription-catalog";
 
-export const subscriptionModelSchema = z
-  .object({
-    slug: z.string().min(1),
-    displayName: z.string().min(1),
-    inputModalities: z.array(z.string()).optional(),
-    contextWindow: z.number().int().positive().optional(),
-    contextWindowSource: z.enum(["official-model-reference", "local-planning-fallback"]).optional(),
-    reasoningLevels: z.array(z.string().min(1)).optional(),
+export const subscriptionModelSchema = chatGPTSubscriptionModelSchema
+  .extend({
+    nativeMetadata: z.record(z.string().max(128), subscriptionCatalogJsonSchema).optional(),
   })
   .strict();
 

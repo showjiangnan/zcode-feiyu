@@ -88,13 +88,17 @@ export async function startSubscriptionBroker(
         Number(rawGeneration),
         typeof id === "string" ? { id, startedAt, parentId } : undefined,
       );
-      const body = projectSubscriptionRequest(await readJson(request));
+      const boundModels = owner.executionModels?.(typeof id === "string" ? id : undefined);
+      const rawBody = await readJson(request);
       unregister = owner.registerRequest(profileId, controller);
       let profile = await owner.credentials(profileId, Number(rawGeneration), controller.signal);
       if (!profile.usageAcknowledged)
         throw new ChatGPTSubscriptionError("subscription_usage_confirmation_required", 403);
-      if (!profile.models.some((model) => model.slug === body.model))
-        throw new ChatGPTSubscriptionError("model_not_available", 400);
+      const modelId =
+        rawBody && typeof rawBody === "object" && "model" in rawBody ? rawBody.model : undefined;
+      const model = (boundModels ?? profile.models).find((model) => model.slug === modelId);
+      if (!model) throw new ChatGPTSubscriptionError("model_not_available", 400);
+      const body = projectSubscriptionRequest(rawBody, model);
       const send = () =>
         upstream("https://api.openai.com/v1/responses", {
           method: "POST",
@@ -145,12 +149,17 @@ export async function startSubscriptionBroker(
       const safe = safeSubscriptionError(error);
       if (response.destroyed) return;
       const payload = {
-        error: { code: safe.code, message: safe.message },
+        error: {
+          code: safe.code,
+          message: safe.message,
+          ...(safe.param ? { param: safe.param } : {}),
+          ...(safe.incompleteReason ? { incomplete_reason: safe.incompleteReason } : {}),
+        },
         request_id: safe.requestId,
       };
       if (response.headersSent) {
         response.end(
-          `event: error\ndata: ${JSON.stringify({ type: "error", code: safe.code, message: safe.message, request_id: safe.requestId })}\n\n`,
+          `event: error\ndata: ${JSON.stringify({ type: "error", code: safe.code, message: safe.message, request_id: safe.requestId, ...(safe.incompleteReason ? { incomplete_reason: safe.incompleteReason } : {}) })}\n\n`,
         );
       } else json(response, safe.status && safe.status >= 400 ? safe.status : 400, payload);
     } finally {

@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+import { safeSubscriptionIncompleteReason } from "@zcode/shared";
 import {
   AiSdkProviderKind,
   ProviderBusinessErrorOptions,
@@ -9,6 +10,7 @@ export class ProviderBusinessError extends Error {
   readonly code = "PROVIDER_BUSINESS_ERROR";
   readonly isProviderBusinessError = true;
   readonly providerCode?: ProviderCode;
+  readonly providerIncompleteReason?: string;
   readonly providerId: string;
   readonly providerKind: AiSdkProviderKind;
   readonly providerMessage?: string;
@@ -24,6 +26,10 @@ export class ProviderBusinessError extends Error {
     super(providerMessage);
     this.name = "ProviderBusinessError";
     this.providerCode = options.providerCode;
+    this.providerIncompleteReason =
+      options.providerCode === "response_incomplete"
+        ? safeSubscriptionIncompleteReason(options.providerIncompleteReason)
+        : undefined;
     this.providerId = options.providerId;
     this.providerKind = options.providerKind;
     this.providerMessage = providerMessage;
@@ -54,6 +60,7 @@ export function readProviderBusinessFailureFromBody(body: unknown):
       providerCode?: ProviderCode;
       providerMessage?: string;
       providerRequestId?: string;
+      providerIncompleteReason?: string;
       responseBodySummary: Record<string, unknown>;
       statusCode?: number;
     }
@@ -85,6 +92,12 @@ export function readProviderBusinessFailureFromBody(body: unknown):
     providerCode,
     providerMessage,
     providerRequestId: readProviderRequestId(record),
+    providerIncompleteReason:
+      providerCode === "response_incomplete"
+        ? safeSubscriptionIncompleteReason(
+            record.incomplete_reason ?? errorRecord?.incomplete_reason,
+          )
+        : undefined,
     responseBodySummary: summarizeProviderBusinessBody(record),
     statusCode: providerCodeToStatusCode(providerCode),
   };

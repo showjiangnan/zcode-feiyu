@@ -4,6 +4,7 @@
 // ============================================================
 
 import { anthropic } from "@ai-sdk/anthropic";
+import { openai } from "@ai-sdk/openai";
 import { ModelErrorCode, type JsonSchema, type ModelToolContract } from "@zcode/contracts";
 import { jsonSchema, tool, type ToolSet } from "ai";
 import { AiSdkModelAdapterError } from "./errors.js";
@@ -12,6 +13,8 @@ import { isAnthropicFirstPartyModelId, toStrictToolSchema } from "./strict-tool-
 export interface AiSdkToolTransformOptions {
   requiresMfjsToolSchema?: boolean;
   supportsNativeWebSearch?: boolean;
+  subscriptionAccess?: boolean;
+  subscriptionSearchToolType?: string;
   providerKind?: "openai" | "anthropic" | "openai-compatible" | "gateway" | "custom";
 
   /** 本次请求的模型 id，仅用于首方 strict 资格判定；缺席即不启用 strict。 */
@@ -257,6 +260,29 @@ function toAiSdkProviderNativeTool(
   const blockedDomains = stringArrayArg(args.blockedDomains);
 
   switch (options.providerKind) {
+    case "openai":
+      if (!options.subscriptionAccess)
+        throw new AiSdkModelAdapterError(
+          ModelErrorCode.InvalidModelRequest,
+          `Provider API kind ${options.providerKind} does not encode provider-native WebSearch`,
+        );
+      if (!options.supportsNativeWebSearch || blockedDomains?.length)
+        throw new AiSdkModelAdapterError(
+          ModelErrorCode.InvalidModelRequest,
+          "Subscription model does not permit this native WebSearch configuration",
+        );
+      if (options.subscriptionSearchToolType === "web_search_preview") {
+        if (allowedDomains?.length)
+          throw new AiSdkModelAdapterError(
+            ModelErrorCode.InvalidModelRequest,
+            "Subscription preview WebSearch does not encode domain filters",
+          );
+        return openai.tools.webSearchPreview({}) as ToolSet[string];
+      }
+      // 公开订阅路线只编码 OpenAI 的 filters；Anthropic max_uses 不进入请求。
+      return openai.tools.webSearch(
+        allowedDomains ? { filters: { allowedDomains } } : {},
+      ) as ToolSet[string];
     case "anthropic":
       if (!options.supportsNativeWebSearch) {
         throw new AiSdkModelAdapterError(

@@ -3026,6 +3026,35 @@ export function createZCodeTaskServiceAdapter(
       unsupported("switchAgent");
     },
 
+    async importExternalHistory(input) {
+      const snapshot = await options.zcodeAgentService.createSession({
+        workspacePath: input.workspacePath,
+        sessionId: input.sessionId,
+        sessionTraceId: createSessionTraceId(),
+        persistence: "immediate",
+        importedHistory: {
+          source: "external",
+          title: input.title,
+          createdAt: input.createdAt,
+          updatedAt: input.updatedAt,
+          messages: input.messages,
+          provenance: input.provenance,
+        },
+      });
+      const meta = await syncTaskIndexSnapshot(snapshot);
+      const indexed = await syncTaskIndexMeta({
+        ...meta,
+        migrationSource: input.provenance.source,
+      });
+      rememberIndexedTaskMeta(indexed);
+      emitWorkspaceTaskListChanged(
+        { workspacePath: indexed.workspacePath, taskId: indexed.taskId },
+        indexed,
+        "task_meta_changed",
+      );
+      return { taskId: indexed.taskId, workspacePath: indexed.workspacePath };
+    },
+
     async scanImportableClaudeSessions(params: {
       workspacePath?: string;
       workspaceIdentity?: string;

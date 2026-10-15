@@ -458,6 +458,10 @@ export interface ConversationComposerProps {
   ) => void;
   /** 选中思考深度；同时带上用户操作时看到的模型，避免异步回流后把 thought 归到另一模型。 */
   onSelectThought: (thought: string, modelContext: { provider: string; model: string }) => void;
+  onSelectSpeed?: (
+    speed: import("@zcode/shared").ModelSpeed,
+    modelContext: { provider: string; model: string },
+  ) => void;
   onSwitchMode: (mode: string) => void;
   onSetOrchestrationMode: (mode: OrchestrationMode) => void | Promise<void>;
   onControlProactiveWork?: (
@@ -555,6 +559,7 @@ function ConversationComposerImpl({
   onStop,
   onSelectModel,
   onSelectThought,
+  onSelectSpeed,
   onSwitchMode,
   onSetOrchestrationMode,
   onControlProactiveWork,
@@ -2203,6 +2208,7 @@ function ConversationComposerImpl({
             onConfigPickerOpenChange={handleConfigPickerOpenChange}
             onSelectModel={handleSelectModelTrace}
             onSelectThought={onSelectThought}
+            onSelectSpeed={onSelectSpeed}
             onSwitchMode={onSwitchMode}
             onRecoverCustomModelSelection={onRecoverCustomModelSelection}
             onSendCompressionCommand={onSendCompressionCommand}
@@ -2286,6 +2292,7 @@ function ConversationComposerImpl({
       modelSelectionState,
       modelSelectionView,
       onSelectThought,
+      onSelectSpeed,
       onRecoverCustomModelSelection,
       onSendCompressionCommand,
       onSwitchMode,

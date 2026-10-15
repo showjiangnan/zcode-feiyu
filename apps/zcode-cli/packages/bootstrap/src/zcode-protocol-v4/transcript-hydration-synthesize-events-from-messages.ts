@@ -1,4 +1,8 @@
 // Modified by ZCode Feiyu.
+import {
+  finishHydratedTurn,
+  type HydratedTurnCompletion,
+} from "./transcript-hydration-finish-turn.js";
 import type {
   MessageWithParts,
   SessionEvent,
@@ -7,12 +11,8 @@ import type {
   EventId,
   TurnId,
   ModelSelection,
-  TurnFileChangeSummary,
 } from "@zcode/contracts";
-import type {
-  SynthesizeOptions,
-  TurnResultForHydration,
-} from "./transcript-hydration-subagent-tool-names.js";
+import type { SynthesizeOptions } from "./transcript-hydration-subagent-tool-names.js";
 import { HYDRATION_TRACE_ID } from "./projection-state.js";
 import { SessionEventType } from "@zcode/contracts";
 import {
@@ -25,7 +25,6 @@ import {
 } from "./transcript-hydration-push-goal-verification-fact.js";
 import type { GoalVerificationFact } from "./transcript-hydration-synthesize-subagent-lifecycle.js";
 import type { HydratedTimelineModel } from "./transcript-hydration-push-goal-verification-fact.js";
-import type { TurnOutputCollection } from "./transcript-hydration-assistant-message-has-synthesizable-content.js";
 import {
   isProviderContextOnlyAssistant,
   workflowLaunchOfMessage,
@@ -141,64 +140,8 @@ export function synthesizeEventsFromMessages(
     selectTurnModel(selection);
   };
 
-  const finishTurn = (input: {
-    failure?: TurnOutputCollection["failure"];
-    fileChanges?: TurnFileChangeSummary;
-    turnId: string;
-    resultType: TurnResultForHydration;
-    toolCallCount: number;
-    historyRoundCount: number;
-    turnStartedAtMs: number;
-    turnEndedAtMs: number;
-  }): void => {
-    if (input.failure) {
-      // provider 首字前失败只持久化在 assistant.info.error，旧 cold 路径
-      // 折成 TurnComplete(error_during_execution)，导致 lastError 的 code/message 全丢。
-      // 这里复用 live 的 TurnError 状态机，避免另建 cold-only 错误 reducer。
-      push(
-        SessionEventType.TurnError,
-        { error: input.failure, turnPhase: "model" },
-        input.turnId,
-        input.turnEndedAtMs,
-      );
-      return;
-    }
-    push(
-      SessionEventType.ModelComplete,
-      {
-        content: "",
-        stopReason: "end_turn",
-        querySource: "main_turn",
-        // 冷恢复曾把合成事件的窗口固定成 20 万，覆盖同一模型在
-        // workspace provider registry 中的 1M 能力；这里沿用调用方解析出的当前模型真值。
-        contextWindow,
-        usage: {
-          inputTokens: 0,
-          outputTokens: 0,
-          cacheReadTokens: 0,
-          cacheWriteTokens: 0,
-        },
-        ...(input.fileChanges ? { fileChanges: input.fileChanges } : {}),
-      },
-      input.turnId,
-      input.turnEndedAtMs,
-    );
-    push(
-      SessionEventType.TurnComplete,
-      {
-        response: "",
-        tokenCount: 0,
-        toolCallCount: input.toolCallCount,
-        historyRoundCount: input.historyRoundCount,
-        // 冷恢复是从 message transcript 反向合成事件，不能像 live
-        // 事件一样依赖运行时 startedAt；固定 0 会让历史轮次显示成 1 秒。
-        duration: Math.max(0, input.turnEndedAtMs - input.turnStartedAtMs),
-        resultType: input.resultType,
-      },
-      input.turnId,
-      input.turnEndedAtMs,
-    );
-  };
+  const finishTurn = (input: HydratedTurnCompletion): void =>
+    finishHydratedTurn(input, { push, contextWindow });
 
   while (index < messages.length) {
     const message = messages[index]!;
@@ -278,6 +221,7 @@ export function synthesizeEventsFromMessages(
       });
       index = collected.nextIndex;
       finishTurn({
+        modelSpeed: collected.modelSpeed,
         failure: collected.failure,
         turnId,
         resultType: collected.resultType,
@@ -335,6 +279,7 @@ export function synthesizeEventsFromMessages(
         });
         index = collected.nextIndex;
         finishTurn({
+          modelSpeed: collected.modelSpeed,
           failure: collected.failure,
           fileChanges: options.fileChangeSummariesByMessageId?.get(String(message.info.id)),
           turnId,
@@ -380,6 +325,7 @@ export function synthesizeEventsFromMessages(
       });
       index = collected.nextIndex;
       finishTurn({
+        modelSpeed: collected.modelSpeed,
         failure: collected.failure,
         turnId,
         resultType: collected.resultType,
@@ -440,6 +386,7 @@ export function synthesizeEventsFromMessages(
     });
     index = collected.nextIndex;
     finishTurn({
+      modelSpeed: collected.modelSpeed,
       failure: collected.failure,
       fileChanges: options.fileChangeSummariesByMessageId?.get(String(message.info.id)),
       turnId,

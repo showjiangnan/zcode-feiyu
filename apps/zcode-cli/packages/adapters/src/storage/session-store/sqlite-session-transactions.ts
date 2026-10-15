@@ -1,4 +1,6 @@
 // Modified by ZCode Feiyu.
+import { commitExternalHistory } from "./external-import-commit.js";
+import type { ExternalImportCommitBundle } from "@zcode/contracts";
 import type {
   CreateSessionInput,
   ForkCommitBundle,
@@ -25,6 +27,10 @@ import { SqliteSessionStoreConnection } from "./sqlite-connection.js";
 import { forkChildSessionId, assertForkBundleChildLocal } from "./fork-bundle-validation.js";
 
 export class SqliteSessionStoreTransactions extends SqliteSessionStoreConnection {
+  async commitExternalImportBundle(bundle: ExternalImportCommitBundle): Promise<SessionInfo> {
+    this.throwBeforeWrite();
+    return commitExternalHistory(this.db, bundle);
+  }
   async readSessionCreateOrigins(commandId: string) {
     return readSessionCreateOrigins(this.db, commandId);
   }

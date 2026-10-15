@@ -29,6 +29,8 @@ import { resolveModelProviderDisplayName } from "./constants.js";
 import { useProviderDetailFeedback } from "./ProviderDetailFeedback.js";
 import { MODEL_PROVIDER_TEXT_IDLE_TRIGGER_MS, useIdleTrigger } from "./useIdleTrigger.js";
 import { useOptimisticReorder } from "./useOptimisticReorder.js";
+import { TeamorouterBalanceSection } from "./TeamorouterBalanceSection.js";
+import { isTeamorouterTemplate } from "@zcode/shared";
 
 export type ProviderNameEditKeyAction = "commit" | "cancel";
 export type ProviderDraftCleanupAction = "commit" | "skip-delete";
@@ -144,7 +146,7 @@ export function InlineEditableProviderCard({
   onAddPersonalModel,
   onSavePersonalModelDraft,
   onSetPersonalModelEnabled,
-  onSetPersonalModelFastMode,
+  onSetPersonalModelSpeedCapability,
   onDiscoverModels,
   onDeletePersonalModel,
   onDelete,
@@ -173,12 +175,13 @@ export function InlineEditableProviderCard({
     modelId: string,
     enabled: boolean,
   ) => Promise<unknown>;
-  onSetPersonalModelFastMode?: (
+  onDiscoverModels?: (providerId: string) => Promise<number>;
+  onSetPersonalModelSpeedCapability?: (
     providerId: string,
     modelId: string,
-    fastMode: boolean,
+    speed: "fast" | "ultrafast",
+    enabled: boolean,
   ) => Promise<unknown>;
-  onDiscoverModels?: (providerId: string) => Promise<number>;
   onDeletePersonalModel?: (providerId: string, modelId: string) => Promise<unknown>;
   onDelete?: () => void | Promise<void>;
   onTestModel?: (providerId: string, modelId: string) => Promise<ModelConnectivityResult>;
@@ -850,6 +853,13 @@ export function InlineEditableProviderCard({
           />
         ) : null}
 
+        {isApiKeyProvider && isTeamorouterTemplate(provider.templateId) ? (
+          <TeamorouterBalanceSection
+            providerId={provider.providerId}
+            settingsRevision={settingsRevision ?? 0}
+          />
+        ) : null}
+
         <ProviderModelsSection
           // 不同 Provider 可以有同名模型；不能复用上一供应商的打开中草稿和版本。
           key={provider.providerId}
@@ -859,14 +869,6 @@ export function InlineEditableProviderCard({
           onDiscoverModels={
             onDiscoverModels ? () => onDiscoverModels(provider.providerId) : undefined
           }
-          onModelFastModeChange={
-            onSetPersonalModelFastMode
-              ? (modelId, fastMode) =>
-                  onSetPersonalModelFastMode(provider.providerId, modelId, fastMode).then(
-                    () => undefined,
-                  )
-              : undefined
-          }
           providerName={getProviderFormLabel(provider)}
           providerEnabled={provider.enabled}
           providerAccess={provider.config.access}
@@ -874,6 +876,18 @@ export function InlineEditableProviderCard({
           onTestModel={onTestModel ? handleTestModel : undefined}
           onModelCommit={handleModelCommit}
           onModelEnabledChange={handleModelEnabledChange}
+          onModelSpeedCapabilityChange={
+            onSetPersonalModelSpeedCapability
+              ? async (modelId, speed, enabled) => {
+                  await onSetPersonalModelSpeedCapability(
+                    provider.providerId,
+                    modelId,
+                    speed,
+                    enabled,
+                  );
+                }
+              : undefined
+          }
           onDeleteModel={handleDeleteModel}
           onAddModel={handleAddModel}
           onReorderModelIds={onReorderModelIds ? handleReorderModelIds : undefined}

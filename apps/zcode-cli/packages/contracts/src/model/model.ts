@@ -27,6 +27,7 @@ export type ModelPropertiesInput = ModelProperties;
 export interface ModelOptions {
   reasoningLevel?: string;
   maxOutputTokens?: number;
+  speed?: import("@zcode/shared/model-selection").ModelSpeed;
 }
 
 export interface ModelRequest {

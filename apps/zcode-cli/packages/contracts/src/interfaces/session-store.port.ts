@@ -14,6 +14,7 @@ import type {
 import type { ModelSelection } from "../model/index.js";
 import type {
   SharedContextImportCommitBundle,
+  ExternalImportCommitBundle,
   SharedContextImportTransition,
   MessagePart,
   MessageWithParts,
@@ -43,6 +44,7 @@ import type { SessionGoal, GoalStatus } from "../tools/target.js";
 import type { PermissionRuleset } from "./permission.port.js";
 
 export interface SessionStorePort {
+  commitExternalImportBundle?(bundle: ExternalImportCommitBundle): Promise<SessionInfo>;
   /** lifecycle 事实与原 event/trigger 同事务；调用返回后才允许对外确认源事件。 */
   publishProactiveEvent?(input: {
     eventId: string;

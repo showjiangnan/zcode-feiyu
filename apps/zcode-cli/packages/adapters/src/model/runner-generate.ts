@@ -189,7 +189,13 @@ export async function runGenerateText(input: GenerateTextInput): Promise<ModelTe
       if (providerBusinessFinishError) {
         throw providerBusinessFinishError;
       }
-      const usage = normalizeUsage(result.totalUsage ?? result.usage);
+      // 每个物理 attempt 会重新解析 Model。读取初始 resolved 会拿到未发送请求的空 capture。
+      const usage = {
+        ...normalizeUsage(result.totalUsage ?? result.usage),
+        ...(resolved.rawRequestBodyCapture?.modelSpeed
+          ? { modelSpeed: { ...resolved.rawRequestBodyCapture.modelSpeed } }
+          : {}),
+      };
       const toolCalls = normalizeToolCalls(result, input.logger);
       const toolResults = normalizeToolResults(result, toolCalls);
       const sources = normalizeSources(result);

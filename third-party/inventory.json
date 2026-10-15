@@ -1213,7 +1213,7 @@
     "packages/rpc/src/serialization.ts": "e949418e1cd17cc863c147fc8d1ff15237e1b5f0cb8e3344fd2a9ccfae9d54e7",
     "packages/server/package.json": "0a6119239c88af79bc766e3c023eb4437105a0d35b03ecca1137d1e688e60a90",
     "packages/services/package.json": "11e0386c2c5502074f9ba4da01433d69544d05a126d61d54f186daac72e5468b",
-    "packages/shared/package.json": "08dbf719dff469765dbc6780d4648d2213003b6ab2b663e24958fe9bfa1885d9",
+    "packages/shared/package.json": "60dea0667ea90ba48fc6e2077e67554eedb4093628fd32e00b01dd68806efc0e",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
     "packages/ui/package.json": "d9f3ca412f9c7f326d0e39528744801bfac54cfab19f92379820a197d7690627",
     "packages/ui/src/components/ai-elements/agent.tsx": "830e7ea9e927de1524851337f1d35bda0e5690e3e4fa307fff854b60006b16c7",

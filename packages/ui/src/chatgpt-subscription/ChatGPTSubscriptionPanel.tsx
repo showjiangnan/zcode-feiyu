@@ -1,5 +1,6 @@
 // Modified by ZCode Feiyu.
 import { subscriptionErrorMessageKey } from "./errors.js";
+import { SubscriptionModelCapabilities } from "./SubscriptionModelCapabilities.js";
 import { Loader2Icon, RefreshCwIcon, ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button.js";
@@ -178,16 +179,24 @@ export function ChatGPTSubscriptionPanel({ onReady }: { onReady?: () => void }) 
                   <span>{model.displayName}</span>
                   {model.contextWindow && (
                     <p className="text-ui-sm text-foreground-subtle">
-                      {m("contextPlanning")} {model.contextWindow.toLocaleString()} ·{" "}
                       {m(
-                        model.contextWindowSource === "official-model-reference"
-                          ? "contextReference"
-                          : "contextFallback",
+                        model.contextWindowSource === "subscription-catalog"
+                          ? "contextCatalogLabel"
+                          : "contextPlanning",
+                      )}{" "}
+                      {model.contextWindow.toLocaleString()} ·{" "}
+                      {m(
+                        model.contextWindowSource === "subscription-catalog"
+                          ? "contextCatalog"
+                          : model.contextWindowSource === "official-model-reference"
+                            ? "contextReference"
+                            : "contextFallback",
                       )}
                     </p>
                   )}
                 </div>
                 <span className="text-ui-sm text-foreground-subtle break-all">{model.slug}</span>
+                <SubscriptionModelCapabilities model={model} />
               </div>
             ))}
           </div>

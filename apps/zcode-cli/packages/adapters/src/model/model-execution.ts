@@ -1,6 +1,12 @@
 // Modified by ZCode Feiyu.
-import { getCurrentModelInvocationContext } from "@zcode/contracts";
+import {
+  getCurrentModelInvocationContext,
+  ModelProtocolError,
+  ModelErrorCode,
+  ModelFailureReason,
+} from "@zcode/contracts";
 import { createSubscriptionInferenceFetch } from "@zcode/provider-node";
+import { getSubscriptionFastServiceTier } from "@zcode/shared/chatgpt-subscription-catalog";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
@@ -17,7 +23,14 @@ import {
   type ModelOptionValues,
 } from "@zcode/model-option-map";
 import type { RegistryProviderConfig } from "@zcode/provider";
-import { supportsTeamorouterFast, withOpenRouterAttributionHeaders } from "@zcode/shared";
+import {
+  supportsTeamorouterFast,
+  supportsModelSpeed,
+  getModelSpeedOptions,
+  type ModelSpeedCapabilities,
+  withOpenRouterAttributionHeaders,
+  type ModelSpeed,
+} from "@zcode/shared";
 import { createAnthropicCompatFetch } from "./anthropic-stream-compat.js";
 import {
   applyModelRequestAuth,
@@ -85,6 +98,7 @@ export class AiSdkModelExecution {
     readonly providerConfig: RegistryProviderConfig;
     readonly supportsJsonSchemaOutput: boolean;
     readonly fastMode?: boolean;
+    readonly speedCapabilities?: ModelSpeedCapabilities | null;
     readonly optionSpecs: {
       readonly reasoningLevel: { readonly map: string };
       readonly maxOutputTokens: { readonly map: string };
@@ -106,6 +120,7 @@ export class AiSdkModelExecution {
     readonly providerConfig: RegistryProviderConfig;
     readonly supportsJsonSchemaOutput: boolean;
     readonly fastMode?: boolean;
+    readonly speedCapabilities?: ModelSpeedCapabilities | null;
   }): AiSdkModelSnapshot {
     const configuredProvider = toAiSdkProviderConfig(input.providerId, input.providerConfig);
     // 重构后模型 SDK 曾只接到用户 Header，漏掉版本和站点归因；在公共绑定边界恢复，
@@ -127,6 +142,8 @@ export class AiSdkModelExecution {
       providerId: input.providerId as ModelProviderId,
       modelId: input.modelId as ModelId,
       supportsJsonSchemaOutput: input.supportsJsonSchemaOutput,
+      supportsSpeed: supportsModelSpeed(input.providerConfig, input.modelId),
+      allowedSpeeds: getModelSpeedOptions(input.providerConfig, input.modelId, input),
       fastMode:
         input.fastMode === true &&
         supportsTeamorouterFast(
@@ -141,14 +158,26 @@ export class AiSdkModelExecution {
     snapshot: AiSdkModelSnapshot,
     requestAuth: ModelRequestAuth | undefined,
     optionMaps: CompiledModelOptionMaps | undefined,
-    optionValues: ModelOptionValues | undefined,
+    optionValues: (ModelOptionValues & { readonly speed?: ModelSpeed }) | undefined,
   ): AiSdkResolvedModel {
     const providerConfig = applyModelRequestAuth(snapshot.providerConfig, requestAuth);
+    if (optionValues?.speed && !snapshot.allowedSpeeds.includes(optionValues.speed)) {
+      throw new ModelProtocolError(
+        ModelErrorCode.InvalidModelRequest,
+        "model_speed_not_supported",
+        {
+          reason: ModelFailureReason.InvalidRequest,
+          retryable: false,
+          source: "runtime",
+        },
+      );
+    }
     // Model 创建时的 Provider 事实必须被冻结在当前 binding 中。若按 providerId 缓存
     // factory，配置更新后创建的新 Model 会错误复用旧 Endpoint / Header / API Key。
     const rawRequestBodyCapture: RawRequestBodyCapture = {};
     const factory = this.createFactory(
       snapshot.providerId,
+      snapshot.modelId.toString(),
       providerConfig,
       optionMaps,
       optionValues,
@@ -156,6 +185,7 @@ export class AiSdkModelExecution {
       snapshot.supportsJsonSchemaOutput,
       snapshot.fastMode,
       snapshot.providerConfig.access?.type === "zhipu-account" ? requestAuth?.apiKeyId : undefined,
+      snapshot.supportsSpeed ? optionValues?.speed : undefined,
     );
     return {
       baseURL: providerConfig.baseURL,
@@ -164,6 +194,13 @@ export class AiSdkModelExecution {
       modelId: snapshot.modelId,
       model: factory(snapshot.modelId.toString()),
       providerKind: providerConfig.kind,
+      subscriptionAccess: providerConfig.access.type === "chatgpt-subscription",
+      ...(providerConfig.access.type === "chatgpt-subscription"
+        ? {
+            subscriptionSearchToolType:
+              providerConfig.access.modelCapabilities?.[snapshot.modelId]?.webSearchToolType,
+          }
+        : {}),
       providerOptions: providerConfig.providerOptions,
       rawRequestBodyCapture,
       requestObservations: this.requestSecurity,
@@ -172,6 +209,7 @@ export class AiSdkModelExecution {
 
   private createFactory(
     providerId: string,
+    modelId: string,
     providerConfig: AiSdkProviderConfig,
     optionMaps: CompiledModelOptionMaps | undefined,
     optionValues: ModelOptionValues | undefined,
@@ -179,6 +217,7 @@ export class AiSdkModelExecution {
     supportsJsonSchemaOutput: boolean,
     fastMode: boolean,
     apiKeyId?: string,
+    speed?: ModelSpeed,
   ): LanguageModelFactory {
     const apiKey = this.resolveApiKey(providerConfig);
     // SDK 会合并 factory 默认 header；必须在这里去掉静态来源，才能保证缺失时真正省略。
@@ -214,6 +253,12 @@ export class AiSdkModelExecution {
             maps: optionMaps,
             values: optionValues,
             fastMode,
+            speed,
+            // 显式目录许可使用该模型的 wire id；旧订阅目录沿 priority，中转沿 fast。
+            fastServiceTier:
+              providerConfig.access.type === "chatgpt-subscription"
+                ? getSubscriptionFastServiceTier(providerConfig.access.modelCapabilities?.[modelId])
+                : "fast",
           })
         : requestTransport;
     const optionFetch = createProviderBusinessErrorFetch({

@@ -140,6 +140,20 @@ export function useModelProviders(target: {
     [commitProviderSettingsView, providerSettingsService],
   );
 
+  const setPersonalModelSpeedCapability = useCallback(
+    async (providerId: string, modelId: string, speed: "fast" | "ultrafast", enabled: boolean) => {
+      const view = await providerSettingsService.setPersonalModelSpeedCapability(
+        providerId,
+        modelId,
+        speed,
+        enabled,
+      );
+      commitProviderSettingsView(view);
+      return view;
+    },
+    [commitProviderSettingsView, providerSettingsService],
+  );
+
   const setPersonalModelEnabled = useCallback(
     async (providerId: string, modelId: string, enabled: boolean) => {
       const view = await providerSettingsService.setPersonalModelEnabled(
@@ -248,6 +262,7 @@ export function useModelProviders(target: {
     addPersonalModel,
     savePersonalModelDraft,
     setPersonalModelEnabled,
+    setPersonalModelSpeedCapability,
     setPersonalModelFastMode,
     discoverModels,
     deletePersonalModel,

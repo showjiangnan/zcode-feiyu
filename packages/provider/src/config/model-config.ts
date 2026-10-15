@@ -285,6 +285,7 @@ export type ModelConfigObject = Readonly<z.infer<typeof modelConfigDataSchema>>;
 export class ModelConfig extends ConfigOverlay<ModelConfig> {
   readonly enabled?: ModelConfigObject["enabled"];
   readonly fastMode?: ModelConfigObject["fastMode"];
+  readonly speedCapabilities?: ModelConfigObject["speedCapabilities"];
   readonly properties?: ModelPropertiesConfig | null;
   readonly optionSpecs?: ModelOptionSpecsConfig | null;
 
@@ -292,6 +293,10 @@ export class ModelConfig extends ConfigOverlay<ModelConfig> {
     super();
     this.enabled = input.enabled;
     this.fastMode = input.fastMode;
+    this.speedCapabilities =
+      input.speedCapabilities == null
+        ? input.speedCapabilities
+        : Object.freeze({ ...input.speedCapabilities });
     this.properties = input.properties;
     this.optionSpecs = input.optionSpecs;
     Object.freeze(this);
@@ -305,6 +310,7 @@ export class ModelConfig extends ConfigOverlay<ModelConfig> {
     return new ModelConfig({
       enabled: config.enabled,
       fastMode: config.fastMode,
+      speedCapabilities: config.speedCapabilities,
       properties:
         config.properties == null
           ? config.properties
@@ -320,6 +326,7 @@ export class ModelConfig extends ConfigOverlay<ModelConfig> {
     return new ModelConfig({
       enabled: this.overlayValue(this.enabled, next.enabled),
       fastMode: this.overlayValue(this.fastMode, next.fastMode),
+      speedCapabilities: this.overlayValue(this.speedCapabilities, next.speedCapabilities),
       properties: this.overlayConfig(this.properties, next.properties),
       optionSpecs: this.overlayConfig(this.optionSpecs, next.optionSpecs),
     });
@@ -333,6 +340,7 @@ export class ModelConfig extends ConfigOverlay<ModelConfig> {
     return objectWithoutUndefined({
       enabled: this.enabled,
       fastMode: this.fastMode,
+      speedCapabilities: this.speedCapabilities,
       properties: this.properties?.toJSON() ?? this.properties,
       optionSpecs: this.optionSpecs?.toJSON() ?? this.optionSpecs,
     });

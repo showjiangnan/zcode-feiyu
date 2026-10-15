@@ -194,6 +194,8 @@ export function seedUsage(this: ProductProjection, seed: SessionUsageSeed): void
     this["snapshot"] = {
       ...this["snapshot"],
       usage: {
+        // seed 只补用量，不能抹掉 transcript/ModelComplete 已恢复的速度事实。
+        ...current,
         contextWindow: currentContextWindow
           ? {
               ...currentContextWindow,
@@ -217,6 +219,7 @@ export function seedUsage(this: ProductProjection, seed: SessionUsageSeed): void
   this["snapshot"] = {
     ...this["snapshot"],
     usage: {
+      ...current,
       contextWindow:
         seededContextWindow.maxTokens === null
           ? null

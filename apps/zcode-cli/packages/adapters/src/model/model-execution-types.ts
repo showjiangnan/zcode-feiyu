@@ -53,6 +53,8 @@ export interface AiSdkResolvedModel {
   modelId: ModelId;
   model: LanguageModel;
   providerKind: AiSdkProviderKind;
+  subscriptionAccess?: boolean;
+  subscriptionSearchToolType?: string;
   providerOptions?: Record<string, unknown>;
   rawRequestBodyCapture?: RawRequestBodyCapture;
   requestObservations?: ModelRequestSecurityPort;
@@ -61,7 +63,7 @@ export interface AiSdkResolvedModel {
 export interface AiSdkBoundModelResolution {
   readonly resolved: AiSdkResolvedModel;
   resolveRequest(input: {
-    readonly options: ModelOptionValues;
+    readonly options: ModelOptionValues & { readonly speed?: import("@zcode/shared").ModelSpeed };
     readonly requestAuth?: ModelRequestAuth;
   }): AiSdkResolvedModel;
 }
@@ -84,6 +86,7 @@ export interface ProviderBusinessErrorFetchOptions {
 }
 
 export interface ProviderBusinessErrorOptions {
+  providerIncompleteReason?: string;
   providerCode?: ProviderCode;
   providerId: string;
   providerKind: AiSdkProviderKind;
@@ -97,6 +100,8 @@ export interface ProviderBusinessErrorOptions {
 
 export interface AiSdkModelSnapshot {
   readonly fastMode: boolean;
+  readonly supportsSpeed: boolean;
+  readonly allowedSpeeds: readonly import("@zcode/shared").ModelSpeed[];
   readonly supportsJsonSchemaOutput: boolean;
   readonly providerConfig: AiSdkProviderConfig;
   readonly providerId: ModelProviderId;

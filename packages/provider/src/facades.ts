@@ -89,6 +89,13 @@ export interface ProviderSettingsMutationTarget {
     fastMode: boolean,
     membership?: ProviderModelMembership,
   ): Promise<unknown>;
+  setPersonalModelSpeedCapability?(
+    providerId: ProviderId,
+    modelId: ModelId,
+    speed: "fast" | "ultrafast",
+    enabled: boolean,
+    membership?: ProviderModelMembership,
+  ): Promise<unknown>;
   renamePersonalModel(
     providerId: ProviderId,
     currentModelId: ModelId,
@@ -438,6 +445,37 @@ export class ProviderSettingsFacade {
         providerId,
         modelId,
         fastMode,
+        this.#modelMembership(providerId, snapshot),
+      );
+    });
+  }
+
+  setPersonalModelSpeedCapability(
+    providerId: ProviderId,
+    modelId: ModelId,
+    speed: "fast" | "ultrafast",
+    enabled: boolean,
+  ): Promise<ProviderSettingsView> {
+    return this.#mutateProvider(providerId, "model-speed-capability", (target) => {
+      const snapshot = requireSnapshot(this.#source);
+      const provider = requireEffectiveProvider(snapshot, providerId);
+      if (
+        provider.templateId !== "teamorouter-responses" ||
+        !supportsTeamorouterFast(
+          provider.config.api?.type,
+          provider.config.api?.baseUrl,
+          modelId,
+        ) ||
+        !["fast", "ultrafast"].includes(speed) ||
+        typeof enabled !== "boolean" ||
+        !target.setPersonalModelSpeedCapability
+      )
+        throw new Error("teamorouter:unsupported");
+      return target.setPersonalModelSpeedCapability(
+        providerId,
+        modelId,
+        speed,
+        enabled,
         this.#modelMembership(providerId, snapshot),
       );
     });

@@ -1,4 +1,6 @@
 import { discoverTeamorouterModels } from "./teamorouterModels.js";
+import { queryTeamorouterBalance } from "./teamorouterBalance.js";
+import type { TeamorouterBalance } from "@zcode/shared";
 import type { Event } from "@zcode/rpc";
 import { isTeamorouterTemplate, ServiceChannels } from "@zcode/shared";
 import {
@@ -61,6 +63,13 @@ export interface IProviderSettingsService {
     modelId: ModelId,
     fastMode: boolean,
   ): Promise<ProviderSettingsView>;
+  setPersonalModelSpeedCapability(
+    providerId: ProviderId,
+    modelId: ModelId,
+    speed: "fast" | "ultrafast",
+    enabled: boolean,
+  ): Promise<ProviderSettingsView>;
+  getTeamorouterBalance(providerId: ProviderId): Promise<TeamorouterBalance>;
   renamePersonalModel(
     providerId: ProviderId,
     currentModelId: ModelId,
@@ -174,6 +183,36 @@ export function createProviderSettingsService(
       const previous = new Set(provider.models.map((model) => model.modelId));
       const view = await facade.importPersonalModels(providerId, ids, initial.revision);
       return { view, addedCount: ids.filter((id) => !previous.has(id)).length };
+    },
+    getTeamorouterBalance: async (providerId) => {
+      await ensureReady();
+      await facade.waitForProviderOperations(providerId);
+      const provider = facade.getView().providers.find((item) => item.providerId === providerId);
+      if (!provider || !isTeamorouterTemplate(provider.templateId))
+        throw new Error("teamorouter:unsupported");
+      const config = provider.effectiveConfig;
+      const apiKey = config.access?.type === "api-key" ? config.access.apiKey : undefined;
+      const balance = await queryTeamorouterBalance({
+        apiType: config.api?.type,
+        baseUrl: config.api?.baseUrl,
+        apiKey,
+      });
+      const current = facade.getView().providers.find((item) => item.providerId === providerId);
+      // 换 Key/协议/删除后，旧账户结果不得回写当前页面。
+      if (
+        !current ||
+        current.templateId !== provider.templateId ||
+        current.effectiveConfig.api?.type !== config.api?.type ||
+        current.effectiveConfig.api?.baseUrl !== config.api?.baseUrl ||
+        current.effectiveConfig.access?.type !== "api-key" ||
+        current.effectiveConfig.access.apiKey !== apiKey
+      )
+        throw new Error("teamorouter:conflict");
+      return balance;
+    },
+    setPersonalModelSpeedCapability: async (providerId, modelId, speed, enabled) => {
+      await ensureReady();
+      return facade.setPersonalModelSpeedCapability(providerId, modelId, speed, enabled);
     },
     setPersonalModelFastMode: async (providerId, modelId, fastMode) => {
       await ensureReady();

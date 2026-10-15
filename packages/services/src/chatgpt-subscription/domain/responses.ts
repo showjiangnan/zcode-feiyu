@@ -1,5 +1,9 @@
 // Modified by ZCode Feiyu.
 import { ChatGPTSubscriptionError } from "./errors.js";
+import { modelServiceTierSchema } from "@zcode/shared";
+import type { ChatGPTSubscriptionModel } from "@zcode/shared";
+import { applySubscriptionRequestCapabilities } from "./requestCapabilities.js";
+import { subscriptionModelConfiguration } from "./modelCapabilities.js";
 
 const forbiddenFields = new Set([
   "background",
@@ -34,10 +38,18 @@ const allowedFields = new Set([
   "service_tier",
 ]);
 
-export function projectSubscriptionRequest(raw: unknown): Record<string, unknown> {
+export function projectSubscriptionRequest(
+  raw: unknown,
+  model?: ChatGPTSubscriptionModel,
+): Record<string, unknown> {
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
     throw new ChatGPTSubscriptionError("request_invalid");
   const body = raw as Record<string, unknown>;
+  if (
+    body.service_tier !== undefined &&
+    !modelServiceTierSchema.safeParse(body.service_tier).success
+  )
+    throw new ChatGPTSubscriptionError("invalid_value", 400, undefined, "service_tier");
   for (const key of Object.keys(body)) {
     if (body[key] !== undefined && (forbiddenFields.has(key) || !allowedFields.has(key)))
       throw new ChatGPTSubscriptionError(
@@ -73,9 +85,19 @@ export function projectSubscriptionRequest(raw: unknown): Record<string, unknown
   if (tools !== undefined && !Array.isArray(tools))
     throw new ChatGPTSubscriptionError("tools_invalid");
   const names = new Set<string>();
+  const hosted: Record<string, unknown>[] = [];
   const localTools = (tools as unknown[] | undefined)?.map((item) => {
     if (!item || typeof item !== "object") throw new ChatGPTSubscriptionError("tools_invalid");
     const tool = item as Record<string, unknown>;
+    if (
+      ["web_search", "web_search_preview"].includes(String(tool.type)) &&
+      model &&
+      subscriptionModelConfiguration(model).properties.supportsNativeWebSearch &&
+      tool.type === (model.capabilities?.webSearchToolType ?? "web_search")
+    ) {
+      hosted.push(tool);
+      return undefined;
+    }
     if (
       !["function", "custom"].includes(String(tool.type)) ||
       typeof tool.name !== "string" ||
@@ -91,22 +113,31 @@ export function projectSubscriptionRequest(raw: unknown): Record<string, unknown
     )
       throw new ChatGPTSubscriptionError("tool_schema_invalid");
     names.add(tool.name);
-    return tool;
+    // Responses 省略 strict 时可能把可选参数归一化为必填，导致 handoff 被迫携带话题附件。
+    // 在订阅投影边界明确保留原 optional 语义；不放宽 runtime/附件权限校验。
+    return tool.type === "function" && tool.strict == null ? { ...tool, strict: false } : tool;
   });
+  const local = localTools?.filter((tool) => tool !== undefined);
+  const constrained = model ? applySubscriptionRequestCapabilities(body, model) : body;
   return {
-    ...body,
+    ...constrained,
     input,
     store: false,
     stream: true,
-    ...(localTools?.length
+    ...(local?.length || hosted.length
       ? {
           tools: [
-            {
-              type: "namespace",
-              name: "zcode",
-              description: "ZCode local tools",
-              tools: localTools,
-            },
+            ...(local?.length
+              ? [
+                  {
+                    type: "namespace",
+                    name: "zcode",
+                    description: "ZCode local tools",
+                    tools: local,
+                  },
+                ]
+              : []),
+            ...hosted,
           ],
         }
       : {}),

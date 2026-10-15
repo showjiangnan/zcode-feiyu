@@ -1,7 +1,19 @@
 // Modified by ZCode Feiyu.
+import { importMessagesEn } from "@/settings/import/importMessages.js";
 import { requestSecurityMessagesEnUS } from "@/request-security-edition/messages.js";
 /** English translations */
 const enUS: Record<string, string> = {
+  ...importMessagesEn,
+  "occupationOnboarding.progress": "Setup progress",
+  "chat.modelSpeed.title": "Speed",
+  "chat.modelSpeed.standard": "Standard",
+  "chat.modelSpeed.fast": "Fast",
+  "chat.modelSpeed.ultrafast": "Ultrafast",
+  "chat.modelSpeed.usage":
+    "Fast and Ultrafast use more allowance. Availability depends on the connection and server response.",
+  "chat.modelSpeed.actual": "Latest completed request served with: {speed}",
+  "chat.modelSpeed.unknown": "Unconfirmed",
+  "chat.modelSpeed.downgraded": "Downgraded to Standard",
   "chatgptSubscription.notEligible":
     "This account is not eligible for subscription sharing. Check official account and authorization status; signing in again does not grant eligibility.",
   "chatgptSubscription.usageLimit":
@@ -22,6 +34,14 @@ const enUS: Record<string, string> = {
     "The private credential file cannot be read safely. The connection is disabled and the original file is retained without overwriting or plaintext fallback.",
   "chatgptSubscription.modelUnavailable":
     "The original model is no longer in this account catalog. Refresh and choose a model explicitly.",
+  "chatgptSubscription.interruptedBudget":
+    "The response exhausted its output or reasoning budget before completion. Existing text and actions are preserved. Review the result before continuing.",
+  "chatgptSubscription.interruptedFilter":
+    "The server content filter ended this response. Existing results are preserved. Adjust the request before continuing.",
+  "chatgptSubscription.interruptedMessages":
+    "The response reached its message limit before completion. Existing results are preserved. Review the result before continuing.",
+  "chatgptSubscription.interruptedSteered":
+    "The server ended this response to process new input. Existing results are preserved. Check the successor response status.",
   "chatgptSubscription.interrupted":
     "The request ended without a successful terminal event. Existing text and execution facts are retained. Review results before continuing to avoid repeating actions.",
   "chatgptSubscription.cancelledError": "Sign-in cancelled. The existing connection is unchanged.",
@@ -41,6 +61,40 @@ const enUS: Record<string, string> = {
   "chatgptSubscription.cancel": "Cancel",
   "chatgptSubscription.models": "Available models",
   "chatgptSubscription.contextPlanning": "Local context planning:",
+  "chatgptSubscription.contextCatalogLabel": "Catalog context window:",
+  "chatgptSubscription.contextCatalog":
+    "Declared by the current subscription catalog; server limits still apply",
+  "chatgptSubscription.modelCapabilities.title": "Model capabilities",
+  "chatgptSubscription.modelCapabilities.unknown": "Not provided by the catalog",
+  "chatgptSubscription.modelCapabilities.empty": "No available entries declared",
+  "chatgptSubscription.modelCapabilities.yes": "Supported in the catalog",
+  "chatgptSubscription.modelCapabilities.no": "Unsupported in the catalog",
+  "chatgptSubscription.modelCapabilities.speed": "Available speed",
+  "chatgptSubscription.modelCapabilities.reasoning": "Catalog reasoning levels",
+  "chatgptSubscription.modelCapabilities.defaultReasoning": "Default reasoning level",
+  "chatgptSubscription.modelCapabilities.context": "Catalog context window",
+  "chatgptSubscription.modelCapabilities.effectiveContext": "Effective local context budget",
+  "chatgptSubscription.modelCapabilities.maxContext": "Maximum catalog context window",
+  "chatgptSubscription.modelCapabilities.inputs": "Catalog input modalities",
+  "chatgptSubscription.modelCapabilities.search": "Model search support",
+  "chatgptSubscription.modelCapabilities.imageDetail": "Original image detail",
+  "chatgptSubscription.modelCapabilities.verbosity": "Output verbosity control",
+  "chatgptSubscription.modelCapabilities.defaultVerbosity": "Default output verbosity",
+  "chatgptSubscription.modelCapabilities.input.text": "Text",
+  "chatgptSubscription.modelCapabilities.input.image": "Image",
+  "chatgptSubscription.modelCapabilities.input.file": "File",
+  "chatgptSubscription.modelCapabilities.input.audio":
+    "Audio (unavailable on this subscription endpoint)",
+  "chatgptSubscription.modelCapabilities.input.video":
+    "Video (unavailable on this subscription endpoint)",
+  "chatgptSubscription.modelCapabilities.effort.none": "None",
+  "chatgptSubscription.modelCapabilities.effort.minimal": "Minimal",
+  "chatgptSubscription.modelCapabilities.effort.low": "Low",
+  "chatgptSubscription.modelCapabilities.effort.medium": "Medium",
+  "chatgptSubscription.modelCapabilities.effort.high": "High",
+  "chatgptSubscription.modelCapabilities.effort.xhigh": "Extra high",
+  "chatgptSubscription.modelCapabilities.effort.max": "Maximum",
+  "chatgptSubscription.modelCapabilities.effort.ultra": "Native automatic multi-agent level",
   "chatgptSubscription.contextReference":
     "Official model reference; account limits are determined by the server",
   "chatgptSubscription.contextFallback":
@@ -57,7 +111,7 @@ const enUS: Record<string, string> = {
   "chatgptSubscription.revocationUnconfirmed":
     "Signed out locally; remote revocation is unconfirmed. Review authorizations in your official account settings.",
   "chatgptSubscription.capabilities":
-    "The catalog determines selectable models, not permission for every capability. Local function tools are supported; OpenAI hosted image generation, computer use, file search, audio and video are unavailable. Output limits and sampling parameters are not sent to this subscription route. The catalog does not provide context capacity; ZCode uses a local planning value. Reasoning effort is a request preference; model support is determined by the server response.",
+    "When provided, speed, reasoning, context and input capabilities use the current subscription catalog. Missing fields retain unknown status and compatible planning. Tools run locally; advertised native web search remains subject to account policy. The catalog may include native features unavailable on this subscription endpoint; actual choices follow the menu and server. Hosted image generation, computer use, file search, audio/video, output limits and sampling controls remain unavailable on this endpoint.",
   "chatgptSubscription.privacy":
     "Tools execute locally. Prompts, context and selected attachments needed for inference are sent to OpenAI. fal.ai image generation retains its separate configuration and charges.",
   "chatgptSubscription.welcomeTitle": "Enable ChatGPT subscription usage",
@@ -3521,8 +3575,6 @@ const enUS: Record<string, string> = {
     "Added {count} models; existing configurations were preserved.",
   "settings.modelProvider.enableFast": "Enable Fast mode",
   "settings.modelProvider.disableFast": "Disable Fast mode",
-  "settings.modelProvider.fastHint":
-    "Request Fast processing. Actual speed and service tier depend on the provider; live pricing applies.",
   "settings.modelProvider.fastSaveFailed": "Failed to save Fast settings. Please retry.",
   "settings.modelProvider.discoveryError.missing-key": "Save an API key before fetching models.",
   "settings.modelProvider.discoveryError.unauthorized":
@@ -4220,7 +4272,25 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.mappingNotSet": "Not set",
   "settings.modelProvider.presetTitle": "Providers",
   "settings.modelProvider.sponsoredTitle": "Featured gateways",
-  "settings.modelProvider.sponsored.badge": "Sponsored",
+  "settings.modelProvider.speed.allow": "Allow {speed}",
+  "settings.modelProvider.speed.hint":
+    "Controls the speed tiers available for this model in chats. Standard remains the default; availability depends on the server response.",
+  "settings.modelProvider.speed.saveFailed": "Could not save speed options. Please try again.",
+  "settings.modelProvider.balance.title": "Account balance",
+  "settings.modelProvider.balance.refresh": "Refresh account balance",
+  "settings.modelProvider.balance.recharge": "Top up",
+  "settings.modelProvider.balance.error.missing-key": "Save an API key to view the balance",
+  "settings.modelProvider.balance.error.unauthorized": "API key authorization failed",
+  "settings.modelProvider.balance.error.rate-limited": "Too many balance queries. Refresh later",
+  "settings.modelProvider.balance.error.server-error": "Balance service is temporarily unavailable",
+  "settings.modelProvider.balance.error.network-error":
+    "Could not query the balance. Check your connection and refresh",
+  "settings.modelProvider.balance.error.invalid-response": "Invalid balance response",
+  "settings.modelProvider.balance.error.conflict":
+    "Account configuration changed. Refresh the balance",
+  "settings.modelProvider.balance.error.unsupported":
+    "This connection does not support balance queries",
+  "settings.modelProvider.balance.error.failed": "Could not query the balance. Please try again",
   "settings.modelProvider.sponsored.login": "Sign in",
   "settings.modelProvider.sponsored.loginDescription":
     "Sign in to teamorouter to get an API key and explore models and live pricing.",

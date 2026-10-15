@@ -7,6 +7,7 @@ export type SettingsSectionId =
   | "remoteSsh"
   | "remoteBots"
   | "general"
+  | "import"
   | "appearance"
   | "migration"
   | "browser"
@@ -65,6 +66,7 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
     value === "remoteSsh" ||
     value === "remoteBots" ||
     value === "general" ||
+    value === "import" ||
     value === "appearance" ||
     value === "migration" ||
     value === "browser" ||
@@ -95,6 +97,7 @@ export function resolveSettingsSection(
   fallbackSection: SettingsSectionId = "general",
 ): SettingsSectionId {
   if (section === "plugins") return "plugin";
+  if (section === "migration") return "import";
   return isSettingsSectionEnabled(section) ? section : fallbackSection;
 }
 

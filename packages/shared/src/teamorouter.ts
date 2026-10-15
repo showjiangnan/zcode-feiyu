@@ -1,4 +1,8 @@
 export const TEAMOROUTER_TEMPLATE_IDS = ["teamorouter-messages", "teamorouter-responses"] as const;
+export interface TeamorouterBalance {
+  readonly value: string;
+  readonly currency: string;
+}
 
 export function isTeamorouterEndpoint(baseUrl: string | null | undefined): boolean {
   if (!baseUrl) return false;

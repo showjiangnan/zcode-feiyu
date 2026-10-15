@@ -1,4 +1,6 @@
 // Modified by ZCode Feiyu.
+import { modelSpeedObservationSchema } from "../model-speed.js";
+import { subscriptionIncompleteReasonSchema } from "../chatgpt-subscription-errors.js";
 /* oxlint-disable max-lines -- v4 snapshot schema is a frozen cross-process contract; additions stay grouped here. */
 // ConversationSnapshot A 区。
 // A 区更新语义 = 字段级整体替换（state.updated），绝不深合并——深合并是错乱之母。
@@ -101,6 +103,7 @@ export const errorAttributionSchema = z
     transport: z.enum(["http", "sse", "websocket"]).optional(),
     statusCode: z.number().int().min(100).max(599).optional(),
     providerErrorCode: z.string().min(1).max(160).optional(),
+    providerIncompleteReason: subscriptionIncompleteReasonSchema.optional(),
     retryable: z.boolean().optional(),
   })
   .strict();
@@ -190,6 +193,7 @@ export type { SharedContextImportState } from "./shared-context-import.js";
 
 // ── usage。conflation：值未变不下发──
 export const sessionUsageStateSchema = z.object({
+  modelSpeed: modelSpeedObservationSchema.optional(),
   contextWindow: z
     .object({
       usedTokens: z.number(),

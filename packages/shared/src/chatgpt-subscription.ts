@@ -1,5 +1,9 @@
 // Modified by ZCode Feiyu.
 import { z } from "zod";
+import {
+  chatGPTSubscriptionModelSchema,
+  type ChatGPTModelCapabilities,
+} from "./chatgpt-subscription-catalog.js";
 
 export type ChatGPTConnectionStatus =
   | "connected"
@@ -14,8 +18,12 @@ export interface ChatGPTSubscriptionModel {
   /** 未公开的能力保持未知，不从名称猜测。 */
   inputModalities?: string[];
   contextWindow?: number;
-  contextWindowSource?: "official-model-reference" | "local-planning-fallback";
+  contextWindowSource?:
+    | "official-model-reference"
+    | "local-planning-fallback"
+    | "subscription-catalog";
   reasoningLevels?: string[];
+  capabilities?: ChatGPTModelCapabilities;
 }
 
 export interface ChatGPTSubscriptionConnection {
@@ -86,20 +94,7 @@ export const chatGPTSubscriptionViewSchema = z
         generation: z.number().int().nonnegative(),
         scopes: z.array(z.string()),
         catalogRevision: z.number().int().nonnegative(),
-        models: z.array(
-          z
-            .object({
-              slug: z.string(),
-              displayName: z.string(),
-              inputModalities: z.array(z.string()).optional(),
-              contextWindow: z.number().positive().optional(),
-              contextWindowSource: z
-                .enum(["official-model-reference", "local-planning-fallback"])
-                .optional(),
-              reasoningLevels: z.array(z.string()).optional(),
-            })
-            .strict(),
-        ),
+        models: z.array(chatGPTSubscriptionModelSchema),
         catalogState: z.enum(["empty", "fresh", "cached", "failed"]),
         catalogError: z.string().optional(),
         remoteRevocation: z.enum(["confirmed", "unconfirmed"]).optional(),

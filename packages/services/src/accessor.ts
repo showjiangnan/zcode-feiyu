@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+import type { IExternalImportService } from "./external-import/contract.js";
 import type { IGenUiService } from "./gen-ui/contract.js";
 import { IOffPeakTaskService } from "./session/offPeakTask.js";
 import type { IHighspeedCardService } from "./highspeed/highspeedCard.js";
@@ -51,6 +52,7 @@ import type { IConversationShareService } from "./conversation-share/conversatio
 
 /** UI 层消费的统一服务接口 */
 export interface IServiceAccessor {
+  readonly externalImportService?: IExternalImportService;
   readonly chatGPTSubscriptionService?: IChatGPTSubscriptionService;
   readonly imageGenerationService?: IImageGenerationService;
   readonly fileService: IFileService;

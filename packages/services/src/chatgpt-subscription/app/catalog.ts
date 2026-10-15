@@ -9,6 +9,7 @@ import {
   isSubscriptionTokenRejection,
 } from "../domain/errors.js";
 import { parseSubscriptionCatalog } from "../domain/catalog.js";
+import { readSubscriptionCatalogResponse } from "./catalogResponse.js";
 
 export async function refreshSubscriptionCatalog(deps: {
   store: SubscriptionStorePort;
@@ -66,7 +67,9 @@ export async function refreshSubscriptionCatalog(deps: {
         response.status,
         response.headers.get("x-request-id") ?? undefined,
       );
-    const models = parseSubscriptionCatalog(await response.json());
+    const models = parseSubscriptionCatalog(
+      await readSubscriptionCatalogResponse(response, controller.signal),
+    );
     await deps.store.transaction(async (current, save) => {
       const p = current.profiles.find((p) => p.profileId === selected.profileId);
       if (

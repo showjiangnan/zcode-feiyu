@@ -1,6 +1,18 @@
 // Modified by ZCode Feiyu.
 import { ModelRetryBudget } from "@zcode/contracts";
 import type { ResolvedAiSdkModelRetryOptions } from "./retry-policy.js";
+import type { AiSdkModelTextRequest, ResolvedAiSdkModel } from "./runner-runtime.js";
+
+export function projectSubscriptionRetryBudget(
+  request: AiSdkModelTextRequest,
+  resolved: ResolvedAiSdkModel,
+): AiSdkModelTextRequest {
+  // 订阅接口要求有界退避；只改 maxAttempts 会被 runner 的无上限循环判断绕过。
+  return resolved.providerOptions?.zcodeSubscription === true &&
+    request.modelRetryBudget === ModelRetryBudget.Unbounded
+    ? { ...request, modelRetryBudget: ModelRetryBudget.Default }
+    : request;
+}
 
 /**
  * 重试预算档位的判定。

@@ -131,7 +131,8 @@ export async function* readStreamAttemptEvents(
         chunk: next.value,
         diagnostics,
         emittedRetryBoundaryEvent: state.emittedRetryBoundaryEvent,
-        input,
+        // finish 的速度观察必须来自本次实际发送的 attempt，不能读启动前的 Model capture。
+        input: { ...input, resolved: state.resolved },
         pendingRetrySafeEvents,
         requestHeaderCount: state.requestHeaderCount,
         requestHeaders: state.requestHeaders,

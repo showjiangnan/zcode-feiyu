@@ -14,6 +14,7 @@ export class ChatGPTSubscriptionAccessConfig extends ConfigOverlay<ChatGPTSubscr
   readonly entitled: boolean;
   readonly label: string;
   readonly modelDisplayNames?: Readonly<Record<string, string>>;
+  readonly modelCapabilities?: ChatGPTSubscriptionAccessConfigObject["modelCapabilities"];
   constructor(input: Omit<ChatGPTSubscriptionAccessConfigObject, "type">) {
     super();
     this.profileId = input.profileId;
@@ -23,6 +24,10 @@ export class ChatGPTSubscriptionAccessConfig extends ConfigOverlay<ChatGPTSubscr
     this.modelDisplayNames = input.modelDisplayNames
       ? Object.freeze({ ...input.modelDisplayNames })
       : undefined;
+    this.modelCapabilities = input.modelCapabilities
+      ? structuredClone(input.modelCapabilities)
+      : undefined;
+    if (this.modelCapabilities) freezeCapabilities(this.modelCapabilities);
     Object.freeze(this);
   }
   overlay(next: ChatGPTSubscriptionAccessConfig): ChatGPTSubscriptionAccessConfig {
@@ -39,6 +44,16 @@ export class ChatGPTSubscriptionAccessConfig extends ConfigOverlay<ChatGPTSubscr
       entitled: this.entitled,
       label: this.label,
       ...(this.modelDisplayNames ? { modelDisplayNames: { ...this.modelDisplayNames } } : {}),
+      ...(this.modelCapabilities
+        ? { modelCapabilities: structuredClone(this.modelCapabilities) }
+        : {}),
     };
   }
+}
+
+function freezeCapabilities(value: object): void {
+  for (const nested of Object.values(value)) {
+    if (nested && typeof nested === "object") freezeCapabilities(nested);
+  }
+  Object.freeze(value);
 }

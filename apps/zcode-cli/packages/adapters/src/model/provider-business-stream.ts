@@ -157,6 +157,7 @@ export function emitProviderBusinessSseFrame(
     controller.error(
       new ProviderBusinessError({
         providerCode: failure.providerCode,
+        providerIncompleteReason: failure.providerIncompleteReason,
         providerId: options.providerId,
         providerKind: options.providerKind,
         providerMessage: failure.providerMessage,
@@ -180,6 +181,7 @@ export function detectProviderBusinessSseFrameFailure(frame: string):
       providerCode?: ProviderCode;
       providerMessage?: string;
       providerRequestId?: string;
+      providerIncompleteReason?: string;
       responseBodySummary: Record<string, unknown>;
       statusCode?: number;
     }

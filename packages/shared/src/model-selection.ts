@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const modelSpeedSchema = z.enum(["standard", "fast", "ultrafast"]);
+export type ModelSpeed = z.infer<typeof modelSpeedSchema>;
+
 /** 用户对后续模型执行的完整选择；不表达已经创建的 Active Model。 */
 export const modelSelectionSchema = z
   .object({
@@ -8,6 +11,7 @@ export const modelSelectionSchema = z
     options: z
       .object({
         reasoningLevel: z.string().trim().min(1).optional(),
+        speed: modelSpeedSchema.optional(),
       })
       .strict()
       .optional(),

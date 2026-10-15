@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+import type { ExternalHistoryMessage, ExternalImportProvenance } from "@zcode/shared";
 /* eslint-disable max-lines -- ZCode task wrapper service 接口集中承载 app/runtime API，拆散会让替换阶段更难追踪。 */
 import type { Event } from "@zcode/rpc";
 import { ServiceChannels } from "@zcode/shared";
@@ -634,6 +635,16 @@ export interface IZCodeTaskService {
     taskId: string;
     provider: ZCodeProvider;
   }): Promise<ZCodeSwitchAgentResult>;
+
+  importExternalHistory(input: {
+    sessionId: string;
+    workspacePath: string;
+    title: string;
+    createdAt: number;
+    updatedAt: number;
+    messages: ExternalHistoryMessage[];
+    provenance: ExternalImportProvenance;
+  }): Promise<{ taskId: string; workspacePath: string }>;
 
   /** 扫描可导入的 Claude 原生 session；可选按 workspace 过滤。 */
   scanImportableClaudeSessions(params: {

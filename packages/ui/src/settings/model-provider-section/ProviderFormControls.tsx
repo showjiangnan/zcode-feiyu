@@ -1,5 +1,4 @@
-import { ModelFastModeButton } from "./TeamorouterModelActions.js";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import type { ProviderSettingsFormModel } from "@/lib/providerSettingsFormTypes.js";
 import type { ModelConnectivityResult } from "@zcode/shared";
 import { Loader2Icon, Trash2, Unplug } from "lucide-react";
@@ -27,8 +26,8 @@ export function ModelRowInput({
   settingsRevision = 0,
   onDelete,
   onEnabledChange,
-  onFastModeChange,
   onTest,
+  actionsBeforeTest,
 }: {
   model: ProviderSettingsFormModel;
   providerId: string;
@@ -45,8 +44,8 @@ export function ModelRowInput({
   settingsRevision?: number;
   onDelete?: () => void;
   onEnabledChange?: (enabled: boolean) => void;
-  onFastModeChange?: (enabled: boolean) => Promise<void>;
   onTest?: (model: string) => Promise<ModelConnectivityResult>;
+  actionsBeforeTest?: ReactNode;
 }) {
   const { intl, locale } = useZCodeIntl();
   const { showFeedback } = useProviderDetailFeedback();
@@ -270,6 +269,7 @@ export function ModelRowInput({
             <ModelInputCapabilityBadge />
           ) : null}
         </div>
+        {actionsBeforeTest}
         {shouldShowTestButton ? (
           <Button
             type="button"
@@ -335,12 +335,6 @@ export function ModelRowInput({
           >
             <Trash2 className="size-3.5" />
           </Button>
-        ) : null}
-        {onFastModeChange ? (
-          <ModelFastModeButton
-            enabled={model.config.fastMode === true}
-            onChange={onFastModeChange}
-          />
         ) : null}
         {onEnabledChange ? (
           <Switch

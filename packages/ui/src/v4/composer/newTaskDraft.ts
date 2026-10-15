@@ -15,15 +15,18 @@ export function initializeNewTaskDraft(
   view: ModelSelectionView,
 ): V4ComposerDraft {
   const recent = readComposerRecent(workspacePath, workspaceIdentity);
+  const initialSelection =
+    recent?.modelSelection ?? resolveDraftInitialModelSelection(view, null).selection ?? undefined;
+  // Recent/Host 推荐不是用户对新任务的速度选择；旧记录里的 Fast 不能成为新的付费默认。
+  const { speed: _speed, ...options } = initialSelection?.options ?? {};
   return {
     ...draft,
     initializeFromNewTask: undefined,
     mode: recent?.mode === "plan" ? "build" : (recent?.mode ?? "build"),
     planEnabled: false,
-    modelSelection:
-      recent?.modelSelection ??
-      resolveDraftInitialModelSelection(view, null).selection ??
-      undefined,
+    modelSelection: initialSelection
+      ? { ...initialSelection, ...(initialSelection.options ? { options } : {}) }
+      : undefined,
   };
 }
 

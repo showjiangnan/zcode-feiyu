@@ -1,4 +1,6 @@
 // Modified by ZCode Feiyu.
+import { safeSubscriptionIncompleteReason } from "@zcode/shared";
+
 const terminalRefreshCodes = new Set([
   "invalid_grant",
   "invalid_refresh_token",
@@ -17,14 +19,24 @@ const temporaryCodes = new Set([
 ]);
 
 export class ChatGPTSubscriptionError extends Error {
+  readonly incompleteReason?: string;
   constructor(
     readonly code: string,
     readonly status?: number,
     readonly requestId?: string,
+    readonly param?: "service_tier",
+    incompleteReason?: unknown,
   ) {
     // 原始网络/SDK错误可能包含用户上下文与凭据；公开异常只保留安全机器码。
-    super(`ChatGPT subscription: ${code}${status ? ` (${status})` : ""}`);
+    const safeReason =
+      code === "response_incomplete"
+        ? safeSubscriptionIncompleteReason(incompleteReason)
+        : undefined;
+    super(
+      `ChatGPT subscription: ${code}${status ? ` (${status})` : ""}${safeReason ? ` incomplete_reason=${safeReason}` : ""}`,
+    );
     this.name = "ChatGPTSubscriptionError";
+    this.incompleteReason = safeReason;
   }
   get terminalRefresh(): boolean {
     return terminalRefreshCodes.has(this.code);
@@ -60,7 +72,12 @@ export function parseSubscriptionError(
         : `http_${status}`;
   const safeRequestId =
     requestId && /^[a-zA-Z0-9_-]{1,200}$/u.test(requestId) ? requestId : undefined;
-  return new ChatGPTSubscriptionError(code, status, safeRequestId);
+  return new ChatGPTSubscriptionError(
+    code,
+    status,
+    safeRequestId,
+    value.param === "service_tier" ? "service_tier" : undefined,
+  );
 }
 
 /** 私有恢复信息不进入展示错误或 RPC schema。 */

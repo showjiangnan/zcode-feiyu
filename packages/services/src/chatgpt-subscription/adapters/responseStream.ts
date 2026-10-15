@@ -56,6 +56,9 @@ export function validateSubscriptionStream(response: Response, signal?: AbortSig
                     "response_incomplete",
                     response.status,
                     requestId,
+                    undefined,
+                    (event.response as { incomplete_details?: { reason?: unknown } } | undefined)
+                      ?.incomplete_details?.reason,
                   );
                 if (event.type === "response.completed") {
                   if ((event.response as { status?: unknown } | undefined)?.status !== "completed")

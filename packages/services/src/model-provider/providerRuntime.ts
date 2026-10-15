@@ -155,6 +155,8 @@ function createSettingsMutationTarget(
     addPersonalModel: configService.addPersonalModel.bind(configService),
     importPersonalModels: configService.importPersonalModels.bind(configService),
     setPersonalModelFastMode: configService.setPersonalModelFastMode.bind(configService),
+    setPersonalModelSpeedCapability:
+      configService.setPersonalModelSpeedCapability.bind(configService),
     renamePersonalModel: (providerId, currentModelId, nextModelId, membership) =>
       configService.renamePersonalModel(providerId, currentModelId, nextModelId, membership),
     deletePersonalModel: (providerId, modelId, membership) =>

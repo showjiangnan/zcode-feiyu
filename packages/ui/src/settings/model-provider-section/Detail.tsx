@@ -245,7 +245,7 @@ export function ModelProviderSectionDetail({
   onAddPersonalModel,
   onSavePersonalModelDraft,
   onSetPersonalModelEnabled,
-  onSetPersonalModelFastMode,
+  onSetPersonalModelSpeedCapability,
   onDiscoverModels,
   onDeletePersonalModel,
   onDelete,
@@ -286,12 +286,13 @@ export function ModelProviderSectionDetail({
     modelId: string,
     enabled: boolean,
   ) => Promise<unknown>;
-  onSetPersonalModelFastMode?: (
+  onDiscoverModels?: (providerId: string) => Promise<number>;
+  onSetPersonalModelSpeedCapability?: (
     providerId: string,
     modelId: string,
-    fastMode: boolean,
+    speed: "fast" | "ultrafast",
+    enabled: boolean,
   ) => Promise<unknown>;
-  onDiscoverModels?: (providerId: string) => Promise<number>;
   onDeletePersonalModel?: (providerId: string, modelId: string) => Promise<unknown>;
   onDelete: (provider: ProviderSettingsFormProvider) => Promise<void>;
   onReorderProviderModels?: (providerId: string, modelIds: string[]) => Promise<void>;
@@ -330,7 +331,7 @@ export function ModelProviderSectionDetail({
     onAddPersonalModel,
     onSavePersonalModelDraft,
     onSetPersonalModelEnabled,
-    onSetPersonalModelFastMode,
+    onSetPersonalModelSpeedCapability,
     onDiscoverModels,
     onDeletePersonalModel,
     settingsRevision: providerSettingsView?.revision,

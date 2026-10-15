@@ -487,10 +487,31 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
     return this.#setPersonalModelPreference(providerId, modelId, { fastMode }, membership);
   }
 
+  setPersonalModelSpeedCapability(
+    providerId: ProviderId,
+    modelId: ModelId,
+    speed: "fast" | "ultrafast",
+    enabled: boolean,
+    membership?: ProviderModelMembership,
+  ): Promise<ProviderConfigLayerSnapshot> {
+    if (!["fast", "ultrafast"].includes(speed) || typeof enabled !== "boolean")
+      throw new Error("Model speed capability 无效");
+    return this.#setPersonalModelPreference(
+      providerId,
+      modelId,
+      { speedCapability: { speed, enabled } },
+      membership,
+    );
+  }
+
   async #setPersonalModelPreference(
     providerId: ProviderId,
     modelId: ModelId,
-    patch: { enabled?: boolean; fastMode?: boolean },
+    patch: {
+      enabled?: boolean;
+      fastMode?: boolean;
+      speedCapability?: { speed: "fast" | "ultrafast"; enabled: boolean };
+    },
     membership?: ProviderModelMembership,
   ): Promise<ProviderConfigLayerSnapshot> {
     const id = normalizeId("providerId", providerId);
@@ -505,8 +526,22 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
       if (!inherited.includes(model) && !provider?.personalModelIds?.includes(model))
         throw new Error(`Model 不存在: ${id}/${model}`);
       // 独立偏好只能修改最新精确规则的对应字段，避免完整草稿覆盖并发修改或配置模式。
-      const config = (current.models.getExact(id, model) ?? new ModelConfig()).overlay(
-        new ModelConfig(patch),
+      const existing = current.models.getExact(id, model) ?? new ModelConfig();
+      const { speedCapability, ...preferences } = patch;
+      const config = existing.overlay(
+        new ModelConfig({
+          ...preferences,
+          ...(speedCapability
+            ? {
+                speedCapabilities: {
+                  fast: true,
+                  ultrafast: false,
+                  ...existing.speedCapabilities,
+                  [speedCapability.speed]: speedCapability.enabled,
+                },
+              }
+            : {}),
+        }),
       );
       return {
         providers: current.providers,
@@ -585,6 +620,8 @@ export class ProviderConfigService implements ProviderSource<ProviderConfigSnaps
       const savedConfig = config.overlay(
         new ModelConfig({
           fastMode: current.models.getExact(normalizedProviderId, originalId)?.fastMode,
+          speedCapabilities: current.models.getExact(normalizedProviderId, originalId)
+            ?.speedCapabilities,
         }),
       );
       models =

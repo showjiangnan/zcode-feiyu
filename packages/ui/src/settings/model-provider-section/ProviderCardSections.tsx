@@ -4,6 +4,7 @@ import {
   isTeamorouterEndpoint,
   supportsTeamorouterFast,
 } from "@zcode/shared";
+import { TeamorouterSpeedButtons } from "./TeamorouterSpeedButtons.js";
 import { DiscoverModelsButton } from "./TeamorouterModelActions.js";
 /* eslint-disable max-lines -- 模型供应商卡片仍在迁移期集中维护多个紧耦合区块，后续拆分时再移除。 */
 import {
@@ -363,13 +364,13 @@ export function ProviderModelsSection({
   templateId,
   providerApi,
   onDiscoverModels,
-  onModelFastModeChange,
   providerEnabled = true,
   providerAccess,
   models,
   onTestModel,
   onModelCommit,
   onModelEnabledChange,
+  onModelSpeedCapabilityChange,
   onDeleteModel,
   onAddModel,
   onReorderModelIds,
@@ -380,7 +381,6 @@ export function ProviderModelsSection({
   templateId?: string | null;
   providerApi?: ProviderConfigObject["api"];
   onDiscoverModels?: () => Promise<number>;
-  onModelFastModeChange?: (modelId: string, fastMode: boolean) => Promise<void>;
   providerEnabled?: boolean;
   providerAccess?: ProviderConfigObject["access"];
   models: ProviderSettingsFormModel[];
@@ -392,6 +392,11 @@ export function ProviderModelsSection({
   ) => void | Promise<void>;
   onDeleteModel: (modelId: string) => void;
   onModelEnabledChange?: (modelId: string, enabled: boolean) => void | Promise<void>;
+  onModelSpeedCapabilityChange?: (
+    modelId: string,
+    speed: "fast" | "ultrafast",
+    enabled: boolean,
+  ) => Promise<void>;
   onAddModel: (model: ProviderSettingsFormModel) => void | Promise<void>;
   onReorderModelIds?: (modelIds: string[]) => void;
   settingsRevision?: number;
@@ -540,6 +545,22 @@ export function ProviderModelsSection({
                     inputTestId={testId(TID_MODEL_PROVIDER_MODEL_INPUT, String(index))}
                     deleteTestId={testId(TID_MODEL_PROVIDER_MODEL_DELETE_BUTTON, String(index))}
                     model={model}
+                    actionsBeforeTest={
+                      templateId === "teamorouter-responses" &&
+                      supportsTeamorouterFast(
+                        providerApi?.type,
+                        providerApi?.baseUrl,
+                        model.modelId,
+                      ) &&
+                      onModelSpeedCapabilityChange ? (
+                        <TeamorouterSpeedButtons
+                          capabilities={model.config.speedCapabilities}
+                          onChange={(speed, enabled) =>
+                            onModelSpeedCapabilityChange(model.modelId, speed, enabled)
+                          }
+                        />
+                      ) : undefined
+                    }
                     onCommit={(value, basedOnRevision) =>
                       onModelCommit(model.modelId, value, basedOnRevision)
                     }
@@ -558,17 +579,6 @@ export function ProviderModelsSection({
                         () => undefined,
                       );
                     }}
-                    onFastModeChange={
-                      onModelFastModeChange &&
-                      isTeamorouterTemplate(templateId) &&
-                      supportsTeamorouterFast(
-                        providerApi?.type,
-                        providerApi?.baseUrl,
-                        model.modelId,
-                      )
-                        ? (fastMode) => onModelFastModeChange(model.modelId, fastMode)
-                        : undefined
-                    }
                     onTest={onTestModel}
                   />
                   {!completeProperties && (

@@ -364,3 +364,5 @@ export { IGenUiService } from "./gen-ui/contract.js";
 export type { GenUiPrepareParams } from "./gen-ui/contract.js";
 
 export * from "./chatgpt-subscription/contract.js";
+
+export { IExternalImportService } from "./external-import/contract.js";

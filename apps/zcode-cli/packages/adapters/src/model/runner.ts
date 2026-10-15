@@ -18,7 +18,6 @@ import type {
 } from "@zcode/contracts";
 import {
   ModelErrorCode,
-  ModelRetryBudget,
   ModelProtocolError,
   getCurrentModelInvocationContext,
 } from "@zcode/contracts";
@@ -33,7 +32,7 @@ import {
 import { createModel, type ModelExecutionRequest } from "./model.js";
 import { refreshOffPeakRequestAuth } from "./off-peak-request-auth.js";
 import { normalizeReasoningHistory } from "./reasoning-history-normalization.js";
-import { resolveRetryOptionsForRequest } from "./retry-budget.js";
+import { projectSubscriptionRetryBudget, resolveRetryOptionsForRequest } from "./retry-budget.js";
 import {
   resolveAiSdkModelRetryOptions,
   type AiSdkModelRetryOptions,
@@ -155,8 +154,8 @@ export class AiSdkModelAdapter {
       modelId: options.modelId,
       providerConfig: options.providerConfig,
       supportsJsonSchemaOutput: options.modelConfig.properties.supportsJsonSchemaOutput,
-      fastMode: options.modelConfig.fastMode === true,
       optionSpecs: options.modelConfig.optionSpecs,
+      speedCapabilities: options.modelConfig.speedCapabilities,
     });
     const properties = options.modelConfig.properties;
     const resolved = {
@@ -265,6 +264,7 @@ export class AiSdkModelAdapter {
                 options: {
                   maxOutputTokens,
                   reasoningLevel: optionValues.reasoningLevel,
+                  speed: optionValues.speed,
                 },
                 requestAuth,
               }),
@@ -279,6 +279,7 @@ export class AiSdkModelAdapter {
               options: {
                 maxOutputTokens,
                 reasoningLevel: optionValues.reasoningLevel,
+                speed: optionValues.speed,
               },
             }),
             properties,
@@ -343,7 +344,11 @@ export class AiSdkModelAdapter {
       request: projectedRequest,
       resolveModel,
       resolved,
-      retry: resolveRetryOptionsForRequest(this.retry, projectedRequest.modelRetryBudget, resolved.providerOptions?.zcodeSubscription === true),
+      retry: resolveRetryOptionsForRequest(
+        this.retry,
+        projectedRequest.modelRetryBudget,
+        resolved.providerOptions?.zcodeSubscription === true,
+      ),
       runtime: this.runtime,
       statusSink: this.statusSink,
       modelIoFullRetentionEnabled: this.modelIoFullRetentionEnabled,
@@ -367,24 +372,17 @@ export class AiSdkModelAdapter {
       resolveModel,
       resolved,
       // single-attempt 预算（带 selectionFallback 的执行作用域句柄）把 maxAttempts 收敛为 1。
-      retry: resolveRetryOptionsForRequest(this.retry, projectedRequest.modelRetryBudget, resolved.providerOptions?.zcodeSubscription === true),
+      retry: resolveRetryOptionsForRequest(
+        this.retry,
+        projectedRequest.modelRetryBudget,
+        resolved.providerOptions?.zcodeSubscription === true,
+      ),
       runtime: this.runtime,
       statusSink: this.statusSink,
       streamIdleTimeoutMs: this.streamIdleTimeoutMs,
       modelIoFullRetentionEnabled: this.modelIoFullRetentionEnabled,
     });
   }
-}
-
-function projectSubscriptionRetryBudget(
-  request: AiSdkModelTextRequest,
-  resolved: ResolvedAiSdkModel,
-): AiSdkModelTextRequest {
-  // 订阅接口要求有界退避；只改 maxAttempts 会被 runner 的无上限循环判断绕过。
-  return resolved.providerOptions?.zcodeSubscription === true &&
-    request.modelRetryBudget === ModelRetryBudget.Unbounded
-    ? { ...request, modelRetryBudget: ModelRetryBudget.Default }
-    : request;
 }
 
 function requireMaxOutputTokens(options: ModelOptions): number {

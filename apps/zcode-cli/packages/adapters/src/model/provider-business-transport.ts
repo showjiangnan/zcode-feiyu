@@ -117,6 +117,7 @@ export async function detectProviderBusinessError(
 
   return new ProviderBusinessError({
     providerCode: failure.providerCode,
+    providerIncompleteReason: failure.providerIncompleteReason,
     providerId: options.providerId,
     providerKind: options.providerKind,
     providerMessage: failure.providerMessage,

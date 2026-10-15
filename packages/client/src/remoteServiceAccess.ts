@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+import { IExternalImportService } from "@zcode/services";
 import { IChatGPTSubscriptionService } from "@zcode/services";
 import { IGenUiService } from "@zcode/services";
 import { ProxyChannel, type IChannelClient } from "@zcode/rpc";
@@ -60,6 +61,7 @@ import {
  * 新增服务只需在此添加一个 getter。
  */
 export class RemoteServiceAccess implements IServiceAccessor {
+  readonly externalImportService: IExternalImportService;
   readonly chatGPTSubscriptionService: IChatGPTSubscriptionService;
   readonly imageGenerationService: IImageGenerationService;
   readonly fileService: IFileService;
@@ -115,6 +117,9 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly promptAttachmentTransferService: IPromptAttachmentTransferService;
 
   constructor(channelClient: IChannelClient) {
+    this.externalImportService = ProxyChannel.toService<IExternalImportService>(
+      channelClient.getChannel(IExternalImportService.channelName),
+    );
     this.fileService = ProxyChannel.toService<IFileService>(
       channelClient.getChannel(IFileService.channelName),
     );

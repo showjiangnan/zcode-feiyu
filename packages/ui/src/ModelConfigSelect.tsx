@@ -163,6 +163,7 @@ interface ModelConfigSelectProps {
   triggerClassName?: string;
   triggerIconClassName?: string;
   triggerIcon?: ReactNode;
+  triggerLeadingContent?: ReactNode;
   triggerLabelClassName?: string;
   triggerTestId?: string;
   formatTriggerLabel?: (label: string) => string;
@@ -216,6 +217,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
   triggerClassName,
   triggerIconClassName = "hidden",
   triggerIcon,
+  triggerLeadingContent,
   triggerLabelClassName: customTriggerLabelClassName,
   triggerTestId = TID_CHAT_MODEL_SELECT_TRIGGER,
   formatTriggerLabel,
@@ -502,6 +504,7 @@ export const ModelConfigSelect = memo(function ModelConfigSelectComponent({
           triggerClassName,
         )}
       >
+        {triggerLeadingContent}
         {triggerIcon ?? (
           <PackageIcon
             className={cn("pointer-events-none size-4 shrink-0 text-current", triggerIconClassName)}

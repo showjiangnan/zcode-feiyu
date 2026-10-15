@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+import { modelSpeedObservationSchema } from "./model-speed.js";
 /* oxlint-disable eslint(max-lines) -- re-home 产物：旧协议消息/会话承重类型集中迁移，保持单文件契约面。 */
 // re-home 迁移产物（为删除旧协议树铺路）。
 // 本文件承载旧 ZCode Protocol 中仍被存活栈（validation/background-task-notifications/
@@ -401,6 +402,7 @@ export const zcodeMessagePartSchema = z.discriminatedUnion("type", [
   partBaseSchema
     .extend({
       type: z.literal("step-finish"),
+      modelSpeed: modelSpeedObservationSchema.optional(),
       reason: z.string(),
       snapshot: z.string().optional(),
       cost: z.number().nonnegative(),

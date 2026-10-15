@@ -1,4 +1,5 @@
 import type { AccountProviderStates } from "./account-provider-state.js";
+import { getModelSpeedOptions } from "@zcode/shared/model-speed";
 import type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
 export type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
 import {
@@ -47,11 +48,19 @@ export function resolveEffectiveModelSelection(input: {
   const model = provider.models.find((candidate) => candidate.modelId === original.modelId);
   if (!model) return Object.freeze({ effectiveSelection: null, selectionIssue: "model-not-found" });
   let normalized = original;
+  // 只归一化未来草稿，能力变更不能回写历史或已接受输入的不可变速度事实。
+  if (
+    original.options?.speed &&
+    !getModelSpeedOptions(provider.config, model.modelId, model.config).includes(
+      original.options.speed,
+    )
+  )
+    normalized = { ...original, options: { ...original.options, speed: "standard" } };
   let validation = validateModelSelectionOptions(model, normalized);
   if (!validation.ok && validation.code === "reasoning-level-not-supported") {
     const reasoningLevel = input.resolveLegacyReasoningLevel?.({ ...original, providerId });
     if (reasoningLevel !== undefined) {
-      const candidate = { ...original, options: { ...original.options, reasoningLevel } };
+      const candidate = { ...normalized, options: { ...normalized.options, reasoningLevel } };
       const checked = validateModelSelectionOptions(model, candidate);
       if (checked.ok) {
         normalized = candidate;

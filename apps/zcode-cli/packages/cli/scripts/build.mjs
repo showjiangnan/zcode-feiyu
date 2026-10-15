@@ -168,6 +168,11 @@ export const resolveBuildAliases = ({
   // 供应商能力使用独立子入口；通用前缀别名会拼成 index.ts/teamorouter，
   // 类型检查虽通过，完整桌面 Agent 打包仍失败，因此必须声明精确映射。
   "@zcode/shared/teamorouter": resolve(rootDirectory, "../../packages/shared/src/teamorouter.ts"),
+  "@zcode/shared/model-speed": resolve(rootDirectory, "../../packages/shared/src/model-speed.ts"),
+  "@zcode/shared/chatgpt-subscription-catalog": resolve(
+    rootDirectory,
+    "../../packages/shared/src/chatgpt-subscription-catalog.ts",
+  ),
   // 进程异常边界在 bootstrap 之前使用该轻量契约，不能落入 shared 的通用前缀 alias。
   "@zcode/shared/process-diagnostic": resolve(
     rootDirectory,

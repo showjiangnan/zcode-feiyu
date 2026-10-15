@@ -59,7 +59,10 @@ export function buildRegistryModelSelectGroups(
             provider.config.access?.type === "chatgpt-subscription"
               ? (provider.config.access.modelDisplayNames?.[modelId] ?? modelId)
               : modelId,
-          ...(provider.config.access?.type !== "chatgpt-subscription" &&
+          ...((provider.config.access?.type !== "chatgpt-subscription" ||
+            provider.config.access.modelCapabilities?.[modelId]?.inputModalities?.includes(
+              "image",
+            )) &&
           shouldShowModelVisionBadge(
             modelId,
             config.properties?.inputFormat?.supportsImage,

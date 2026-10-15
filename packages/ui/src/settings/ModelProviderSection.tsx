@@ -266,7 +266,7 @@ export function ModelProviderSection({
     addPersonalModel,
     savePersonalModelDraft,
     setPersonalModelEnabled,
-    setPersonalModelFastMode,
+    setPersonalModelSpeedCapability,
     discoverModels,
     deletePersonalModel,
     deleteProvider,
@@ -1173,7 +1173,7 @@ export function ModelProviderSection({
           onAddPersonalModel={addPersonalModel}
           onSavePersonalModelDraft={savePersonalModelDraft}
           onSetPersonalModelEnabled={setPersonalModelEnabled}
-          onSetPersonalModelFastMode={setPersonalModelFastMode}
+          onSetPersonalModelSpeedCapability={setPersonalModelSpeedCapability}
           onDiscoverModels={discoverModels}
           onDeletePersonalModel={deletePersonalModel}
           onDelete={handleDelete}

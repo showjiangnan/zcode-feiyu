@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+import { buildExternalHistoryBundle } from "./external-history-bundle.js";
 /* eslint-disable max-lines -- ZCode Protocol 的 session/workspace 方法共享同一个 server context 与 snapshot helpers，迁移期先集中维护。 */
 /* eslint-disable max-lines -- ZCode Protocol 的 session/workspace 方法共享同一个 server context 与 snapshot helpers，迁移期先集中维护。 */
 /* eslint-disable max-lines -- ZCode Protocol 的 session/workspace 方法共享同一个 server context 与 snapshot helpers，迁移期先集中维护。 */
@@ -1049,6 +1050,30 @@ async function persistImportedSessionHistory(params: {
 
   const workspace = params.record.workspace;
   const workspaceIdentity = workspace.workspaceIdentity?.trim();
+  if (importedHistory.source === "external") {
+    if (!sessionStore.commitExternalImportBundle)
+      throw new ProtocolRequestError(-32003, "External import requires atomic storage");
+    await sessionStore.commitExternalImportBundle(
+      buildExternalHistoryBundle(
+        {
+          id: params.sessionId,
+          projectID: projectIdFromDirectory(workspace.workspacePath),
+          workspaceID: workspaceIdentity as WorkspaceId | undefined,
+          traceID: params.record.traceContext.traceId,
+          slug: slugifyImportedSession(params.sessionId),
+          directory: workspace.workspacePath,
+          path: workspace.workspacePath,
+          title: importedHistory.title,
+          titleSource: "custom",
+          version: params.context.deps.version ?? "unknown",
+          permission: { mode: "build" },
+          time: { created: importedHistory.createdAt, updated: importedHistory.updatedAt },
+        },
+        importedHistory,
+      ),
+    );
+    return;
+  }
   const now = Date.now();
   const createdAt =
     importedHistory.createdAt ??
@@ -1306,6 +1331,35 @@ async function createSessionWithProjection<T>(
     );
     return (await project(record)).value;
   }
+  // 同一来源版本已提交时只恢复/读取，绝不覆盖活跃运行记录或用户后续消息。
+  if (params.sessionId && params.importedHistory?.source === "external") {
+    const store = context.deps.sessionStore;
+    const existing = await store?.getSession(params.sessionId as SessionId);
+    if (existing) {
+      const entries = await store?.sessionEntries?.({
+        sessionID: params.sessionId as SessionId,
+        type: "external/import",
+      });
+      const proof = entries?.find((entry) => entry.id === `external/import:${params.sessionId}`);
+      if (
+        !proof ||
+        JSON.stringify(proof.data) !== JSON.stringify(params.importedHistory.provenance) ||
+        existing.directory !== params.workspace.workspacePath ||
+        (existing.workspaceID ?? "") !== (params.workspace.workspaceIdentity?.trim() ?? "")
+      )
+        throw new ProtocolRequestError(-32003, "External import version conflict");
+      const active = context.sessions.get(params.sessionId as SessionId);
+      const record =
+        active ??
+        (
+          await activateSessionForResume(context, {
+            sessionId: params.sessionId,
+            workspace: params.workspace,
+          })
+        ).record;
+      return (await project(record)).value;
+    }
+  }
   const sessionId = (params.sessionId ?? createSessionId()) as SessionId;
   const workspace = params.workspace;
   context.logger?.info("ZCode Protocol session/create started", {
@@ -1383,6 +1437,10 @@ async function createSessionWithProjection<T>(
         createParams: params,
       });
       await record.app.resume();
+      if (params.importedHistory.source === "external") {
+        record.createdAt = params.importedHistory.createdAt;
+        record.updatedAt = params.importedHistory.updatedAt;
+      }
       record.stateRevision++;
     }
     const snapshotStartedAt = Date.now();

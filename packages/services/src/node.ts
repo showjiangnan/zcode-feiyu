@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+import { ExternalImportOwner, IExternalImportService } from "./external-import/node.js";
 import { IChatGPTSubscriptionService } from "./chatgpt-subscription/contract.js";
 import { createSubscriptionViewClient } from "./chatgpt-subscription/node.js";
 import { CuaProductHelperWorkspaceRegistry } from "#src/cua-permission-broker/index.js";
@@ -2811,7 +2812,20 @@ export function createLocalServices(options: {
   const marketingAssets = createMarketingAssetRegistry({
     allowLoopback: ZCODE_ENV === "test" || process.env.NODE_ENV === "development",
   });
+  const externalImportOwner = new ExternalImportOwner({
+    supported: options?.serviceAuthorityMode === "desktop-local",
+    directory: join(resolveAppConfigDir(), "external-import"),
+    targetRoot: getZCodeDataRootDir(),
+    sessionPort: { commit: (input) => zcodeTaskService.importExternalHistory(input) },
+    registerProjects: async (paths) => {
+      const current = await settingService.get();
+      await settingService.update({
+        recentProjects: [...new Set([...paths, ...(current.recentProjects ?? [])])],
+      });
+    },
+  });
   const services = new ServiceCollection()
+    .register(IExternalImportService, externalImportOwner)
     .register(
       IMarketingTouchService,
       createMarketingTouchService({
@@ -3220,6 +3234,11 @@ export function createLocalServices(options: {
       },
     );
   }
+  void externalImportOwner.start().catch((error) =>
+    createServiceLogger("external-import").warn(undefined, "导入同步初始化失败", {
+      reason: error instanceof Error ? error.message : "initialization_failed",
+    }),
+  );
   return services;
 }
 
@@ -3302,6 +3321,7 @@ function readTelemetryOAuthUserId(rawUserInfo: string | null): string {
 }
 
 export function disposeServiceResources(services: ServiceCollection): void {
+  void (services.getOptional(IExternalImportService) as ExternalImportOwner | undefined)?.dispose();
   taskMessageBrokers.get(services)?.dispose();
   taskMessageBrokers.delete(services);
   const content = services.getOptional(ICloudContentService);
@@ -3345,6 +3365,9 @@ export function disposeServiceResources(services: ServiceCollection): void {
 }
 
 export async function disposeServiceResourcesAndWait(services: ServiceCollection): Promise<void> {
+  await (
+    services.getOptional(IExternalImportService) as ExternalImportOwner | undefined
+  )?.dispose();
   taskMessageBrokers.get(services)?.dispose();
   taskMessageBrokers.delete(services);
   (

@@ -86,6 +86,7 @@ export async function persistCompletedAssistantStep(
       reason: options.result.finishReason,
       cost: 0,
       tokens: persistedTokens,
+      ...(options.result.usage?.modelSpeed ? { modelSpeed: options.result.usage.modelSpeed } : {}),
     },
     options.modelTraceContext,
   );

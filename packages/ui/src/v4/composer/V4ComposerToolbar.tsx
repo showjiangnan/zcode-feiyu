@@ -25,6 +25,7 @@ import {
   TID_V4_MODEL_CONFIG,
   TID_V4_COMPOSER_INPUT,
   ZCODE_AGENT_PROVIDER,
+  getModelSpeedOptions,
   type ProviderFamilyConnectionSelection,
   type ProviderFamilyConnectionSelectionSettings,
   type ProviderFamilyDomain,
@@ -57,6 +58,8 @@ import {
   ThoughtLevelSlider,
 } from "@/chat-input-toolbar/ThoughtLevelSlider.js";
 import { getNextThoughtLevelValue } from "@/chat-input-toolbar/thoughtLevelOptions.js";
+import { ModelSpeedMenu } from "@/chat-input-toolbar/ModelSpeedMenu.js";
+import { ModelSpeedIcon } from "@/chat-input-toolbar/ModelSpeedIcon.js";
 import type { V4ComposerConfigPicker } from "@/v4/composer/configPickerState.js";
 import { useToolbarShortcutBindings } from "@/v4/composer/toolbarShortcuts.js";
 import {
@@ -416,6 +419,10 @@ export interface V4ComposerToolbarProps {
   ) => void;
   /** 选中思考深度；modelContext 固定本次用户操作的目标模型。 */
   onSelectThought: (thought: string, modelContext: { provider: string; model: string }) => void;
+  onSelectSpeed?: (
+    speed: import("@zcode/shared").ModelSpeed,
+    modelContext: { provider: string; model: string },
+  ) => void;
   onSwitchMode: (mode: string) => void;
   /** prepare/configOptions 失败时，custom provider 选择走 workspace recovery 链。 */
   onRecoverCustomModelSelection?: (
@@ -449,6 +456,7 @@ function V4ComposerModelControlsImpl({
   onConfigPickerOpenChange,
   onSelectModel,
   onSelectThought,
+  onSelectSpeed,
   onSendCompressionCommand,
   onRecoverCustomModelSelection,
 }: V4ComposerToolbarProps) {
@@ -978,6 +986,30 @@ function V4ComposerModelControlsImpl({
     };
   }, [draftModelThoughtOption, effectiveConfig]);
 
+  const speedProvider = modelSelectionView?.providers.find(
+    (candidate) => candidate.providerId === effectiveConfig?.provider,
+  );
+  const speedModel = speedProvider?.models.find(
+    (model) => model.modelId === effectiveConfig?.model,
+  );
+  const speedOptions =
+    speedProvider && speedModel
+      ? getModelSpeedOptions(speedProvider.config, speedModel.modelId, speedModel.config)
+      : ["standard" as const];
+  const speedVisible = speedOptions.length > 1;
+  const requestedSpeed = effectiveConfig?.modelSelection?.options?.speed ?? "standard";
+  const selectedSpeed = speedOptions.includes(requestedSpeed) ? requestedSpeed : "standard";
+  const handleSpeedChange = useCallback(
+    (speed: import("@zcode/shared").ModelSpeed) => {
+      if (effectiveConfig && speedVisible && !modelLocked)
+        onSelectSpeed?.(speed, {
+          provider: effectiveConfig.provider,
+          model: effectiveConfig.model,
+        });
+    },
+    [effectiveConfig, speedVisible, modelLocked, onSelectSpeed],
+  );
+
   const handleThoughtValueChange = useCallback(
     (value: string) => {
       if (!effectiveConfig) return;
@@ -1126,6 +1158,11 @@ function V4ComposerModelControlsImpl({
           modelGroups={modelSelectGroups}
           normalizedValue={normalizedModelValue}
           triggerLabel={modelTriggerDisplay.modelLabel}
+          triggerLeadingContent={
+            speedVisible ? (
+              <ModelSpeedIcon speed={selectedSpeed} className="size-3.5 shrink-0" />
+            ) : undefined
+          }
           triggerBadge={
             thoughtOption ? (
               <ThoughtLevelIndicator
@@ -1136,15 +1173,26 @@ function V4ComposerModelControlsImpl({
             ) : undefined
           }
           footerContent={
-            thoughtOption ? (
-              <ThoughtLevelSlider
-                option={thoughtOption}
-                provider={displayProvider}
-                onValueChange={handleThoughtValueChange}
-                disabled={disabled || recoveryPending}
-                shortcutLabel={thoughtShortcutLabel}
-              />
-            ) : undefined
+            <>
+              {thoughtOption ? (
+                <ThoughtLevelSlider
+                  option={thoughtOption}
+                  provider={displayProvider}
+                  onValueChange={handleThoughtValueChange}
+                  disabled={disabled || recoveryPending}
+                  shortcutLabel={thoughtShortcutLabel}
+                />
+              ) : null}
+              {speedVisible ? (
+                <ModelSpeedMenu
+                  value={selectedSpeed}
+                  options={speedOptions}
+                  onChange={handleSpeedChange}
+                  disabled={disabled || recoveryPending || !onSelectSpeed}
+                  observation={usage?.modelSpeed}
+                />
+              ) : null}
+            </>
           }
           showManageModelsAction={showManageModelsAction}
           manageModelsLabel={manageModelsLabel}

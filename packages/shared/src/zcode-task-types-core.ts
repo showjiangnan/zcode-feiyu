@@ -59,7 +59,7 @@ export interface ZCodeGlmAgentModelStateUpdatePayload {
   };
 }
 /** 外部历史迁移来源。当前只落 Claude Code，后续其它来源继续在这里扩展。 */
-export type ZCodeTaskMigrationSource = "claudeCode";
+export type ZCodeTaskMigrationSource = "claudeCode" | "codex";
 export type ZCodeTaskGoalStatus = "active" | "paused" | "budget_limited" | "complete";
 export type ZCodeTaskTargetChangedAction =
   | "set"

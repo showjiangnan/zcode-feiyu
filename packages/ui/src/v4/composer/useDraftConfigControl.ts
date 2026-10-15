@@ -97,6 +97,10 @@ export interface DraftConfigControl {
   ) => () => void;
   handleDraftSelectModel: (modelProvider: string, model: string) => void;
   handleDraftSelectThought: (thought: string) => void;
+  handleDraftSelectSpeed: (
+    speed: import("@zcode/shared").ModelSpeed,
+    modelContext: { provider: string; model: string },
+  ) => void;
   handleDraftSwitchMode: (mode: string) => void;
   handleDraftSetOrchestrationMode: (mode: OrchestrationMode) => void;
 }
@@ -266,7 +270,10 @@ export function useDraftConfigControl(params: {
       if (
         effective?.providerId !== expectedSelection.providerId ||
         effective.modelId !== expectedSelection.modelId ||
-        effective.options?.reasoningLevel !== expectedSelection.options?.reasoningLevel
+        effective.options?.reasoningLevel !== expectedSelection.options?.reasoningLevel ||
+        // 同模型/思考也可能已改速度；迟到的标准档 ACK 不能覆盖新的 Fast 草稿。
+        (effective.options?.speed ?? "standard") !==
+          (expectedSelection.options?.speed ?? "standard")
       )
         return () => {};
       return () => {
@@ -465,6 +472,29 @@ export function useDraftConfigControl(params: {
     [updateDraftConfig],
   );
 
+  const handleDraftSelectSpeed = useCallback(
+    (
+      speed: import("@zcode/shared").ModelSpeed,
+      modelContext: { provider: string; model: string },
+    ) => {
+      updateDraftConfig((current) => {
+        const selection = current.modelSelection;
+        // 菜单事件只能修改点击时的模型，迟到事件不能把付费速度带到另一供应商。
+        if (
+          !selection ||
+          selection.providerId !== modelContext.provider ||
+          selection.modelId !== modelContext.model
+        )
+          return current;
+        return {
+          ...current,
+          modelSelection: { ...selection, options: { ...selection.options, speed } },
+        };
+      });
+    },
+    [updateDraftConfig],
+  );
+
   const handleDraftSwitchMode = useCallback(
     (mode: string) => {
       if (mode === "plan" || mode === "plan-off") {
@@ -507,6 +537,7 @@ export function useDraftConfigControl(params: {
     captureAcceptedModelSelection,
     handleDraftSelectModel,
     handleDraftSelectThought,
+    handleDraftSelectSpeed,
     handleDraftSwitchMode,
     handleDraftSetOrchestrationMode,
   };

@@ -128,7 +128,9 @@ function validateOptions(specs: ModelOptionSpecs, options: ModelOptions): Requir
     });
   }
 
-  return { maxOutputTokens, reasoningLevel };
+  const speed = options.speed ?? "standard";
+  if (!["standard", "fast", "ultrafast"].includes(speed)) throw invalidRequest("Invalid model speed");
+  return { maxOutputTokens, reasoningLevel, speed };
 }
 
 function validatePartialOptions(specs: ModelOptionSpecs, options: ModelOptions): ModelOptions {

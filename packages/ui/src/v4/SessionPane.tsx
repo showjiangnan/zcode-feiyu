@@ -1687,6 +1687,7 @@ export function SessionPane({
     resolveInitialDraftConfig,
     handleDraftSelectModel,
     handleDraftSelectThought,
+    handleDraftSelectSpeed,
     handleDraftSwitchMode,
     handleDraftSetOrchestrationMode,
     promoteComposerDraft,
@@ -5275,6 +5276,7 @@ export function SessionPane({
       onStop={handleStopFromButton}
       onSelectModel={handleSelectModel}
       onSelectThought={handleSelectThought}
+      onSelectSpeed={handleDraftSelectSpeed}
       onSwitchMode={handleSwitchMode}
       onSetOrchestrationMode={handleSetOrchestrationMode}
       onControlProactiveWork={

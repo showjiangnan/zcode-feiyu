@@ -574,7 +574,9 @@ export function createInheritedSubagentModelFactory(
     if (
       target.selection.providerId === inheritedSelection.providerId &&
       target.selection.modelId === inheritedSelection.modelId &&
-      target.selection.options?.reasoningLevel === inheritedSelection.options?.reasoningLevel
+      target.selection.options?.reasoningLevel === inheritedSelection.options?.reasoningLevel &&
+      (target.selection.options?.speed ?? "standard") ===
+        (inheritedSelection.options?.speed ?? "standard")
     ) {
       // Selection 保持显式意图的稀疏形态；不能拿它和 Active Model 的完整 effective
       // options 比较，否则默认值必然导致复用失败并让 child 重新解释可变 Registry。
@@ -586,10 +588,12 @@ export function createInheritedSubagentModelFactory(
 
 export function modelSelectionFromActiveModel(model: Model): ModelSelection {
   const reasoningLevel = model.options.reasoningLevel;
+  const speed = model.options.speed;
   return {
     providerId: model.providerId,
     modelId: model.modelId,
-    ...(reasoningLevel ? { options: { reasoningLevel } } : {}),
+    // Active Model 已冻结本次选择；丢失速度会让同模型 child 静默恢复成 standard。
+    ...(reasoningLevel ? { options: { reasoningLevel, ...(speed ? { speed } : {}) } } : {}),
   };
 }
 

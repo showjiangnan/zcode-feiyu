@@ -98,6 +98,12 @@ export async function handleStreamChunk(input: {
     );
   }
   const event = toModelStreamEvent(input.chunk);
+  if (event?.type === "finish" && input.input.resolved.rawRequestBodyCapture?.modelSpeed) {
+    event.usage = {
+      ...event.usage,
+      modelSpeed: { ...input.input.resolved.rawRequestBodyCapture.modelSpeed },
+    };
+  }
   if (event?.type === "error") {
     return handleStreamErrorEvent({ ...input, emittedRetryBoundaryEvent }, event.error);
   }

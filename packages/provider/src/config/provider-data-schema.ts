@@ -1,6 +1,7 @@
 // Modified by ZCode Feiyu.
 import { z } from "zod";
 import { sparseShape } from "@zcode/shared/config-schema";
+import { chatGPTModelCapabilitiesSchema } from "@zcode/shared/chatgpt-subscription-catalog";
 
 export const providerApiTypeDataSchema = z.enum([
   "anthropic-messages",
@@ -63,6 +64,7 @@ export const chatGPTSubscriptionAccessDataSchema = z
     entitled: z.boolean(),
     label: z.string().min(1),
     modelDisplayNames: z.record(z.string(), z.string()).optional(),
+    modelCapabilities: z.record(z.string(), chatGPTModelCapabilitiesSchema).optional(),
   })
   .strict();
 

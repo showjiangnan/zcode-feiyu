@@ -105,7 +105,8 @@ const metadata = await deliverRcsAssets({
     const schemaModule = join(destination, "rcs-protocol-schema.mjs");
     await build({
       stdin: {
-        contents: 'export * from "./packages/shared/src/zcode-protocol-v4/index.ts";',
+        contents:
+          'export * from "./packages/shared/src/zcode-protocol-v4/index.ts"; export { chatGPTSubscriptionViewSchema } from "./packages/shared/src/chatgpt-subscription.ts";',
         resolveDir: root,
       },
       outfile: schemaModule,
@@ -116,6 +117,14 @@ const metadata = await deliverRcsAssets({
     });
     try {
       const protocol = await import(pathToFileURL(schemaModule).href);
+      // 远控仅交付公共目录；复用已打包 schema，避免 Node 原生 TS 加载误解 .js 源码映射。
+      await json(
+        "chatgpt-subscription.schema.json",
+        z.toJSONSchema(protocol.chatGPTSubscriptionViewSchema, {
+          io: "input",
+          unrepresentable: "any",
+        }),
+      );
       const schemas = {};
       for (const [name, value] of Object.entries(protocol)) {
         if (name.endsWith("Schema") && value && typeof value.safeParse === "function")

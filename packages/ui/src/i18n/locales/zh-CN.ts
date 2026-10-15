@@ -1,7 +1,18 @@
 // Modified by ZCode Feiyu.
+import { importMessagesZh } from "@/settings/import/importMessages.js";
 import { requestSecurityMessagesZhCN } from "@/request-security-edition/messages.js";
 /** 中文翻译 */
 const zhCN: Record<string, string> = {
+  ...importMessagesZh,
+  "occupationOnboarding.progress": "设置进度",
+  "chat.modelSpeed.title": "速度",
+  "chat.modelSpeed.standard": "标准",
+  "chat.modelSpeed.fast": "Fast",
+  "chat.modelSpeed.ultrafast": "Ultrafast",
+  "chat.modelSpeed.usage": "Fast 与 Ultrafast 会更快消耗用量；可用性以连接权限和服务器响应为准。",
+  "chat.modelSpeed.actual": "最近完成请求实际速度：{speed}",
+  "chat.modelSpeed.unknown": "未确认",
+  "chat.modelSpeed.downgraded": "本次已降级为标准",
   "chatgptSubscription.notEligible":
     "当前账户不具备订阅共享资格。请查看官方账户与授权状态；重新登录不会自动获得资格。",
   "chatgptSubscription.usageLimit":
@@ -20,6 +31,14 @@ const zhCN: Record<string, string> = {
     "原模型已不在此账户的有效目录中。请刷新目录并手动选择模型。",
   "chatgptSubscription.interrupted":
     "模型请求未收到成功终态，已有文字与执行事实已保留。请检查结果后继续，避免重复执行操作。",
+  "chatgptSubscription.interruptedBudget":
+    "模型在完成回复前耗尽本次输出或思考预算。已有文字与执行事实已保留，请检查结果后继续。",
+  "chatgptSubscription.interruptedFilter":
+    "服务端内容过滤终止了本次回复。已有结果已保留，请调整请求后继续。",
+  "chatgptSubscription.interruptedMessages":
+    "模型达到本次响应的消息数量上限，回复未完成。已有结果已保留，请检查结果后继续。",
+  "chatgptSubscription.interruptedSteered":
+    "服务端为处理新的输入结束了本次回复。已有结果已保留，请确认后续响应状态。",
   "chatgptSubscription.cancelledError": "已取消登录，原连接保持不变。",
   "chatgptSubscription.timeoutError": "登录已超时，请重新发起登录。",
   "chatgptSubscription.entry": "ChatGPT订阅登录",
@@ -37,6 +56,37 @@ const zhCN: Record<string, string> = {
   "chatgptSubscription.cancel": "取消",
   "chatgptSubscription.models": "账号可用模型",
   "chatgptSubscription.contextPlanning": "本地上下文规划：",
+  "chatgptSubscription.contextCatalogLabel": "目录上下文窗口：",
+  "chatgptSubscription.contextCatalog": "当前订阅目录声明，实际请求仍受服务端限制",
+  "chatgptSubscription.modelCapabilities.title": "模型能力",
+  "chatgptSubscription.modelCapabilities.unknown": "目录未提供",
+  "chatgptSubscription.modelCapabilities.empty": "未声明可用项",
+  "chatgptSubscription.modelCapabilities.yes": "目录声明支持",
+  "chatgptSubscription.modelCapabilities.no": "目录声明不支持",
+  "chatgptSubscription.modelCapabilities.speed": "可选速度",
+  "chatgptSubscription.modelCapabilities.reasoning": "目录思考级别",
+  "chatgptSubscription.modelCapabilities.defaultReasoning": "默认思考级别",
+  "chatgptSubscription.modelCapabilities.context": "目录上下文窗口",
+  "chatgptSubscription.modelCapabilities.effectiveContext": "本地有效上下文预算",
+  "chatgptSubscription.modelCapabilities.maxContext": "目录最大上下文窗口",
+  "chatgptSubscription.modelCapabilities.inputs": "目录输入模态",
+  "chatgptSubscription.modelCapabilities.search": "模型搜索支持",
+  "chatgptSubscription.modelCapabilities.imageDetail": "原始图像细节",
+  "chatgptSubscription.modelCapabilities.verbosity": "输出详细程度控制",
+  "chatgptSubscription.modelCapabilities.defaultVerbosity": "默认输出详细程度",
+  "chatgptSubscription.modelCapabilities.input.text": "文本",
+  "chatgptSubscription.modelCapabilities.input.image": "图像",
+  "chatgptSubscription.modelCapabilities.input.file": "文件",
+  "chatgptSubscription.modelCapabilities.input.audio": "音频（当前订阅接口未开放）",
+  "chatgptSubscription.modelCapabilities.input.video": "视频（当前订阅接口未开放）",
+  "chatgptSubscription.modelCapabilities.effort.none": "无",
+  "chatgptSubscription.modelCapabilities.effort.minimal": "最低",
+  "chatgptSubscription.modelCapabilities.effort.low": "低",
+  "chatgptSubscription.modelCapabilities.effort.medium": "中",
+  "chatgptSubscription.modelCapabilities.effort.high": "高",
+  "chatgptSubscription.modelCapabilities.effort.xhigh": "极高",
+  "chatgptSubscription.modelCapabilities.effort.max": "最高",
+  "chatgptSubscription.modelCapabilities.effort.ultra": "原生自动多代理等级",
   "chatgptSubscription.contextReference": "依据官方模型规格，账户实际限制以服务端为准",
   "chatgptSubscription.contextFallback": "未知模型的本地兜底值，不代表官方容量",
   "chatgptSubscription.refresh": "刷新模型",
@@ -51,7 +101,7 @@ const zhCN: Record<string, string> = {
   "chatgptSubscription.revocationUnconfirmed":
     "本地已退出，但远端撤销未确认。请在官方账户设置中检查授权。",
   "chatgptSubscription.capabilities":
-    "目录决定可选择的模型，不代表所有模型能力都已获准。支持本地函数工具；不提供 OpenAI 托管图片生成、电脑控制、文件搜索或音视频服务。输出上限和采样参数不发送至订阅接口。 上下文容量未由目录提供，当前使用本地规划值。 思考级别是请求偏好，具体模型支持以服务器响应为准。",
+    "目录提供时，速度、思考、上下文和输入能力使用当前订阅声明；缺失字段保持未知及兼容规划。工具在本地执行，目录允许的原生网页搜索仍受账户策略限制。目录可能包含当前订阅接口未开放的原生功能，实际可选项以菜单及服务端为准。OpenAI 托管图片生成、电脑控制、文件搜索、音视频及输出上限、采样控制仍不适用于此订阅接口。",
   "chatgptSubscription.privacy":
     "工具在本机执行。推理所需的提示、上下文与选定附件会发送至 OpenAI。fal.ai 图片生成仍使用独立配置和费用。",
   "chatgptSubscription.welcomeTitle": "启用 ChatGPT 订阅用量",
@@ -3301,8 +3351,6 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.modelsDiscovered": "已添加 {count} 个模型；保留已有模型配置。",
   "settings.modelProvider.enableFast": "开启 Fast 模式",
   "settings.modelProvider.disableFast": "关闭 Fast 模式",
-  "settings.modelProvider.fastHint":
-    "请求 Fast 优先处理；实际速度和服务等级由供应商决定，费用以实时价格为准。",
   "settings.modelProvider.fastSaveFailed": "Fast 设置保存失败，请重试。",
   "settings.modelProvider.discoveryError.missing-key": "请先保存 API Key，再拉取模型。",
   "settings.modelProvider.discoveryError.unauthorized":
@@ -3950,7 +3998,22 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.mappingNotSet": "未设置",
   "settings.modelProvider.presetTitle": "智谱",
   "settings.modelProvider.sponsoredTitle": "优质中转站",
-  "settings.modelProvider.sponsored.badge": "合作推广",
+  "settings.modelProvider.speed.allow": "允许 {speed}",
+  "settings.modelProvider.speed.hint":
+    "控制此模型在会话中可选的速度档位。默认仍为标准速度，实际可用性以服务器响应为准。",
+  "settings.modelProvider.speed.saveFailed": "速度选项保存失败，请重试。",
+  "settings.modelProvider.balance.title": "账户余额",
+  "settings.modelProvider.balance.refresh": "刷新账户余额",
+  "settings.modelProvider.balance.recharge": "充值",
+  "settings.modelProvider.balance.error.missing-key": "保存 API Key 后显示余额",
+  "settings.modelProvider.balance.error.unauthorized": "API Key 鉴权失败",
+  "settings.modelProvider.balance.error.rate-limited": "查询频率受限，请稍后刷新",
+  "settings.modelProvider.balance.error.server-error": "余额服务暂不可用",
+  "settings.modelProvider.balance.error.network-error": "余额查询失败，请检查网络后刷新",
+  "settings.modelProvider.balance.error.invalid-response": "余额响应格式无效",
+  "settings.modelProvider.balance.error.conflict": "账户配置已更新，请刷新余额",
+  "settings.modelProvider.balance.error.unsupported": "当前连接不支持余额查询",
+  "settings.modelProvider.balance.error.failed": "余额查询失败，请重试",
   "settings.modelProvider.sponsored.login": "登录",
   "settings.modelProvider.sponsored.loginDescription":
     "登录 teamorouter，获取 API Key，探索多模型服务与实时价格。",

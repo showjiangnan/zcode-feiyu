@@ -71,6 +71,8 @@ export function createGenerateTextOptions(input: {
       modelId: input.resolved.modelId,
       requiresMfjsToolSchema: input.resolved.properties.requiresMfjsToolSchema,
       supportsNativeWebSearch: input.resolved.properties.supportsNativeWebSearch,
+      subscriptionAccess: input.resolved.subscriptionAccess,
+      subscriptionSearchToolType: input.resolved.subscriptionSearchToolType,
     }),
     toolChoice: toAiSdkToolChoice(input.request.toolChoice),
     // 请求预算冻结的输出上限必须进入真实 SDK 参数，不能只停留在 ModelRequest。
@@ -137,6 +139,8 @@ export function createStreamTextOptions(input: {
       modelId: input.resolved.modelId,
       requiresMfjsToolSchema: input.resolved.properties.requiresMfjsToolSchema,
       supportsNativeWebSearch: input.resolved.properties.supportsNativeWebSearch,
+      subscriptionAccess: input.resolved.subscriptionAccess,
+      subscriptionSearchToolType: input.resolved.subscriptionSearchToolType,
     }),
     toolChoice: toAiSdkToolChoice(input.request.toolChoice),
     // 请求预算冻结的输出上限必须进入真实 SDK 参数，不能只停留在 ModelRequest。

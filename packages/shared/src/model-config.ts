@@ -103,6 +103,7 @@ export const completeModelConfigDataSchema = z
   .object({
     enabled: z.boolean(),
     fastMode: z.boolean().optional(),
+    speedCapabilities: z.object({ fast: z.boolean(), ultrafast: z.boolean() }).strict().optional(),
     properties: completeModelPropertiesDataSchema,
     optionSpecs: completeModelOptionSpecsDataSchema,
   })

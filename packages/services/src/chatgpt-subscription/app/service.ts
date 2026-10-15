@@ -6,6 +6,7 @@ import type {
   ChatGPTSubscriptionView,
   IChatGPTSubscriptionService,
 } from "../contract.js";
+import type { ChatGPTSubscriptionModel } from "@zcode/shared";
 import {
   ChatGPTSubscriptionError,
   safeSubscriptionError,
@@ -15,7 +16,7 @@ import { refreshSubscriptionCatalog } from "./catalog.js";
 import { hasSubscriptionPermission, type SubscriptionProfile } from "../domain/records.js";
 import type { SubscriptionOAuthPort, SubscriptionStorePort } from "./ports.js";
 import { renewSubscriptionCredentials } from "./renewal.js";
-import { resolveSubscriptionContextPlan } from "../domain/contextPlan.js";
+import { publicSubscriptionModel } from "../domain/catalog.js";
 
 export interface SubscriptionServiceDependencies {
   store: SubscriptionStorePort;
@@ -36,7 +37,10 @@ export class ChatGPTSubscriptionService implements IChatGPTSubscriptionService {
   private readonly calls = new Map<string, Set<AbortController>>();
   private readonly catalogAttempts = new Map<string, string>();
   private disposed = false;
-  private readonly bindings = new Map<string, { profileId: string; generation: number }>();
+  private readonly bindings = new Map<
+    string,
+    { profileId: string; generation: number; models: ChatGPTSubscriptionModel[] }
+  >();
   constructor(private readonly deps: SubscriptionServiceDependencies) {}
 
   async execute(command: ChatGPTSubscriptionCommand): Promise<ChatGPTSubscriptionView> {
@@ -116,10 +120,7 @@ export class ChatGPTSubscriptionService implements IChatGPTSubscriptionService {
             generation: p.generation,
             status: p.status,
             scopes: p.tokens?.scopes ?? [],
-            models: p.models.map((model) => ({
-              ...model,
-              ...resolveSubscriptionContextPlan(model.slug),
-            })),
+            models: p.models.map(publicSubscriptionModel),
             catalogRevision: p.catalogRevision,
             catalogState: p.catalogState,
             catalogError: p.catalogError,
@@ -331,9 +332,17 @@ export class ChatGPTSubscriptionService implements IChatGPTSubscriptionService {
         (!p.retiredAt || scope.startedAt >= p.retiredAt)
       )
         throw new ChatGPTSubscriptionError("connection_not_active");
-      this.bindings.set(scope.id, { profileId, generation });
+      // 原模型 binding 冻结目录许可与默认值；工具续轮不能读取刷新后另一份能力。
+      const models =
+        previous?.models ?? (inherits ? parent.models : p.models.map(publicSubscriptionModel));
+      this.bindings.set(scope.id, { profileId, generation, models });
     } else if (state.activeProfileId !== profileId)
       throw new ChatGPTSubscriptionError("connection_not_active");
+  }
+
+  executionModels(id?: string): ChatGPTSubscriptionModel[] | undefined {
+    const models = id ? this.bindings.get(id)?.models : undefined;
+    return models ? structuredClone(models) : undefined;
   }
 
   releaseExecution(id: string) {

@@ -19,6 +19,7 @@ const RELIABLE_ATTRIBUTION_CONTEXT_KEYS = [
   "exceptionKind",
   "providerCode",
   "providerRequestId",
+  "providerIncompleteReason",
   "reason",
   "responseBodySummary",
   "responseStatus",
@@ -273,6 +274,7 @@ function providerBusinessErrorContext(error: unknown): Record<string, unknown> |
   return {
     providerCode: error.providerCode,
     providerRequestId: error.providerRequestId,
+    providerIncompleteReason: error.providerIncompleteReason,
     responseBodySummary: error.responseBodySummary,
     responseStatus: error.responseStatus,
   };

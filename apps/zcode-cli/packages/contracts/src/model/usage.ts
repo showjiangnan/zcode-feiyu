@@ -5,6 +5,7 @@ export interface ModelServerToolUsage {
 }
 
 export interface ModelUsage {
+  modelSpeed?: import("@zcode/shared").ModelSpeedObservation;
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;

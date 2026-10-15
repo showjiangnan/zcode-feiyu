@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+import { ImportSection } from "@/settings/import/ImportSection.js";
 /* oxlint-disable eslint(max-lines) */
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
@@ -42,7 +43,6 @@ import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
 import { HooksSection } from "@/settings/HooksSection.js";
 import { ImageGenerationSettingsSection } from "@/settings/ImageGenerationSettingsSection.js";
 import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
-import { MigrationSection } from "@/settings/MigrationSection.js";
 import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
 import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
 import { PluginsSection } from "@/settings/PluginsSection.js";
@@ -2061,12 +2061,10 @@ export function SettingsPage({
                               onBack?.();
                             }}
                           />
-                        ) : activeSection === "migration" ? (
-                          <MigrationSection
-                            workspacePath={activeWorkspacePath}
-                            workspaceIdentity={activeWorkspaceIdentity}
-                            isDesktop={isDesktop}
-                          />
+                        ) : activeSection === "import" || activeSection === "migration" ? (
+                          <ServiceProvider services={deviceServices ?? services}>
+                            <ImportSection isDesktop={Boolean(isDesktop && !isWebRemoteControl)} />
+                          </ServiceProvider>
                         ) : activeSection === "usage" ? (
                           <UsageStatsSection
                             activeTab={usageActiveTab}

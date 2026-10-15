@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+import { safeSubscriptionIncompleteReason } from "@zcode/shared";
 import type {
   ErrorAttribution,
   ModelApiErrorPhase,
@@ -92,6 +93,9 @@ function projectErrorAttribution(
     selectContextCode(contexts, ["providerCode"]) ??
     frames.map((frame) => frame.code).find((code) => /^\d+$/.test(code ?? ""));
   const retryable = selectContextBoolean(contexts, "retryable") ?? selectFrameRetryable(frames);
+  const providerIncompleteReason = safeSubscriptionIncompleteReason(
+    selectContextText(contexts, ["providerIncompleteReason"]),
+  );
   const source = selectSource(contexts);
 
   const attribution: ErrorAttribution = {
@@ -105,6 +109,7 @@ function projectErrorAttribution(
     ...(transport ? { transport } : {}),
     ...(statusCode !== undefined ? { statusCode } : {}),
     ...(providerErrorCode ? { providerErrorCode } : {}),
+    ...(providerIncompleteReason ? { providerIncompleteReason } : {}),
     ...(retryable !== undefined ? { retryable } : {}),
   };
 
@@ -310,6 +315,10 @@ function formatContextDetail(context: Record<string, unknown> | undefined): stri
   const detailParts = [
     formatContextPart("provider", context.providerId ?? context.provider),
     formatContextPart("provider_code", context.providerCode),
+    formatContextPart(
+      "incomplete_reason",
+      safeSubscriptionIncompleteReason(context.providerIncompleteReason),
+    ),
     formatContextPart("model", context.modelId ?? context.model),
     formatContextPart("request", context.requestId),
     formatContextPart("code", context.code),

@@ -4,6 +4,7 @@ import {
   type ModelSelection,
   type ProviderRegistryView,
 } from "./registry.js";
+import type { ChatGPTModelCapabilities } from "@zcode/shared/chatgpt-subscription-catalog";
 
 export type InitialModelSelectionResolution =
   | {
@@ -15,7 +16,12 @@ export type InitialModelSelectionResolution =
 interface ModelSelectionCompletionView {
   readonly providers: readonly {
     readonly providerId: string;
-    readonly config?: { readonly access?: { readonly type: string } | null };
+    readonly config?: {
+      readonly access?: {
+        readonly type: string;
+        readonly modelCapabilities?: Readonly<Record<string, ChatGPTModelCapabilities>>;
+      } | null;
+    };
     readonly models: readonly {
       readonly modelId: string;
       readonly config: {
@@ -44,7 +50,7 @@ export function resolveInitialModelSelection(input: {
       preferred?.providerId === subscription.providerId &&
       isSelectable(input.registry, preferred)
     ) {
-      return { source: "configured-default", selection: freezeSelection(preferred) };
+      return { source: "configured-default", selection: freezeNewSelection(preferred) };
     }
     const model = subscription.models[0];
     const selection =
@@ -61,7 +67,7 @@ export function resolveInitialModelSelection(input: {
     if (isSelectable(input.registry, input.configuredDefault)) {
       return {
         source: "configured-default",
-        selection: freezeSelection(input.configuredDefault),
+        selection: freezeNewSelection(input.configuredDefault),
       };
     }
   }
@@ -90,11 +96,17 @@ export function completeNewModelSelection(
   );
   const model = provider?.models.find((candidate) => candidate.modelId === selection.modelId);
   const values = model?.config.optionSpecs.reasoningLevel.values;
-  // 目录没有官方 effort 默认字段，auto 省略参数；普通供应商仍沿用最高档默认。
+  const declaredDefault =
+    provider?.config?.access?.type === "chatgpt-subscription"
+      ? provider.config.access.modelCapabilities?.[selection.modelId]?.defaultReasoningLevel
+      : undefined;
+  // 旧目录保持 auto；只有服务器默认属于本模型可执行列表时才用于新选择。
   const reasoningLevel =
-    provider?.config?.access?.type === "chatgpt-subscription" && values?.includes("auto")
-      ? "auto"
-      : values?.at(-1);
+    declaredDefault && values?.includes(declaredDefault)
+      ? declaredDefault
+      : provider?.config?.access?.type === "chatgpt-subscription" && values?.includes("auto")
+        ? "auto"
+        : values?.at(-1);
   if (!reasoningLevel) return undefined;
   return {
     providerId: selection.providerId,
@@ -141,4 +153,10 @@ function freezeSelection(selection: ModelSelection): ModelSelection {
     modelId: selection.modelId,
     ...(selection.options ? { options: Object.freeze({ ...selection.options }) } : {}),
   });
+}
+
+function freezeNewSelection(selection: ModelSelection): ModelSelection {
+  // 全新任务只复用模型/思考偏好；上一任务的额外速度消耗不能成为新任务默认。
+  const { speed: _speed, ...options } = selection.options ?? {};
+  return freezeSelection({ ...selection, options });
 }

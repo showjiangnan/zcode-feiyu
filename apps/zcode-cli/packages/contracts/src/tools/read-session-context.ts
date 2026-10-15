@@ -56,7 +56,7 @@ export const ReadSessionContextInputSchema = z
       .strict()
       .optional()
       .describe(
-        "With topic strategy, download an archived message attachment to a managed local file. Index selects a resource in rich text, starting at zero.",
+        "Only with topic strategy, download an archived message attachment to a managed local file. Omit this entire field for relevant or handoff; never fill placeholder attachment ids. Index selects a resource in rich text, starting at zero.",
       ),
     maxTokens: z
       .number()

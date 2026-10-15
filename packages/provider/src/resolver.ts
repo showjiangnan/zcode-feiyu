@@ -84,6 +84,7 @@ export function serializeRegistryModelConfig(
   return {
     enabled: config.enabled,
     ...(config.fastMode == null ? {} : { fastMode: config.fastMode }),
+    ...(config.speedCapabilities == null ? {} : { speedCapabilities: config.speedCapabilities }),
     properties: {
       requiresMfjsToolSchema: config.properties.requiresMfjsToolSchema,
       contextWindow: config.properties.contextWindow,

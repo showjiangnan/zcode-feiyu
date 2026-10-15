@@ -10,6 +10,8 @@
     "./node-repl-browser-broker": "./src/browser-use/nodeReplBroker.ts",
     "./process-diagnostic": "./src/process-diagnostic.ts",
     "./model-selection": "./src/model-selection.ts",
+    "./model-speed": "./src/model-speed.ts",
+    "./chatgpt-subscription-catalog": "./src/chatgpt-subscription-catalog.ts",
     "./account-provider-state": "./src/account-provider-state.ts",
     "./model-config": "./src/model-config.ts",
     "./teamorouter": "./src/teamorouter.ts",

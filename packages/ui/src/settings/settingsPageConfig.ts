@@ -10,6 +10,7 @@ import {
   Brain,
   Cable,
   FileSearch,
+  Download,
   Globe2,
   Keyboard,
   Monitor,
@@ -81,6 +82,7 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "settings.systemTitle",
     groupId: "basics",
   },
+  { id: "import", icon: Download, titleId: "import.title", groupId: "basics" },
   {
     id: "appearance",
     icon: Palette,

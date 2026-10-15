@@ -1,5 +1,9 @@
 // Modified by ZCode Feiyu.
 import {
+  externalHistoryMessageSchema,
+  externalImportProvenanceSchema,
+} from "../external-import.js";
+import {
   databaseMigrationFactsSchema,
   databaseStartupErrorCodeSchema,
   databaseStartupErrorDetailsSchema,
@@ -1064,6 +1068,16 @@ export const zcodeSessionImportMessageSchema = z
 export type ZCodeSessionImportMessage = z.infer<typeof zcodeSessionImportMessageSchema>;
 
 export const zcodeSessionImportHistorySchema = z.discriminatedUnion("source", [
+  z
+    .object({
+      source: z.literal("external"),
+      title: z.string(),
+      createdAt: timestampMsSchema,
+      updatedAt: timestampMsSchema,
+      messages: z.array(externalHistoryMessageSchema).min(1),
+      provenance: externalImportProvenanceSchema,
+    })
+    .strict(),
   z
     .object({
       source: z.literal("claudeCode"),

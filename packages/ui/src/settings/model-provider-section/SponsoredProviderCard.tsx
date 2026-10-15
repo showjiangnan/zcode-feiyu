@@ -1,5 +1,4 @@
 import { CoinsIcon, LayersIcon, ReceiptTextIcon, ShieldCheckIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge.js";
 import { Button } from "@/components/ui/button.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -38,11 +37,6 @@ export function SponsoredProviderCard({ sponsorId }: { sponsorId: SponsoredProvi
     <section className="space-y-4" data-testid="sponsored-provider-detail">
       <PlanStatusCardSurface
         planTitle={sponsor.label}
-        titleAccessory={
-          <Badge variant="outline">
-            {intl.formatMessage({ id: "settings.modelProvider.sponsored.badge" })}
-          </Badge>
-        }
         statusMeta={
           <p className="text-ui-base leading-6 text-foreground-subtle">
             {intl.formatMessage({ id: "settings.modelProvider.sponsored.loginDescription" })}

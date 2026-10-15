@@ -51,6 +51,7 @@ export function collectTurnOutput(options: {
   let index = options.startIndex;
   let resultType: TurnResultForHydration = "success";
   let failure: TurnOutputCollection["failure"];
+  let modelSpeed: TurnOutputCollection["modelSpeed"];
   // 被 stream recovery 作废的 tail 若是本轮最后一条 assistant，说明恢复请求没有落盘
   //（进程在重发前退出），本轮按 interrupted 收口；后续 assistant 出现则由它决定结果。
   let awaitingStreamRecovery = false;
@@ -143,6 +144,10 @@ export function collectTurnOutput(options: {
       index += 1;
       continue;
     }
+    // 实际档位是持久 step-finish 的请求事实；冷恢复不能只恢复 token 而丢失速度。
+    const finish = message.parts.findLast((part) => part.type === "step-finish");
+    modelSpeed = finish?.type === "step-finish" ? finish.modelSpeed : undefined;
+
     // Host 不能从 toolCallCount 或裁剪后的 history 长度反推模型轮次。
     // 新 transcript 在最终 assistant anchor 固化精确值；旧 transcript 才按独立
     // assistant history 条目做兼容计数。
@@ -204,6 +209,7 @@ export function collectTurnOutput(options: {
   return {
     ...(failure ? { failure } : {}),
     nextIndex: index,
+    ...(modelSpeed ? { modelSpeed } : {}),
     resultType,
     toolCallCount,
     historyRoundCount,
