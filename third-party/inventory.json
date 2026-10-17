@@ -37,7 +37,7 @@
     "apps/zcode-cli/packages/zcode-guide-plugin/package.json": "19cd20e4bec66195858a0bff6c8b8deb0f1652d64a215a93d9c2fba46aa91177",
     "apps/zcode-cli/tools/prompt-trajectory/package.json": "86185eb5455309a3e7b87ebf0077caa0ef3ee38c7247b15c9628bf7c346f1620",
     "apps/zcode-cli/tools/typescript/package.json": "23d7e50d2089d205ce3022c5bafbb6b3e31d000e41ac678a5934e0b72627cf3a",
-    "package.json": "2ed505cef82806d2ea3cea44e01bf31105d06c6a63efcc99c733464b95c3ec18",
+    "package.json": "c25fd477367ea185d3e53b5fca31110b51a84690db158faf911943a5663e4d56",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/desktop/package.json": "74cb02818d771c3de25d9f3d0e85ab0eeff2de97be78b9abc4fd402ea59a520a",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
