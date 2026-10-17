@@ -128,6 +128,8 @@ This Mac Release and current main include the following changes.
 - **Execution guidance**: consistent rules cover task completion, planning, background status, compaction summaries, external content, and verification evidence. Custom system prompts retain their replacement semantics.
 - **SuggestedPrompt (experimental)**: enable the global capability under Settings → Agent capabilities and select a separate model, then consent within each desired conversation. A candidate may be generated in the background after the next successful turn. Tab on desktop or the mobile adoption control copies it into an editable draft without sending it. Both switches default to off; background model requests count toward usage.
 
+A Codex-style prompt predictor; limited by the model's own capabilities and speed, it may not match Codex's prediction efficiency.
+
 ### Continued execution and usage
 
 Current source removes execution budgets that forcibly stop work based on accumulated tokens, cost, request counts, total task duration, or default consecutive-turn caps. Main tasks, subagents, goals, and memory maintenance no longer pause because a retired consumption limit was reached. Legacy budget configuration is discarded on read while historical usage remains available.
