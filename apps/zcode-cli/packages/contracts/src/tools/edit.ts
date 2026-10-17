@@ -186,6 +186,7 @@ export const EditErrorCode = {
   AMBIGUOUS_REPLACE: 9,
   FILE_TOO_LARGE: 10,
   INVALID_PATH: 13,
+  PARTIAL_READ: 14,
 } as const;
 
 export type EditErrorCode = (typeof EditErrorCode)[keyof typeof EditErrorCode];

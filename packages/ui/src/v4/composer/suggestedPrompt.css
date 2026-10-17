@@ -1,0 +1,31 @@
+/* Modified by ZCode Feiyu. */
+.suggested-prompt-toggle-on::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 7px;
+  background: linear-gradient(
+    110deg,
+    #93c5fd55,
+    #c4b5fd66,
+    #f9a8d466,
+    #fcd34d55,
+    #86efac55,
+    #93c5fd55
+  );
+  background-size: 300% 100%;
+  animation: suggested-prompt-rainbow 5s linear infinite;
+}
+@keyframes suggested-prompt-rainbow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .suggested-prompt-toggle-on::before {
+    animation: none;
+  }
+}

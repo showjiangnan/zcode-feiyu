@@ -30,24 +30,24 @@ The 2026-10-15 update synchronizes source and paired RCS assets only; it does no
 
 ## Latest update
 
-- Improve experimental computer control, multi-window previews, closure handling and reliability.
-- Refine parts of the UI / UX and synchronize the paired remote interface.
+- Improve file read/edit validation after compaction, execution guidance, and Grep truncation notices.
+- Add experimental SuggestedPrompt with default-off controls and per-conversation consent, including the paired remote interface.
 
 ## Download installers
 
-Download Feiyu packages from [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases). This release is [v3.14.7-feiyu.1 (prerelease)](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.7-feiyu.1), with application version **3.14.7** and installed name **ZCode**. Packages are built from the production commit identified by that tag; pushing source does not update installed applications.
+Download Feiyu packages from [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases). This release is [v3.14.7-feiyu.2 (prerelease)](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.7-feiyu.2), with application version **3.14.7** and installed name **ZCode**. Packages are built from the production commit identified by that tag; pushing source does not update installed applications.
 
-| Platform                                         | Download                                                                                                                                                                                                                                                        | Validation and scope                                                                                                                                                                                                                                                                                                   |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| macOS Apple Silicon (arm64, macOS 14.4 or later) | [DMG installer](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.1/ZCode-Feiyu-3.14.7-mac-arm64.dmg) · [ZIP archive](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.1/ZCode-Feiyu-3.14.7-mac-arm64.zip) | Native Mac build; final archive signatures, contents, and bundled Agent checked. Computer control remains experimental.                                                                                                                                                                                                |
-| Windows x64 / arm64                              | **No Windows installer in this release.** [Version 3.14.4](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.4-feiyu.1) remains available.                                                                                                         | Windows implementations remain in source. The complete package requires Windows SDK/MSVC to build native CUA and validation of credential protection, memory, Shell, tools, installation, and runtime. The old package does not contain this release's subscription sign-in, shared UI, or subsequent runtime updates. |
+| Platform                                         | Download                                                                                                                                                                                                                                                        | Validation and scope                                                                                                                                                               |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS Apple Silicon (arm64, macOS 14.4 or later) | [DMG installer](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.2/ZCode-Feiyu-3.14.7-mac-arm64.dmg) · [ZIP archive](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.2/ZCode-Feiyu-3.14.7-mac-arm64.zip) | Native Mac build; final archive signatures, contents, and bundled Agent checked. Computer control remains experimental.                                                            |
+| Windows x64 / arm64                              | **No Windows installer is provided for this release. Windows users must compile it themselves.**                                                                                                                                                                | Use Windows with the project-pinned Node/pnpm and Windows SDK/MSVC to build native CUA and the desktop package. Windows installation and runtime were not tested for this release. |
 
-[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.1/SHA256SUMS.txt) provides SHA-256 digests for the Mac packages. Compare them using `shasum -a 256 <file>`.
+[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.2/SHA256SUMS.txt) provides SHA-256 digests for the Mac packages. Compare them using `shasum -a 256 <file>`.
 
 - **Install on Mac**: open the DMG and drag ZCode into Applications before launching. ZIP users should extract and copy the application first. This build uses an ad-hoc signature without Apple Developer ID or notarization. If macOS blocks it, verify its source and digest, then follow System Settings → Privacy & Security.
 - **Previous Preview users**: this application is named ZCode; it does not automatically replace ZCode Preview by renaming. Retain your data and check native application settings such as RCS and OS permissions in this application. Do not directly copy credential files between application identities.
 - **Computer control permissions**: enable Settings → Computer Control and grant macOS Accessibility and Screen Recording permissions. Replacing an ad-hoc signed build may require granting them again.
-- **Windows status**: no Windows installation/runtime test was performed for this release. Mac builds, mocks, and old packages do not establish validation of this Windows version. Shared UI, model adapters, and Windows source remain included.
+- **Windows status**: this release provides Mac packages only; Windows users must compile it themselves. No Windows installation/runtime test was performed for this release. Mac builds, mocks, and old packages do not establish validation of this Windows version. Shared UI, model adapters, and Windows source remain included.
 - **Updates**: quit the application and install the newer package over the same application while retaining its data directory. No Feiyu automatic-update service is provided; `git pull` does not update an installed application. Earlier versions remain in Releases.
 
 ## Additions and comparison
@@ -119,6 +119,14 @@ Open **Settings → Models → ChatGPT subscription sign-in → ChatGPT subscrip
 - This is the official public subscription-access preview, not all ChatGPT product features or all OpenAI models. fal.ai image generation retains its own configuration and fees; local computer/browser control uses ZCode executors.
 - Prompts, required task context, and selected attachments are sent to OpenAI; local tools run on the execution computer. Tokens stay in a private OS-protected local store and do not enter conversation exports or RCS relay payloads.
 - RCS can use the subscription connection established on desktop. Initial sign-in and account management take place on desktop, not through a phone pretending to receive the desktop callback. Independent SSH/Docker execution does not reuse desktop private subscription credentials.
+
+### Latest source: file access and suggested prompts
+
+This Mac Release and current main include the following changes.
+
+- **File access**: editing or overwriting an existing file requires a valid read. Compaction requires a new read; runtime checks still reject stale content and unauthorized writes, without automatically reading and retrying a write. Truncated Grep results are explicitly marked as incomplete.
+- **Execution guidance**: consistent rules cover task completion, planning, background status, compaction summaries, external content, and verification evidence. Custom system prompts retain their replacement semantics.
+- **SuggestedPrompt (experimental)**: enable the global capability under Settings → Agent capabilities and select a separate model, then consent within each desired conversation. A candidate may be generated in the background after the next successful turn. Tab on desktop or the mobile adoption control copies it into an editable draft without sending it. Both switches default to off; background model requests count toward usage.
 
 ### Continued execution and usage
 
@@ -266,17 +274,17 @@ An ad-hoc signature is not an Apple Developer ID signature or notarization. Trus
 
 To update, preserve local edits, run `git pull --ff-only`, refresh dependencies/build, quit the application, and replace the same `.app`. Source edits do not automatically update an installed application. Preserve its data directory. This repository does not provide a Feiyu automatic-update download service; official installers should not replace a customized fork. Once the new application works, installers and packaging copies in `packages/desktop/dist/` can be deleted.
 
-The earlier 3.14.4 version was cross-built for Windows x64 on this Apple Silicon Mac using the following commands. The current complete version with native CUA requires a Windows build; these historical commands do not mean this release includes a Windows installer:
+### Compile Windows yourself
 
-```bash
-ZCODE_ENV=production \
-ZCODE_PREVIEW_IDENTITY=1 \
-ZCODE_SKIP_REMOTE_ASSETS=1 \
-ZCODE_BOOTSTRAP_WITH_REMOTE=1 \
+**This Release provides Mac installers only. Windows users must compile the application themselves.** On a Windows host, prepare the Node/pnpm versions in `mise.toml`, Windows SDK, and MSVC; install dependencies as described above, then use the desktop packaging entry point. Native CUA requires the target-platform toolchain; do not reuse Mac native assets.
+
+```powershell
+$env:ZCODE_ENV = "production"
+$env:ZCODE_SKIP_REMOTE_ASSETS = "1"
 pnpm bundle:desktop -- --os win --arch x64
 ```
 
-The toolchain downloads Windows Electron, Wine, and NSIS resources as needed and uses the existing Windows prebuilt dependencies. Always prepare the target runtime when switching platforms; do not reuse another platform's native assets. Successful packaging is not a Windows acceptance test. The [electron-builder cross-platform guide](https://www.electron.build/docs/features/multi-platform-build/) also distinguishes prebuilt dependencies from modules requiring compilation on the target platform. See `pnpm bundle:desktop -- --help` for other options.
+The toolchain prepares target-platform Electron, NSIS, and native runtime dependencies. Windows installation/runtime was not tested for this release; source support and a successful build do not establish Windows functional acceptance. See `pnpm bundle:desktop -- --help` for other options.
 
 ### CLI distribution
 

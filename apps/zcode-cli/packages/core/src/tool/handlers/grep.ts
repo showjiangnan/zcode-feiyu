@@ -31,7 +31,9 @@ const GREP_TOOL_DESCRIPTION = `Content search built on ripgrep. Prefer this over
 - Full regex syntax (e.g. "log.*Error", "function\\s+\\w+"). Ripgrep, not grep — escape literal braces (\`interface\\{\\}\`).
 - Filter with \`glob\` (e.g. "**/*.tsx") or \`type\` (e.g. "js", "py", "rust").
 - \`output_mode\`: "content" (matching lines), "files_with_matches" (paths only, default), or "count".
-- \`multiline: true\` for patterns that span lines.`;
+- \`multiline: true\` for patterns that span lines.
+- Narrow the directory and candidate files first, then request matching lines and Read the relevant range. Truncated or paginated results are not a complete search and cannot prove absence; narrow the query or use supported offset/head_limit pagination.
+- Search results locate code but do not establish the read state required by Edit/Write. Read the target region and wait for the result before modifying an existing file.`;
 
 export const grepHandler: ToolHandler = async (input, context) => {
   const parsed = GrepInputSchema.parse(input) as GrepInput;
@@ -204,6 +206,13 @@ export const grepToolEntry: ToolEntry = {
 
 function formatGrepModelContent(output: unknown): string {
   const result = output as GrepOutput;
+  const body = formatGrepResultBody(result);
+  if (!result.truncated) return body;
+  // 搜索 adapter 的截断事实曾在模型投影中丢失；前置提醒也能在通用结果预算截断后保留。
+  return `[Search results are truncated; this is not a complete search and cannot prove absence. Narrow the path/pattern or use offset/head_limit pagination.]\n\n${body}`;
+}
+
+function formatGrepResultBody(result: GrepOutput): string {
   const mode = result.mode ?? "files_with_matches";
   const limitInfo = formatLimitInfo(result.appliedLimit, result.appliedOffset);
 

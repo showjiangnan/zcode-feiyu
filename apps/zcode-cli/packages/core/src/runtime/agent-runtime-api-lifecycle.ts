@@ -4,11 +4,14 @@ import { type OrchestrationMode, type OrchestrationState } from "@zcode/shared/z
 import { type ProjectMemoryReviewOutcome } from "./helpers/project-memory-review.js";
 
 export interface AgentRuntimeLifecycleApi {
+  getSuggestedPromptState(): import("@zcode/shared").SuggestedPromptState;
+  setSuggestedPromptEnabled(enabled: boolean): Promise<void>;
   closeBrowserSession(): Promise<void>;
   recoverProjectMemory(): Promise<void>;
   beginShutdown(): void;
   updateProjectMemoryPreferences(input: {
     policyRevision?: number;
+    suggestedPrompt?: import("@zcode/shared").SuggestedPromptSettings;
     continuityPolicy?: import("@zcode/shared").ContinuityPolicy;
     enabled: boolean;
     extractionEnabled: boolean;

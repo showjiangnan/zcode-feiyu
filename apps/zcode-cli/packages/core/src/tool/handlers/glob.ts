@@ -24,7 +24,7 @@ import type { ToolEntry, ToolHandler } from "../types.js";
 const MAX_GLOB_RESULTS = 100;
 const MAX_GLOB_MODEL_BYTES = 100_000;
 const GLOB_TOOL_DESCRIPTION =
-  'Fast file pattern matching. Supports glob patterns like "**/*.js" or "src/**/*.ts". Returns matching file paths sorted by modification time.';
+  'Fast file pattern matching. Supports glob patterns like "**/*.js" or "src/**/*.ts". Returns matching file paths sorted by modification time. Narrow the directory and pattern first. Truncated results are not a complete inventory; use a more specific path or pattern before claiming a file is absent.';
 
 export const globHandler: ToolHandler = async (input, context) => {
   const { pattern, path } = GlobInputSchema.parse(input) as GlobInput;

@@ -1,6 +1,7 @@
 // Modified by ZCode Feiyu.
 import { ESTIMATED_TOKEN_CHAR_DIVISOR } from "@zcode/shared";
 import type { ReadFileStateEntry, ReadFileStateMap } from "../deps.js";
+import { COMPACT_READ_STATE_RESET_REMINDER } from "../../tool/read-before-write-guidance.js";
 import {
   systemReminderAttachmentEntry,
   type RuntimeMessageEntry,
@@ -13,9 +14,11 @@ export function buildPostCompactReadStateReminderEntries(input: {
   preservedEntries?: readonly RuntimeMessageEntry[];
   readFileState?: ReadFileStateMap;
 }): RuntimeMessageEntry[] {
+  // 压缩提交会清空 read-state；即使没有重投文件或 Read 留在尾部，也必须明确历史内容不再代表有效读取。
+  const resetReminder = buildPostCompactReadStateEntry(COMPACT_READ_STATE_RESET_REMINDER);
   const readFileState = input.readFileState;
   if (!readFileState || readFileState.size === 0) {
-    return [];
+    return [resetReminder];
   }
 
   const maxFiles = input.maxFiles ?? 5;
@@ -48,7 +51,7 @@ export function buildPostCompactReadStateReminderEntries(input: {
     selected.push(buildPostCompactReadStateEntry(formatReadStateProjection(entry)));
   }
 
-  return selected;
+  return [resetReminder, ...selected];
 }
 
 function buildPostCompactReadStateEntry(content: string): RuntimeMessageEntry {
@@ -56,14 +59,14 @@ function buildPostCompactReadStateEntry(content: string): RuntimeMessageEntry {
 }
 
 function formatCompactFileReference(entry: ReadFileStateEntry): string {
-  return `Note: ${entry.path} was read before the last conversation was summarized, but the contents are too large to include. Use Read tool if you need to access it.`;
+  return `Historical file reference: ${JSON.stringify(entry.path)} was read before compaction, but the contents are too large to include. Read state was reset; use Read before modifying this file.`;
 }
 
 function formatReadStateProjection(entry: ReadFileStateEntry): string {
   const content = addReadLineNumbers(entry.content, readStateStartLine(entry.offset));
   return [
-    `Called the Read tool with the following input: ${formatFileStateInput(entry)}`,
-    "Result of calling the Read tool:",
+    `Historical file excerpt from before compaction (reference only): ${formatFileStateInput(entry)}`,
+    "Read state was reset. Use Read before modifying this file; the excerpt below is not a new Read result.",
     content,
   ].join("\n");
 }

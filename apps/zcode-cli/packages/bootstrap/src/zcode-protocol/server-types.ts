@@ -135,6 +135,7 @@ export interface ZCodeProtocolAgentServerContext {
   logger?: Logger;
   appRuntimePreferences: {
     memory?: {
+      suggestedPrompt?: import("@zcode/shared").SuggestedPromptSettings;
       enabled: boolean;
       extractionEnabled: boolean;
       reviewEnabled: boolean;

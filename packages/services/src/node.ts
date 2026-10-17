@@ -1609,6 +1609,7 @@ export function createLocalServices(options: {
       modelIoFullRetentionEnabled: settings.modelIoFullRetentionEnabled === true,
       telemetryReportingEnabled: settings.telemetryReportingEnabled === true,
       memoryEnabled: settings.memoryEnabled === true,
+      suggestedPrompt: settings.suggestedPrompt ?? { enabled: false },
       memoryExtractionEnabled:
         settings.memoryEnabled === true && settings.memoryExtractionEnabled === true,
       memoryReviewEnabled: settings.memoryEnabled === true && settings.memoryReviewEnabled === true,

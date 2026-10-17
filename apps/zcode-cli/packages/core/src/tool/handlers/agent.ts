@@ -112,6 +112,8 @@ function buildAgentProviderDescription(
     "- Each agent type's model, reasoning effort, and tools come from its definition (`.zcode/agents/*.md` frontmatter).",
     "- `name` is reserved for swarm members. In standard or coordinator mode, omit it entirely (never pass an empty name). Use the returned agent ID with SendMessage to continue an ordinary subagent.",
     "- `run_in_background: true` runs the agent asynchronously; you'll be notified when it completes.",
+    "- Delegate a bounded goal with the allowed modification scope, relevant context, acceptance criteria and required result format. Parallelize independent work; do not assign competing writes to the same files.",
+    "- An async launch is not completion. Follow the returned agent ID; relay completed, partial or blocked findings with their evidence. Attribute checks to the child that ran them and verify relevant integration effects before claiming the overall task passed.",
     // 只保留「用户点名工作流」这一种情形：工作流一律由用户显式请求触发，与系统提示词其余
     // 部分一致。不能把「结果层层喂给下一步的多代理编排」也划给 CreateWorkflow，
     // 那等于让模型在用户没开口时自行选择工作流。

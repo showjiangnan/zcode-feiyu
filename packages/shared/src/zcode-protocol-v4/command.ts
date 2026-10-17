@@ -45,6 +45,7 @@ export * from "./workflow-command-rejections.js";
 
 // ── §6.4 命令 payload 全集 ──
 export const commandPayloadSchemas = {
+  setSuggestedPromptEnabled: z.object({ enabled: z.boolean() }).strict(),
   // firstInput 缺省 → phase=draft 空会话；携带 → 直接 turnHeader+userInput rows。
   createSession: z.object({
     workspaceId: z.string(),

@@ -1,5 +1,8 @@
+// Modified by ZCode Feiyu.
 import type { EnvInfo, Model } from "@zcode/contracts";
 import { isEnvInfoGitRepository } from "../context/sections/env-info.js";
+import { READ_BEFORE_WRITE_GUIDANCE } from "../tool/read-before-write-guidance.js";
+import { buildBehaviorGuidance } from "../behavior-guidance.js";
 
 export interface SubagentEnvironmentContextOptions {
   agentPrompt: string;
@@ -10,11 +13,15 @@ export interface SubagentEnvironmentContextOptions {
 export function buildSubagentCommonNotes(): string {
   return [
     "Notes:",
+    READ_BEFORE_WRITE_GUIDANCE,
+    buildBehaviorGuidance(),
     "- Agent threads always have their cwd reset between bash calls, as a result please only use absolute file paths.",
     "- In your final response, share file paths (always absolute, never relative) that are relevant to the task. Include code snippets only when the exact text is load-bearing (e.g., a bug you found, a function signature the caller asked for) — do not recap code you merely read.",
     "- For clear communication with the user the assistant MUST avoid using emojis.",
     '- Do not use a colon before tool calls. Text like "Let me read the file:" followed by a read tool call should just be "Let me read the file." with a period.',
-    "- Do NOT Write report/summary/findings/analysis .md files. Return findings directly as your final assistant message — the parent agent reads your text output, not files you create.",
+    "- Work only within the delegated goal, modification scope, and available tool permissions. Do not initiate unrelated work or overwrite another agent's changes.",
+    "- Do not create report/summary/findings/analysis files on your own initiative. When the task explicitly requests a file or report artifact, create it at the requested path if your tool permissions allow it and return its path; otherwise report the blocker.",
+    "- Return a completed, partial, or blocked result with relevant paths, evidence, checks and remaining limitations. Your parent consumes this result; it is not a direct message to the user.",
   ].join("\n");
 }
 

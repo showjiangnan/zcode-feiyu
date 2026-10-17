@@ -206,6 +206,8 @@ export interface AgentRuntimeConfig {
   /** 根 Session runtime 创建时固定；false 只关闭 Bash 的 bfs/ugrep prelude。 */
   nativeSearchEnhancementsEnabled?: boolean;
   memory?: MemoryRuntimeConfig;
+  suggestedPrompt?: import("@zcode/shared").SuggestedPromptSettings;
+  suggestedPromptEnabled?: boolean;
   continuityPolicy?: import("@zcode/shared").ContinuityPolicy;
   continuityPolicyRevision?: number;
   /** 历史恢复允许未绑定；只有完整选择才能创建本轮执行 Model。 */
@@ -491,6 +493,8 @@ export interface ModelExecutionContext {
 }
 
 export interface ExecuteTurnOptionsBase {
+  /** 非编辑器入站（如 Bot）不为本轮生成输入建议；随 admission options 传递。 */
+  skipSuggestedPrompt?: boolean;
   abortSignal?: AbortSignal;
   browserAmbientContext?: {
     tabCount: number;

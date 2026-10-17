@@ -95,6 +95,7 @@ export const SessionEventType = {
   SessionTitleUpdated: "session_title_updated",
   SessionModeChanged: "session_mode_changed",
   SessionOrchestrationChanged: "session_orchestration_changed",
+  SuggestedPromptChanged: "suggested_prompt_changed",
   SessionEnded: "session_ended",
   TurnStarted: "turn_started",
   TurnInputReceived: "turn_input_received",
@@ -1277,6 +1278,7 @@ export function createModelUsageSummaryFromEvents(
 }
 
 export type SessionEventPayload =
+  | import("@zcode/shared").SuggestedPromptState
   | SessionCreatedPayload
   | SessionResumedPayload
   | SessionForkedPayload

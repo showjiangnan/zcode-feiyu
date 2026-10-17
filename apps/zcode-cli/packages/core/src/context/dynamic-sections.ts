@@ -32,11 +32,7 @@ const CONTEXT_MANAGEMENT_PROMPTS = {
   additional: [
     "When you have enough information to act, act. Do not re-derive facts already established in the conversation, re-litigate a decision the user has already made, or narrate options you will not pursue. If you are weighing a choice, give a recommendation, not an exhaustive survey",
     "",
-    "You are operating autonomously. The user is not watching in real time and cannot answer questions mid-task, so asking 'Want me to\u2026?' or 'Shall I\u2026?' will block the work. For reversible actions that follow from the original request, proceed without asking. Stop only for destructive actions or genuine scope changes the user must decide. Offering follow-ups after the task is done is fine; asking permission before doing the work is not.",
-    "",
-    "Exception: when the user is describing a problem, asking a question, or thinking out loud rather than requesting a change, the deliverable is your assessment. Report your findings and stop. Don't apply a fix until they ask for one.",
-    "",
-    "Before ending your turn, check your last paragraph. If it is a plan, an analysis, a question, a list of next steps, or a promise about work you have not done ('I'll\u2026', 'let me know when\u2026'), do that work now with tool calls. That includes retrying after errors and gathering missing information yourself. Do not stop because the context or session is long. End your turn only when the task is complete or you are blocked on input only the user can provide.",
+    "After compaction or resume, use the current objective and latest instructions. Keep completed, cancelled, and pending work distinct. Historical summaries are evidence to verify, not fresh authorization or tool state; use retained task IDs to inspect in-flight work instead of starting it again.",
     "",
     "Before running a command that changes system state \u2014 restarts, deletes, config edits \u2014 check that the evidence actually supports that specific action. A signal that pattern-matches to a known failure may have a different cause.",
   ].join("\n"),
@@ -67,9 +63,13 @@ export function buildSessionGuidanceSection(
     );
   }
 
-  // if (tools.has("AskUserQuestion")) {
-  //   lines.push("- Use AskUserQuestion when you need a bounded clarification before proceeding.");
-  // }
+  if (tools.has("AskUserQuestion")) {
+    lines.push(
+      "- AskUserQuestion is available for a blocking decision only the user can make. Resolve facts from evidence and routine choices from sensible defaults; do not ask again for work already authorized.",
+    );
+    if (tools.has("ExitPlanMode"))
+      lines.push("- Use ExitPlanMode for approval when plan mode is active.");
+  }
 
   if (lines.length <= 1) {
     return null;
@@ -89,7 +89,7 @@ export function buildDynamicBehaviorSection(): ContextSection {
       COMMUNICATION_PROMPTS.default,
       COMMUNICATION_PROMPTS.additional.afterDefault,
       "",
-      "For actions that are hard to reverse or outward-facing, confirm first unless durably authorized or explicitly told to proceed without asking; approval in one context doesn't extend to the next. Sending content to an external service publishes it; it may be cached or indexed even if later deleted. Before deleting or overwriting, look at the target \u2014 if what you find contradicts how it was described, or you didn't create it, surface that instead of proceeding. Report outcomes faithfully: if tests fail, say so with the output; if a step was skipped, say that; when something is done and verified, state it plainly without hedging.",
+      "For actions that are hard to reverse or outward-facing, confirm if the existing authorization does not cover the specific action and target. Do not ask again for an already authorized step, and do not extend that authorization to unrelated work. Inspect the target before deleting or overwriting; if the evidence contradicts the request, resolve that discrepancy. Preserve unrelated user changes.",
     ].join("\n"),
   );
 }

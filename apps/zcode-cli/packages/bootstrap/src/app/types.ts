@@ -179,6 +179,7 @@ export interface ZCodeAppOptions {
 }
 
 export interface SubmitPromptOptionsBase {
+  skipSuggestedPrompt?: boolean;
   traceContext?: TraceContext;
   abortSignal?: AbortSignal;
   inputId?: string;

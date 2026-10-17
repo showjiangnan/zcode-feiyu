@@ -95,6 +95,7 @@ export function hookExecutionDisplayName(
  * 触碰」的字段——日志重放值永远优先（"最终值以日志为准"）。
  */
 export interface SessionConfigSeed {
+  suggestedPrompt?: import("@zcode/shared").SuggestedPromptState;
   permissionGrant?: { interactionId: string };
   planEnabled?: boolean;
   modelSelection?: ModelSelectedPayload["modelSelection"];

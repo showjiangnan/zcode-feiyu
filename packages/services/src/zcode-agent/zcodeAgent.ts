@@ -602,6 +602,7 @@ export type ZCodeAgentServiceEvent =
   | { type: "snapshot"; snapshot: ZCodeSessionStateSnapshot };
 
 export interface ZCodeAgentAppRuntimePreferences {
+  suggestedPrompt?: import("@zcode/shared").SuggestedPromptSettings;
   continueAfterCloseOnMac?: boolean;
   continuityPolicy?: import("@zcode/shared").ContinuityPolicy;
   policyRevision?: number;

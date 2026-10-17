@@ -30,6 +30,7 @@ import { appendWorkspaceFileMentionToComposer } from "@/lib/workspaceFileCompose
 import { usePromptEditorDragState } from "@/prompt-editor/usePromptEditorDragState.js";
 import { ChatPromptActionMenu } from "@/prompt-editor/ChatPromptActionMenu.js";
 import { useComposerToolbarFit } from "@/prompt-editor/useComposerToolbarFit.js";
+import type { ComposerSuggestedPrompt } from "./SuggestedPromptPlugin.js";
 
 function runAfterFrame(callback: () => void) {
   if (typeof requestAnimationFrame === "function") {
@@ -47,6 +48,7 @@ export function ChatPromptEditor({
   initialValue,
   syncInitialValueOnMount = true,
   placeholder,
+  suggestedPrompt,
   disabled = false,
   disabledReason,
   submitting = false,
@@ -100,6 +102,7 @@ export function ChatPromptEditor({
   initialValue?: string;
   syncInitialValueOnMount?: boolean;
   placeholder?: string;
+  suggestedPrompt?: ComposerSuggestedPrompt;
   disabled?: boolean;
   disabledReason?: string;
   submitting?: boolean;
@@ -340,6 +343,7 @@ export function ChatPromptEditor({
   const editorNode = (
     <LexicalChatInput
       placeholder={placeholder}
+      suggestedPrompt={suggestedPrompt}
       disabled={disabled}
       submitDisabled={submitDisabled}
       allowSubmitWhenEmpty={allowSubmitWhenEmpty}

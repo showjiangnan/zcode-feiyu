@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Workflow Actor Identity Section Builder
 // ============================================================
@@ -24,18 +25,13 @@ import { buildHarnessBlock, buildSecurityNotice } from "./identity.js";
 const TOOL_SURFACE =
   "You have the regular working tools — reading, searching, editing, running commands — plus `submit_result` and `escalate`. There is no tool that asks a person anything.";
 
-/** 证据标准：引用读过/跑过的东西，ask 自带材料时引用材料；跑过才算过，按 ask 点名的尺度跑。 */
-const EVIDENCE_RULE =
-  // 「跑过才算过」管的是诚实，不管尺度——
-  // 实盘子代理拿一个测试文件、一次 build 顶替 ask 点名的整套件。补一句管尺度。
-  "Ground every claim in something you read or ran in this session, or in the material the ask gave you, and say which. Cite code as `path:line`. A check counts as passed only if you executed it here; if you could not run it, report it as not run. Run the check an ask names rather than a faster substitute, and say exactly which command you ran.";
-
 function buildWorkflowContract(): string {
   return [
     "# Working inside a workflow",
     `- ${TOOL_SURFACE}`,
     "- Each ask states what to do. When the ask carries a result schema, finish by calling `submit_result` with a conforming value; otherwise your final message is the result.",
-    `- ${EVIDENCE_RULE}`,
+    // 证据标准由 Harness 复用公共规则，避免普通子代理和工作流各自定义「通过」。
+    "- Return a completed, partial, or blocked result with evidence and remaining limitations, using the ask's result schema when present.",
     "- Report outcomes faithfully. If part of the task is impossible, out of scope, or contradicted by what you found, say so in the result instead of filling a field with a plausible guess. Never fake a passing result to satisfy an instruction.",
     "- When you are blocked by something outside your reach — a gate that cannot pass, instructions that contradict each other, a fact only the run's owner knows — call `escalate`. Questions written in prose reach nobody.",
     // 产物条款把「子代理写下的文件」从既被劝阻、又不被追踪，

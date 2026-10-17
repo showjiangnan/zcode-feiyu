@@ -6,6 +6,7 @@ import { resolvePath } from "@zcode/adapters/config";
 import { type TraceContext } from "@zcode/contracts";
 
 import { resolveZCodeRuntimeEnv } from "@zcode/shared";
+import { SUGGESTED_PROMPT_ENTRY_TYPE, suggestedPromptConsentSchema } from "@zcode/shared";
 
 import { join } from "node:path";
 import { subagentProfilesFromSnapshot } from "../subagent-runtime-config.js";
@@ -150,6 +151,14 @@ export async function createAppPluginFoundation(input: {
       workspaceIdentity: options.runtimeConfig?.memory?.workspaceIdentity,
     },
   );
+  if (options.resume === true) {
+    const entries = await sessionStore.sessionEntries?.({
+      sessionID: sessionId,
+      type: SUGGESTED_PROMPT_ENTRY_TYPE,
+    });
+    const consent = suggestedPromptConsentSchema.safeParse(entries?.at(-1)?.data);
+    runtimeConfig.suggestedPromptEnabled = consent.success && consent.data.enabled;
+  }
   return {
     options,
     pluginRuntimeFeatures,

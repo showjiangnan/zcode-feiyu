@@ -2,6 +2,10 @@
 import { traceContextToLogContext } from "../deps.js";
 import type { RuntimeCommand, TaskNotificationRuntimeCommand } from "../command-queue.js";
 import type { AgentRuntimeInternal } from "../internal.js";
+import {
+  invalidateSuggestedPrompt,
+  startPendingSuggestedPrompt,
+} from "../suggested-prompt/runtime.js";
 
 import type {
   AcquireForegroundPromotionLeaseResult,
@@ -10,6 +14,7 @@ import type {
 import { runTaskNotificationBatch, runRuntimeCommand } from "./runtime-command-queue-execution.js";
 
 export function enqueueRuntimeCommand(this: AgentRuntimeInternal, command: RuntimeCommand): void {
+  invalidateSuggestedPrompt(this);
   this.runtimeCommandQueue.enqueue(command);
   if (command.mode === "task-notification") {
     this.logger?.info?.("Background task notification enqueued into runtime command queue", {
@@ -51,6 +56,7 @@ export async function drainRuntimeCommandQueue(this: AgentRuntimeInternal): Prom
     }
   } finally {
     this.runtimeCommandDrainActive = false;
+    startPendingSuggestedPrompt(this);
   }
 
   if (this.runtimeCommandQueue.hasPending() && this.foregroundPromotionLease === undefined) {

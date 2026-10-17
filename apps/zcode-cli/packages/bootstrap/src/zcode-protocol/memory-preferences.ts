@@ -73,6 +73,7 @@ function normalizePreferences(
 ) {
   return {
     policyRevision: input.policyRevision ?? 0,
+    suggestedPrompt: input.suggestedPrompt,
     continuityPolicy: input.continuityPolicy,
     enabled: input.enabled,
     extractionEnabled: input.enabled && input.extractionEnabled,

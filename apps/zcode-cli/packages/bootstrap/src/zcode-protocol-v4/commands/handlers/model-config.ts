@@ -247,6 +247,9 @@ export async function applyRequestedSessionConfig(
   });
 
   // mode：payload.config.mode 是宽 string（schema default 兼容），值域在此收口。
+  if (config.suggestedPromptEnabled !== undefined) {
+    await record.app.runtime.setSuggestedPromptEnabled(config.suggestedPromptEnabled);
+  }
   const mode = config.mode;
   if ((mode && SWITCHABLE_MODES.has(mode)) || config.planEnabled !== undefined) {
     await record.app.runtime.setExecutionState(

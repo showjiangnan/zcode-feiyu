@@ -37,6 +37,7 @@ export { zcodeProtocolTraceSchema, type ZCodeProtocolTrace } from "./trace.js";
 // 上述旧协议 client/server 组删除时，本文件整体删除。
 // 注：外部零消费 schema 多为存活 schema 联合的内部依赖，随宿主文件一起处理，勿单删。
 import { z } from "zod";
+import { suggestedPromptSettingsSchema } from "../suggested-prompt.js";
 import { accountProviderUnavailableReasonSchema } from "../account-provider-state.js";
 import { bashOutputDisplaySchema } from "../bash-output-display.js";
 import { zcodeAutomationBotDeliveryTargetSchema } from "../bots.js";
@@ -138,6 +139,7 @@ export const ZCODE_PROTOCOL_VERSION = 1 as const;
 export const ZCODE_PROTOCOL_V4_WIRE_VERSION = 3 as const;
 export const zcodeRuntimeCapabilitiesSchema = z.object({
   independentPlanState: z.boolean().optional(),
+  suggestedPrompt: z.boolean().optional(),
 });
 export const zcodeProtocolErrorCodes = {
   sessionUnavailable: -32004,
@@ -2773,6 +2775,7 @@ export const zcodeWorkspaceUpdateMemoryPreferencesParamsSchema = z
     workspace: zcodeWorkspaceRefSchema,
     preferences: z
       .object({
+        suggestedPrompt: suggestedPromptSettingsSchema.optional(),
         policyRevision: z.number().int().nonnegative().default(0),
         continuityPolicy: continuityPolicySchema.optional(),
         enabled: z.boolean(),
@@ -2788,6 +2791,7 @@ export type ZCodeWorkspaceUpdateMemoryPreferencesParams = z.infer<
 
 export const zcodeWorkspaceUpdateMemoryPreferencesResultSchema = z
   .object({
+    suggestedPrompt: suggestedPromptSettingsSchema.optional(),
     continuityPolicy: continuityPolicySchema.optional(),
     policyRevision: z.number().int().nonnegative().default(0),
     workspace: zcodeWorkspaceRefSchema,

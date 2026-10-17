@@ -1690,6 +1690,7 @@ export function SessionPane({
     handleDraftSelectSpeed,
     handleDraftSwitchMode,
     handleDraftSetOrchestrationMode,
+    handleDraftSetSuggestedPromptEnabled,
     promoteComposerDraft,
     captureAcceptedModelSelection,
     replaceComposerDraft,
@@ -4172,6 +4173,23 @@ export function SessionPane({
         requireAcceptedConfigAck("setFollowupMode", ack);
       }
       const desiredMode = desiredConfig.orchestrationMode ?? "standard";
+      const projectedSuggestedPrompt =
+        snapshotRef.current?.sessionId === targetSessionId
+          ? snapshotRef.current.suggestedPrompt
+          : undefined;
+      if (
+        // 老 Host 无预测投影时不发送未知命令，保留草稿同意但不阻塞普通首发。
+        projectedSuggestedPrompt &&
+        desiredConfig.suggestedPromptEnabled !== undefined &&
+        desiredConfig.suggestedPromptEnabled !== (projectedSuggestedPrompt?.enabled ?? false)
+      ) {
+        const ack = await dispatchCommand(
+          "setSuggestedPromptEnabled",
+          { enabled: desiredConfig.suggestedPromptEnabled },
+          targetSessionId,
+        );
+        requireAcceptedConfigAck("setSuggestedPromptEnabled", ack);
+      }
       if (desiredMode !== (projectedConfig?.orchestration.requested ?? "standard")) {
         const ack = await dispatchCommand(
           "setOrchestrationMode",
@@ -4367,6 +4385,18 @@ export function SessionPane({
       }
     },
     [dispatchCommand, handleDraftSetOrchestrationMode, intl, sessionId],
+  );
+  const handleSetSuggestedPromptEnabled = useCallback(
+    async (enabled: boolean) => {
+      if (!sessionId) {
+        handleDraftSetSuggestedPromptEnabled(enabled);
+        return;
+      }
+      const ack = await dispatchCommand("setSuggestedPromptEnabled", { enabled }, sessionId);
+      if (!["accepted", "noop", "duplicate"].includes(ack.status))
+        throw new Error(ack.reasonCode ?? ack.status);
+    },
+    [dispatchCommand, handleDraftSetSuggestedPromptEnabled, sessionId],
   );
 
   const handleControlProactiveWork = useCallback(
@@ -5279,6 +5309,7 @@ export function SessionPane({
       onSelectSpeed={handleDraftSelectSpeed}
       onSwitchMode={handleSwitchMode}
       onSetOrchestrationMode={handleSetOrchestrationMode}
+      onSetSuggestedPromptEnabled={handleSetSuggestedPromptEnabled}
       onControlProactiveWork={
         (!rootSessionId || rootSessionId === sessionId) && !selectionSideChat
           ? handleControlProactiveWork

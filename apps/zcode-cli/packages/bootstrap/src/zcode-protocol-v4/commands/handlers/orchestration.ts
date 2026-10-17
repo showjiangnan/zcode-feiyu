@@ -32,4 +32,17 @@ async function controlProactiveWork(
   await record.app.runtime.controlProactiveWork(payload.action, payload.subscriptions);
   return undefined;
 }
-export const orchestrationHandlers = { setOrchestrationMode, controlProactiveWork };
+async function setSuggestedPromptEnabled(
+  host: V4CommandCoreHost,
+  envelope: CommandEnvelope,
+): Promise<CommandResult | undefined> {
+  const record = requireRecord(host, envelope.sessionId);
+  const payload = envelope.payload as CommandPayloadMap["setSuggestedPromptEnabled"];
+  await record.app.runtime.setSuggestedPromptEnabled(payload.enabled);
+  return undefined;
+}
+export const orchestrationHandlers = {
+  setOrchestrationMode,
+  controlProactiveWork,
+  setSuggestedPromptEnabled,
+};

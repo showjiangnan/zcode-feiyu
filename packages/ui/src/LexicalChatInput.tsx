@@ -22,7 +22,11 @@ import {
   shouldBareEnterFallThroughToNewline,
 } from "@/shortcuts/composerShortcuts.js";
 import { useEffectiveShortcutBindings } from "@/shortcuts/useShortcutBindings.js";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  SuggestedPromptPlugin,
+  type ComposerSuggestedPrompt,
+} from "@/prompt-editor/SuggestedPromptPlugin.js";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -1311,6 +1315,7 @@ function EditorApiPlugin({
 }
 
 interface LexicalChatInputProps {
+  suggestedPrompt?: ComposerSuggestedPrompt;
   placeholder?: string;
   disabled?: boolean;
   submitDisabled?: boolean;
@@ -1346,6 +1351,7 @@ const EDITOR_THEME = {
 
 export function LexicalChatInput({
   placeholder,
+  suggestedPrompt,
   disabled = false,
   submitDisabled = false,
   allowSubmitWhenEmpty = false,
@@ -1370,6 +1376,7 @@ export function LexicalChatInput({
   appSlashCommands,
   enableMentionPanel = true,
 }: LexicalChatInputProps) {
+  const [suggestedPromptVisible, setSuggestedPromptVisible] = useState(false);
   const inputMountedAtRef = useRef(Date.now());
   const lastReadyLogKeyRef = useRef<string | null>(null);
   const activeTaskProvider = useChatViewActiveTaskProvider(
@@ -1440,24 +1447,25 @@ export function LexicalChatInput({
   // Lexical 的 ContentEditable props 是一个互斥联合类型，
   // aria-placeholder 一旦出现就要求 placeholder 同时存在。
   // 之前直接写三元 JSX，TypeScript 在合并两条分支时没有正确保留这组联动约束，导致误报缺少 placeholder。
-  const contentEditableProps: React.ComponentProps<typeof ContentEditable> = placeholder
-    ? {
-        "aria-placeholder": placeholder,
-        placeholder: (
-          <div
-            className={`pointer-events-none absolute left-0 top-0 ${compactPlaceholder ? "line-clamp-2" : ""} ${resolveMobileInputTextSizeClassName(
-              {
-                avoidIosInputFocusZoom,
-              },
-            )} text-foreground-subtlest`}
-          >
-            {placeholder}
-          </div>
-        ),
-      }
-    : {
-        placeholder: null,
-      };
+  const contentEditableProps: React.ComponentProps<typeof ContentEditable> =
+    placeholder && !suggestedPromptVisible
+      ? {
+          "aria-placeholder": placeholder,
+          placeholder: (
+            <div
+              className={`pointer-events-none absolute left-0 top-0 ${compactPlaceholder ? "line-clamp-2" : ""} ${resolveMobileInputTextSizeClassName(
+                {
+                  avoidIosInputFocusZoom,
+                },
+              )} text-foreground-subtlest`}
+            >
+              {placeholder}
+            </div>
+          ),
+        }
+      : {
+          placeholder: null,
+        };
 
   const contentEditable = (
     <ContentEditable
@@ -1492,6 +1500,11 @@ export function LexicalChatInput({
         <div className="relative">
           <PlainTextPlugin contentEditable={contentEditable} ErrorBoundary={LexicalErrorBoundary} />
           <HistoryPlugin />
+          <SuggestedPromptPlugin
+            candidate={suggestedPrompt}
+            disabled={disabled}
+            onVisibilityChange={setSuggestedPromptVisible}
+          />
           <PromptClipboardPlugin />
           <TextContentPlugin onChange={onChange} taskId={taskId} />
           <KeyboardPlugin

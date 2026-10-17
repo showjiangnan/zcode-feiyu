@@ -27,9 +27,17 @@ import {
   requestRuntimeOrchestrationMode,
 } from "./orchestration.js";
 import { runtimeProactiveCause } from "./proactive-causality.js";
+import {
+  getSuggestedPromptState,
+  setSuggestedPromptEnabled,
+  updateSuggestedPromptPreferences,
+  invalidateSuggestedPrompt,
+  settleSuggestedPrompt,
+} from "./suggested-prompt/runtime.js";
 
 export async function closeBrowserSession(this: AgentRuntimeInternal): Promise<void> {
   this.beginShutdown();
+  await settleSuggestedPrompt(this);
   disposeNodeReplSession(this.sessionId);
   try {
     await this.browserControlPort?.closeSession?.({
@@ -53,6 +61,7 @@ export function beginShutdown(this: AgentRuntimeInternal): void {
   // ExecutionPort.close() 会把后台 Bash 收口为 cancelled；若允许
   // teardown terminal event 再唤醒模型，并与随后关闭的 session store 竞态。
   this.shuttingDown = true;
+  invalidateSuggestedPrompt(this);
   // 关闭单个 session 后进程仍存活，
   // 因此必须先终止该 runtime 的 Extraction，不能只在超时后放弃等待。
   this.memoryExtractionScheduler?.shutdown();
@@ -64,6 +73,7 @@ export async function updateProjectMemoryPreferences(
   this: AgentRuntimeInternal,
   input: {
     policyRevision?: number;
+    suggestedPrompt?: import("@zcode/shared").SuggestedPromptSettings;
     continuityPolicy?: import("@zcode/shared").ContinuityPolicy;
     enabled: boolean;
     extractionEnabled: boolean;
@@ -71,6 +81,9 @@ export async function updateProjectMemoryPreferences(
   },
 ): Promise<void> {
   const preferenceRevision = ++this.memoryPreferenceRevision;
+  const memoryPermissionChanged = this.config.memory?.enabled !== input.enabled;
+  const suggestedPromptToSettle = updateSuggestedPromptPreferences(this, input.suggestedPrompt);
+  if (memoryPermissionChanged) invalidateSuggestedPrompt(this);
   const previousMemoryRoot =
     this.memoryRoot ?? resolveEnabledProjectMemoryRoot(this.config, this.workspaceRoot);
   if (input.continuityPolicy) this.config.continuityPolicy = input.continuityPolicy;
@@ -119,6 +132,8 @@ export async function updateProjectMemoryPreferences(
   // 原因：旧实现仅发送 abort 就返回设置同步 ACK；旧 worker 仍可能在写文件。
   // 等原任务真实收口，协议若超时会报告未知/失败，不能提前宣称关闭已完成。
   const settling = await Promise.allSettled([
+    suggestedPromptToSettle,
+    ...(memoryPermissionChanged ? [settleSuggestedPrompt(this)] : []),
     ...(extractionToSettle ? [extractionToSettle.drain()] : []),
     ...(recoveryToSettle ? [recoveryToSettle] : []),
     ...(reviewToSettle ? [reviewToSettle.then(() => undefined)] : []),
@@ -219,6 +234,8 @@ export function cancelProjectMemoryReview(
 
 export function installRuntimeLifecycleMethods(ctor: { prototype: object }): void {
   const methods = {
+    getSuggestedPromptState,
+    setSuggestedPromptEnabled,
     closeBrowserSession,
     recoverProjectMemory,
     beginShutdown,

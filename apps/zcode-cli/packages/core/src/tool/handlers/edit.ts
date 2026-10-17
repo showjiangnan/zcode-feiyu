@@ -49,6 +49,7 @@ import {
   normalizeReadFileStateMtimeMs,
 } from "../read-file-state.js";
 import { createReadFileStateMetadataFromEntry } from "../read-file-state-metadata.js";
+import { formatReadBeforeWriteError } from "../read-before-write-guidance.js";
 import {
   attachToolExecutionTelemetry,
   elapsedMsSince,
@@ -59,14 +60,15 @@ import {
 const EDIT_PROVIDER_DESCRIPTION = [
   "Performs exact string replacement in a file.",
   "",
-  "- You must Read the file in this conversation before editing, or the call will fail.",
+  "- Before modifying an existing file, Read that exact path in this agent's current active context and wait for the result before submitting Edit. Grep/Glob results, quoted code, summaries, and another agent's reads do not establish read state.",
+  "- A focused offset/limit Read covering the edit is sufficient; a token-truncated Read is not. On a missing, stale, or truncated read-state error, Read the required current content and revise the edit before retrying.",
+  "- Successful Edit/Write keeps the file state current without a verification Read, unless the file changes externally or read state is reset by compaction/recovery. Creating a nonexistent file with an empty old_string needs no prior Read.",
   "- `old_string` must match the file exactly, including indentation, and be unique — the edit fails otherwise. Strip the Read line prefix (line number + tab) before matching.",
   "- `replace_all: true` replaces every occurrence instead.",
 ].join("\n");
 const NON_UNIQUE_OLD_STRING_MESSAGE =
   "old_string is not unique in the file. Provide more surrounding context or set replace_all to true.";
 const MAX_EDIT_FILE_SIZE_BYTES = 1024 * 1024 * 1024;
-const EDIT_NOT_READ_MESSAGE = "File has not been read yet. Read it first before writing to it.";
 const EDIT_STALE_MESSAGE =
   "File has been modified since read, either by the user or by a linter. Read it again before attempting to write it.";
 const EDIT_FRESHNESS_SUFFIX = " (file state is current in your context — no need to Read it back)";
@@ -433,8 +435,18 @@ function getEditableReadStateFailure(
   if (!readFileState) return undefined;
 
   const lastRead = findEditableReadFileState(readFileState, filePath);
-  if (!lastRead || lastRead.isPartialView) {
-    return editFailure(EditErrorCode.FILE_NOT_READ, EDIT_NOT_READ_MESSAGE);
+  // 缺失与 token 截断需要不同恢复动作；原来共用“未读取”会让模型重复同一次超限 Read。
+  if (!lastRead) {
+    return editFailure(
+      EditErrorCode.FILE_NOT_READ,
+      formatReadBeforeWriteError(filePath, "not_read"),
+    );
+  }
+  if (lastRead.isPartialView) {
+    return editFailure(
+      EditErrorCode.PARTIAL_READ,
+      formatReadBeforeWriteError(filePath, "partial_read"),
+    );
   }
 
   if (!hasReadStateChanged(lastRead, currentRead)) return undefined;

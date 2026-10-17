@@ -41,6 +41,7 @@ import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
 import { useCodingPlanUpgradeDialog } from "@/settings/CodingPlanUpgradeDialogProvider.js";
 import { ComputerUseSection } from "@/settings/ComputerUseSection.js";
 import { HooksSection } from "@/settings/HooksSection.js";
+import { SuggestedPromptSettingsSection } from "@/settings/SuggestedPromptSettingsSection.js";
 import { ImageGenerationSettingsSection } from "@/settings/ImageGenerationSettingsSection.js";
 import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
 import { useEnterpriseCodingPlanProducts } from "@/settings/model-provider-section/useEnterpriseCodingPlanProducts.js";
@@ -2107,6 +2108,10 @@ export function SettingsPage({
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                           />
+                        ) : activeSection === "suggestedPrompt" ? (
+                          <ServiceProvider services={localHostServices}>
+                            <SuggestedPromptSettingsSection />
+                          </ServiceProvider>
                         ) : activeSection === "imageGeneration" ? (
                           <ImageGenerationSettingsSection
                             workspacePath={activeWorkspacePath}

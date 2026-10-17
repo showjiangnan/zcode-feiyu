@@ -9,6 +9,7 @@ import { mcpAppInstanceSchema } from "../mcp-apps/instance.js";
 // 按 (runId, siteId, ordinal) 的增量口子，语义仍是「键内整体替换，只是下探了两级」：
 // header 键整键替换、条目整条替换，没有任何字段级深合并。规则在 workflow-runs-delta.ts。
 import { z } from "zod";
+import { suggestedPromptStateSchema } from "../suggested-prompt.js";
 import { teamBoardStateSchema } from "./team-board.js";
 import { streamablePathSchema } from "./core.js";
 import { conversationRowSchema } from "./rows.js";
@@ -43,6 +44,7 @@ export const statePatchSchema = z.object({
   revision: z.number().optional(),
   control: sessionControlSchema.optional(),
   sharedContextImport: sharedContextImportStateSchema.optional(),
+  suggestedPrompt: suggestedPromptStateSchema.optional(),
   availability: sessionActionAvailabilitySchema.optional(),
   inputRouting: inputRoutingSchema.optional(),
   meta: sessionMetaStateSchema.optional(),

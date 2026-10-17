@@ -259,6 +259,7 @@ import {
   type CuaOperationWorkspaceTarget,
 } from "./cuaOperationTurnTracker.js";
 import { ensureIndependentPlanSupport } from "./independentPlanSupport.js";
+import { supportsSuggestedPrompt } from "./suggestedPromptSupport.js";
 import { createTopicResourceBridge } from "./topicResourceBridge.js";
 import { uploadTopicResourceToClient } from "./topicResourceUpload.js";
 import type {
@@ -1646,6 +1647,11 @@ export function createZCodeAgentService(
           typeof params.preferences.memoryEnabled === "boolean" &&
           typeof params.preferences.memoryExtractionEnabled === "boolean"
         ) {
+          const suggestedPromptSupported = await supportsSuggestedPrompt(params.client);
+          // 旧 CLI 不支持预测时只关闭该能力，不能让全局 opt-in 阻塞普通会话启动。
+          const suggestedPrompt = suggestedPromptSupported
+            ? params.preferences.suggestedPrompt
+            : undefined;
           const applied = await params.client.request(
             zcodeProtocolMethods.workspaceUpdateMemoryPreferences,
             {
@@ -1654,6 +1660,7 @@ export function createZCodeAgentService(
                 enabled: params.preferences.memoryEnabled,
                 policyRevision: params.preferences.policyRevision ?? 0,
                 continuityPolicy: params.preferences.continuityPolicy,
+                suggestedPrompt,
                 extractionEnabled: params.preferences.memoryExtractionEnabled,
                 reviewEnabled: params.preferences.memoryReviewEnabled === true,
               },
@@ -1663,6 +1670,7 @@ export function createZCodeAgentService(
           // CLI 返回的是实际应用版本，旧 CLI 的默认 0 不能充当新版提交的成功证明。
           if (
             applied.policyRevision !== (params.preferences.policyRevision ?? 0) ||
+            JSON.stringify(applied.suggestedPrompt) !== JSON.stringify(suggestedPrompt) ||
             applied.enabled !== params.preferences.memoryEnabled ||
             applied.extractionEnabled !==
               (params.preferences.memoryEnabled && params.preferences.memoryExtractionEnabled) ||
@@ -6090,6 +6098,7 @@ export function createZCodeAgentService(
           compression: "none" as const,
           workspaceHookReview: true,
           independentPlanState: true,
+          suggestedPrompt: true,
           // 与 connection scope 的 hello 同一份能力集：直连 base service 的宿主内部消费者
           // 也能收到 `workflowRun.*` 增量（是否真收由它自己的 clientHello 决定）。
           workflowRunDeltas: true,

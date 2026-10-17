@@ -88,6 +88,7 @@ export function runtimePolicyFromSettings(
     modelIoFullRetentionEnabled: settings.modelIoFullRetentionEnabled === true,
     telemetryReportingEnabled: settings.telemetryReportingEnabled === true,
     memoryEnabled: settings.memoryEnabled === true,
+    suggestedPrompt: settings.suggestedPrompt ?? { enabled: false },
     memoryExtractionEnabled:
       settings.memoryEnabled === true && settings.memoryExtractionEnabled === true,
     memoryReviewEnabled: settings.memoryEnabled === true && settings.memoryReviewEnabled === true,
@@ -126,6 +127,9 @@ function holdBackUnconfirmedEnables(
   gate: AppRuntimePreferencesChangedBroadcastPayload,
 ): AppSettings {
   let effective = settings;
+  if (gate.suggestedPrompt?.enabled !== true && settings.suggestedPrompt?.enabled === true) {
+    effective = { ...effective, suggestedPrompt: { ...settings.suggestedPrompt, enabled: false } };
+  }
   for (const key of keys) {
     if (gate[key] === false && settings[key] === true) effective = { ...effective, [key]: false };
   }
@@ -155,6 +159,7 @@ export async function commitRuntimePolicy(input: {
   const nextPolicy = runtimePolicyFromSettings(input.next);
   if (
     !keys.some((key) => currentPolicy[key] !== nextPolicy[key]) &&
+    JSON.stringify(currentPolicy.suggestedPrompt) === JSON.stringify(nextPolicy.suggestedPrompt) &&
     JSON.stringify(currentPolicy.continuityPolicy) === JSON.stringify(nextPolicy.continuityPolicy)
   ) {
     const committed = { ...input.next, policyRevision: currentPolicy.policyRevision + 1 };
@@ -163,6 +168,11 @@ export async function commitRuntimePolicy(input: {
     return;
   }
   const gate = { ...currentPolicy, policyRevision: currentPolicy.policyRevision + 1 };
+  if (
+    JSON.stringify(currentPolicy.suggestedPrompt) !== JSON.stringify(nextPolicy.suggestedPrompt)
+  ) {
+    gate.suggestedPrompt = { ...nextPolicy.suggestedPrompt, enabled: false };
+  }
   if (nextPolicy.continuityPolicy && !nextPolicy.continuityPolicy.proactiveWorkAllowed) {
     gate.continuityPolicy = { ...nextPolicy.continuityPolicy, proactiveWorkAllowed: false };
   }

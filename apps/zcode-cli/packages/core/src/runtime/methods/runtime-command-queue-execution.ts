@@ -3,6 +3,7 @@ import { traceContextToLogContext } from "../deps.js";
 import type { RuntimeCommand, TaskNotificationRuntimeCommand } from "../command-queue.js";
 import { uuidv7 } from "@zcode/shared";
 import type { AgentRuntimeInternal } from "../internal.js";
+import { startPendingSuggestedPrompt } from "../suggested-prompt/runtime.js";
 import {
   persistBackgroundTaskNotificationBatch,
   shouldSuppressTaskNotificationRuntimeCommand,
@@ -298,6 +299,7 @@ export function finishForegroundExecution(
   state.disposeParentAbort();
   if (this.activeForegroundExecution === state) {
     this.activeForegroundExecution = undefined;
+    startPendingSuggestedPrompt(this);
   }
 }
 

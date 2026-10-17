@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import {
   CoreErrorType,
   SEND_MESSAGE_TOOL_NAME,
@@ -26,6 +27,7 @@ const SEND_MESSAGE_PROVIDER_DESCRIPTION = [
   "# SendMessage",
   "",
   "Send a message to another agent.",
+  "A queued or delivered message does not mean the agent completed the requested work. Follow the same agent ID for its result; do not resend merely because execution has not finished.",
   "",
   "```json",
   '{"to": "agent_<uuid>", "summary": "assign task 1", "message": "start on task #1"}',

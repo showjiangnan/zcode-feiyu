@@ -3,6 +3,7 @@ import type { CanonicalConversationFact } from "./event-normalizer.js";
 import type { ConversationDelta } from "@zcode/shared/zcode-protocol-v4";
 import { SessionEventType } from "@zcode/contracts";
 import { isZCodeModelRetryRecoveryProgressPayload } from "@zcode/shared";
+import { suggestedPromptStateSchema } from "@zcode/shared";
 import type {
   PluginUiResourceUpdatedPayload,
   PluginUiResourceListChangedPayload,
@@ -16,6 +17,10 @@ export function reduce(
 ): ConversationDelta[] {
   const event = fact.event;
   switch (event.type) {
+    case SessionEventType.SuggestedPromptChanged: {
+      const state = suggestedPromptStateSchema.safeParse(event.payload);
+      return state.success ? [{ op: "state.updated", patch: { suggestedPrompt: state.data } }] : [];
+    }
     case SessionEventType.SessionCreated:
       return this["onSessionCreated"](event);
     case SessionEventType.SessionResumed:

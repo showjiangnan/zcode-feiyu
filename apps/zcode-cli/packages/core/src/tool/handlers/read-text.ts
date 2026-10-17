@@ -17,6 +17,8 @@ const EMPTY_FILE_REMINDER = formatReadToolResultWarning(
   "Warning: the file exists but the contents are empty.",
 );
 const READ_TOKEN_BUDGET_PARTIAL_TARGET = Math.floor(READ_MAX_OUTPUT_TOKENS * 0.85);
+const PARTIAL_READ_EDIT_NOTICE =
+  "This token-truncated view does not satisfy Edit/Write's read prerequisite. Before modifying the file, Read a smaller offset/limit range covering the target text and wait for an untruncated result.";
 
 export interface ReadTextFileForModelOptions {
   abortSignal?: AbortSignal;
@@ -184,6 +186,7 @@ function createTokenCapPartialView(
       partialViewNotice: [
         `The file is too large to display in full (${tokenCount} estimated tokens, limit ${READ_MAX_OUTPUT_TOKENS}).`,
         `Showing a partial view of lines ${startLine}-${endLine} of ${read.totalLines}.`,
+        PARTIAL_READ_EDIT_NOTICE,
         `Use Read with offset ${nextOffset} and limit ${READ_DEFAULT_MAX_LINES} to continue, or use a search tool to find a specific section.`,
       ].join(" "),
     };
@@ -203,6 +206,7 @@ function createTokenCapPartialView(
     partialViewNotice: [
       `The file is too large to display in full (${tokenCount} estimated tokens, limit ${READ_MAX_OUTPUT_TOKENS}).`,
       "Showing a partial view of the first line because the first line alone exceeds the token budget.",
+      PARTIAL_READ_EDIT_NOTICE,
       "Use Read with a smaller range or use a search tool to find a specific section.",
     ].join(" "),
   };

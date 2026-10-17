@@ -3,6 +3,7 @@ import type { SessionEvent, TraceContext } from "../deps.js";
 import { SessionEventType, createSessionEvent, traceContextToLogContext } from "../deps.js";
 
 import type { AgentRuntimeInternal } from "../internal.js";
+import { invalidateSuggestedPrompt } from "../suggested-prompt/runtime.js";
 import { publishRuntimeProactiveEvent, runtimeProactiveCause } from "../proactive-causality.js";
 
 import { recordToolUsageFromEvent } from "./usage-observability.js";
@@ -61,6 +62,7 @@ export async function appendEvent(
   event: SessionEvent,
   traceContext: TraceContext,
 ): Promise<void> {
+  if (event.type === SessionEventType.RewindTriggered) invalidateSuggestedPrompt(this);
   // live sink 以前拿到的是 createSessionEvent 默认的 sequenceNumber=0，
   // 而 replay/read 路径拿到的是 eventStore 补号后的事件，导致同一 session 有两套顺序事实。
   // 这里只发布已落库事件，让 live、replay、snapshot 的 eventSeq 全部来自同一个 event store。

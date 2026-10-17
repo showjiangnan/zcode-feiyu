@@ -6,6 +6,7 @@ import { buildExecutionStateEntry, readRuntimeExecutionState } from "../executio
 import { projectIdFromDirectory, slugify, titleFromInput } from "../helpers/index.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { persistRuntimeOrchestrationState } from "../orchestration.js";
+import { persistSuggestedPromptConsent } from "../suggested-prompt/runtime.js";
 import { writeDynamicWorkflowActivationEntryIfActivated } from "./dynamic-workflow-activation.js";
 import { persistFirstInputTitle } from "./session-first-input-title.js";
 import { persistSessionShellEnvironmentSnapshot } from "./session-shell-environment.js";
@@ -117,6 +118,7 @@ export async function persistSession(
     // 预热会话上已确认的编排模式在此补写，避免首个模型边界前取消/崩溃后回到 standard。
     phase = "session_orchestration_state";
     await persistRuntimeOrchestrationState(this);
+    await persistSuggestedPromptConsent(this);
     this.logger?.debug("Session persisted", {
       ...traceContextToLogContext(traceContext),
       event: "session.persisted",

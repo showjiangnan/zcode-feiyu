@@ -14,6 +14,7 @@ import {
   WriteInputSchema,
   WriteOutputJsonSchema,
   WriteOutputSchema,
+  WriteErrorCode,
   createCoreError,
   isFileSystemPortError,
   type FileSystemReadTextResult,
@@ -31,6 +32,7 @@ import {
   normalizeReadFileStateMtimeMs,
 } from "../read-file-state.js";
 import { createReadFileStateMetadataFromEntry } from "../read-file-state-metadata.js";
+import { formatReadBeforeWriteError } from "../read-before-write-guidance.js";
 import type { ReadFileStateEntry, ReadFileStateMap, ToolExecutionContext } from "../types.js";
 import {
   attachToolExecutionTelemetry,
@@ -43,12 +45,14 @@ const WRITE_PROVIDER_DESCRIPTION = [
   "Writes a file to the local filesystem, overwriting if one exists.",
   "",
   "When to use: creating a new file, or fully replacing one you've already Read. Overwriting an existing file you haven't Read will fail. For partial changes, use Edit instead.",
+  "- For an existing file, Read that exact path in this agent's current active context and wait for the result before submitting Write. Preserve any content that should remain. Grep/Glob results, quoted code, summaries, and another agent's reads do not establish read state.",
+  "- A token-truncated Read does not qualify. Use smaller offset/limit ranges to obtain the required content; on missing, stale, or truncated read-state errors, Read and reconsider the replacement before retrying.",
+  "- A new file needs no prior Read. Successful Edit/Write keeps read state current without a verification Read, unless the file changes externally or state is reset by compaction/recovery.",
 ].join("\n");
 
 const WRITE_STORAGE_SUFFIX =
   " (file state is current in your context \u2014 no need to Read it back)";
 const WRITE_USER_MODIFIED_NOTE = " The user modified your proposed content before accepting it.";
-const WRITE_NOT_READ_MESSAGE = "File has not been read yet. Read it first before writing to it.";
 const WRITE_STALE_MESSAGE =
   "File has been modified since read, either by the user or by a linter. Read it again before attempting to write it.";
 
@@ -288,13 +292,19 @@ function assertWritableExistingFileIsFresh(
 ): void {
   const lastRead = findLatestReadFileState(readFileState, filePath);
   if (!lastRead || lastRead.isPartialView) {
-    throw createCoreError(CoreErrorType.ToolExecutionFailed, WRITE_NOT_READ_MESSAGE, {
-      context: {
-        code: "write_file_not_read",
-        filePath,
+    // 保留原拒绝条件，仅区分缺失与截断；不把写前内部读盘登记为模型已读，也不自动重试。
+    const partial = lastRead?.isPartialView === true;
+    throw createCoreError(
+      CoreErrorType.ToolExecutionFailed,
+      formatReadBeforeWriteError(filePath, partial ? "partial_read" : "not_read"),
+      {
+        context: {
+          code: partial ? WriteErrorCode.PARTIAL_READ : WriteErrorCode.FILE_NOT_READ,
+          filePath,
+        },
+        recoverable: true,
       },
-      recoverable: true,
-    });
+    );
   }
 
   if (!hasReadStateChanged(lastRead, currentRead)) return;

@@ -41,6 +41,9 @@ import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 
 /** 目录水合单飞（per workspaceKey）：draft、已有 session 和严格模式双挂载共享一次 RPC。 */
 const workspaceCatalogHydrationFlights = new Map<string, Promise<void>>();
+export type ComposerDraftConfig = Partial<SessionConfigState> & {
+  suggestedPromptEnabled?: boolean;
+};
 
 export function applyDraftModelSelection(
   current: Partial<SessionConfigState>,
@@ -78,9 +81,9 @@ export function shouldHydrateWorkspaceCatalog(params: {
 export interface DraftConfigControl {
   modelSelectionRead: ModelSelectionRead;
   /** Renderer 下一次提交的配置；Session 只在 scope 首次初始化时提供种子。 */
-  draftConfig: Partial<SessionConfigState>;
+  draftConfig: ComposerDraftConfig;
   /** 草稿已选 config（partial）；createSession 时经 buildDraftCreateConfigPayload 携带。 */
-  draftConfigRef: React.RefObject<Partial<SessionConfigState>>;
+  draftConfigRef: React.RefObject<ComposerDraftConfig>;
   /** 当前草稿生命周期冻结的初始化 config；只供 prewarm/createSession 建立时使用。 */
   resolveInitialDraftConfig: () => Partial<SessionConfigState> | undefined;
   composerDraft: V4ComposerDraft;
@@ -103,6 +106,7 @@ export interface DraftConfigControl {
   ) => void;
   handleDraftSwitchMode: (mode: string) => void;
   handleDraftSetOrchestrationMode: (mode: OrchestrationMode) => void;
+  handleDraftSetSuggestedPromptEnabled: (enabled: boolean) => void;
 }
 
 export function useDraftConfigControl(params: {
@@ -185,8 +189,9 @@ export function useDraftConfigControl(params: {
   const effectiveSelection = modelSelectionView
     ? (modelSelectionView.effectiveSelection ?? undefined)
     : draft.modelSelection;
-  const draftConfig = useMemo<Partial<SessionConfigState>>(
+  const draftConfig = useMemo<ComposerDraftConfig>(
     () => ({
+      suggestedPromptEnabled: draft.suggestedPromptEnabled === true,
       mode: draft.mode,
       planEnabled: draft.planEnabled ?? false,
       modelSelection: effectiveSelection,
@@ -199,7 +204,13 @@ export function useDraftConfigControl(params: {
         revision: 0,
       },
     }),
-    [draft.mode, draft.planEnabled, draft.orchestrationMode, effectiveSelection],
+    [
+      draft.mode,
+      draft.planEnabled,
+      draft.orchestrationMode,
+      draft.suggestedPromptEnabled,
+      effectiveSelection,
+    ],
   );
   const draftConfigRef = useRef(draftConfig);
   draftConfigRef.current = draftConfig;
@@ -228,6 +239,7 @@ export function useDraftConfigControl(params: {
           ? draftConfigRef.current.modelSelection
           : next.modelSelection;
       draftConfigRef.current = {
+        suggestedPromptEnabled: next.suggestedPromptEnabled === true,
         mode: next.mode,
         planEnabled: next.planEnabled ?? false,
         modelSelection: selection,
@@ -524,6 +536,11 @@ export function useDraftConfigControl(params: {
     },
     [updateComposerDraft],
   );
+  const handleDraftSetSuggestedPromptEnabled = useCallback(
+    (enabled: boolean) =>
+      updateComposerDraft((current) => ({ ...current, suggestedPromptEnabled: enabled })),
+    [updateComposerDraft],
+  );
 
   return {
     modelSelectionRead,
@@ -540,16 +557,17 @@ export function useDraftConfigControl(params: {
     handleDraftSelectSpeed,
     handleDraftSwitchMode,
     handleDraftSetOrchestrationMode,
+    handleDraftSetSuggestedPromptEnabled,
   };
 }
 
 /** createSession payload 的草稿 config 片段（无选择时返回空对象，不携带 config 键）。 */
 export function buildDraftCreateConfigPayload(
-  draftConfig: Partial<SessionConfigState>,
+  draftConfig: ComposerDraftConfig,
   appFollowupMode?: SessionConfigState["followupMode"] | null,
-): { config?: Partial<SessionConfigState> & { orchestrationMode?: OrchestrationMode } } {
+): { config?: ComposerDraftConfig & { orchestrationMode?: OrchestrationMode } } {
   const { orchestration, ...rest } = draftConfig;
-  const config: Partial<SessionConfigState> & { orchestrationMode?: OrchestrationMode } = {
+  const config: ComposerDraftConfig & { orchestrationMode?: OrchestrationMode } = {
     ...rest,
     ...(orchestration?.requested && orchestration.requested !== "standard"
       ? { orchestrationMode: orchestration.requested }

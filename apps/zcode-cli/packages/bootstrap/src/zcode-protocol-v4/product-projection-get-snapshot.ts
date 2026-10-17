@@ -60,6 +60,10 @@ export function establishedStreamingAppend(
 }
 
 export function seedConfig(this: ProductProjection, seed: SessionConfigSeed): void {
+  // 候选只存在于当前 Runtime；冷恢复必须覆盖历史事件里的旧预测，读取本身不触发生成。
+  if (seed.suggestedPrompt) {
+    this["snapshot"] = { ...this["snapshot"], suggestedPrompt: { ...seed.suggestedPrompt } };
+  }
   const config = { ...this["snapshot"].config };
   let changed = false;
   if (!config.permissionGrant && seed.permissionGrant) {

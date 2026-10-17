@@ -101,6 +101,8 @@ import { PptxElementReferenceChip } from "@/v4/composer/PptxElementReferenceChip
 import { V4ComposerContinuityControl } from "@/v4/composer/V4ComposerContinuityControl.js";
 import { V4ComposerCuaEntry } from "@/v4/composer/V4ComposerCuaEntry.js";
 import { V4ComposerOrchestrationSwitch } from "@/v4/composer/V4ComposerOrchestrationSwitch.js";
+import { SuggestedPromptToggle } from "@/v4/composer/SuggestedPromptToggle.js";
+import { useSettings } from "@/hooks/useSettingService.js";
 import {
   V4ComposerModeSwitch,
   V4ComposerModelControls,
@@ -382,7 +384,7 @@ export interface ConversationComposerProps {
   /** draft 态无 snapshot，但仍可 createSession 首发。 */
   draftMode?: boolean;
   /** renderer 当前草稿配置意图；只在 draftMode 下覆盖迟到的 prewarm projection。 */
-  draftConfig?: Partial<SessionConfigState>;
+  draftConfig?: Partial<SessionConfigState> & { suggestedPromptEnabled?: boolean };
   /** SessionPane 注入的完整 Draft owner；生产路径不再由编辑器直接覆盖持久记录。 */
   composerDraft: V4ComposerDraft;
   updateComposerContent: (
@@ -464,6 +466,7 @@ export interface ConversationComposerProps {
   ) => void;
   onSwitchMode: (mode: string) => void;
   onSetOrchestrationMode: (mode: OrchestrationMode) => void | Promise<void>;
+  onSetSuggestedPromptEnabled?: (enabled: boolean) => Promise<void>;
   onControlProactiveWork?: (
     input: import("@zcode/shared/zcode-protocol-v4").CommandPayloadMap["controlProactiveWork"],
   ) => Promise<void>;
@@ -562,6 +565,7 @@ function ConversationComposerImpl({
   onSelectSpeed,
   onSwitchMode,
   onSetOrchestrationMode,
+  onSetSuggestedPromptEnabled,
   onControlProactiveWork,
   onOpenRunningBackgroundWorks,
   backgroundWorkOpenTarget = "panel",
@@ -666,6 +670,8 @@ function ConversationComposerImpl({
   const contentRevisionRef = useRef(0);
   const pendingRef = useRef(false);
   const snapshotRef = useRef(snapshot);
+  const { settings: suggestedPromptSettings } = useSettings();
+  const suggestedPromptGloballyEnabled = suggestedPromptSettings?.suggestedPrompt?.enabled === true;
   snapshotRef.current = snapshot;
   // 这条线断过一次：composer 原本读一个平行的 sharedContextImport prop，而 SessionPane 从没
   // 传过它（全仓 `sharedContextImport=` 零命中），于是首条消息永远不带 sharedContextRefs。
@@ -2327,6 +2333,19 @@ function ConversationComposerImpl({
           onConfigPickerOpenChange={handleConfigPickerOpenChange}
           onSwitchMode={onSwitchMode}
         />
+        {suggestedPromptGloballyEnabled && onSetSuggestedPromptEnabled ? (
+          <SuggestedPromptToggle
+            enabled={
+              draftMode
+                ? composerDraft.suggestedPromptEnabled === true
+                : snapshot?.suggestedPrompt?.enabled === true
+            }
+            available={snapshot?.suggestedPrompt?.available === true}
+            phase={snapshot?.suggestedPrompt?.phase}
+            disabled={disabled}
+            onChange={onSetSuggestedPromptEnabled}
+          />
+        ) : null}
         <V4ComposerOrchestrationSwitch
           state={draftMode ? draftConfig?.orchestration : snapshot?.config.orchestration}
           disabled={disabled}
@@ -2372,6 +2391,10 @@ function ConversationComposerImpl({
       onOpenRunningBackgroundWorks,
       onSwitchMode,
       onSetOrchestrationMode,
+      onSetSuggestedPromptEnabled,
+      suggestedPromptGloballyEnabled,
+      composerDraft.suggestedPromptEnabled,
+      snapshot?.suggestedPrompt,
       onControlProactiveWork,
       sessionId,
       provider,
@@ -2466,6 +2489,28 @@ function ConversationComposerImpl({
           taskId={sessionId}
           skillCatalogSessionId={skillCatalogSessionId}
           placeholder={placeholder}
+          suggestedPrompt={
+            suggestedPromptGloballyEnabled &&
+            snapshot?.suggestedPrompt?.phase === "ready" &&
+            snapshot.suggestedPrompt.enabled &&
+            snapshot.suggestedPrompt.available &&
+            snapshot.suggestedPrompt.suggestion &&
+            !draftMode &&
+            !canStop &&
+            !pending &&
+            !activeConfigPicker &&
+            !hasAttachments &&
+            !hasCodeCommentContexts &&
+            !hasWebElementContexts &&
+            !hasPptxElementReferences &&
+            !hasConversationSelectionReferences &&
+            !hasPluginUiContexts
+              ? {
+                  id: `${sessionId}:${snapshot.suggestedPrompt.sourceTurnId}:${snapshot.suggestedPrompt.revision}`,
+                  text: snapshot.suggestedPrompt.suggestion,
+                }
+              : undefined
+          }
           disabled={disabled || mode === "reject"}
           submitting={pending}
           submitDisabled={pending || !routingAllowsSend || !attachmentsReady || !submissionReady}

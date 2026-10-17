@@ -2539,6 +2539,7 @@ async function runPromptTurnInBackground(
       },
       {
         abortSignal: params.abortController.signal,
+        skipSuggestedPrompt: Boolean(params.botDeliveryTarget),
         intent: params.intent,
         modelExecution: params.modelExecution,
         browserAmbientContext: params.browserAmbientContext,
@@ -3491,6 +3492,7 @@ async function createRecord(
     resume,
     runtimeConfig: {
       mode: "mode" in params ? params.mode : undefined,
+      suggestedPrompt: context.appRuntimePreferences.memory?.suggestedPrompt,
       modelSelection: "model" in params ? toRuntimeModelSelection(initialModel) : undefined,
       parentSessionId,
       taskType,

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // General Purpose Subagent Definition
 // ============================================================
@@ -19,6 +20,6 @@ export function buildGeneralPurposeSystemPrompt(): string {
     "- For analysis: Start broad and narrow down. Use multiple search strategies if the first doesn't yield results.",
     "- Be thorough: Check multiple locations, consider different naming conventions, look for related files.",
     "- NEVER create files unless they're absolutely necessary for achieving your goal. ALWAYS prefer editing an existing file to creating a new one.",
-    "- NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested.",
+    "- Create documentation only when the task or applicable project instructions require it; otherwise return findings in your final message.",
   ].join("\n");
 }

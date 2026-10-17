@@ -5,6 +5,7 @@ import { subscriptionIncompleteReasonSchema } from "../chatgpt-subscription-erro
 // ConversationSnapshot A 区。
 // A 区更新语义 = 字段级整体替换（state.updated），绝不深合并——深合并是错乱之母。
 import { z } from "zod";
+import { suggestedPromptStateSchema } from "../suggested-prompt.js";
 import { EMPTY_TEAM_BOARD, teamBoardStateSchema } from "./team-board.js";
 import { sharedContextImportStateSchema } from "./shared-context-import.js";
 export { sharedContextImportStateSchema } from "./shared-context-import.js";
@@ -531,6 +532,7 @@ export const conversationSnapshotSchema = z.object({
   meta: sessionMetaStateSchema.default({ title: "", titleSource: "default" }),
   // Additive：旧 CLI/旧快照不带该字段时仍按普通会话处理。
   sharedContextImport: sharedContextImportStateSchema.optional(),
+  suggestedPrompt: suggestedPromptStateSchema.optional(),
   config: sessionConfigStateSchema,
   // 持久化稳定事实供 live 客户端识别一次性提示；旧快照缺字段时不触发。
   modelTransition: sessionModelTransitionSchema.nullable().default(null),

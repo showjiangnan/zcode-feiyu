@@ -27,6 +27,7 @@ export interface V4ComposerDraft {
   mode?: SubmissionMode;
   planEnabled?: boolean;
   orchestrationMode?: OrchestrationMode;
+  suggestedPromptEnabled?: boolean;
   /** 已处理的工具变更，防止重连快照再次覆盖用户选择。 */
   lastPlanTransitionId?: string;
   lastPermissionGrantId?: string;
@@ -127,6 +128,9 @@ function readDraft(value: unknown): V4ComposerDraft | null {
     );
   return {
     text: value.text,
+    ...(typeof value.suggestedPromptEnabled === "boolean"
+      ? { suggestedPromptEnabled: value.suggestedPromptEnabled }
+      : {}),
     ...(typeof value.editorStateJson === "string"
       ? { editorStateJson: value.editorStateJson }
       : {}),

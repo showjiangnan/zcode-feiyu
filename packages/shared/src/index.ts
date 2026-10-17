@@ -1,4 +1,5 @@
 // Modified by ZCode Feiyu.
+export * from "./suggested-prompt.js";
 export * from "./account-provider-state.js";
 export * from "./api.js";
 export { cloudContentPayloadSchema, contentBundleSchema } from "./cloudContent.js";

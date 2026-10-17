@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import type { AgentRuntime, TurnAttachment, TurnResult } from "@zcode/core";
 import {
   SessionEventType,
@@ -125,6 +126,7 @@ export function createInputFacade(deps: CreateInputFacadeDeps): InputFacade {
           }
         : {};
     return await deps.runtime.executeTurn(runtimePromptText, storedAttachments, {
+      skipSuggestedPrompt: options?.skipSuggestedPrompt,
       abortSignal: options?.abortSignal,
       browserAmbientContext: options?.browserAmbientContext,
       continueActiveTargetAfterTurn: true,

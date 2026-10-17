@@ -22,6 +22,7 @@ export type SettingsSectionId =
   | "imageGeneration"
   | "commands"
   | "hooks"
+  | "suggestedPrompt"
   | "workspaceFileSearch"
   | "computerUse"
   | "automations"
@@ -81,6 +82,7 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
     value === "imageGeneration" ||
     value === "commands" ||
     value === "hooks" ||
+    value === "suggestedPrompt" ||
     value === "workspaceFileSearch" ||
     value === "computerUse" ||
     value === "automations" ||

@@ -98,6 +98,7 @@ export function createV4GatewaySurface(input: V4GatewaySurfaceInput): Conversati
               ?.reasoning?.levels.map((level) => level.value) ?? [])
           : [],
         mode: record.app.getMode(),
+        suggestedPrompt: record.app.runtime.getSuggestedPromptState(),
         orchestration: record.app.runtime.getOrchestrationState(),
         planEnabled: record.app.runtime.getPlanEnabled(),
         ...(record.app.runtime.lastPermissionGrantId

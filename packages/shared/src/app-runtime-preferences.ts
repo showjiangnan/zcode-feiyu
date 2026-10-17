@@ -1,6 +1,7 @@
 // Modified by ZCode Feiyu.
 import { z } from "zod";
 import { continuityPolicySchema } from "./continuity-policy.js";
+import { suggestedPromptSettingsSchema } from "./suggested-prompt.js";
 
 export const APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL = "settings:app-runtime-preferences";
 export const ASK_USER_QUESTION_E2E_CLOCK_SCALE_ENV = "ZCODE_E2E_ASK_USER_QUESTION_CLOCK_SCALE";
@@ -12,6 +13,7 @@ export const appRuntimePreferencesChangedBroadcastPayloadSchema = z
     modelIoFullRetentionEnabled: z.boolean().default(false),
     telemetryReportingEnabled: z.boolean().optional(),
     memoryEnabled: z.boolean().optional(),
+    suggestedPrompt: suggestedPromptSettingsSchema.optional(),
     memoryExtractionEnabled: z.boolean().optional(),
     memoryReviewEnabled: z.boolean().optional(),
     continuityPolicy: continuityPolicySchema.optional(),

@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Explore Subagent Definition
 // ============================================================
@@ -41,7 +42,7 @@ export function buildExploreAgentPrompt(options: ExploreAgentPromptOptions): str
     "- Deleting files (no rm or deletion)",
     "- Moving or copying files (no mv or cp)",
     "- Creating temporary files anywhere, including /tmp",
-    "- Using redirect operators (>, >>, |) or heredocs to write to files",
+    "- Using redirects (>, >>) or heredocs to write files; read-only pipelines are allowed when every command is read-only",
     "- Running ANY commands that change system state",
     "",
     "Your role is EXCLUSIVELY to search and analyze existing code. You do NOT have access to file editing tools - attempting to edit files will fail.",

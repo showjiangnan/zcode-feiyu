@@ -30,24 +30,24 @@ ZCode Feiyu 是基于 [zai-org/ZCode](https://github.com/zai-org/ZCode) 的社�
 
 ## 本次更新
 
-- 优化实验性电脑控制的多窗口预览、关闭联动与可靠性。
-- 改善部分 UI / UX，并同步配套远程界面。
+- 完善压缩后的文件读取与编辑校验、执行提示词和 Grep 截断说明。
+- 增加默认关闭、逐会话确认的实验性 SuggestedPrompt，并同步配套远程界面。
 
 ## 下载安装包
 
-飞鱼版安装包请从 [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases) 下载。本次版本为 [v3.14.7-feiyu.1（预发布）](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.7-feiyu.1)，应用版本 **3.14.7**，本次安装名称为 **ZCode**。安装包从该标签指向的生产提交构建；源码推送不会自动更新已安装应用。
+飞鱼版安装包请从 [GitHub Releases](https://github.com/showjiangnan/zcode-feiyu/releases) 下载。本次版本为 [v3.14.7-feiyu.2（预发布）](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.7-feiyu.2)，应用版本 **3.14.7**，本次安装名称为 **ZCode**。安装包从该标签指向的生产提交构建；源码推送不会自动更新已安装应用。
 
-| 平台                                            | 下载                                                                                                                                                                                                                                                        | 验证与范围                                                                                                                                                         |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| macOS Apple Silicon（arm64，macOS 14.4 及以上） | [DMG 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.1/ZCode-Feiyu-3.14.7-mac-arm64.dmg) · [ZIP 压缩包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.1/ZCode-Feiyu-3.14.7-mac-arm64.zip) | 本机原生构建；归档签名、内容及内置 Agent 校验；电脑控制仍为实验性能力。                                                                                            |
-| Windows x64 / arm64                             | **本轮不发布 Windows 安装包。** [旧版 3.14.4](https://github.com/showjiangnan/zcode-feiyu/releases/tag/v3.14.4-feiyu.1) 保留下载。                                                                                                                          | 当前源码保留 Windows 适配；完整包需要 Windows SDK/MSVC 构建原生 CUA，并验证凭据保护、记忆、Shell、工具和安装运行。旧包没有本次订阅登录、共享 UI 及后续运行时更新。 |
+| 平台                                            | 下载                                                                                                                                                                                                                                                        | 验证与范围                                                                                                            |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| macOS Apple Silicon（arm64，macOS 14.4 及以上） | [DMG 安装包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.2/ZCode-Feiyu-3.14.7-mac-arm64.dmg) · [ZIP 压缩包](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.2/ZCode-Feiyu-3.14.7-mac-arm64.zip) | 本机原生构建；归档签名、内容及内置 Agent 校验；电脑控制仍为实验性能力。                                               |
+| Windows x64 / arm64                             | **本版不提供 Windows 安装包，Windows 用户需要自行编译。**                                                                                                                                                                                                   | 请在 Windows 环境安装项目固定 Node/pnpm 与 Windows SDK/MSVC，构建原生 CUA 及桌面包。本版未做 Windows 安装和运行实测。 |
 
-[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.1/SHA256SUMS.txt) 提供本版 Mac 安装包的 SHA-256。可用 `shasum -a 256 <文件>` 核对。
+[SHA256SUMS.txt](https://github.com/showjiangnan/zcode-feiyu/releases/download/v3.14.7-feiyu.2/SHA256SUMS.txt) 提供本版 Mac 安装包的 SHA-256。可用 `shasum -a 256 <文件>` 核对。
 
 - **Mac 安装**：打开 DMG，将 ZCode 拖入 Applications 后启动；ZIP 用户先解压再复制应用。本版采用 ad-hoc 签名，没有 Apple Developer ID 或公证；如被系统拦截，核对来源和摘要后按照系统设置 → 隐私与安全性的提示处理。
 - **旧 Preview 用户**：本轮应用名为 ZCode，不会通过改名自动替换旧 ZCode Preview。保留原数据；原生应用目录中的 RCS/系统权限等配置需要在本次应用中检查，不将两种应用身份的凭据文件直接复制。
 - **电脑控制授权**：设置 → 电脑控制中开启，并授予 macOS 辅助功能与屏幕录制权限。更换本地签名构建后，系统可能要求重新授权。
-- **Windows 状态**：本次没有 Windows 安装/运行实测；Mac 构建、模拟测试及旧包不代表本版 Windows 已验收。共享 UI、模型适配和 Windows 源码继续保留，不因未发安装包移除这些能力。
+- **Windows 状态**：本版仅发布 Mac 包，Windows 用户需要自行编译。本次没有 Windows 安装/运行实测；Mac 构建、模拟测试及旧包不代表本版 Windows 已验收。共享 UI、模型适配和 Windows 源码继续保留，不因未发安装包移除这些能力。
 - **更新**：退出应用后用新包覆盖相同应用，保留数据目录。本仓库没有飞鱼版自动更新服务；`git pull` 不会更新已安装应用。旧版本仍在 Releases 保留。
 
 ## 新增能力与官方版对比
@@ -119,6 +119,14 @@ macOS 的关窗后台执行取决于后台许可与可用的受管 Host；**Cmd+
 - 这是官方公开订阅接入的预览能力，不提供全部 ChatGPT 产品功能或全部 OpenAI 模型。fal.ai 图片生成继续使用自身配置及费用，本地电脑/浏览器控制仍使用 ZCode 执行器。
 - 提示词、任务所需上下文和选定附件会发送到 OpenAI，本地工具在执行电脑运行。令牌保存在本机系统保护的私有存储，不进入会话导出或 RCS 桥接载荷。
 - RCS 可使用桌面已连接的订阅供应来源；首次登录和账号管理在桌面完成，不将桌面回调交给手机处理。独立 SSH/Docker 执行端不复用桌面的私有订阅凭据。
+
+### 最新源码：文件读写与提示预测
+
+本次 Mac Release 与当前 main 包含以下改进。
+
+- **文件读写**：编辑或覆盖已有文件前需要有效的读取依据；压缩后需要重新读取，过期内容与权限拒绝继续由运行时校验，不会自动读取后重试写入。Grep 截断会明确提示搜索结果不完整。
+- **执行提示**：统一任务完成、计划边界、后台状态、压缩摘要、外部内容和验证证据规则；自定义系统提示词保留替换语义。
+- **SuggestedPrompt（实验性）**：在设置 → Agent 能力中开启全局能力并选择独立模型，再在需要的会话中确认启用。下一次正常轮次完成后可后台生成候选；桌面 Tab 或手机采用入口将候选变成可编辑草稿，不自动发送。全局和会话默认关闭，后台模型调用计入用量。
 
 ### 持续执行与用量
 
@@ -266,17 +274,17 @@ ad-hoc 签名不等于 Apple Developer ID 签名或公证。正式可信分发�
 
 后续更新：保存本地修改，执行 `git pull --ff-only`，刷新依赖并重新构建，退出应用后覆盖同一 `.app`。源码变化不会自动进入已安装应用；更新时保留数据目录。本仓库没有提供飞鱼版自动更新下载服务，不应使用官方安装包覆盖自定义版本。确认新应用可运行后，可删除 `packages/desktop/dist/` 中的安装包和打包副本。
 
-较早 3.14.4 版本曾在 Apple Silicon Mac 完成以下 Windows x64 交叉打包；当前含原生 CUA 的完整版本需要在 Windows 构建，这段历史命令不代表本轮提供 Windows 安装包：
+### Windows 自行编译
 
-```bash
-ZCODE_ENV=production \
-ZCODE_PREVIEW_IDENTITY=1 \
-ZCODE_SKIP_REMOTE_ASSETS=1 \
-ZCODE_BOOTSTRAP_WITH_REMOTE=1 \
+**本版 Release 仅提供 Mac 安装包，Windows 用户需要自行编译。** 请在 Windows 主机准备 `mise.toml` 指定的 Node/pnpm、Windows SDK 和 MSVC，按上文步骤安装依赖，再使用桌面打包入口。原生 CUA 需要目标平台工具链，不能复用 Mac 的原生资产。
+
+```powershell
+$env:ZCODE_ENV = "production"
+$env:ZCODE_SKIP_REMOTE_ASSETS = "1"
 pnpm bundle:desktop -- --os win --arch x64
 ```
 
-工具链按需下载 Windows Electron、Wine 和 NSIS 资源，使用已有 Windows 预编译依赖。切换目标时必须完整准备对应运行时，不能复用另一平台的 native 资产。构建成功不等同于 Windows 实机验收；[electron-builder 跨平台构建说明](https://www.electron.build/docs/features/multi-platform-build/)也明确区分了预编译依赖和必须在目标平台编译的依赖。其他参数见 `pnpm bundle:desktop -- --help`。
+工具链会准备目标平台的 Electron、NSIS 与原生运行依赖。当前没有 Windows 安装/运行实测；源码支持和构建完成都不等同于 Windows 功能验收。其他参数见 `pnpm bundle:desktop -- --help`。
 
 ### CLI 发行包
 

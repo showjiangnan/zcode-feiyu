@@ -7,6 +7,7 @@ import {
 
 import type { TurnResult } from "../types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
+import { completeSuggestedPromptTurn } from "../suggested-prompt/runtime.js";
 
 import { runRegularTurnLoop } from "./turn-loop.js";
 import { maybeStartDeferredSessionTitleGeneration } from "./session-title.js";
@@ -194,6 +195,18 @@ export async function executeRegularTurn(
     );
   }
   this.turnNumber++;
+  if (
+    !options?.skipSuggestedPrompt &&
+    !options?.inputSource &&
+    !options?.targetId &&
+    !state.startedTarget &&
+    !state.loopState.automationId &&
+    !state.loopState.offPeakTaskId &&
+    !state.loopState.backgroundSubagentResultConsumed &&
+    !state.loopState.workflowResultConsumed
+  ) {
+    completeSuggestedPromptTurn(this, turnId);
+  }
 
   const projection = await this.rebuildProjection();
   this.logger?.info("Turn completed", {

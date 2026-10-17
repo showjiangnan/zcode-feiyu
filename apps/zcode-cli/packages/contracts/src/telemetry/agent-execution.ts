@@ -16,6 +16,7 @@ export const AgentTelemetryOperation = {
   ReadSessionContextExtract: "read_session_context_extract",
   ReadSessionContextSynthesize: "read_session_context_synthesize",
   SessionTitleGeneration: "session_title_generation",
+  SuggestedPromptGeneration: "suggested_prompt_generation",
   ToolInternalModelCall: "tool_internal_model_call",
   WebFetchProcessing: "web_fetch_processing",
   WebSearch: "web_search",

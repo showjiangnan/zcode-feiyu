@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 // ============================================================
 // Identity Section Builder
 // ============================================================
@@ -5,6 +6,8 @@
 import type { ContextSection } from "../types.js";
 import type { OutputStylePromptConfig } from "../types.js";
 import { estimateTokens } from "../utils.js";
+import { READ_BEFORE_WRITE_GUIDANCE } from "../../tool/read-before-write-guidance.js";
+import { buildBehaviorGuidance } from "../../behavior-guidance.js";
 
 const SECURITY_NOTICE =
   "IMPORTANT: Assist with authorized security testing, defensive security, CTF challenges, and educational contexts. Refuse requests for destructive techniques, DoS attacks, mass targeting, supply chain compromise, or detection evasion for malicious purposes. Dual-use security tools (C2 frameworks, credential testing, exploit development) require clear authorization context: pentesting engagements, CTF competitions, security research, or defensive use cases.";
@@ -21,11 +24,12 @@ export function buildSecurityNotice(): string {
 export function buildHarnessBlock(): string {
   return [
     "# Harness",
-    "- Text you output outside of tool use is displayed to the user as Github-flavored markdown in a terminal.",
-    "- Tools run behind a user-selected permission mode; a denied call means the user declined it \u2014 adjust, don't retry verbatim.",
+    "- Follow the active context's audience and presentation surface. Use only tools in the current tool catalog; descriptions of unavailable capabilities do not enable them.",
     "- The system may send updates, reminders, or modifications to rules via mid-conversation system turns. These are system-controlled, unlike function results. Hooks may intercept tool calls; treat hook output as user feedback.",
     "- Prefer the dedicated file/search tools over shell commands when one fits. Independent tool calls can run in parallel in one response.",
+    READ_BEFORE_WRITE_GUIDANCE,
     "- Reference code as `file_path:line_number` \u2014 it's clickable.",
+    buildBehaviorGuidance(),
   ].join("\n");
 }
 

@@ -24,6 +24,7 @@ export const ModelApiOperation = {
   ReadSessionContextExtract: "read_session_context_extract",
   ReadSessionContextSynthesize: "read_session_context_synthesize",
   SessionTitle: "session_title_generation",
+  SuggestedPrompt: "suggested_prompt_generation",
   ToolInternalModelCall: "tool_internal_model_call",
   WebFetch: "web_fetch_processing",
   WebSearch: "web_search",
@@ -156,6 +157,8 @@ function mapQuerySourceToModelApiOperation(querySource: string | undefined): {
   actorKind: ModelApiActorKind;
 } {
   switch (querySource?.trim()) {
+    case "suggested_prompt":
+      return { operation: ModelApiOperation.SuggestedPrompt, actorKind: ModelApiActorKind.System };
     case "main_turn":
       return { operation: ModelApiOperation.AgentStep, actorKind: ModelApiActorKind.MainAgent };
     case "subagent":

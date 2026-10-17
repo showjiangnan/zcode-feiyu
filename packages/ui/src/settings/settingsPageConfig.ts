@@ -145,6 +145,12 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     groupId: "agentCapabilities",
   },
   {
+    id: "suggestedPrompt",
+    icon: WandSparkles,
+    titleId: "suggestedPrompt.title",
+    groupId: "agentCapabilities",
+  },
+  {
     id: "browser",
     icon: Globe2,
     titleId: "settings.browser.title",

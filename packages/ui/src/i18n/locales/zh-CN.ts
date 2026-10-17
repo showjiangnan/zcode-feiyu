@@ -1,9 +1,11 @@
 // Modified by ZCode Feiyu.
 import { importMessagesZh } from "@/settings/import/importMessages.js";
+import { suggestedPromptMessagesZh } from "../suggestedPromptMessages.js";
 import { requestSecurityMessagesZhCN } from "@/request-security-edition/messages.js";
 /** 中文翻译 */
 const zhCN: Record<string, string> = {
   ...importMessagesZh,
+  ...suggestedPromptMessagesZh,
   "occupationOnboarding.progress": "设置进度",
   "chat.modelSpeed.title": "速度",
   "chat.modelSpeed.standard": "标准",

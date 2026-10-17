@@ -337,7 +337,7 @@ export class ProtocolServerDispatch extends ProtocolServerV4Dispatch {
       case zcodeProtocolMethods.processChildProcesses:
         return listChildProcesses(this.context.deps.mcpTelemetry?.listProcesses() ?? []);
       case zcodeProtocolMethods.runtimeCapabilities:
-        return { independentPlanState: true };
+        return { independentPlanState: true, suggestedPrompt: true };
       case zcodeProtocolMethods.pluginsMarketplaceAdd:
         return await this.withPluginOperationSignal(request, (signal) =>
           addPluginMarketplace(this.context, request.params, signal),

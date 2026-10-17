@@ -1,3 +1,4 @@
+// Modified by ZCode Feiyu.
 import { z } from "zod";
 import { toToolJsonSchema } from "./json-schema.js";
 
@@ -19,6 +20,7 @@ export const TASK_OUTPUT_PROVIDER_DESCRIPTION = `DEPRECATED: Background tasks re
 - Returns the task output along with status information
 - Use block=true (default) to wait for task completion
 - Use block=false for non-blocking check of current status
+- A retrieval timeout does not mean the task failed or stopped. Keep the same task_id and wait for its terminal status; do not start a duplicate task. A successful retrieval means output was fetched, not that the underlying task succeeded: inspect task.status, exitCode and error.
 - Task IDs can be found using the /tasks command
 - Works with all task types: background shells, async agents, and remote sessions`;
 

@@ -56,12 +56,13 @@ const READ_PROVIDER_DESCRIPTION = [
   "",
   "- `file_path` must be an absolute path.",
   `- Reads up to ${READ_DEFAULT_MAX_LINES} lines by default.`,
-  "- You can optionally specify a line offset and limit (especially handy for long files), but it's recommended to read the whole file by not providing these parameters",
+  "- Use offset/limit for focused reads of large files, covering the entire planned edit. Omit them when the file is small enough to read at once.",
   "- Results are returned using cat -n format, with line numbers starting at 1",
+  "- Before modifying an existing file with Edit/Write, Read the target and wait for the result. Grep/Glob results or quoted/historical content do not establish read state. For Edit, a focused offset/limit range covering the change is sufficient; a token-truncated result is not.",
   "- Reads images (PNG, JPG, …) and presents them visually.",
   "- Reads videos (MP4, MOV, WEBM, …) and presents them as video input (subject to ZCode's video input limit).",
   "- Reading a directory, a missing file, or an empty file returns an error or system reminder rather than content.",
-  "- Do NOT re-read a file you just edited to verify — Edit/Write would have errored if the change failed, and the harness tracks file state for you.",
+  "- Successful Edit/Write updates read state, so do not re-read just to verify. Read again if the file changes externally or state is reset by compaction/recovery. A missing or token-truncated read-state error requires a successful Read before retrying the modification; use a smaller range when truncated.",
 ].join("\n");
 
 const fallbackReadFileStates = new WeakMap<ToolExecutionContext, ReadFileStateMap>();

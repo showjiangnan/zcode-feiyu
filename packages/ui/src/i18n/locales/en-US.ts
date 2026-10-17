@@ -1,9 +1,11 @@
 // Modified by ZCode Feiyu.
 import { importMessagesEn } from "@/settings/import/importMessages.js";
+import { suggestedPromptMessagesEn } from "../suggestedPromptMessages.js";
 import { requestSecurityMessagesEnUS } from "@/request-security-edition/messages.js";
 /** English translations */
 const enUS: Record<string, string> = {
   ...importMessagesEn,
+  ...suggestedPromptMessagesEn,
   "occupationOnboarding.progress": "Setup progress",
   "chat.modelSpeed.title": "Speed",
   "chat.modelSpeed.standard": "Standard",

@@ -10,6 +10,10 @@ import type { TraceContext, TurnSteerRejectReason, TurnSteerResult, TurnId } fro
 
 import type { ActiveTurnKind, ActiveTurnSteeringState } from "../types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
+import {
+  invalidateSuggestedPrompt,
+  startPendingSuggestedPrompt,
+} from "../suggested-prompt/runtime.js";
 
 export function beginActiveTurn(
   this: AgentRuntimeInternal,
@@ -36,6 +40,7 @@ export function beginActiveTurn(
     turnId,
     ...(options?.inputId === undefined ? {} : { inputId: options.inputId }),
   };
+  invalidateSuggestedPrompt(this);
   this.activeTurnStartReservation = undefined;
   this.activeTurn = activeTurn;
   return activeTurn;
@@ -58,6 +63,7 @@ export function reserveTurnStart(
     traceContext,
     turnId,
   };
+  invalidateSuggestedPrompt(this);
 }
 
 export function releaseTurnStart(this: AgentRuntimeInternal, turnId: TurnId): void {
@@ -72,6 +78,7 @@ export function finishActiveTurn(
 ): void {
   if (activeTurn !== undefined && this.activeTurn === activeTurn) {
     this.activeTurn = undefined;
+    startPendingSuggestedPrompt(this);
   }
 }
 

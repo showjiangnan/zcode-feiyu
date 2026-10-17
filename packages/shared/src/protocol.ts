@@ -359,6 +359,8 @@ export interface AppSettings {
   nativeSearchEnhancementsEnabled?: boolean;
   /** 新建或冷恢复 Session 是否启用 Memory；默认关闭。 */
   memoryEnabled?: boolean;
+  /** 总开关只开放 SuggestedPrompt；实际预测还需逐会话确认。 */
+  suggestedPrompt?: import("./suggested-prompt.js").SuggestedPromptSettings;
   /** 完成顶层轮次后是否允许自动提取项目记忆；新 profile 默认关闭。 */
   memoryExtractionEnabled?: boolean;
   /** 是否允许读取本地历史会话并自动整理项目记忆；默认关闭。 */

@@ -122,6 +122,7 @@ export async function startPromptTurn(
         // Bootstrap controller 曾经被当成 Core busy 真相，并由 projection watchdog
         // 清理它；现在 Core admission 自己持有 reservation，Stop 也直接调用 Core execution。
         delivery: "start_turn",
+        skipSuggestedPrompt: Boolean(params.botDeliveryTarget),
         ...(params.intent?.requestedDelivery === "guide"
           ? { queueDelivery: "guide" as const }
           : {}),

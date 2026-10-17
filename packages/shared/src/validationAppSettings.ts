@@ -6,6 +6,7 @@ import {
   embeddedBrowserViewportPreferenceSchema,
 } from "./browser-use/command-metadata.js";
 import { continuityPolicySchema } from "./continuity-policy.js";
+import { suggestedPromptSettingsSchema } from "./suggested-prompt.js";
 import { DYNAMIC_WORKFLOW_MODES } from "./dynamic-workflow-feature.js";
 import { imageGenerationConfigSchema } from "./imageGeneration.js";
 import { providerFamilyConnectionSelectionSettingsSchema } from "./provider-family-connection-selection.js";
@@ -490,6 +491,7 @@ const appSettingsObjectSchema = z.object({
   onboardingOccupation: appSettingsOccupationSchema.nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
   memoryEnabled: z.boolean().default(false),
+  suggestedPrompt: suggestedPromptSettingsSchema.default(() => ({ enabled: false })),
   policyRevision: z.number().int().nonnegative().default(0),
   memoryExtractionEnabled: z.boolean().default(false),
   memoryReviewEnabled: z.boolean().default(false),
@@ -597,6 +599,7 @@ export const appSettingsPatchSchema = z.object({
     .nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
   memoryEnabled: z.boolean().optional(),
+  suggestedPrompt: suggestedPromptSettingsSchema.optional(),
   memoryExtractionEnabled: z.boolean().optional(),
   memoryReviewEnabled: z.boolean().optional(),
   continuityPolicy: continuityPolicySchema.optional(),

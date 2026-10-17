@@ -40,6 +40,7 @@ import type {
   WorkspaceRewindResult,
 } from "../types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
+import { invalidateSuggestedPrompt } from "../suggested-prompt/runtime.js";
 import { rebuildContextPrefix } from "./context-refresh.js";
 import { mainTurnCacheHitAggregateFromMessages } from "./turn-model-step-usage.js";
 
@@ -412,6 +413,7 @@ export async function rewindConversationToMessage(
     traceContext: TraceContext;
   },
 ): Promise<ConversationRewindResult> {
+  invalidateSuggestedPrompt(this);
   const plan = await buildConversationRewindPlan.call(this, {
     targetMessageId: options.targetMessageId,
     // 仅纯 conversation scope 开启 assistant 锚点回溯（v4 edit/retry 路径）；
